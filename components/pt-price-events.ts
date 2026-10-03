@@ -4,7 +4,7 @@ import { Range, Ticker, type EventItem, type Events, type PriceSeries } from '..
 
 export const manifest = defineComponent({
   tag: 'pt-price-events',
-  version: '1.0.0',
+  version: '1.0.1',
   need: {
     question: 'What happened to this stock, and when — earnings, dividends, splits, analyst moves on the price line?',
     evidence: [
@@ -31,14 +31,18 @@ const day = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86_400_000;
 const monthLabel = (ym: string) => `${MONTHS[Number(ym.slice(5, 7)) - 1]} ${ym.slice(2, 4)}`;
 
 type Bar = PriceSeries[number]['points'][number];
-export interface Marker { item: EventItem; cx: number; cy: number; future: boolean }
+/** One marker per day and kind: busy days (a dozen analyst notes after earnings) collapse into one dot. */
+export interface Marker { kind: string; date: string; items: EventItem[]; cx: number; cy: number; future: boolean }
+
+/** A rating reiteration is not an event; it would bury the chart in dots. */
+const isEvent = (e: EventItem) => !(e.kind === 'analyst' && e.meta.action === 'maintain');
 
 /** Pure chart geometry: calendar-day x scale (so future events have room), close-price y scale. */
 export function layout(points: Bar[], items: EventItem[]) {
   if (!points.length) return null;
   const first = points[0]!.t;
   const last = points.at(-1)!.t;
-  const shown = items.filter((e) => e.date >= first);
+  const shown = items.filter((e) => e.date >= first && isEvent(e));
   const end = shown.reduce((m, e) => (e.date > m ? e.date : m), last);
   const span = Math.max(1, day(end) - day(first));
   const x = (iso: string) => L + ((day(iso) - day(first)) / span) * (W - L - R);
@@ -54,11 +58,14 @@ export function layout(points: Bar[], items: EventItem[]) {
     for (const p of points) { if (p.t > iso) break; c = p.c; }
     return c;
   };
+  const groups = new Map<string, EventItem[]>();
+  for (const e of shown) groups.set(`${e.date}|${e.kind}`, [...(groups.get(`${e.date}|${e.kind}`) ?? []), e]);
   const used = new Map<string, number>();
-  const markers: Marker[] = shown.map((item) => {
-    const n = used.get(item.date) ?? 0;
-    used.set(item.date, n + 1);
-    return { item, cx: x(item.date), cy: y(closeAt(item.date)) - 12 - n * 12, future: item.date > last };
+  const markers: Marker[] = [...groups.values()].map((list) => {
+    const { date, kind } = list[0]!;
+    const n = used.get(date) ?? 0;
+    used.set(date, n + 1);
+    return { kind, date, items: list, cx: x(date), cy: y(closeAt(date)) - 12 - n * 12, future: date > last };
   });
   const yTicks = [0, 1, 2, 3].map((i) => lo + ((hi - lo) * (i + 0.5)) / 4);
   const months: string[] = [];
@@ -87,6 +94,23 @@ function tipFor(e: EventItem, h: Helpers): string {
   }
 }
 
+const PLURAL: Record<string, string> = { earnings: 'earnings reports', dividend: 'dividends', split: 'splits', analyst: 'analyst actions' };
+
+/** Tooltip for a marker: the event itself, or a count with the first few entries. */
+function tipForGroup(m: Marker, h: Helpers): string {
+  if (m.items.length === 1) return tipFor(m.items[0]!, h);
+  const o: Record<string, string> = { [`${m.items.length} ${PLURAL[m.kind] ?? 'events'}`]: h.date(m.date) };
+  for (const e of m.items.slice(0, 5)) {
+    const label = e.kind === 'analyst' ? e.meta.firm : e.kind;
+    const value = e.kind === 'analyst' ? `${e.meta.action}${e.meta.to ? ` → ${e.meta.to}` : ''}` : h.date(e.date);
+    let k = label;
+    for (let i = 2; k in o; i++) k = `${label} (${i})`;
+    o[k] = value;
+  }
+  if (m.items.length > 5) o.More = `+${m.items.length - 5}`;
+  return h.tip(o);
+}
+
 type Data = DataFor<{ series: PriceSeries; events: Events }>;
 
 export function renderStatic(data: Data, params: { ticker: string; range: string }, h: Helpers): string {
@@ -100,13 +124,13 @@ export function renderStatic(data: Data, params: { ticker: string; range: string
     `<text class="pt-axis" x="${L - 6}" y="${(t.y + 3).toFixed(1)}" text-anchor="end">${h.esc(h.num(t.v, t.v >= 100 ? 0 : 2))}</text>`).join('');
   const xAxis = g.xTicks.map((t) => `<text class="pt-axis" x="${t.x.toFixed(1)}" y="${H - 6}" text-anchor="middle">${monthLabel(t.label)}</text>`).join('');
   const marks = g.markers.map((m) => {
-    const kind = GLYPH[m.item.kind] ? m.item.kind : 'other';
-    return `<g class="pt-mk pt-mk-${kind}${m.future ? ' pt-mk-future' : ''}" tabindex="0" ${tipFor(m.item, h)}>` +
+    const kind = GLYPH[m.kind] ? m.kind : 'other';
+    return `<g class="pt-mk pt-mk-${kind}${m.future ? ' pt-mk-future' : ''}" tabindex="0" ${tipForGroup(m, h)}>` +
       `<circle cx="${m.cx.toFixed(1)}" cy="${m.cy.toFixed(1)}" r="6"/>` +
-      `<text x="${m.cx.toFixed(1)}" y="${(m.cy + 3).toFixed(1)}" text-anchor="middle" fill="white" font-size="8">${GLYPH[m.item.kind] ?? '•'}</text></g>`;
+      `<text x="${m.cx.toFixed(1)}" y="${(m.cy + 3).toFixed(1)}" text-anchor="middle" fill="white" font-size="8">${GLYPH[m.kind] ?? '•'}</text></g>`;
   }).join('');
   const caption = `<p class="pt-lede">Last close ${h.money(lastC)} · ${h.pct(lastC / firstC - 1)} over ${h.esc(params.range)} · ` +
-    `E earnings · D dividend · S split · A analyst action${data.events ? '' : ' · Events not available'}</p>`;
+    `E earnings · D dividend · S split · A analyst rating change${data.events ? '' : ' · Events not available'}</p>`;
   return `<figure class="pt-chart">${toggles}<svg class="pt-chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${h.esc(params.ticker)} price, ${h.esc(params.range)}">` +
     `${grid}${xAxis}<path class="pt-line" d="${g.path}"/>${marks}</svg>${caption}</figure>`;
 }

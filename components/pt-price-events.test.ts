@@ -12,17 +12,26 @@ const params = { ticker: 'NVDA', range: '1y' };
 describe('pt-price-events', () => {
   standardSuite('pt-price-events.ts', mod);
 
-  it('draws one path and one marker per in-window event', () => {
+  const shown = (from: string) => events.items.filter((e) => e.date >= from && !(e.kind === 'analyst' && e.meta.action === 'maintain'));
+  const groups = (list: EventItem[]) => new Set(list.map((e) => `${e.date}|${e.kind}`)).size;
+
+  it('draws one path and one marker per day and kind, skipping rating reiterations', () => {
     const out = mod.renderStatic({ series, events }, params, h);
     expect(out.match(/<path class="pt-line"/g)).toHaveLength(1);
-    const first = series[0]!.points[0]!.t;
-    const inWindow = events.items.filter((e) => e.date >= first).length;
-    expect(out.match(/class="pt-mk /g)).toHaveLength(inWindow);
+    expect(out.match(/class="pt-mk /g)).toHaveLength(groups(shown(series[0]!.points[0]!.t)));
   });
   it('marks events after the last bar as future', () => {
     const out = mod.renderStatic({ series, events }, params, h);
-    const future = events.items.filter((e) => e.date > series[0]!.points.at(-1)!.t).length;
-    expect((out.match(/pt-mk-future/g) ?? []).length).toBe(future);
+    const future = shown(series[0]!.points[0]!.t).filter((e) => e.date > series[0]!.points.at(-1)!.t);
+    expect((out.match(/pt-mk-future/g) ?? []).length).toBe(groups(future));
+  });
+  it('collapses many same-day analyst actions into one marker that counts them', () => {
+    const d = series[0]!.points.at(-5)!.t;
+    const many = Array.from({ length: 12 }, (_, i) => ({ date: d, ticker: 'NVDA', name: 'NVIDIA', logo: null, mcap: null, kind: 'analyst' as const,
+      meta: { firm: `Firm ${i}`, action: i % 2 ? 'upgrade' : 'downgrade', from: 'Hold', to: 'Buy' } }));
+    const out = mod.renderStatic({ series, events: { asOf: events.asOf, items: many } }, params, h);
+    expect(out.match(/class="pt-mk /g)).toHaveLength(1);
+    expect(out).toContain('12 analyst actions');
   });
   it('renders the range toggles with the current one pressed', () => {
     const out = mod.renderStatic({ series, events }, { ticker: 'NVDA', range: '6m' }, h);
@@ -39,7 +48,7 @@ describe('pt-price-events', () => {
     expect(mod.renderStatic({ series: [{ ticker: 'NVDA', points: [] }], events }, params, h)).toContain('pt-na');
   });
   it('stacks same-day markers instead of overlapping them', () => {
-    const e = events.items.find((x) => x.date <= series[0]!.points.at(-1)!.t && x.date >= series[0]!.points[0]!.t)!;
+    const e = events.items.find((x) => x.kind !== 'analyst' && x.date <= series[0]!.points.at(-1)!.t && x.date >= series[0]!.points[0]!.t)!;
     const twin: EventItem = { ...e, kind: 'analyst', meta: { firm: 'X', action: 'upgrade', from: null, to: 'Buy' } } as EventItem;
     const g = mod.layout(series[0]!.points, [e, twin]);
     expect(g!.markers[0]!.cy).not.toBe(g!.markers[1]!.cy);
