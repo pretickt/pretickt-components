@@ -74,7 +74,7 @@ export function eventsDemo(p: z.infer<typeof EventsParams>): Events {
   }
   if (want.has('macro')) {
     const start = p.scope.by === 'universe' ? `${p.scope.month}-01` : DEMO_ASOF;
-    const macro = [['CPI', 'Consumer Price Index (YoY)'], ['FOMC', 'Fed Interest Rate Decision'], ['Jobs', 'Nonfarm Payrolls'], ['PCE', 'Core PCE Price Index (MoM)']] as const;
+    const macro = [['CPI', 'Consumer Price Index (YoY)'], ['Fed', 'Fed Interest Rate Decision'], ['Jobs', 'Nonfarm Payrolls'], ['PCE', 'Core PCE Price Index (MoM)']] as const;
     macro.forEach(([label, event], i) => items.push({ date: addDays(start, 3 + i * 7), kind: 'macro', meta: { label, event, impact: 'High' } }));
   }
   items.sort(byDateThenSize);

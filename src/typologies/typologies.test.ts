@@ -50,7 +50,7 @@ describe('typologies', () => {
     const t = getTypology('events@1')!;
     const out = t.demo(t.params.parse({ scope: { by: 'universe', month: '2026-10' }, kinds: ['macro'] })) as { items: { kind: string; meta: { label: string } }[] };
     expect(out.items.length).toBeGreaterThan(0);
-    for (const i of out.items) { expect(i.kind).toBe('macro'); expect(i.meta.label).toMatch(/CPI|PCE|FOMC|Jobs|GDP/); expect('ticker' in i).toBe(false); }
+    for (const i of out.items) { expect(i.kind).toBe('macro'); expect(i.meta.label).toMatch(/Fed|CPI|PCE|FOMC|Jobs|GDP/); expect('ticker' in i).toBe(false); }
   });
 
   it('rejects index symbols and junk tickers', () => {

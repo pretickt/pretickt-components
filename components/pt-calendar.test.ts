@@ -42,7 +42,7 @@ describe('pt-calendar', () => {
     const macro = events.items.filter((e) => e.kind === 'macro');
     expect(macro.length).toBeGreaterThan(0);
     expect(out.match(/class="pt-cal-macro"/g)!.length).toBe(macro.length);
-    expect(out).toContain('FOMC');
+    expect(out).toContain('Fed');
     expect(out).not.toContain('/stocks//');
   });
   it('requests earnings and macro dates', () => {
