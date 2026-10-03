@@ -18,7 +18,8 @@
     "./host": "./src/host/browser.ts",
     "./dist/*": "./dist/*",
     "./tools": "./src/sdk/tools.ts",
-    "./components/*": "./components/*.ts"
+    "./components/*": "./components/*.ts",
+    "./indicators": "./src/sdk/indicators/index.ts"
   },
   "dependencies": {
     "lit": "^3.3.3",
