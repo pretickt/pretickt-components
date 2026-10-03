@@ -1,0 +1,99 @@
+@import "tailwindcss";
+@source "../components";
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+  --color-surface: oklch(0.985 0.004 250);
+  --color-surface-raised: oklch(1 0 0);
+  --color-border: oklch(0.9 0.006 250);
+  --color-ink: oklch(0.27 0.02 260);
+  --color-ink-soft: oklch(0.55 0.02 260);
+  --color-primary: oklch(0.55 0.18 265);
+  --color-primary-hover: oklch(0.49 0.18 265);
+  --color-primary-ink: oklch(0.99 0 0);
+  --color-danger: oklch(0.58 0.2 25);
+  --color-pos: oklch(0.6 0.15 150);
+  --color-neg: oklch(0.58 0.2 25);
+  --color-warn: oklch(0.75 0.15 75);
+  --radius-control: 0.625rem;
+}
+
+@layer components {
+  /* page */
+  .pt-page { @apply min-h-screen bg-surface font-sans text-ink antialiased; }
+  .pt-header { @apply border-b border-border bg-surface-raised px-4 py-3 sm:px-6; }
+  .pt-brand { @apply font-mono text-sm font-semibold tracking-tight text-ink no-underline; }
+  .pt-main { @apply mx-auto max-w-5xl px-4 py-6 sm:px-6; }
+  .pt-h1 { @apply text-2xl font-semibold tracking-tight; }
+  .pt-lede { @apply mt-1 text-sm text-ink-soft; }
+  .pt-section { @apply mt-8; }
+  .pt-section-title { @apply mb-3 text-sm font-semibold uppercase tracking-wide text-ink-soft; }
+  .pt-footer { @apply mx-auto max-w-5xl px-4 py-8 text-xs text-ink-soft sm:px-6; }
+
+  /* states */
+  .pt-na { @apply rounded-control border border-dashed border-border px-3 py-4 text-center text-sm text-ink-soft; }
+  .pt-icon { @apply inline-block h-3.5 w-3.5 shrink-0 fill-none stroke-current; stroke-width: 1.5; }
+  .pt-tip { @apply pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-full rounded-md bg-ink px-2 py-1 text-xs text-surface shadow-lg; }
+  .pt-tip b { @apply font-semibold; }
+  [busy] { @apply opacity-60 transition-opacity; }
+  [error]::after { content: 'Could not load data — showing the last values.'; @apply mt-2 block text-xs text-danger; }
+  /* Component hosts anchor their tooltip. Never put position on [class^='pt-']: it would override .pt-tip's absolute. */
+  pt-metric-v1, pt-price-events-v1, pt-price-target-v1, pt-calendar-v1 { @apply relative block; }
+
+  /* badges */
+  .pt-badges { @apply m-0 flex list-none flex-wrap gap-2 p-0; }
+  .pt-badge { @apply inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-raised px-3 py-1 text-sm; }
+  .pt-badge-k { @apply text-ink-soft; }
+  .pt-badge-v { @apply font-mono font-semibold; }
+  .pt-tone-pos { @apply border-pos/40 bg-pos/5; }
+  .pt-tone-pos .pt-badge-v { @apply text-pos; }
+  .pt-tone-neg { @apply border-neg/40 bg-neg/5; }
+  .pt-tone-neg .pt-badge-v { @apply text-neg; }
+  .pt-tone-na .pt-badge-v { @apply text-ink-soft; }
+  .pt-range { @apply relative ml-1 inline-block h-1 w-16 rounded-full bg-border; }
+  .pt-range-dot { @apply absolute top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ink; }
+
+  /* charts */
+  .pt-chart { @apply rounded-control border border-border bg-surface-raised p-3; }
+  .pt-chart-svg { @apply block h-auto w-full overflow-visible; }
+  .pt-line { @apply fill-none stroke-primary; stroke-width: 1.5; }
+  .pt-grid { @apply stroke-border; stroke-width: 1; }
+  .pt-axis { @apply fill-ink-soft text-[10px]; }
+  .pt-mk { @apply cursor-pointer stroke-surface-raised; stroke-width: 1.5; }
+  .pt-mk-earnings { @apply fill-primary; }
+  .pt-mk-dividend { @apply fill-pos; }
+  .pt-mk-split { @apply fill-warn; }
+  .pt-mk-analyst { @apply fill-ink-soft; }
+  .pt-mk-other { @apply fill-border; }
+  .pt-mk-future { fill-opacity: 0.35; @apply stroke-primary; }
+  .pt-toggles { @apply mb-2 flex gap-1; }
+  .pt-toggles button { @apply rounded-md px-2 py-0.5 text-xs text-ink-soft hover:bg-surface; }
+  .pt-toggles button[aria-pressed='true'] { @apply bg-primary text-primary-ink; }
+
+  /* price target */
+  .pt-pt-summary { @apply mb-3 grid grid-cols-2 gap-2 sm:grid-cols-5; }
+  .pt-pt-stat { @apply rounded-control border border-border bg-surface px-3 py-2 text-sm; }
+  .pt-pt-stat b { @apply block font-mono text-base; }
+  .pt-seg { stroke-width: 1; stroke-opacity: 0.35; @apply stroke-primary; }
+  .pt-dot { @apply cursor-pointer fill-primary stroke-surface-raised; stroke-width: 1; }
+  .pt-consensus { @apply mt-3 flex h-2 overflow-hidden rounded-full bg-border; }
+  .pt-consensus-sb { @apply bg-pos; }
+  .pt-consensus-b { @apply bg-pos/60; }
+  .pt-consensus-h { @apply bg-ink-soft/40; }
+  .pt-consensus-s { @apply bg-neg/60; }
+  .pt-consensus-ss { @apply bg-neg; }
+
+  /* calendar */
+  .pt-cal-head { @apply mb-2 flex items-center justify-between; }
+  .pt-cal-nav { @apply flex gap-1; }
+  .pt-cal-nav button { @apply rounded-md border border-border px-2 py-0.5 text-xs; }
+  .pt-cal-grid { @apply grid grid-cols-7 gap-px overflow-hidden rounded-control border border-border bg-border; }
+  .pt-cal-dow { @apply bg-surface px-2 py-1 text-[10px] font-semibold uppercase text-ink-soft; }
+  .pt-cal-day { @apply min-h-20 bg-surface-raised p-1 text-xs; }
+  .pt-cal-out { @apply bg-surface text-ink-soft/50; }
+  .pt-cal-asof { @apply ring-2 ring-primary ring-inset; }
+  .pt-cal-ev { @apply mt-0.5 flex items-center justify-between gap-1 rounded bg-surface px-1 font-mono; }
+  .pt-cal-time { @apply text-[9px] uppercase text-ink-soft; }
+  .pt-cal-more { @apply mt-0.5 text-[10px] text-ink-soft; }
+}
