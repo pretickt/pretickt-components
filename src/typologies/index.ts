@@ -6,6 +6,8 @@ import { PriceSeriesParams, PriceSeriesPayload, priceSeriesDemo } from './price-
 import { FundamentalsParams, FundamentalsPayload, fundamentalsDemo } from './fundamentals';
 import { InsiderParams, InsiderPayload, insiderDemo } from './insider';
 import { NewsParams, NewsPayload, newsDemo } from './news';
+import { MoveBreakdownParams, MoveBreakdownPayload, moveBreakdownDemo } from './move-breakdown';
+import { ScreenParams, ScreenPayload, screenDemo } from './screen';
 
 export interface Typology<P extends z.ZodMiniType = z.ZodMiniType, D extends z.ZodMiniType = z.ZodMiniType> {
   id: string;
@@ -25,6 +27,8 @@ export const TYPOLOGIES = {
   'fundamentals@1': def({ id: 'fundamentals@1', params: FundamentalsParams, payload: FundamentalsPayload, demo: fundamentalsDemo, freshness: 'eod' }),
   'insider@1': def({ id: 'insider@1', params: InsiderParams, payload: InsiderPayload, demo: insiderDemo, freshness: 'eod' }),
   'news@1': def({ id: 'news@1', params: NewsParams, payload: NewsPayload, demo: newsDemo, freshness: 'eod' }),
+  'move-breakdown@1': def({ id: 'move-breakdown@1', params: MoveBreakdownParams, payload: MoveBreakdownPayload, demo: moveBreakdownDemo, freshness: 'eod' }),
+  'screen@1': def({ id: 'screen@1', params: ScreenParams, payload: ScreenPayload, demo: screenDemo, freshness: 'eod' }),
 } as const;
 
 export type TypologyIdKnown = keyof typeof TYPOLOGIES;
@@ -39,3 +43,5 @@ export * from './analysts';
 export * from './fundamentals';
 export * from './insider';
 export * from './news';
+export * from './move-breakdown';
+export * from './screen';

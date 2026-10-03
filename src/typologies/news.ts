@@ -6,7 +6,7 @@ export const NewsParams = z.object({ ticker: Ticker, limit: z._default(z.int().c
 export const NewsPayload = z.object({
   asOf: IsoDate,
   items: z.array(z.object({
-    publishedAt: z.string(), title: z.string(), site: z.string(), url: z.string(), sentiment: z.nullable(z.number()),
+    publishedAt: z.string(), title: z.string(), site: z.string(), url: z.string().check(z.regex(/^https?:\/\//)), sentiment: z.nullable(z.number()),
   })),
 });
 export type News = z.infer<typeof NewsPayload>;
