@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { defineComponent, type DataFor, type Helpers } from '../src/sdk';
 import { Ticker, type Analysts, type PriceSeries } from '../src/typologies';
 

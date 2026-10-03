@@ -1,10 +1,10 @@
-import type { z } from 'zod';
+import type * as z from 'zod/mini';
 import { AnalystsParams, AnalystsPayload, analystsDemo } from './analysts';
 import { EventsParams, EventsPayload, eventsDemo } from './events';
 import { MetricParams, MetricPayload, metricDemo } from './metric';
 import { PriceSeriesParams, PriceSeriesPayload, priceSeriesDemo } from './price-series';
 
-export interface Typology<P extends z.ZodType = z.ZodType, D extends z.ZodType = z.ZodType> {
+export interface Typology<P extends z.ZodMiniType = z.ZodMiniType, D extends z.ZodMiniType = z.ZodMiniType> {
   id: string;
   params: P;
   payload: D;
@@ -12,7 +12,7 @@ export interface Typology<P extends z.ZodType = z.ZodType, D extends z.ZodType =
   freshness: 'eod' | { ttlSeconds: number };
 }
 
-const def = <P extends z.ZodType, D extends z.ZodType>(t: Typology<P, D>) => t;
+const def = <P extends z.ZodMiniType, D extends z.ZodMiniType>(t: Typology<P, D>) => t;
 
 export const TYPOLOGIES = {
   'metric@1': def({ id: 'metric@1', params: MetricParams, payload: MetricPayload, demo: metricDemo, freshness: 'eod' }),

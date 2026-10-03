@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { defineComponent, type DataFor, type Helpers } from '../src/sdk';
 import { METRIC_KEYS, Ticker, type MetricItem, type MetricPayload } from '../src/typologies';
 
@@ -12,7 +12,7 @@ export const manifest = defineComponent({
       'stockanalysis.com and finance.yahoo.com quote pages open with a key-stats strip; MarketBeat shows scores as percentile badges (checked 2026-10-03)',
     ],
   },
-  params: z.object({ ticker: Ticker, metrics: z.array(z.enum(METRIC_KEYS)).min(1).max(12) }),
+  params: z.object({ ticker: Ticker, metrics: z.array(z.enum(METRIC_KEYS)).check(z.minLength(1), z.maxLength(12)) }),
   user: [],
   uses: [],
   needs: (p) => ({ metrics: { t: 'metric@1', params: { ticker: p.ticker, metrics: p.metrics } } }),

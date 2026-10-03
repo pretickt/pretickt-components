@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { LitElement, html, svg } from 'lit';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { defineComponent } from './define';
 import { classFor } from './element';
 import { checkParity } from './parity';

@@ -1,20 +1,20 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { addDays, DEMO_ASOF, IsoDate, prng, round, Ticker } from './common';
 
-export const AnalystsParams = z.object({ ticker: Ticker, window: z.enum(['1y', '2y']).default('1y') });
+export const AnalystsParams = z.object({ ticker: Ticker, window: z._default(z.enum(['1y', '2y']), '1y') });
 const Counts = z.object({ strongBuy: z.number(), buy: z.number(), hold: z.number(), sell: z.number(), strongSell: z.number(), period: IsoDate });
 export const AnalystsPayload = z.object({
   asOf: IsoDate,
   /** Last close (raw, not dividend-adjusted). */
-  price: z.number().nullable(),
+  price: z.nullable(z.number()),
   /** Computed in our own basis from the latest target of each firm in the last 12 months. */
-  summary: z.object({ low: z.number(), mean: z.number(), median: z.number(), high: z.number(), n: z.number().int() }).nullable(),
-  consensus: Counts.nullable(),
+  summary: z.nullable(z.object({ low: z.number(), mean: z.number(), median: z.number(), high: z.number(), n: z.int() })),
+  consensus: z.nullable(Counts),
   history: z.array(Counts),
   /** Every target published in the window, oldest first. */
-  targets: z.array(z.object({ date: IsoDate, firm: z.string(), target: z.number(), priceWhenPosted: z.number().nullable() })),
+  targets: z.array(z.object({ date: IsoDate, firm: z.string(), target: z.number(), priceWhenPosted: z.nullable(z.number()) })),
   /** Per-firm hit rate. Empty until the accuracy job ships (a later catalogue addition). */
-  accuracy: z.array(z.object({ firm: z.string(), hits: z.number().int(), total: z.number().int() })),
+  accuracy: z.array(z.object({ firm: z.string(), hits: z.int(), total: z.int() })),
 });
 export type Analysts = z.infer<typeof AnalystsPayload>;
 

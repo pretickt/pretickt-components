@@ -2,7 +2,7 @@ import ts from 'typescript';
 
 export interface Violation { rule: string; message: string; line: number }
 
-const ALLOWED_IMPORTS = new Set(['zod', '@pretickt/components/sdk', '@pretickt/components/typologies']);
+const ALLOWED_IMPORTS = new Set(['zod/mini', '@pretickt/components/sdk', '@pretickt/components/typologies']);
 /** In-repo components may import the lean SDK and the typologies — never the build tools or DOM-only modules. */
 const IN_REPO = /^(\.\.\/)+src\/(sdk|typologies)(\/(?!tools|element|parity|lint|contract)[\w./-]*)?$/;
 const NETWORK = new Set(['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'importScripts']);

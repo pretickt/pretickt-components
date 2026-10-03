@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { defineComponent, type DataFor, type Helpers } from '../src/sdk';
 import { Range, Ticker, type EventItem, type Events, type PriceSeries } from '../src/typologies';
 
@@ -12,7 +12,7 @@ export const manifest = defineComponent({
       'TradingView marks earnings/dividends/splits on its symbol chart; beta event map and SL/TP charts use the same markers',
     ],
   },
-  params: z.object({ ticker: Ticker, range: Range.default('1y') }),
+  params: z.object({ ticker: Ticker, range: z._default(Range, '1y') }),
   user: [],
   uses: [],
   needs: (p) => ({

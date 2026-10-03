@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { DEMO_ASOF, IsoDate, prng, round, Ticker, ToneSchema } from './common';
 
 /** The metric catalogue. Adding a key is a minor version of metric@1. */
@@ -7,21 +7,21 @@ export type MetricKey = (typeof METRIC_KEYS)[number];
 
 export const MetricParams = z.object({
   ticker: Ticker,
-  metrics: z.array(z.enum(METRIC_KEYS)).min(1).max(12),
+  metrics: z.array(z.enum(METRIC_KEYS)).check(z.minLength(1), z.maxLength(12)),
 });
 
 export const MetricItem = z.object({
   /** A string, not the enum: components must render unknown keys generically. */
   key: z.string(),
   label: z.string(),
-  value: z.number().nullable(),
+  value: z.nullable(z.number()),
   /** Categorical value shown instead of the number (e.g. "3 of 4 above"). */
-  text: z.string().nullable(),
+  text: z.nullable(z.string()),
   unit: z.enum(['x', '%', '$', 'd', '']),
-  delta: z.number().nullable(),
+  delta: z.nullable(z.number()),
   tone: ToneSchema,
-  range: z.object({ lo: z.number(), hi: z.number(), marks: z.array(z.object({ label: z.string(), value: z.number() })) }).nullable(),
-  icon: z.string().nullable(),
+  range: z.nullable(z.object({ lo: z.number(), hi: z.number(), marks: z.array(z.object({ label: z.string(), value: z.number() })) })),
+  icon: z.nullable(z.string()),
   /** One-sentence definition shown in the tooltip. Templated, never LLM prose. */
   hint: z.string(),
   asOf: IsoDate,

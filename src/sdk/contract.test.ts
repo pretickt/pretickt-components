@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { defineComponent } from './define';
 import { checkContract } from './contract';
 import type { ComponentModule } from './types';

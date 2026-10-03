@@ -1,9 +1,9 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 
 /** US tickers as the platform stores them: uppercase, share classes with a dot (BRK.B). Never '^'. */
-export const Ticker = z.string().regex(/^[A-Z][A-Z0-9]{0,5}(\.[A-Z])?$/, 'invalid ticker');
-export const IsoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-export const Month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
+export const Ticker = z.string().check(z.regex(/^[A-Z][A-Z0-9]{0,5}(\.[A-Z])?$/, 'invalid ticker'));
+export const IsoDate = z.string().check(z.regex(/^\d{4}-\d{2}-\d{2}$/));
+export const Month = z.string().check(z.regex(/^\d{4}-(0[1-9]|1[0-2])$/));
 export const Range = z.enum(['1m', '3m', '6m', '1y', '2y', '5y']);
 export type Range = z.infer<typeof Range>;
 export const RANGE_SESSIONS: Record<Range, number> = { '1m': 21, '3m': 63, '6m': 126, '1y': 252, '2y': 504, '5y': 1260 };

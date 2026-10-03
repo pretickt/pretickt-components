@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { addDays, DEMO_ASOF, IsoDate, Month, prng, Range, RANGE_SESSIONS, round, Ticker } from './common';
 
 /** The kind catalogue. Adding a kind is a minor version of events@1; components render unknown kinds generically. */
@@ -7,22 +7,22 @@ export const EVENT_KINDS = ['earnings', 'dividend', 'split', 'analyst'] as const
 export const EventsParams = z.object({
   scope: z.discriminatedUnion('by', [
     /** One ticker: events in the `range` before the latest session plus `ahead` calendar days after it. */
-    z.object({ by: z.literal('ticker'), ticker: Ticker, range: Range, ahead: z.number().int().min(0).max(180).default(90) }),
+    z.object({ by: z.literal('ticker'), ticker: Ticker, range: Range, ahead: z._default(z.int().check(z.minimum(0), z.maximum(180)), 90) }),
     /** The whole universe for one calendar month (calendar pages). */
     z.object({ by: z.literal('universe'), month: Month }),
   ]),
-  kinds: z.array(z.enum(EVENT_KINDS)).min(1),
+  kinds: z.array(z.enum(EVENT_KINDS)).check(z.minLength(1)),
 });
 
-const Common = { date: IsoDate, ticker: Ticker, name: z.string(), logo: z.string().nullable(), mcap: z.number().nullable() };
+const Common = { date: IsoDate, ticker: Ticker, name: z.string(), logo: z.nullable(z.string()), mcap: z.nullable(z.number()) };
 export const EventItem = z.discriminatedUnion('kind', [
   z.object({ ...Common, kind: z.literal('earnings'), meta: z.object({
-    time: z.enum(['bmo', 'amc']).nullable(), epsEst: z.number().nullable(), epsActual: z.number().nullable(),
-    revEst: z.number().nullable(), revActual: z.number().nullable() }) }),
-  z.object({ ...Common, kind: z.literal('dividend'), meta: z.object({ amount: z.number(), payDate: IsoDate.nullable() }) }),
+    time: z.nullable(z.enum(['bmo', 'amc'])), epsEst: z.nullable(z.number()), epsActual: z.nullable(z.number()),
+    revEst: z.nullable(z.number()), revActual: z.nullable(z.number()) }) }),
+  z.object({ ...Common, kind: z.literal('dividend'), meta: z.object({ amount: z.number(), payDate: z.nullable(IsoDate) }) }),
   z.object({ ...Common, kind: z.literal('split'), meta: z.object({ numerator: z.number(), denominator: z.number() }) }),
   z.object({ ...Common, kind: z.literal('analyst'), meta: z.object({
-    firm: z.string(), action: z.string(), from: z.string().nullable(), to: z.string().nullable() }) }),
+    firm: z.string(), action: z.string(), from: z.nullable(z.string()), to: z.nullable(z.string()) }) }),
 ]);
 /** `asOf` is the latest price session: components use it to tell past from future (they have no clock). */
 export const EventsPayload = z.object({ asOf: IsoDate, items: z.array(EventItem) });

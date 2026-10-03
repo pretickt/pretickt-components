@@ -1,10 +1,10 @@
-import type { z } from 'zod';
+import type * as z from 'zod/mini';
 import type { Helpers } from './helpers';
 
 export type TypologyId = `${string}@${number}`;
 export interface Need { t: TypologyId; params: unknown }
 
-export interface Manifest<P extends z.ZodType = z.ZodType> {
+export interface Manifest<P extends z.ZodMiniType = z.ZodMiniType> {
   /** Lowercase, `pt-` prefixed, without the major suffix (the host adds `-v<major>`). */
   tag: string;
   version: string;

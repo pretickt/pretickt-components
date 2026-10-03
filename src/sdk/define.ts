@@ -1,10 +1,10 @@
-import type { z } from 'zod';
+import type * as z from 'zod/mini';
 import type { Manifest } from './types';
 
 const TAG = /^pt-[a-z][a-z0-9-]*$/;
 const SEMVER = /^\d+\.\d+\.\d+$/;
 
-export function defineComponent<P extends z.ZodType>(m: Manifest<P>): Manifest<P> {
+export function defineComponent<P extends z.ZodMiniType>(m: Manifest<P>): Manifest<P> {
   if (!TAG.test(m.tag)) throw new Error(`invalid tag "${m.tag}": must match ${TAG}`);
   if (/-v\d+$/.test(m.tag)) throw new Error(`tag "${m.tag}" must not carry the major suffix; the host adds it`);
   if (!SEMVER.test(m.version)) throw new Error(`invalid version "${m.version}": must be semver x.y.z`);

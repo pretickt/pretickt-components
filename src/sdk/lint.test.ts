@@ -6,7 +6,7 @@ const rules = (src: string) => lintSource(src).map((v) => v.rule);
 describe('lintSource', () => {
   it('passes a well-formed component', () => {
     expect(lintSource(`
-      import { z } from 'zod';
+      import * as z from 'zod/mini';
       import { defineComponent } from '@pretickt/components/sdk';
       import type { Events } from '@pretickt/components/typologies';
       const ICON = { a: 1 };

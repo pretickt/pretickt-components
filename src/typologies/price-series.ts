@@ -1,13 +1,13 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { DEMO_ASOF, IsoDate, prng, Range, RANGE_SESSIONS, round, sessionsBack, Ticker } from './common';
 
 export const PriceSeriesParams = z.object({
-  tickers: z.array(Ticker).min(1).max(8),
+  tickers: z.array(Ticker).check(z.minLength(1), z.maxLength(8)),
   range: Range,
   /** Only daily bars until FMP confirms the licence for intraday (spec §11.1). */
-  interval: z.literal('1d').default('1d'),
+  interval: z._default(z.literal('1d'), '1d'),
   /** Divide every price by the first close of the window (1.0 = start). */
-  rebase: z.boolean().default(false),
+  rebase: z._default(z.boolean(), false),
 });
 export const Bar = z.object({ t: IsoDate, o: z.number(), h: z.number(), l: z.number(), c: z.number(), v: z.number() });
 export const PriceSeriesPayload = z.array(z.object({ ticker: Ticker, points: z.array(Bar) }));

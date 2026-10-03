@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { defineComponent, type DataFor, type Helpers } from '../src/sdk';
 import { Month, type EventItem, type Events } from '../src/typologies';
 
