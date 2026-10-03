@@ -17,7 +17,7 @@ export const MetricItem = z.object({
   value: z.nullable(z.number()),
   /** Categorical value shown instead of the number (e.g. "3 of 4 above"). */
   text: z.nullable(z.string()),
-  unit: z.enum(['x', '%', '$', 'd', '']),
+  unit: z.enum(['x', '%', '$', '$c', 'd', '']),
   delta: z.nullable(z.number()),
   tone: ToneSchema,
   range: z.nullable(z.object({ lo: z.number(), hi: z.number(), marks: z.array(z.object({ label: z.string(), value: z.number() })) })),
@@ -25,6 +25,8 @@ export const MetricItem = z.object({
   /** One-sentence definition shown in the tooltip. Templated, never LLM prose. */
   hint: z.string(),
   asOf: IsoDate,
+  /** Coloured dots instead of the value (news sentiment). */
+  dots: z.optional(z.nullable(z.array(z.enum(['pos', 'neg'])))),
 });
 export const MetricPayload = z.array(MetricItem);
 export type MetricItem = z.infer<typeof MetricItem>;

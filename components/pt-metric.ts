@@ -1,10 +1,10 @@
 import * as z from 'zod/mini';
 import { defineComponent, type DataFor, type Helpers } from '../src/sdk';
-import { METRIC_KEYS, Ticker, type MetricItem, type MetricPayload } from '../src/typologies';
+import { METRIC_KEYS, Ticker, type MetricPayload } from '../src/typologies';
 
 export const manifest = defineComponent({
   tag: 'pt-metric',
-  version: '1.0.0',
+  version: '1.1.0',
   need: {
     question: 'Is this stock cheap, stretched, or close to a catalyst — at a glance?',
     evidence: [
@@ -25,31 +25,7 @@ export const samples = [
 
 type Data = DataFor<{ metrics: MetricPayload }>;
 
-function value(m: MetricItem, h: Helpers): string {
-  if (m.text) return m.text;
-  if (m.value == null) return '—';
-  switch (m.unit) {
-    case 'x': return `${h.num(m.value, 1)}x`;
-    case '%': return h.pct(m.value);
-    case '$': return h.money(m.value);
-    case 'd': return `${h.num(m.value, 0)}d`;
-    default: return h.num(m.value);
-  }
-}
-
-function rangeBar(m: MetricItem): string {
-  if (!m.range || m.value == null || m.range.hi <= m.range.lo) return '';
-  const pos = Math.min(100, Math.max(0, ((m.value - m.range.lo) / (m.range.hi - m.range.lo)) * 100));
-  return `<span class="pt-range" aria-hidden="true"><span class="pt-range-dot" style="left:${pos.toFixed(1)}%"></span></span>`;
-}
-
 export function renderStatic(data: Data, _params: unknown, h: Helpers): string {
   if (!data.metrics || !data.metrics.length) return h.na();
-  const items = data.metrics.map((m) => {
-    const tip: Record<string, string> = { [m.label]: m.hint, 'As of': h.date(m.asOf) };
-    if (m.range) { tip.Low = h.money(m.range.lo); tip.High = h.money(m.range.hi); }
-    return `<li class="pt-badge pt-tone-${h.esc(m.tone)}" tabindex="0" ${h.tip(tip)}>${h.icon(m.icon)}` +
-      `<span class="pt-badge-k">${h.esc(m.label)}</span><span class="pt-badge-v">${h.esc(value(m, h))}</span>${rangeBar(m)}</li>`;
-  });
-  return `<ul class="pt-badges">${items.join('')}</ul>`;
+  return `<ul class="pt-badges">${data.metrics.map((m) => h.badge(m)).join('')}</ul>`;
 }

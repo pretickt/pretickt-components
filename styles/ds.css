@@ -51,6 +51,10 @@
   .pt-tone-neg { @apply border-neg/40 bg-neg/5; }
   .pt-tone-neg .pt-badge-v { @apply text-neg; }
   .pt-tone-na .pt-badge-v { @apply text-ink-soft; }
+  .pt-dots { @apply inline-flex gap-0.5; }
+  .pt-dot-pos, .pt-dot-neg { @apply inline-block h-2 w-2 rounded-full; }
+  .pt-dot-pos { @apply bg-pos; }
+  .pt-dot-neg { @apply bg-neg; }
   .pt-range { @apply relative ml-1 inline-block h-1 w-16 rounded-full bg-border; }
   .pt-range-dot { @apply absolute top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ink; }
 
