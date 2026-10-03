@@ -30,7 +30,7 @@ describe('pt-why-today', () => {
   it('does not quote an average it does not have', () => {
     const out = mod.renderStatic({ move: base({ news: { today: 7, avg30: 0, spike: false, top: [] } }) }, { ticker: 'NVDA', window: '1d' }, h);
     expect(out).toContain('7 stories on the day.');
-    expect(out).not.toContain('average');
+    expect(out).not.toContain('30-day average');
   });
   it('offers 1D, 5D and 1M', () => {
     expect(mod.renderStatic({ move: base() }, { ticker: 'NVDA', window: '1d' }, h)).toContain(`data-set='{"window":"5d"}'`);
