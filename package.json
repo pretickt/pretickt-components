@@ -16,7 +16,8 @@
     "./sdk": "./src/sdk/index.ts",
     "./typologies": "./src/typologies/index.ts",
     "./host": "./src/host/browser.ts",
-    "./dist/*": "./dist/*"
+    "./dist/*": "./dist/*",
+    "./tools": "./src/sdk/tools.ts"
   },
   "dependencies": {
     "lit": "^3.3.3",
