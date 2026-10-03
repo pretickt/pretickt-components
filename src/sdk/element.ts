@@ -105,5 +105,5 @@ export function makeBase(lit: LitKit, mod: ComponentModule, host: HostApi) {
 
 export function classFor(lit: LitKit, mod: ComponentModule, host: HostApi): CustomElementConstructor {
   const PtElement = makeBase(lit, mod, host);
-  return mod.element ? mod.element({ PtElement, html: lit.html, svg: lit.svg, unsafeHTML: lit.unsafeHTML }) : PtElement;
+  return (mod.element ? mod.element({ PtElement, html: lit.html, svg: lit.svg, unsafeHTML: lit.unsafeHTML }) : PtElement) as CustomElementConstructor;
 }

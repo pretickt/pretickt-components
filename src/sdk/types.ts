@@ -29,9 +29,13 @@ export interface HostApi {
   resolve(need: Need): Promise<unknown>;
 }
 
+/** Structural stand-in for CustomElementConstructor, so the SDK types also compile without the DOM lib (Workers). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ElementClass = abstract new (...args: any[]) => object;
+
 /** What an `element` factory receives. `PtElement` is already bound to the module and the host. */
 export interface Kit {
-  PtElement: CustomElementConstructor & (new () => HTMLElement);
+  PtElement: ElementClass;
   html: typeof import('lit').html;
   svg: typeof import('lit').svg;
   unsafeHTML: typeof import('lit/directives/unsafe-html.js').unsafeHTML;
@@ -45,7 +49,7 @@ export interface ComponentModule {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   renderStatic(data: any, params: any, h: Helpers): string;
   /** Optional: extend the default element (which renders `renderStatic`) with custom behaviour. */
-  element?(kit: Kit): CustomElementConstructor;
+  element?(kit: Kit): ElementClass;
   /** Sample params used by the contract checks, the parity check and the build. */
   samples?: unknown[];
 }
