@@ -52,7 +52,7 @@ function news(m: MoveBreakdown, h: Helpers): string {
   const n = m.news;
   const head = n.spike
     ? `<p class="pt-bd-news-head"><strong>News spike:</strong> ${n.today} stories, ${h.num(n.avg30 > 0 ? n.today / n.avg30 : 0, 1)}× the 30-day average.</p>`
-    : `<p class="pt-bd-news-head">${n.today} ${n.today === 1 ? 'story' : 'stories'} on the day (30-day average ${h.num(n.avg30, 1)}).</p>`;
+    : `<p class="pt-bd-news-head">${n.today} ${n.today === 1 ? 'story' : 'stories'} on the day${n.avg30 > 0 ? ` (30-day average ${h.num(n.avg30, 1)})` : ''}.</p>`;
   const list = n.top.length
     ? `<ul class="pt-news">${n.top.map((s) => `<li class="pt-news-item"><span class="${dot(s.sentiment)}"></span>` +
       `<a href="${h.esc(s.url)}" target="_blank" rel="nofollow noopener noreferrer">${h.esc(s.title)}</a> <span class="pt-news-meta">${h.esc(s.site)}</span></li>`).join('')}</ul>`
