@@ -12,7 +12,7 @@ export const manifest = defineComponent({
       'stockanalysis.com and finance.yahoo.com quote pages open with a key-stats strip; MarketBeat shows scores as percentile badges (checked 2026-10-03)',
     ],
   },
-  params: z.object({ ticker: Ticker, metrics: z.array(z.enum(METRIC_KEYS)).check(z.minLength(1), z.maxLength(12)) }),
+  params: z.object({ ticker: Ticker, metrics: z.array(z.enum(METRIC_KEYS)).check(z.minLength(1), z.maxLength(32)) }),
   user: [],
   uses: [],
   needs: (p) => ({ metrics: { t: 'metric@1', params: { ticker: p.ticker, metrics: p.metrics } } }),
