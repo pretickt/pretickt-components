@@ -39,7 +39,8 @@
   [busy] { @apply opacity-60 transition-opacity; }
   [error]::after { content: 'Could not load data — showing the last values.'; @apply mt-2 block text-xs text-danger; }
   /* Component hosts anchor their tooltip. Never put position on [class^='pt-']: it would override .pt-tip's absolute. */
-  pt-metric-v1, pt-price-events-v1, pt-price-target-v1, pt-calendar-v1 { @apply relative block; }
+  pt-metric-v1, pt-price-events-v1, pt-price-target-v1, pt-calendar-v1, pt-why-today-v1, pt-screen-v1, pt-financials-v1,
+  pt-news-v1, pt-insiders-v1 { @apply relative block; }
 
   /* badges */
   .pt-badges { @apply m-0 flex list-none flex-wrap gap-2 p-0; }
@@ -55,6 +56,13 @@
   .pt-dot-pos, .pt-dot-neg { @apply inline-block h-2 w-2 rounded-full; }
   .pt-dot-pos { @apply bg-pos; }
   .pt-dot-neg { @apply bg-neg; }
+  .pt-dot-flat, .pt-dot-na { @apply inline-block h-2 w-2 rounded-full; }
+  .pt-dot-flat { @apply bg-ink-soft/50; }
+  .pt-dot-na { @apply border border-border; }
+  .pt-t-pos { @apply text-pos; }
+  .pt-t-neg { @apply text-neg; }
+  .pt-t-flat, .pt-t-na { @apply text-ink-soft; }
+  .pt-note { @apply mt-2 text-xs text-ink-soft; }
   .pt-range { @apply relative ml-1 inline-block h-1 w-16 rounded-full bg-border; }
   .pt-range-dot { @apply absolute top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ink; }
 
@@ -104,4 +112,53 @@
   .pt-cal-list { @apply mt-4 space-y-1 pl-0 text-sm; list-style: none; }
   .pt-cal-list a { @apply text-primary hover:underline; }
   .pt-cal-list-day { @apply mr-2 font-semibold; }
+
+  /* tables */
+  .pt-table-wrap { @apply overflow-x-auto rounded-control border border-border bg-surface-raised; }
+  .pt-table { @apply w-full border-collapse text-sm; }
+  .pt-table th { @apply border-b border-border px-3 py-2 text-left text-[11px] font-semibold uppercase text-ink-soft; }
+  .pt-table td { @apply border-b border-border/60 px-3 py-1.5 align-middle; }
+  .pt-table tr:last-child td { @apply border-b-0; }
+  .pt-num { @apply text-right font-mono whitespace-nowrap; }
+  .pt-scr-rank { @apply w-6 text-xs text-ink-soft; }
+  .pt-scr-co { @apply text-ink no-underline hover:text-primary; }
+  .pt-scr-co span { @apply text-xs text-ink-soft; }
+  .pt-scr-self td { @apply bg-primary/5; }
+  .pt-spark { @apply h-5 w-16 fill-none; stroke-width: 1.5; }
+  .pt-spark-pos { @apply stroke-pos; }
+  .pt-spark-neg { @apply stroke-neg; }
+
+  /* why it moved */
+  .pt-why-lead { @apply text-lg font-semibold; }
+  .pt-bd { @apply my-3 space-y-1.5; }
+  .pt-bd-row { @apply grid grid-cols-[9rem_1fr_4.5rem] items-center gap-2 text-sm; }
+  .pt-bd-k { @apply truncate text-ink-soft; }
+  .pt-bd-track { @apply relative h-3 rounded-full bg-surface; }
+  .pt-bd-bar { @apply absolute top-0 h-3 rounded-full; }
+  .pt-bd-pos { @apply bg-pos; }
+  .pt-bd-neg { @apply bg-neg; }
+  .pt-bd-flat, .pt-bd-na { @apply bg-ink-soft/40; }
+  .pt-bd-v { @apply text-right font-mono; }
+  .pt-bd-news-head { @apply mt-4 text-sm; }
+
+  /* news */
+  .pt-news { @apply m-0 mt-2 list-none space-y-2 p-0; }
+  .pt-news-item { @apply flex items-baseline gap-2 text-sm; }
+  .pt-news-item a { @apply text-ink hover:text-primary hover:underline; }
+  .pt-news-meta { @apply text-xs text-ink-soft; }
+
+  /* financials */
+  .pt-fin-chart { @apply my-2 block h-auto w-full overflow-visible; }
+  .pt-fin-rev { @apply cursor-pointer fill-primary; }
+  .pt-fin-fcf { @apply cursor-pointer fill-pos; }
+  .pt-legend { @apply mt-2 flex gap-4 text-xs text-ink-soft; }
+  .pt-key::before { content: ''; @apply mr-1 inline-block h-2 w-2 rounded-sm; }
+  .pt-key-rev::before { @apply bg-primary; }
+  .pt-key-fcf::before { @apply bg-pos; }
+
+  /* insiders */
+  .pt-ins-type { @apply rounded px-1.5 py-0.5 text-xs font-semibold; }
+  .pt-ins-buy .pt-ins-type { @apply bg-pos/15 text-pos; }
+  .pt-ins-sell .pt-ins-type { @apply bg-neg/15 text-neg; }
+  .pt-ins-other .pt-ins-type { @apply bg-surface text-ink-soft; }
 }

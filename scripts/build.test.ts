@@ -6,7 +6,7 @@ describe('build', () => {
   it('emits static and browser bundles, host, css and the index', async () => {
     execFileSync('npx', ['tsx', 'scripts/build.ts'], { stdio: 'inherit' });
     const index = JSON.parse(readFileSync('dist/index.json', 'utf8')) as { components: { tag: string; static: string; browser: string; element: string }[] };
-    expect(index.components.map((c) => c.tag).sort()).toEqual(['pt-calendar', 'pt-metric', 'pt-price-events', 'pt-price-target']);
+    expect(index.components.map((c) => c.tag).sort()).toEqual(['pt-calendar', 'pt-financials', 'pt-insiders', 'pt-metric', 'pt-news', 'pt-price-events', 'pt-price-target', 'pt-screen', 'pt-why-today']);
     for (const c of index.components) {
       const s = readFileSync(`dist/${c.static}`, 'utf8');
       expect(s).not.toMatch(/lit-html|LitElement|customElements/);

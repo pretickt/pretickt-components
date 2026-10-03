@@ -46,7 +46,13 @@ describe('pt-calendar', () => {
     expect(out).not.toContain('/stocks//');
   });
   it('requests earnings and macro dates', () => {
-    expect(mod.manifest.needs({ month: '2026-10' }).events!.params).toMatchObject({ kinds: ['earnings', 'macro'] });
+    expect(mod.manifest.needs({ month: '2026-10', kind: 'earnings' }).events!.params).toMatchObject({ kinds: ['earnings', 'macro'] });
+  });
+  it('shows a dividend calendar with amounts when asked', () => {
+    const d = { asOf: '2026-10-02', items: [{ date: '2026-10-15', ticker: 'KO', name: 'Coca-Cola', logo: null, mcap: 3e11, kind: 'dividend' as const, meta: { amount: 0.51, payDate: '2026-10-30' } }] };
+    const out = mod.renderStatic({ events: d }, { month: '2026-10', kind: 'dividend' }, h);
+    expect(out).toContain('$0.51');
+    expect(mod.manifest.needs({ month: '2026-10', kind: 'dividend' }).events!.params).toMatchObject({ kinds: ['dividend', 'macro'] });
   });
   it('renders not-available for null', () => {
     expect(mod.renderStatic({ events: null }, { month: '2026-10' }, h)).toContain('pt-na');

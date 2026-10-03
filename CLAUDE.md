@@ -81,6 +81,8 @@ platform) instead.
 | `fundamentals@1` | `{ticker, periods ≤40}` | `{asOf, periods[{period,fiscal,revenue,eps,fcf,grossMargin,operatingMargin,netMargin,pe,shares}]}` oldest first |
 | `insider@1` | `{ticker, days 30–730}` | `{asOf, items[{date,filingDate,name,title,type buy\|sell\|other,shares,price,value}]}` |
 | `news@1` | `{ticker, limit ≤50}` | `{asOf, items[{publishedAt,title,site,url,sentiment −1…1\|null}]}` (sentiment by AI, numbers only) |
+| `move-breakdown@1` | `{ticker, window 1d\|5d\|1m}` | `{asOf, ticker, name, sectorName, window, from, ret, marketRet, sectorRet, market, sector, specific, driver, news{today,avg30,spike,top[]}}` — `market+sector+specific = ret` |
+| `screen@1` | `{scope: {list: biggest_losers\|biggest_gainers\|52w_low\|52w_high\|undervalued\|insider_buying\|most_active} \| {peersOf}, limit ≤50}` | `{asOf, rows[{ticker,name,sector,logo,close,chg1d,offHigh,pe,ptUpside,marketCap,insiderNet,volumeRatio,spark[20],self}]}` |
 Each typology has `demo(params)`: deterministic fake data used by tests, parity and (later) the COMMUNITY sandbox.
 Adding a typology or a catalogue entry is a platform change (schema here + resolver in the private platform + a public-data test).
 
@@ -96,4 +98,10 @@ defined in the platform repo (`plant/src/generate/pages.ts`).
 
 ## Existing components
 `pt-metric` (1.1.0, badge strip of the catalogue) · `pt-price-events` (1.0.1, price line + E/D/S/A markers grouped per day, range
-toggles) · `pt-price-target` (1.0.0, target stats, segments, consensus bar) · `pt-calendar` (1.1.0, month grid + macro dates + full list).
+toggles) · `pt-price-target` (1.0.0, target stats, segments, consensus bar) · `pt-calendar` (1.2.0, month grid + macro dates + full
+list; `kind` earnings|dividend) · `pt-why-today` (1.0.0, answer-first sentence + market/sector/stock bars + news spike) ·
+`pt-screen` (1.0.0, ranked table with list-specific column and sparklines; lists and peers) · `pt-financials` (1.0.0, quarterly
+revenue/FCF bars + margins table) · `pt-news` (1.0.0, headlines with AI sentiment dots, nofollow links) · `pt-insiders` (1.0.0,
+buy/sell totals + Form 4 table).
+Shared DS classes worth reusing: `pt-table-wrap/pt-table/pt-num`, `pt-toggles` (buttons with `aria-pressed`), `pt-t-pos/neg/flat/na`
+(signed text; never `pt-na`, which is the not-available box), `pt-dot-pos/neg/flat/na`, `pt-note`, `pt-spark`.
