@@ -1,18 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { getTypology, TYPOLOGIES } from './index';
 import { Ticker } from './common';
+import { METRIC_KEYS, METRIC_LABELS } from './metric';
 
 const samples: Record<string, unknown[]> = {
-  'metric@1': [{ ticker: 'NVDA', metrics: ['pe', 'pt_upside', 'off_high', 'range_52w', 'trend_ma', 'earnings_in', 'pe_vs_sector'] }],
+  'metric@1': [{ ticker: 'NVDA', metrics: ['pe', 'pt_upside', 'off_high', 'range_52w', 'trend_ma', 'earnings_in', 'pe_vs_sector'] },
+               { ticker: 'NVDA', metrics: [...METRIC_KEYS] }],
+  'fundamentals@1': [{ ticker: 'NVDA' }, { ticker: 'BRK.B', periods: 4 }],
+  'insider@1': [{ ticker: 'NVDA' }, { ticker: 'AAPL', days: 90 }],
+  'news@1': [{ ticker: 'NVDA' }, { ticker: 'AAPL', limit: 5 }],
   'price-series@1': [{ tickers: ['NVDA'], range: '1y' }, { tickers: ['AAPL', 'MSFT'], range: '1m', rebase: true }],
   'events@1': [{ scope: { by: 'ticker', ticker: 'BRK.B', range: '1y', ahead: 90 }, kinds: ['earnings', 'dividend', 'split', 'analyst'] },
-               { scope: { by: 'universe', month: '2026-10' }, kinds: ['earnings'] }],
+               { scope: { by: 'universe', month: '2026-10' }, kinds: ['earnings'] },
+               { scope: { by: 'universe', month: '2026-10' }, kinds: ['earnings', 'macro'] }],
   'analysts@1': [{ ticker: 'NVDA' }],
 };
 
 describe('typologies', () => {
-  it('registers exactly the four foundation typologies', () => {
-    expect(Object.keys(TYPOLOGIES).sort()).toEqual(['analysts@1', 'events@1', 'metric@1', 'price-series@1']);
+  it('registers exactly the release-1 typologies', () => {
+    expect(Object.keys(TYPOLOGIES).sort()).toEqual(['analysts@1', 'events@1', 'fundamentals@1', 'insider@1', 'metric@1', 'news@1', 'price-series@1']);
     expect(getTypology('metric@2')).toBeUndefined();
   });
 
@@ -29,6 +35,23 @@ describe('typologies', () => {
       }
     });
   }
+
+  it('carries every beta and video badge in the metric catalogue, each with a label and a hint', () => {
+    expect(METRIC_KEYS).toHaveLength(25);
+    for (const k of ['support', 'resistance', 'rsi14', 'ma_cross', 'ma_detail', 'bollinger', 'macd', 'atr_pct', 'volume_ratio', 'consensus',
+      'market_cap', 'off_ath', 'trend', 'sector_trend', 'insider_net', 'fcf_yield', 'pe_vs_own', 'news'] as const) {
+      expect(METRIC_KEYS).toContain(k);
+      expect(METRIC_LABELS[k].hint.length).toBeGreaterThan(20);
+    }
+    expect(new Set(Object.values(METRIC_LABELS).map((m) => m.label)).size).toBe(25);
+  });
+
+  it('macro events carry a label and no ticker', () => {
+    const t = getTypology('events@1')!;
+    const out = t.demo(t.params.parse({ scope: { by: 'universe', month: '2026-10' }, kinds: ['macro'] })) as { items: { kind: string; meta: { label: string } }[] };
+    expect(out.items.length).toBeGreaterThan(0);
+    for (const i of out.items) { expect(i.kind).toBe('macro'); expect(i.meta.label).toMatch(/CPI|PCE|FOMC|Jobs|GDP/); expect('ticker' in i).toBe(false); }
+  });
 
   it('rejects index symbols and junk tickers', () => {
     for (const bad of ['^GSPC', 'nvda', '', 'TOOLONGTICKERX', 'A B']) expect(Ticker.safeParse(bad).success).toBe(false);

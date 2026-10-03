@@ -99,6 +99,7 @@
   .pt-cal-asof { @apply ring-2 ring-primary ring-inset; }
   .pt-cal-ev { @apply mt-0.5 flex items-center justify-between gap-1 rounded bg-surface px-1 font-mono; }
   .pt-cal-time { @apply text-[9px] uppercase text-ink-soft; }
+  .pt-cal-macro { @apply mt-0.5 rounded bg-warn/20 px-1 text-[10px] font-semibold uppercase; }
   .pt-cal-more { @apply mt-0.5 text-[10px] text-ink-soft; }
   .pt-cal-list { @apply mt-4 space-y-1 pl-0 text-sm; list-style: none; }
   .pt-cal-list a { @apply text-primary hover:underline; }

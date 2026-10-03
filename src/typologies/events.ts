@@ -2,7 +2,7 @@ import * as z from 'zod/mini';
 import { addDays, DEMO_ASOF, IsoDate, Month, prng, Range, RANGE_SESSIONS, round, Ticker } from './common';
 
 /** The kind catalogue. Adding a kind is a minor version of events@1; components render unknown kinds generically. */
-export const EVENT_KINDS = ['earnings', 'dividend', 'split', 'analyst'] as const;
+export const EVENT_KINDS = ['earnings', 'dividend', 'split', 'analyst', 'macro'] as const;
 
 export const EventsParams = z.object({
   scope: z.discriminatedUnion('by', [
@@ -23,6 +23,8 @@ export const EventItem = z.discriminatedUnion('kind', [
   z.object({ ...Common, kind: z.literal('split'), meta: z.object({ numerator: z.number(), denominator: z.number() }) }),
   z.object({ ...Common, kind: z.literal('analyst'), meta: z.object({
     firm: z.string(), action: z.string(), from: z.nullable(z.string()), to: z.nullable(z.string()) }) }),
+  /** Market-wide dates (US economic calendar): no ticker. */
+  z.object({ date: IsoDate, kind: z.literal('macro'), meta: z.object({ label: z.string(), event: z.string(), impact: z.nullable(z.string()) }) }),
 ]);
 /** `asOf` is the latest price session: components use it to tell past from future (they have no clock). */
 export const EventsPayload = z.object({ asOf: IsoDate, items: z.array(EventItem) });
@@ -31,6 +33,12 @@ export type Events = z.infer<typeof EventsPayload>;
 
 const DEMO_COS = [['AAPL', 'Apple Inc.'], ['MSFT', 'Microsoft Corporation'], ['NVDA', 'NVIDIA Corporation'], ['AMZN', 'Amazon.com, Inc.'],
   ['JPM', 'JPMorgan Chase & Co.'], ['KO', 'The Coca-Cola Company'], ['BRK.B', 'Berkshire Hathaway Inc.'], ['NKE', 'NIKE, Inc.']] as const;
+
+const sizeOf = (e: EventItem) => (e.kind === 'macro' ? Infinity : e.mcap ?? 0);
+const tickerOf = (e: EventItem) => (e.kind === 'macro' ? '' : e.ticker);
+/** Calendar order: date, then macro first, then biggest companies first. */
+export const byDateThenSize = (a: EventItem, b: EventItem) =>
+  a.date.localeCompare(b.date) || sizeOf(b) - sizeOf(a) || tickerOf(a).localeCompare(tickerOf(b)) || a.kind.localeCompare(b.kind);
 
 export function eventsDemo(p: z.infer<typeof EventsParams>): Events {
   const items: EventItem[] = [];
@@ -64,6 +72,11 @@ export function eventsDemo(p: z.infer<typeof EventsParams>): Events {
         meta: { time: r() > 0.5 ? 'amc' : 'bmo', epsEst: round(1 + r() * 3), epsActual: null, revEst: null, revActual: null } });
     }
   }
-  items.sort((a, b) => a.date.localeCompare(b.date) || (b.mcap ?? 0) - (a.mcap ?? 0) || a.ticker.localeCompare(b.ticker));
+  if (want.has('macro')) {
+    const start = p.scope.by === 'universe' ? `${p.scope.month}-01` : DEMO_ASOF;
+    const macro = [['CPI', 'Consumer Price Index (YoY)'], ['FOMC', 'Fed Interest Rate Decision'], ['Jobs', 'Nonfarm Payrolls'], ['PCE', 'Core PCE Price Index (MoM)']] as const;
+    macro.forEach(([label, event], i) => items.push({ date: addDays(start, 3 + i * 7), kind: 'macro', meta: { label, event, impact: 'High' } }));
+  }
+  items.sort(byDateThenSize);
   return { asOf: DEMO_ASOF, items };
 }

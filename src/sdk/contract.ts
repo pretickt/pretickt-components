@@ -9,7 +9,8 @@ function withUnknown(t: string, payload: unknown): unknown {
   if (t === 'events@1' && payload && typeof payload === 'object') {
     const p = payload as { asOf: string; items: Record<string, unknown>[] };
     const first = p.items[0] ?? { date: p.asOf, ticker: 'ZZZ', name: 'Unknown', logo: null, mcap: null };
-    return { ...p, items: [...p.items, { ...first, kind: 'unknown_kind', meta: {} }] };
+    // one unknown kind shaped like a company event, one shaped like a market-wide date (no ticker)
+    return { ...p, items: [...p.items, { ...first, kind: 'unknown_kind', meta: {} }, { date: (p.items.at(-1)?.date as string | undefined) ?? p.asOf, kind: 'unknown_market_kind', meta: {} }] };
   }
   return payload;
 }
