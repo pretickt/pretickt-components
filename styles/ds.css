@@ -29,6 +29,11 @@
   .pt-lede { @apply mt-1 text-sm text-ink-soft; }
   .pt-section { @apply mt-8; }
   .pt-section-title { @apply mb-3 text-sm font-semibold uppercase tracking-wide text-ink-soft; }
+  .pt-subnav { @apply mt-3 flex flex-wrap gap-1 border-b border-border pb-2 text-sm; }
+  .pt-subnav a { @apply rounded-md px-2 py-1 text-ink-soft no-underline hover:bg-surface-raised hover:text-ink; }
+  .pt-subnav a[aria-current='page'] { @apply bg-primary text-primary-ink; }
+  .pt-index { @apply m-0 grid list-none grid-cols-1 gap-x-4 gap-y-1 p-0 text-sm sm:grid-cols-2 lg:grid-cols-3; }
+  .pt-index a { @apply text-ink no-underline hover:text-primary; }
   .pt-footer { @apply mx-auto max-w-5xl px-4 py-8 text-xs text-ink-soft sm:px-6; }
 
   /* states */
