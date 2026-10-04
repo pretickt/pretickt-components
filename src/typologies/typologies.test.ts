@@ -128,3 +128,12 @@ describe('metric catalogue, one source', () => {
       for (const m of metricDemo({ ticker: t, metrics: [...VALUE_TONED] })) expect(m.tone, `${t} ${m.key} ${m.value}`).toBe(metricTone(m.key as never, m.value));
   });
 });
+
+describe('tree-shaking', () => {
+  it('a component that imports one schema carries no other typology', async () => {
+    const out = await build({ stdin: { contents: `import { NewsParams } from './src/typologies'; export const p = NewsParams;`,
+      resolveDir: process.cwd(), loader: 'ts' }, bundle: true, write: false, format: 'esm', minify: true, platform: 'browser', logLevel: 'silent' });
+    const js = out.outputFiles[0]!.text;
+    for (const other of ['biggest_losers', 'strongBuy', 'epsEst', 'filingDate', 'peersOf']) expect(js, other).not.toContain(other);
+  });
+});

@@ -32,9 +32,27 @@ export interface HostApi {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ElementClass = abstract new (...args: any[]) => object;
 
-/** What an `element` factory receives. `PtElement` is already bound to the module and the host. */
-export interface Kit {
-  PtElement: ElementClass;
+/** What the base element offers the class an `element` factory returns. */
+export interface PtElementApi {
+  data: Record<string, unknown>;
+  params: unknown;
+  /** True while a params patch is resolving; `error` after one failed. Both reflect to attributes. */
+  busy: boolean;
+  error: boolean;
+  /** Apply a params patch (what a `data-set` click does): re-resolves the changed needs, then re-renders. */
+  setParams(patch: Record<string, unknown>): Promise<void>;
+  render(): unknown;
+  connectedCallback(): void;
+  /** Called once after the first render: wire listeners here (call super first). */
+  firstUpdated(): void;
+}
+
+/**
+ * What an `element` factory receives. `PtElement` is already bound to the module and the host. Components write `Kit<HTMLElement>`;
+ * the default `object` keeps these types compiling without the DOM lib (Workers).
+ */
+export interface Kit<E extends object = object> {
+  PtElement: abstract new () => E & PtElementApi;
   html: typeof import('lit').html;
   svg: typeof import('lit').svg;
   unsafeHTML: typeof import('lit/directives/unsafe-html.js').unsafeHTML;

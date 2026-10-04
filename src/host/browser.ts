@@ -2,12 +2,12 @@ import { LitElement, html, svg } from 'lit';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { elementName } from '../sdk/define';
 import { classFor } from '../sdk/element';
-import { needKey, stableStringify } from '../sdk/key';
+import { needKey } from '../sdk/key';
+import { needPath, type Mount, type PageData } from '../sdk/page';
 import type { ComponentModule, HostApi, Need } from '../sdk/types';
 import { getTypologySchema } from '../typologies';
 
-export interface PageData { buildId: string; api: string; data: Record<string, unknown>; components: Record<string, string> }
-interface Mount { c: string; p: unknown; k: Record<string, string> }
+export type { Mount, PageData };
 
 const lit = { LitElement, html, svg, unsafeHTML };
 
@@ -21,8 +21,7 @@ export function createHost(page: PageData, fetchImpl: typeof fetch = (...a) => f
       const key = needKey(need);
       const hit = cache.get(key);
       if (hit) return hit;
-      const url = `${page.api}/v1/t/${encodeURIComponent(need.t)}?p=${encodeURIComponent(stableStringify(need.params))}&b=${encodeURIComponent(page.buildId)}`;
-      const p = fetchImpl(url).then(async (r) => {
+      const p = fetchImpl(`${page.api}${needPath(need, page.buildId)}`).then(async (r) => {
         if (!r.ok) throw new Error(`api ${r.status}`);
         return t.payload.parse(await r.json());
       });

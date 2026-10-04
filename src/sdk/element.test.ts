@@ -6,7 +6,7 @@ import * as z from 'zod/mini';
 import { defineComponent } from './define';
 import { classFor } from './element';
 import { checkParity } from './parity';
-import type { ComponentModule } from './types';
+import type { ComponentModule, Kit } from './types';
 import { Ticker } from '../typologies';
 
 const lit = { LitElement, html, svg, unsafeHTML };
@@ -37,6 +37,18 @@ async function mount(host = { resolve: vi.fn(async () => [{ key: 'pe' }]) }) {
 }
 
 describe('makeBase', () => {
+  it('an element factory extends PtElement without casts and sees its API', async () => {
+    const seen: unknown[] = [];
+    const custom: ComponentModule = { ...mod, element: ({ PtElement }: Kit<HTMLElement>) => class extends PtElement {
+      firstUpdated() { super.firstUpdated(); seen.push(this.params, typeof this.setParams, this.busy, this.tagName); }
+    } };
+    customElements.define('pt-probe-kit', classFor(lit, custom, { resolve: async () => null }));
+    const el = document.createElement('pt-probe-kit') as HTMLElement & { params: unknown; updateComplete: Promise<boolean> };
+    el.params = { ticker: 'NVDA' };
+    document.body.append(el);
+    await el.updateComplete;
+    expect(seen).toEqual([{ ticker: 'NVDA' }, 'function', false, 'PT-PROBE-KIT']);
+  });
   it('renders in light DOM and replaces the static markup instead of duplicating it', async () => {
     const { el } = await mount();
     expect(el.shadowRoot).toBeNull();
@@ -67,7 +79,7 @@ describe('makeBase', () => {
     expect(await checkParity(lit, mod, [{ ticker: 'NVDA' }])).toEqual([]);
   });
   it('checkParity catches an element whose render diverges', async () => {
-    const bad: ComponentModule = { ...mod, element: (kit) => class extends (kit.PtElement as unknown as typeof LitElement) { render() { return kit.html`<p>different</p>`; } } };
+    const bad: ComponentModule = { ...mod, element: (kit: Kit<HTMLElement>) => class extends kit.PtElement { render() { return kit.html`<p>different</p>`; } } };
     expect((await checkParity(lit, bad, [{ ticker: 'NVDA' }])).join('\n')).toMatch(/parity/);
   });
   it('checkParity reads the module samples by default and fails a module that declares none', async () => {

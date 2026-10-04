@@ -4,7 +4,8 @@ import { expect, it } from 'vitest';
 import { LitElement, html, svg } from 'lit';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import type { ComponentModule } from '../src/sdk';
-import { checkContract, lintSource } from '../src/sdk/tools';
+import { checkContract } from '../src/sdk/contract';
+import { lintSource } from '../src/sdk/lint';
 import { checkParity } from '../src/sdk/parity';
 
 export const lit = { LitElement, html, svg, unsafeHTML };

@@ -6,12 +6,7 @@ import {
   fitYViewport, FULL_VIEWPORT, isFullViewport, latestViewport, panViewport, scaleYViewport, shiftYViewport, zoomViewport, type Viewport,
 } from './viewport';
 
-export interface LitKit {
-  LitElement: typeof LitElementType;
-  html: Kit['html'];
-  svg: Kit['svg'];
-  unsafeHTML: Kit['unsafeHTML'];
-}
+export type LitKit = Omit<Kit, 'PtElement'> & { LitElement: typeof LitElementType };
 
 export function makeBase(lit: LitKit, mod: ComponentModule, host: HostApi) {
   const { LitElement, unsafeHTML } = lit;
@@ -250,5 +245,7 @@ export function makeBase(lit: LitKit, mod: ComponentModule, host: HostApi) {
 
 export function classFor(lit: LitKit, mod: ComponentModule, host: HostApi): CustomElementConstructor {
   const PtElement = makeBase(lit, mod, host);
-  return (mod.element ? mod.element({ PtElement, html: lit.html, svg: lit.svg, unsafeHTML: lit.unsafeHTML }) : PtElement) as CustomElementConstructor;
+  // the one cast: Lit's protected lifecycle methods are public in PtElementApi, which is what subclasses see
+  const kit: Kit = { PtElement: PtElement as unknown as Kit['PtElement'], html: lit.html, svg: lit.svg, unsafeHTML: lit.unsafeHTML };
+  return (mod.element ? mod.element(kit) : PtElement) as CustomElementConstructor;
 }

@@ -1,3 +1,4 @@
+import { toJSONSchema } from 'zod/mini';
 import type * as z from 'zod/mini';
 import { AnalystsParams, AnalystsPayload } from './analysts';
 import { EventsParams, EventsPayload } from './events';
@@ -23,7 +24,7 @@ function withIds<T extends Record<string, { params: z.ZodMiniType; payload: z.Zo
  * What every typology accepts and returns — schemas only, so code that just validates (the browser host, the Worker) never carries
  * the demo generators. The full registry (`TYPOLOGIES`: demo, samples) builds on this one.
  */
-export const TYPOLOGY_SCHEMAS = withIds({
+export const TYPOLOGY_SCHEMAS = /* @__PURE__ */ withIds({
   'metric@1': { params: MetricParams, payload: MetricPayload },
   'price-series@1': { params: PriceSeriesParams, payload: PriceSeriesPayload },
   'events@1': { params: EventsParams, payload: EventsPayload },
@@ -38,3 +39,8 @@ export type TypologyKey = keyof typeof TYPOLOGY_SCHEMAS;
 
 export const getTypologySchema = (id: string): TypologySchema | undefined =>
   Object.hasOwn(TYPOLOGY_SCHEMAS, id) ? (TYPOLOGY_SCHEMAS as Record<string, TypologySchema>)[id] : undefined;
+
+/** JSON Schema of a typology schema (input side), for the admin catalogue and the generator prompt; null when it has no JSON form. */
+export function jsonSchema(s: z.ZodMiniType): Record<string, unknown> | null {
+  try { return toJSONSchema(s, { io: 'input', unrepresentable: 'any' }) as Record<string, unknown>; } catch { return null; }
+}
