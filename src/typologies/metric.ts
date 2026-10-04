@@ -91,7 +91,8 @@ export const METRIC_LABELS: Record<MetricKey, { label: string; unit: MetricItem[
   consensus: { label: 'Consensus', unit: '', hint: 'Analyst rating consensus from the latest monthly snapshot of strong buy to strong sell counts.' },
   market_cap: { label: 'Market cap', unit: '$c', hint: 'Market capitalisation from the company profile.' },
   fcf_yield: { label: 'FCF yield', unit: '%', hint: 'Free cash flow of the last four reported quarters divided by market capitalisation.' },
-  insider_net: { label: 'Insiders', unit: '$c', hint: `Open-market insider purchases minus sales over the last ${INSIDER_WINDOW_DAYS} days (SEC Form 4 filings).` },
+  // a plain string (a template would keep this table out of tree-shaking); the test pins it to INSIDER_WINDOW_DAYS
+  insider_net: { label: 'Insiders', unit: '$c', hint: 'Open-market insider purchases minus sales over the last 90 days (SEC Form 4 filings).' },
   earnings_in: { label: 'Earnings in', unit: 'd', hint: 'Calendar days until the next scheduled earnings report (provider estimate until confirmed).' },
   news: { label: 'News', unit: '', hint: 'Stories published in the last session; each dot is one story, coloured by its sentiment as classified by AI.' },
   off_high: { label: 'Off 52w high', unit: '%', hint: 'Last close versus the highest close of the last 52 weeks.' },

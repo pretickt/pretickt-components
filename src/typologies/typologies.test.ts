@@ -111,6 +111,10 @@ describe('range windows', () => {
 });
 
 describe('metric catalogue, one source', () => {
+  it('the insider hint states the window the nightly uses', async () => {
+    const { INSIDER_WINDOW_DAYS } = await import('./index');
+    expect(METRIC_LABELS.insider_net.hint).toContain(`last ${INSIDER_WINDOW_DAYS} days`);
+  });
   it('the catalogue is its two groups, in page order', async () => {
     const { METRIC_GROUPS } = await import('./index');
     expect([...METRIC_GROUPS.snapshot, ...METRIC_GROUPS.technicals]).toEqual([...METRIC_KEYS]);
