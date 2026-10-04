@@ -181,7 +181,8 @@ export function makeBase(lit: LitKit, mod: ComponentModule, host: HostApi) {
         if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
         drag.moved = true; drag.x = e.clientX; drag.y = e.clientY;
         let v = panViewport(view(), -dx / r.width);
-        if ((view().yScale ?? 1) !== 1 && Math.abs(dy) >= 1) v = shiftYViewport(v, -dy / r.height); // the content follows the pointer
+        const yScale = view().yScale ?? 1; // the visible price span is yScale × the fitted one: the content follows the pointer 1:1
+        if (yScale !== 1 && Math.abs(dy) >= 1) v = shiftYViewport(v, (-dy / r.height) * yScale);
         setView(v);
       });
 

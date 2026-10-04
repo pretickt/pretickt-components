@@ -68,6 +68,15 @@ describe('zoom & pan in the base element (any component with data-zoom)', () => 
     await el.updateComplete;
     expect(((el.params.view as { yShift?: number }).yShift ?? 0)).toBeLessThan(0);
   });
+  it('vertical drag moves the content exactly as far as the pointer, whatever the vertical zoom', async () => {
+    wheel(790, 100, -100);
+    await el.updateComplete;
+    const scale = (el.params.view as { yScale: number }).yScale;
+    ptr('pointerdown', 400, 100); ptr('pointermove', 400, 134); ptr('pointerup', 400, 134);
+    await el.updateComplete;
+    // 34 of 340 px is a tenth of what is visible, and what is visible is `scale` of the fitted range
+    expect((el.params.view as { yShift: number }).yShift).toBeCloseTo(-0.1 * scale, 6);
+  });
   it('controls appear only when there is something to undo, and undo it', async () => {
     expect(el.querySelector('.pt-vctl')).toBeNull();
     wheel(400, 100, -100); wheel(790, 100, 100);
