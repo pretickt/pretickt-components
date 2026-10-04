@@ -8,6 +8,8 @@ const ENT: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const group = (int: string) => int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+/** A formatted magnitude that rounds to zero carries no sign: never "-$0.00" or "+0.0%". */
+const isZero = (formatted: string) => Number(formatted.replace(/,/g, '')) === 0;
 
 export function esc(s: unknown): string {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ENT[c]!);
@@ -17,7 +19,7 @@ export function num(v: number | null | undefined, digits = 2): string {
   if (!finite(v)) return '—';
   const s = Math.abs(v).toFixed(digits);
   const [i, d] = s.split('.');
-  const neg = v < 0 && Number(s) !== 0;
+  const neg = v < 0 && !isZero(s);
   return (neg ? '-' : '') + group(i!) + (d ? `.${d}` : '');
 }
 
@@ -25,13 +27,29 @@ export function num(v: number | null | undefined, digits = 2): string {
 export function pct(v: number | null | undefined, digits = 1): string {
   if (!finite(v)) return '—';
   const s = num(v * 100, digits);
-  return (v > 0 && Number(s.replace(/,/g, '')) !== 0 ? '+' : '') + s + '%';
+  return (v > 0 && !isZero(s) ? '+' : '') + s + '%';
+}
+
+/** `v` is a fraction shown as a level, without a plus sign: 0.123 → "12.3%" (margins, yields, shares). */
+export function level(v: number | null | undefined, digits = 1): string {
+  return finite(v) ? `${num(v * 100, digits)}%` : '—';
+}
+
+/** Dollars: `compact` → "$1.05B", `signed` → "+$200M"; never "-$0". */
+export function usd(v: number | null | undefined, o: { compact?: boolean; signed?: boolean; digits?: number } = {}): string {
+  if (!finite(v)) return '—';
+  const s = o.compact ? compact(Math.abs(v)) : num(Math.abs(v), o.digits ?? 2);
+  const sign = isZero(s.replace(/[A-Z]$/, '')) ? '' : v < 0 ? '-' : o.signed && v > 0 ? '+' : '';
+  return `${sign}$${s}`;
 }
 
 export function money(v: number | null | undefined, digits = 2): string {
-  if (!finite(v)) return '—';
-  const s = num(Math.abs(v), digits);
-  return (v < 0 && Number(s.replace(/,/g, '')) !== 0 ? '-' : '') + '$' + s; // no "-$0.00"
+  return usd(v, { digits });
+}
+
+/** A cash amount with 2 to 4 decimals, as declared (dividends): 0.2625 → "$0.2625", 0.5 → "$0.50". */
+export function amount(v: number | null | undefined): string {
+  return usd(v, { digits: 4 }).replace(/(\.\d\d\d*?)0+$/, '$1');
 }
 
 const UNITS: [number, string][] = [[1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K'], [1, '']];
@@ -47,6 +65,11 @@ export function compact(v: number | null | undefined): string {
   const digits = digitsAt(i);
   const s = num(v / div, digits);
   return (digits ? s.replace(/\.?0+$/, '') : s) + suf;
+}
+
+/** "2026-03" (or a full date) → "Mar 26": the label of a month on a time axis. */
+export function month(ym: string): string {
+  return /^\d{4}-\d{2}/.test(ym) ? `${MONTHS[Number(ym.slice(5, 7)) - 1]} ${ym.slice(2, 4)}` : esc(ym);
 }
 
 export function date(iso: string): string {
@@ -67,6 +90,11 @@ export function href(url: string | null | undefined): string {
   return /^(https?:\/\/|\/(?!\/))[^\s"'<>]*$/i.test(u) ? esc(u) : '#';
 }
 
+/** The site path of a company's page, escaped. */
+export function stockHref(ticker: string): string {
+  return href(`/stocks/${String(ticker).toLowerCase()}/`);
+}
+
 export function na(label = 'Data not available'): string {
   return `<p class="pt-na">${esc(label)}</p>`;
 }
@@ -74,6 +102,17 @@ export function na(label = 'Data not available'): string {
 /** `data-tip` attribute carrying a JSON object; the base element turns it into a tooltip. */
 export function tip(o: Record<string, string | number | null>): string {
   return `data-tip="${esc(JSON.stringify(o))}"`;
+}
+
+/** `data-set` attribute: clicking the element patches the component's params (the base element re-resolves what changed). */
+export function set(patch: Record<string, unknown>): string {
+  return `data-set="${esc(JSON.stringify(patch))}"`;
+}
+
+/** A button group switching one param: `[value, label]` options, the current value pressed. */
+export function toggles(key: string, options: ReadonlyArray<readonly [string, string]>, current: unknown, label: string): string {
+  return `<div class="pt-toggles" role="group" aria-label="${esc(label)}">` +
+    options.map(([v, l]) => `<button type="button" ${set({ [key]: v })} aria-pressed="${v === current}">${esc(l)}</button>`).join('') + `</div>`;
 }
 
 export function icon(name: string | null | undefined): string {
@@ -90,7 +129,7 @@ export function badgeValue(b: Pick<Badge, 'text' | 'value' | 'unit'>): string {
     case 'x': return `${num(b.value, 1)}x`;
     case '%': return pct(b.value);
     case '$': return money(b.value);
-    case '$c': return (b.value < 0 ? '-$' : '$') + compact(Math.abs(b.value));
+    case '$c': return usd(b.value, { compact: true });
     case 'd': return `${num(b.value, 0)}d`;
     default: return num(b.value);
   }
@@ -144,5 +183,37 @@ export function viewControls(view: Viewport | null | undefined): string {
     b('reset', 'reset view', 'Back to the full view (or double-click the chart)', true) + `</div>`;
 }
 
-export const helpers = { esc, num, pct, money, compact, date, toneOf, href, na, tip, icon, badge, badgeValue, zoomable, zoomStrips, viewControls };
+/** An id usable in SVG (`url(#…)`): letters, digits and dashes only. */
+export const svgId = (s: string): string => s.replace(/[^A-Za-z0-9-]/g, '-');
+
+export interface Frame { w: number; h: number; plotW: number; plotH: number; id: string; label: string; view?: Viewport | null }
+
+/**
+ * A zoomable chart in one call: wrapper, svg with `data-zoom`, the clip of the plot, the grab strips, then your axes above the strips
+ * (so labels stay readable), the plot clipped, `front` unclipped, and the view controls. Read `params.view` in your geometry
+ * (applyXViewport / applyYViewport); the base element does the rest.
+ */
+export function chartFrame(fr: Frame, p: { defs?: string; axes?: string; plot: string; front?: string; after?: string }): string {
+  const id = svgId(fr.id);
+  return `<div class="pt-wrap"><svg class="pt-chart-svg" viewBox="0 0 ${fr.w} ${fr.h}" role="img" aria-label="${esc(fr.label)}" ${zoomable(fr.w, fr.h, fr.plotW, fr.plotH)}>` +
+    `<defs><clipPath id="${id}clip"><rect x="0" y="0" width="${fr.plotW}" height="${fr.plotH}"/></clipPath>${p.defs ?? ''}</defs>` +
+    zoomStrips(fr.w, fr.h, fr.plotW, fr.plotH) + (p.axes ?? '') + `<g clip-path="url(#${id}clip)">${p.plot}</g>${p.front ?? ''}</svg>` +
+    viewControls(fr.view) + (p.after ?? '') + `</div>`;
+}
+
+/** Price grid: a line across the plot per tick, its price label right-aligned in the price strip. */
+export function yAxis(fr: Frame, ticks: readonly { y: number; v: number }[]): string {
+  return ticks.map(({ y, v }) => `<line class="pt-grid" x1="0" x2="${fr.plotW}" y1="${y}" y2="${y}"/>` +
+    `<text class="pt-axis" x="${fr.w - 4}" y="${y + 3}" text-anchor="end">${esc(usd(v, { digits: Math.abs(v) >= 100 ? 0 : 2 }))}</text>`).join('');
+}
+
+/** Time labels under the plot; those near an edge are anchored inward so they never overflow. */
+export function timeAxis(fr: Frame, ticks: readonly { x: number; label: string }[]): string {
+  return ticks.map(({ x, label }) => `<text class="pt-axis" x="${x}" y="${fr.h - 6}" text-anchor="${x < 20 ? 'start' : x > fr.plotW - 20 ? 'end' : 'middle'}">${esc(label)}</text>`).join('');
+}
+
+export const helpers = {
+  esc, num, pct, level, money, usd, amount, compact, date, month, toneOf, href, stockHref, na, tip, set, toggles, icon, badge, badgeValue,
+  zoomable, zoomStrips, viewControls, svgId, chartFrame, yAxis, timeAxis,
+};
 export type Helpers = typeof helpers;
