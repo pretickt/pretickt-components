@@ -92,11 +92,23 @@
   .pt-pt-summary { @apply mb-3 grid grid-cols-2 gap-2 sm:grid-cols-5; }
   .pt-pt-stat { @apply rounded-control border border-border bg-surface px-3 py-2 text-sm; }
   .pt-pt-stat b { @apply block font-mono text-base; }
+  /* zoom & pan (any svg[data-zoom]) — ported from beta: grab strips on the price (right) and time (bottom) axes, lit while
+     hovered, and the fit / today / reset cluster that grows as the view moves */
+  svg[data-zoom] { touch-action: pan-y; cursor: crosshair; }
+  .pt-axis-strip, .pt-taxis { fill: var(--color-surface); opacity: 0.6; transition: opacity 120ms; }
+  .pt-axis-edge, .pt-taxis-edge { @apply stroke-border; stroke-width: 1; }
+  .pt-axis-hint, .pt-taxis-hint { @apply fill-ink-soft; font-size: 9px; opacity: 0; transition: opacity 120ms; pointer-events: none; }
+  .pt-over-axis .pt-axis-strip, .pt-over-taxis .pt-taxis { opacity: 1; fill: var(--color-primary); fill-opacity: 0.07; }
+  .pt-over-axis .pt-axis-edge, .pt-over-taxis .pt-taxis-edge { stroke: var(--color-primary); }
+  .pt-over-axis .pt-axis-hint, .pt-over-taxis .pt-taxis-hint { opacity: 1; fill: var(--color-primary); }
+  .pt-vctl { @apply absolute bottom-6 right-14 z-10 flex items-center gap-1; }
+  .pt-abtn { @apply cursor-pointer rounded-control border border-border bg-surface-raised px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-soft shadow-sm hover:border-primary hover:text-primary; }
+  .pt-abtn-wide { @apply normal-case; }
+
   /* price-target chart — ported from beta (pt-chart): dashed segments with a grey→green/red gradient, dots sized by count */
   .pt-wrap { @apply relative; }
   .pt-today { @apply stroke-ink-soft; stroke-width: 0.75; stroke-dasharray: 3 3; opacity: 0.6; }
   .pt-price { fill: none; @apply stroke-ink-soft; stroke-width: 1.5; opacity: 0.7; }
-  .pt-axis-edge { @apply stroke-border; stroke-width: 1; }
   .pt-seg { fill: none; stroke-width: 1.5; stroke-dasharray: 4 3; }
   .pt-grad-from { stop-color: var(--color-ink-soft); stop-opacity: 0.35; }
   .pt-grad-up { stop-color: var(--color-pos); }

@@ -63,6 +63,16 @@ export function renderStatic(data: Data, params: { ticker: string; range: string
 `esc, num(v,digits), pct(fraction), money, compact, date(iso), toneOf, na(label?), tip(obj), icon(name), badge(item), badgeValue(item)`.
 Icons: `calendar target trend-up trend-down alert peak`.
 
+## Zoom & pan — any chart, three lines (ported from beta's ZoomPan + ChartControls)
+1. Params: `view: z.optional(ViewportParam)` (absent = full view; the static page always renders the full view).
+2. Geometry: pass `params.view` through `applyXViewport(min, max, view)` and `applyYViewport(lo, hi, view)` (from the SDK);
+   clip the plot with a `<clipPath>`; put the price labels in the right-hand strip.
+3. Markup: `<svg … ${h.zoomable(w, h, plotW, plotH)}>${h.zoomStrips(w, h, plotW, plotH)}…</svg>${h.viewControls(params.view)}`
+   inside a `pt-wrap`.
+The base element does the rest: wheel/drag on the plot = time, on the right strip = price scale, on the bottom strip = time
+around the grab point, double-click = reset; fit / today » / reset view buttons appear only when there is something to undo.
+A `data-set` patch (new data) drops the view. Examples: `pt-price-target`, `pt-price-events`.
+
 ## Badges — the way to add a new metric from a component
 Build an object with the `Badge` shape and call `h.badge(b)` inside `<ul class="pt-badges">`:
 `{ key, label, value: number|null, text: string|null, unit: 'x'|'%'|'$'|'$c'|'d'|'', delta, tone: 'pos'|'neg'|'flat'|'na',
@@ -97,8 +107,8 @@ Adding a typology or a catalogue entry is a platform change (schema here + resol
 defined in the platform repo (`plant/src/generate/pages.ts`).
 
 ## Existing components
-`pt-metric` (1.1.0, badge strip of the catalogue) · `pt-price-events` (1.0.1, price line + E/D/S/A markers grouped per day, range
-toggles) · `pt-price-target` (1.1.0, beta's pt-chart: clustered dots, gradient segments, hover dash-flow + orbit + staggered analyst rows via a small `element` factory — the reference example of `element`) · `pt-calendar` (1.2.0, month grid + macro dates + full
+`pt-metric` (1.1.0, badge strip of the catalogue) · `pt-price-events` (1.1.0, price line + E/D/S/A markers grouped per day, range
+toggles, zoom & pan) · `pt-price-target` (1.2.0, beta's pt-chart with zoom & pan: clustered dots, gradient segments, hover dash-flow + orbit + staggered analyst rows via a small `element` factory — the reference example of `element`) · `pt-calendar` (1.2.0, month grid + macro dates + full
 list; `kind` earnings|dividend) · `pt-why-today` (1.0.0, answer-first sentence + market/sector/stock bars + news spike) ·
 `pt-screen` (1.0.0, ranked table with list-specific column and sparklines; lists and peers) · `pt-financials` (1.0.0, quarterly
 revenue/FCF bars + margins table) · `pt-news` (1.0.0, headlines with AI sentiment dots, nofollow links) · `pt-insiders` (1.0.0,

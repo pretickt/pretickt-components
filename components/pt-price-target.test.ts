@@ -51,6 +51,26 @@ describe('buildPtChart (ported from beta pt-chart.geometry)', () => {
   });
 });
 
+describe('buildPtChart with a viewport (beta spec)', () => {
+  const two = [tg({ firm: 'A', target: 150 }), tg({ firm: 'B', target: 130 })];
+  it('narrows the time window to the requested slice', () => {
+    const full = mod.buildPtChart(pts, two, '2026-01-05', 120)!;
+    const zoomed = mod.buildPtChart(pts, two, '2026-01-05', 120, { start: 0.5, end: 1, yScale: 1, yShift: 0 })!;
+    expect(zoomed.xTicks[0]!.label).not.toBe(full.xTicks[0]!.label);
+    expect(zoomed.todayX).toBeLessThan(full.todayX);
+  });
+  it('stretches the price scale without touching time', () => {
+    const full = mod.buildPtChart(pts, two, '2026-01-05', 120)!;
+    const tall = mod.buildPtChart(pts, two, '2026-01-05', 120, { start: 0, end: 1, yScale: 2, yShift: 0 })!;
+    expect(tall.todayX).toBeCloseTo(full.todayX, 6);
+    expect(tall.yTicks.map((t) => t.label)).not.toEqual(full.yTicks.map((t) => t.label));
+  });
+  it('is unchanged by the identity viewport', () => {
+    expect(mod.buildPtChart(pts, two, '2026-01-05', 120, { start: 0, end: 1, yScale: 1, yShift: 0 })!.pricePath)
+      .toBe(mod.buildPtChart(pts, two, '2026-01-05', 120)!.pricePath);
+  });
+});
+
 describe('pt-price-target', () => {
   standardSuite('pt-price-target.ts', mod);
 
@@ -80,6 +100,19 @@ describe('pt-price-target', () => {
     const out = mod.renderStatic({ analysts, series }, p, h);
     expect(out).toContain('pt-consensus');
     expect(out).toContain(`Strong buy ${analysts.consensus!.strongBuy}`);
+  });
+  it('is zoomable: grab strips on the svg, controls only once the view moved', () => {
+    const still = mod.renderStatic({ analysts, series }, p, h);
+    expect(still).toContain('data-zoom=');
+    expect(still).toContain('class="pt-axis-strip"');
+    expect(still).not.toContain('pt-vctl');
+    const moved = mod.renderStatic({ analysts, series }, { ...p, view: { start: 0.2, end: 0.8, yScale: 1, yShift: 0 } }, h);
+    expect(moved).toContain('data-view="latest"');
+  });
+  it('edge time labels stay inside the plot (first left-aligned, last right-aligned)', () => {
+    const out = mod.renderStatic({ analysts, series }, p, h);
+    const ticks = [...out.matchAll(/<text class="pt-axis" x="[\d.]+" y="[\d.]+" text-anchor="(\w+)">\d{4}-\d{2}</g)].map((m) => m[1]);
+    expect(ticks).toEqual(['start', 'middle', 'middle', 'end']);
   });
   it('explains missing coverage', () => {
     const none = { ...analysts, summary: null, targets: [], consensus: null, history: [] };

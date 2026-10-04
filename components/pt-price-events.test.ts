@@ -33,6 +33,22 @@ describe('pt-price-events', () => {
     expect(out.match(/class="pt-mk /g)).toHaveLength(1);
     expect(out).toContain('12 analyst actions');
   });
+  it('zooms: the viewport narrows time and stretches price (shared SDK viewport)', () => {
+    const pts = series[0]!.points;
+    const full = mod.layout(pts, [])!;
+    const zoomed = mod.layout(pts, [], { start: 0.5, end: 1, yScale: 1, yShift: 0 })!;
+    expect(zoomed.xTicks[0]!.label).not.toBe(full.xTicks[0]!.label);
+    const tall = mod.layout(pts, [], { start: 0, end: 1, yScale: 2, yShift: 0 })!;
+    expect(tall.yTicks.map((t) => t.v)).not.toEqual(full.yTicks.map((t) => t.v));
+    expect(mod.layout(pts, [], { start: 0, end: 1, yScale: 1, yShift: 0 })!.path).toBe(full.path);
+  });
+  it('is zoomable: grab strips, clipped plot, controls once the view moved', () => {
+    const still = mod.renderStatic({ series, events }, { ticker: 'NVDA', range: '1y' }, h);
+    expect(still).toContain('data-zoom=');
+    expect(still).toContain('clip-path=');
+    expect(still).not.toContain('pt-vctl');
+    expect(mod.renderStatic({ series, events }, { ticker: 'NVDA', range: '1y', view: { start: 0.2, end: 0.8 } }, h)).toContain('data-view="reset"');
+  });
   it('renders the range toggles with the current one pressed', () => {
     const out = mod.renderStatic({ series, events }, { ticker: 'NVDA', range: '6m' }, h);
     expect(out).toContain(`data-set='{"range":"6m"}' aria-pressed="true"`);

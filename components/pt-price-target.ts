@@ -1,18 +1,18 @@
 import * as z from 'zod/mini';
-import { defineComponent, type DataFor, type Helpers, type Kit } from '../src/sdk';
+import { applyXViewport, applyYViewport, defineComponent, FULL_VIEWPORT, ViewportParam, type DataFor, type Helpers, type Kit, type Viewport } from '../src/sdk';
 import { Ticker, type Analysts, type PriceSeries } from '../src/typologies';
 
 export const manifest = defineComponent({
   tag: 'pt-price-target',
-  version: '1.1.0',
+  version: '1.2.0',
   need: {
     question: 'Where do analysts think this stock is going, and how spread out are they?',
     evidence: [
       'DataForSEO: "{ticker} price target" ~103k searches/month, "{ticker} stock forecast" ~151k (launch/data, public-site spec §4)',
-      'beta: pt-chart (pretickt-frontend/src/app/companies/pt-chart.ts) — geometry, clustering and hover animations ported 1:1',
+      'beta: pt-chart (pretickt-frontend/src/app/companies/pt-chart.ts) — geometry, clustering, hover animations and zoom/pan ported 1:1',
     ],
   },
-  params: z.object({ ticker: Ticker }),
+  params: z.object({ ticker: Ticker, view: z.optional(ViewportParam) }),
   user: [],
   uses: [],
   needs: (p) => ({
@@ -53,7 +53,7 @@ const f = (n: number) => Math.round(n * 10) / 10;
  * +12-month horizon. Nearby targets (within 20% and ~45 days) merge into one dot sized by count and labelled with its %
  * versus the current price. "Today" is `asOf`: a component never reads the clock.
  */
-export function buildPtChart(points: Point[], targets: Target[], asOf: string, current: number): PtChart | null {
+export function buildPtChart(points: Point[], targets: Target[], asOf: string, current: number, viewport: Viewport = FULL_VIEWPORT): PtChart | null {
   if (!points.length || !targets.length || !(current > 0)) return null;
   const pts = points.map((p) => ({ ts: ts(p.t), close: p.c })).sort((a, b) => a.ts - b.ts);
   const closeAt = (at: number) => { let c = pts[0]!.close; for (const p of pts) { if (p.ts > at) break; c = p.close; } return c; };
@@ -91,9 +91,11 @@ export function buildPtChart(points: Point[], targets: Target[], asOf: string, c
   let yHi = Math.max(...pts.map((p) => p.close), ...items.map((t) => t.targetY));
   const pad = (yHi - yLo) * 0.05 || 1;
   yLo -= pad; yHi += pad;
+  // The user's lens on top of the natural ranges (beta: same viewport object as the event map).
+  ({ lo: yLo, hi: yHi } = applyYViewport(yLo, yHi, viewport));
   const today = ts(asOf);
-  const xMin = Math.min(pts[0]!.ts, ...items.map((t) => t.startTs));
-  const xMax = Math.max(pts.at(-1)!.ts, today, ...items.map((t) => t.endTs));
+  const { min: xMin, max: xMax } = applyXViewport(Math.min(pts[0]!.ts, ...items.map((t) => t.startTs)),
+    Math.max(pts.at(-1)!.ts, today, ...items.map((t) => t.endTs)), viewport);
   const sx = (v: number) => ML + ((v - xMin) / (xMax - xMin || 1)) * (W - ML - MR);
   const sy = (v: number) => H - MB - ((v - yLo) / (yHi - yLo || 1)) * (H - MT - MB);
   const cx = (c: { sumTs: number; count: number }) => c.sumTs / c.count;
@@ -168,9 +170,9 @@ function members(c: PtChart, cl: PtCluster, i: number, a: Analysts, h: Helpers):
   return `<div class="pt-members${above ? ' pt-members-above' : ''}" data-i="${i}" hidden style="left:${f(left)}%;top:${f(top)}%">${rows}${extra}</div>`;
 }
 
-function chart(a: Analysts, s: PriceSeries, ticker: string, h: Helpers): string {
+function chart(a: Analysts, s: PriceSeries, ticker: string, view: Viewport | undefined, h: Helpers): string {
   const pts = s[0]?.points ?? [];
-  const c = buildPtChart(pts, a.targets, a.asOf, a.price ?? pts.at(-1)?.c ?? 0);
+  const c = buildPtChart(pts, a.targets, a.asOf, a.price ?? pts.at(-1)?.c ?? 0, view);
   if (!c) return '';
   const id = `pt${ticker.replace(/[^A-Za-z0-9]/g, '-')}`;
   const plotW = c.w - MR, plotH = c.h - MB;
@@ -179,7 +181,8 @@ function chart(a: Analysts, s: PriceSeries, ticker: string, h: Helpers): string 
     `<stop offset="0" class="pt-grad-from"/><stop offset="1" class="${sg.up ? 'pt-grad-up' : 'pt-grad-down'}"/></linearGradient>`).join('');
   const grid = c.yTicks.map((t) => `<line class="pt-grid" x1="0" y1="${t.y}" x2="${c.w}" y2="${t.y}"/>` +
     `<text class="pt-axis" x="${c.w - 2}" y="${f(t.y - 2)}" text-anchor="end">${t.label}</text>`).join('');
-  const xticks = c.xTicks.map((t) => `<text class="pt-axis" x="${t.x}" y="${c.h - 2}" text-anchor="middle">${t.label}</text>`).join('');
+  const anchor = (i: number) => (i === 0 ? 'start' : i === c.xTicks.length - 1 ? 'end' : 'middle');
+  const xticks = c.xTicks.map((t, i) => `<text class="pt-axis" x="${i === c.xTicks.length - 1 ? f(t.x - 16) : t.x}" y="${c.h - 2}" text-anchor="${anchor(i)}">${t.label}</text>`).join('');
   // One group per target dot: its segments, the dot, its % label and its orbit ring, so CSS hover can light them together.
   const groups = c.clusters.map((cl, i) => {
     const segs = c.segments.map((sg, k) => [sg, k] as const).filter(([sg]) => sg.endIdx === i).map(([sg, k]) =>
@@ -191,21 +194,22 @@ function chart(a: Analysts, s: PriceSeries, ticker: string, h: Helpers): string 
       `<circle class="pt-orbit ${tone(cl.up)}" cx="${cl.x}" cy="${cl.y}" r="${f(cl.r + 4)}" style="transform-origin:${cl.x}px ${cl.y}px"/></g>`;
   }).join('');
   const starts = c.startDots.map((d) => `<circle class="pt-start" cx="${d.x}" cy="${d.y}" r="${d.r}"/>`).join('');
-  const svg = `<svg class="pt-chart-svg" viewBox="0 0 ${c.w} ${c.h}" role="img" aria-label="Analyst price targets over time">` +
+  const svg = `<svg class="pt-chart-svg" viewBox="0 0 ${c.w} ${c.h}" role="img" aria-label="Analyst price targets over time" ${h.zoomable(c.w, c.h, plotW, plotH)}>` +
     `<defs><clipPath id="${id}clip"><rect x="0" y="0" width="${plotW}" height="${plotH}"/></clipPath>${grads}</defs>${grid}` +
-    `<line class="pt-axis-edge" x1="${plotW}" x2="${plotW}" y1="0" y2="${c.h}"/>` +
+    h.zoomStrips(c.w, c.h, plotW, plotH) +
     `<g clip-path="url(#${id}clip)"><line class="pt-today" x1="${c.todayX}" y1="0" x2="${c.todayX}" y2="${c.h}"/>` +
     `<path class="pt-price" d="${c.pricePath}"/>${groups}${starts}</g>${xticks}</svg>`;
   const legend = `<div class="pt-legend"><span class="pt-lg-price">— actual price</span><span class="pt-lg-up">● bullish target</span>` +
-    `<span class="pt-lg-down">● bearish target</span><span class="pt-lg-hint">hover a dot to see the analysts behind it</span></div>`;
-  return `<div class="pt-wrap">${svg}${c.clusters.map((cl, i) => members(c, cl, i, a, h)).join('')}</div>${legend}`;
+    `<span class="pt-lg-down">● bearish target</span><span class="pt-lg-hint">hover a dot to see the analysts behind it · wheel or drag to move through time · ` +
+    `drag the price axis on the right to stretch it · double-click resets</span></div>`;
+  return `<div class="pt-wrap">${svg}${h.viewControls(view)}${c.clusters.map((cl, i) => members(c, cl, i, a, h)).join('')}</div>${legend}`;
 }
 
-export function renderStatic(data: Data, p: { ticker: string }, h: Helpers): string {
+export function renderStatic(data: Data, p: { ticker: string; view?: Viewport }, h: Helpers): string {
   const a = data.analysts;
   if (!a) return h.na();
   if (!a.summary || !a.targets.length) return h.na('No analyst targets in the last 12 months');
-  return `<figure class="pt-chart pt-pt">${stats(a, h)}${data.series ? chart(a, data.series, p.ticker, h) : ''}${consensus(a)}</figure>`;
+  return `<figure class="pt-chart pt-pt">${stats(a, h)}${data.series ? chart(a, data.series, p.ticker, p.view, h) : ''}${consensus(a)}</figure>`;
 }
 
 /** Beta's hover panel: the dot (or keyboard focus on it) reveals the rows of its analysts. Segments and the orbit are CSS. */

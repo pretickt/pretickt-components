@@ -1,4 +1,5 @@
 import { ICONS } from './icons';
+import { isAtLatest, isFullViewport, isYFitted, type Viewport } from './viewport';
 
 export type Tone = 'pos' | 'neg' | 'flat' | 'na';
 
@@ -113,5 +114,37 @@ export function badge(b: Badge): string {
   return `<li class="pt-badge pt-tone-${esc(b.tone)}" tabindex="0" ${tip(t)}>${icon(b.icon)}<span class="pt-badge-k">${esc(b.label)}</span>${body}${rangeBar(b)}</li>`;
 }
 
-export const helpers = { esc, num, pct, money, compact, date, toneOf, na, tip, icon, badge, badgeValue };
+/**
+ * Zoom & pan (ported from beta's ZoomPan + ChartControls). Put `zoomable(...)` on the chart's <svg>, draw
+ * `zoomStrips(...)` inside it and `viewControls(params.view)` after it; read `params.view` (declare
+ * `view: z.optional(ViewportParam)`) in the geometry with applyXViewport/applyYViewport. The base element does the rest:
+ * wheel/drag on the plot = time, on the right strip = price scale, on the bottom strip = time around the grab point,
+ * double-click = reset.
+ */
+export function zoomable(w: number, h: number, plotW: number, plotH: number): string {
+  return `data-zoom="${esc(JSON.stringify({ px: plotW / w, ty: plotH / h }))}"`;
+}
+
+/** The two axis strips you can grab, with their ⇕ / ⇔ hints (lit while hovered: .pt-over-axis / .pt-over-taxis). */
+export function zoomStrips(w: number, h: number, plotW: number, plotH: number): string {
+  return `<rect class="pt-taxis" x="0" y="${plotH}" width="${plotW}" height="${h - plotH}"/>` +
+    `<line class="pt-taxis-edge" x1="0" x2="${plotW}" y1="${plotH}" y2="${plotH}"/>` +
+    `<text class="pt-taxis-hint" x="14" y="${h - 6}">⇔</text>` +
+    `<rect class="pt-axis-strip" x="${plotW}" y="0" width="${w - plotW}" height="${h}"/>` +
+    `<line class="pt-axis-edge" x1="${plotW}" x2="${plotW}" y1="0" y2="${h}"/>` +
+    `<text class="pt-axis-hint" x="${(plotW + w) / 2}" y="${h - 6}" text-anchor="middle">⇕</text>`;
+}
+
+/** fit / today » / reset view — each only when it has something to undo (nothing at the full view). */
+export function viewControls(view: Viewport | null | undefined): string {
+  if (!view || isFullViewport(view)) return '';
+  const b = (k: string, label: string, title: string, wide = false) =>
+    `<button type="button" class="pt-abtn${wide ? ' pt-abtn-wide' : ''}" data-view="${k}" title="${title}">${label}</button>`;
+  return `<div class="pt-vctl">` +
+    (isYFitted(view) ? '' : b('fit', 'fit', 'Fit the price scale to what is in view — the time window stays where it is')) +
+    (isAtLatest(view) ? '' : b('latest', 'today »', 'Back to the latest data, keeping the current zoom')) +
+    b('reset', 'reset view', 'Back to the full view (or double-click the chart)', true) + `</div>`;
+}
+
+export const helpers = { esc, num, pct, money, compact, date, toneOf, na, tip, icon, badge, badgeValue, zoomable, zoomStrips, viewControls };
 export type Helpers = typeof helpers;

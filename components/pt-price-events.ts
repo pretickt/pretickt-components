@@ -1,10 +1,10 @@
 import * as z from 'zod/mini';
-import { defineComponent, type DataFor, type Helpers } from '../src/sdk';
+import { applyXViewport, applyYViewport, defineComponent, FULL_VIEWPORT, ViewportParam, type DataFor, type Helpers, type Viewport } from '../src/sdk';
 import { Range, Ticker, type EventItem, type Events, type PriceSeries } from '../src/typologies';
 
 export const manifest = defineComponent({
   tag: 'pt-price-events',
-  version: '1.0.1',
+  version: '1.1.0',
   need: {
     question: 'What happened to this stock, and when — earnings, dividends, splits, analyst moves on the price line?',
     evidence: [
@@ -12,7 +12,7 @@ export const manifest = defineComponent({
       'TradingView marks earnings/dividends/splits on its symbol chart; beta event map and SL/TP charts use the same markers',
     ],
   },
-  params: z.object({ ticker: Ticker, range: z._default(Range, '1y') }),
+  params: z.object({ ticker: Ticker, range: z._default(Range, '1y'), view: z.optional(ViewportParam) }),
   user: [],
   uses: [],
   needs: (p) => ({
@@ -24,7 +24,9 @@ export const manifest = defineComponent({
 export const samples = [{ ticker: 'NVDA', range: '1y' }, { ticker: 'BRK.B', range: '1m' }, { ticker: 'AAPL', range: '5y' }];
 
 const RANGES = ['1m', '3m', '6m', '1y', '2y', '5y'] as const;
-const W = 720, H = 260, L = 48, R = 12, T = 12, B = 24;
+// Price labels sit in the right-hand strip you can grab to stretch the scale (beta / TradingView layout).
+const W = 720, H = 260, L = 6, R = 46, T = 12, B = 24;
+const PLOT_W = W - R, PLOT_H = H - B;
 const GLYPH: Record<string, string> = { earnings: 'E', dividend: 'D', split: 'S', analyst: 'A' };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const day = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86_400_000;
@@ -37,20 +39,19 @@ export interface Marker { kind: string; date: string; items: EventItem[]; cx: nu
 /** A rating reiteration is not an event; it would bury the chart in dots. */
 const isEvent = (e: EventItem) => !(e.kind === 'analyst' && e.meta.action === 'maintain');
 
-/** Pure chart geometry: calendar-day x scale (so future events have room), close-price y scale. */
-export function layout(points: Bar[], items: EventItem[]) {
+/** Pure chart geometry: calendar-day x scale (so future events have room), close-price y scale, seen through `viewport`. */
+export function layout(points: Bar[], items: EventItem[], viewport: Viewport = FULL_VIEWPORT) {
   if (!points.length) return null;
   const first = points[0]!.t;
   const last = points.at(-1)!.t;
   const shown = items.filter((e) => e.date >= first && isEvent(e));
   const end = shown.reduce((m, e) => (e.date > m ? e.date : m), last);
-  const span = Math.max(1, day(end) - day(first));
-  const x = (iso: string) => L + ((day(iso) - day(first)) / span) * (W - L - R);
+  const { min: d0, max: d1 } = applyXViewport(day(first), Math.max(day(first) + 1, day(end)), viewport);
+  const x = (iso: string) => L + ((day(iso) - d0) / (d1 - d0 || 1)) * (PLOT_W - L);
   let lo = Infinity, hi = -Infinity;
   for (const p of points) { lo = Math.min(lo, p.c); hi = Math.max(hi, p.c); }
   const pad = (hi - lo) * 0.08 || hi * 0.05 || 1;
-  lo -= pad;
-  hi += pad;
+  ({ lo, hi } = applyYViewport(lo - pad, hi + pad, viewport));
   const y = (v: number) => T + ((hi - v) / (hi - lo)) * (H - T - B);
   const path = points.map((p, i) => `${i ? 'L' : 'M'}${x(p.t).toFixed(1)},${y(p.c).toFixed(1)}`).join('');
   const closeAt = (iso: string) => {
@@ -68,10 +69,13 @@ export function layout(points: Bar[], items: EventItem[]) {
     return { kind, date, items: list, cx: x(date), cy: y(closeAt(date)) - 12 - n * 12, future: date > last };
   });
   const yTicks = [0, 1, 2, 3].map((i) => lo + ((hi - lo) * (i + 0.5)) / 4);
+  // month ticks over the visible window only
+  const visible = points.filter((p) => day(p.t) >= d0 && day(p.t) <= d1);
   const months: string[] = [];
-  for (const p of points) { const m = p.t.slice(0, 7); if (months.at(-1) !== m) months.push(m); }
+  for (const p of visible.length ? visible : points) { const m = p.t.slice(0, 7); if (months.at(-1) !== m) months.push(m); }
   const step = Math.ceil(months.length / 6);
-  const xTicks = months.filter((_, i) => i % step === 0).map((m) => ({ iso: `${m}-01` < first ? first : `${m}-01`, label: m }));
+  const from = (visible[0] ?? points[0]!).t;
+  const xTicks = months.filter((_, i) => i % step === 0).map((m) => ({ iso: `${m}-01` < from ? from : `${m}-01`, label: m }));
   return { path, markers, yTicks: yTicks.map((v) => ({ v, y: y(v) })), xTicks: xTicks.map((t) => ({ ...t, x: x(t.iso) })), first, last };
 }
 
@@ -113,15 +117,16 @@ function tipForGroup(m: Marker, h: Helpers): string {
 
 type Data = DataFor<{ series: PriceSeries; events: Events }>;
 
-export function renderStatic(data: Data, params: { ticker: string; range: string }, h: Helpers): string {
+export function renderStatic(data: Data, params: { ticker: string; range: string; view?: Viewport }, h: Helpers): string {
   const points = data.series?.[0]?.points ?? [];
-  const g = layout(points, data.events?.items ?? []);
+  const g = layout(points, data.events?.items ?? [], params.view);
   if (!g) return h.na();
   const firstC = points[0]!.c, lastC = points.at(-1)!.c;
   const toggles = `<div class="pt-toggles" role="group" aria-label="Range">${RANGES.map((r) =>
     `<button type="button" data-set='{"range":"${r}"}' aria-pressed="${r === params.range}">${r.toUpperCase()}</button>`).join('')}</div>`;
-  const grid = g.yTicks.map((t) => `<line class="pt-grid" x1="${L}" x2="${W - R}" y1="${t.y.toFixed(1)}" y2="${t.y.toFixed(1)}"/>` +
-    `<text class="pt-axis" x="${L - 6}" y="${(t.y + 3).toFixed(1)}" text-anchor="end">${h.esc(h.num(t.v, t.v >= 100 ? 0 : 2))}</text>`).join('');
+  const grid = g.yTicks.map((t) => `<line class="pt-grid" x1="0" x2="${PLOT_W}" y1="${t.y.toFixed(1)}" y2="${t.y.toFixed(1)}"/>` +
+    `<text class="pt-axis" x="${W - 4}" y="${(t.y + 3).toFixed(1)}" text-anchor="end">${h.esc(h.num(t.v, t.v >= 100 ? 0 : 2))}</text>`).join('');
+  const clip = `pe${params.ticker.replace(/[^A-Za-z0-9]/g, '-')}`;
   const xAxis = g.xTicks.map((t) => `<text class="pt-axis" x="${t.x.toFixed(1)}" y="${H - 6}" text-anchor="middle">${monthLabel(t.label)}</text>`).join('');
   const marks = g.markers.map((m) => {
     const kind = GLYPH[m.kind] ? m.kind : 'other';
@@ -131,6 +136,8 @@ export function renderStatic(data: Data, params: { ticker: string; range: string
   }).join('');
   const caption = `<p class="pt-lede">Last close ${h.money(lastC)} · ${h.pct(lastC / firstC - 1)} over ${h.esc(params.range)} · ` +
     `E earnings · D dividend · S split · A analyst rating change${data.events ? '' : ' · Events not available'}</p>`;
-  return `<figure class="pt-chart">${toggles}<svg class="pt-chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${h.esc(params.ticker)} price, ${h.esc(params.range)}">` +
-    `${grid}${xAxis}<path class="pt-line" d="${g.path}"/>${marks}</svg>${caption}</figure>`;
+  return `<figure class="pt-chart">${toggles}<div class="pt-wrap"><svg class="pt-chart-svg" viewBox="0 0 ${W} ${H}" role="img" ` +
+    `aria-label="${h.esc(params.ticker)} price, ${h.esc(params.range)}" ${h.zoomable(W, H, PLOT_W, PLOT_H)}>` +
+    `<defs><clipPath id="${clip}"><rect x="0" y="0" width="${PLOT_W}" height="${PLOT_H}"/></clipPath></defs>${h.zoomStrips(W, H, PLOT_W, PLOT_H)}` +
+    `${grid}<g clip-path="url(#${clip})"><path class="pt-line" d="${g.path}"/>${marks}</g>${xAxis}</svg>${h.viewControls(params.view)}</div>${caption}</figure>`;
 }
