@@ -98,7 +98,7 @@ defined in the platform repo (`plant/src/generate/pages.ts`).
 
 ## Existing components
 `pt-metric` (1.1.0, badge strip of the catalogue) · `pt-price-events` (1.0.1, price line + E/D/S/A markers grouped per day, range
-toggles) · `pt-price-target` (1.0.0, target stats, segments, consensus bar) · `pt-calendar` (1.2.0, month grid + macro dates + full
+toggles) · `pt-price-target` (1.1.0, beta's pt-chart: clustered dots, gradient segments, hover dash-flow + orbit + staggered analyst rows via a small `element` factory — the reference example of `element`) · `pt-calendar` (1.2.0, month grid + macro dates + full
 list; `kind` earnings|dividend) · `pt-why-today` (1.0.0, answer-first sentence + market/sector/stock bars + news spike) ·
 `pt-screen` (1.0.0, ranked table with list-specific column and sparklines; lists and peers) · `pt-financials` (1.0.0, quarterly
 revenue/FCF bars + margins table) · `pt-news` (1.0.0, headlines with AI sentiment dots, nofollow links) · `pt-insiders` (1.0.0,
