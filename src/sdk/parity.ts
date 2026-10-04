@@ -1,6 +1,5 @@
-import { getTypology } from '../typologies';
 import { elementName } from './define';
-import { NO_SAMPLES } from './contract';
+import { demoData, NO_SAMPLES } from './contract';
 import { classFor, type LitKit } from './element';
 import { helpers } from './helpers';
 import type { ComponentModule } from './types';
@@ -16,11 +15,7 @@ export async function checkParity(lit: LitKit, mod: ComponentModule, samples: un
   customElements.define(name, classFor(lit, mod, { resolve: async () => { throw new Error('no network during parity'); } }));
   for (const raw of samples) {
     const params = mod.manifest.params.parse(raw);
-    const data: Record<string, unknown> = {};
-    for (const [k, n] of Object.entries(mod.manifest.needs(params as never))) {
-      const t = getTypology(n.t)!;
-      data[k] = t.demo(t.params.parse(n.params));
-    }
+    const data = demoData(mod, params);
     const html = mod.renderStatic(data, params, helpers);
     const ref = document.createElement('div');
     ref.innerHTML = html;

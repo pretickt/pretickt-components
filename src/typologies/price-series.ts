@@ -10,10 +10,16 @@ export const PriceSeriesParams = z.object({
   rebase: z._default(z.boolean(), false),
 });
 export const Bar = z.object({ t: IsoDate, o: z.number(), h: z.number(), l: z.number(), c: z.number(), v: z.number() });
+/** Per ticker, its last N sessions (N from the range), oldest first. */
 export const PriceSeriesPayload = z.array(z.object({ ticker: Ticker, points: z.array(Bar) }));
+export type PriceSeriesParams = z.output<typeof PriceSeriesParams>;
+/** One adjusted daily bar. Points are oldest first. */
+export type PriceBar = z.infer<typeof Bar>;
 export type PriceSeries = z.infer<typeof PriceSeriesPayload>;
 
-export function priceSeriesDemo(p: z.infer<typeof PriceSeriesParams>): PriceSeries {
+export const priceSeriesSamples: z.input<typeof PriceSeriesParams>[] = [{ tickers: ['NVDA'], range: '1y' }, { tickers: ['AAPL', 'MSFT'], range: '1m', rebase: true }];
+
+export function priceSeriesDemo(p: PriceSeriesParams): PriceSeries {
   const days = sessionsBack(DEMO_ASOF, RANGE_SESSIONS[p.range]);
   return p.tickers.map((ticker) => {
     const r = prng(`${ticker}:series`);

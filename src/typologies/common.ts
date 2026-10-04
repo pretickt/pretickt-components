@@ -7,7 +7,14 @@ export const Month = z.string().check(z.regex(/^\d{4}-(0[1-9]|1[0-2])$/));
 export const Range = z.enum(['1m', '3m', '6m', '1y', '2y', '5y']);
 export type Range = z.infer<typeof Range>;
 export const RANGE_SESSIONS: Record<Range, number> = { '1m': 21, '3m': 63, '6m': 126, '1y': 252, '2y': 504, '5y': 1260 };
-export const ToneSchema = z.enum(['pos', 'neg', 'flat', 'na']);
+/** How a value reads: good, bad, neutral, or not available. Drives the colour of badges, dots and signed text. */
+export const TONES = ['pos', 'neg', 'flat', 'na'] as const;
+export const ToneSchema = z.enum(TONES);
+
+/** An integer param in [lo, hi] that defaults to `def` when absent. */
+export const intParam = (lo: number, hi: number, def: number) => z._default(z.int().check(z.minimum(lo), z.maximum(hi)), def);
+/** A number that may be unknown. */
+export const Num = z.nullable(z.number());
 
 /** Demo data is anchored to a fixed session so it never depends on the clock. */
 export const DEMO_ASOF = '2026-09-30';
@@ -39,6 +46,13 @@ export function sessionsBack(asOf: string, count: number): string[] {
 
 /** First session of a `range` window ending at `asOf`: a range is the last N sessions (the platform counts real bars). */
 export const rangeStart = (asOf: string, range: Range): string => sessionsBack(asOf, RANGE_SESSIONS[range])[0]!;
+
+/** Companies and analyst firms the demo generators draw from. */
+export const DEMO_COMPANIES = [['AAPL', 'Apple Inc.'], ['MSFT', 'Microsoft Corporation'], ['NVDA', 'NVIDIA Corporation'], ['AMZN', 'Amazon.com, Inc.'],
+  ['META', 'Meta Platforms, Inc.'], ['AVGO', 'Broadcom Inc.'], ['AMD', 'Advanced Micro Devices, Inc.'], ['INTC', 'Intel Corporation'],
+  ['KO', 'The Coca-Cola Company'], ['BRK.B', 'Berkshire Hathaway Inc.'], ['JPM', 'JPMorgan Chase & Co.'], ['NKE', 'NIKE, Inc.']] as const;
+export const DEMO_FIRMS = ['Morgan Stanley', 'Goldman Sachs', 'Citi', 'Barclays', 'UBS', 'Jefferies', 'Bernstein', 'Wells Fargo'] as const;
+export const demoName = (ticker: string) => `${ticker} Demo Corp.`;
 
 export const round = (v: number, digits = 2) => Math.round(v * 10 ** digits) / 10 ** digits;
 

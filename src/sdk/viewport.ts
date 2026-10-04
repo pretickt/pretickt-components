@@ -7,15 +7,7 @@ import * as z from 'zod/mini';
  *  viewports and each chart re-renders its geometry on the sliced data (true re-scale, no SVG
  *  stretching). */
 
-export interface Viewport {
-  /** Fractions of the full series, 0 ≤ start < end ≤ 1. */
-  start: number;
-  end: number;
-  /** Vertical zoom: 1 = fit the data, <1 = stretched (finer detail), >1 = compressed. */
-  yScale?: number;
-  /** Vertical pan, in fractions of the (scaled) price range; positive looks lower down the range (the content moves up). */
-  yShift?: number;
-}
+export type Viewport = z.infer<typeof ViewportParam>;
 
 export const FULL_VIEWPORT: Viewport = { start: 0, end: 1, yScale: 1, yShift: 0 };
 
@@ -101,9 +93,12 @@ export function isAtLatest(vp: Viewport): boolean {
 
 /** The `view` param a zoomable component declares: `view: z.optional(ViewportParam)`. Absent = the full view. */
 export const ViewportParam = z.object({
+  /** Fractions of the full series, 0 ≤ start < end ≤ 1. */
   start: z.number().check(z.minimum(0), z.maximum(1)),
   end: z.number().check(z.minimum(0), z.maximum(1)),
+  /** Vertical zoom: 1 = fit the data, <1 = stretched (finer detail), >1 = compressed. */
   yScale: z.optional(z.number().check(z.positive())),
+  /** Vertical pan, in fractions of the (scaled) price range; positive looks lower down the range (the content moves up). */
   yShift: z.optional(z.number()),
 }).check(z.refine((v) => v.end > v.start, 'end must be after start'));
 

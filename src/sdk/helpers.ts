@@ -1,7 +1,8 @@
+import type { MetricItem, TONES } from '../typologies';
 import { ICONS } from './icons';
 import { isAtLatest, isFullViewport, isYFitted, type Viewport } from './viewport';
 
-export type Tone = 'pos' | 'neg' | 'flat' | 'na';
+export type Tone = (typeof TONES)[number];
 
 const ENT: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -79,24 +80,8 @@ export function icon(name: string | null | undefined): string {
   return (name && Object.hasOwn(ICONS, name) && ICONS[name]) || ''; // not 'constructor' & co. from the prototype
 }
 
-/** A badge: the shape of a metric@1 item. Any component can build one from any data and draw it with `badge`. */
-export interface Badge {
-  key: string;
-  label: string;
-  value: number | null;
-  /** Categorical value shown instead of the number. */
-  text: string | null;
-  /** x = multiple, % = fraction shown as percent, $ = price, $c = compact dollars, d = days, '' = plain number. */
-  unit: 'x' | '%' | '$' | '$c' | 'd' | '';
-  delta: number | null;
-  tone: Tone;
-  range: { lo: number; hi: number; marks: { label: string; value: number }[] } | null;
-  icon: string | null;
-  hint: string;
-  asOf: string;
-  /** Rendered as coloured dots instead of the value (e.g. one per news story, by sentiment). */
-  dots?: ('pos' | 'neg')[] | null;
-}
+/** A badge is a metric@1 item (fields documented on `MetricItem`): build one from any data and draw it with `badge`. */
+export type Badge = MetricItem;
 
 export function badgeValue(b: Pick<Badge, 'text' | 'value' | 'unit'>): string {
   if (b.text) return b.text;

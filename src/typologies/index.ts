@@ -1,39 +1,57 @@
 import type * as z from 'zod/mini';
-import { AnalystsParams, AnalystsPayload, analystsDemo } from './analysts';
-import { EventsParams, EventsPayload, eventsDemo } from './events';
-import { MetricParams, MetricPayload, metricDemo } from './metric';
-import { PriceSeriesParams, PriceSeriesPayload, priceSeriesDemo } from './price-series';
-import { FundamentalsParams, FundamentalsPayload, fundamentalsDemo } from './fundamentals';
-import { InsiderParams, InsiderPayload, insiderDemo } from './insider';
-import { NewsParams, NewsPayload, newsDemo } from './news';
-import { MoveBreakdownParams, MoveBreakdownPayload, moveBreakdownDemo } from './move-breakdown';
-import { ScreenParams, ScreenPayload, screenDemo } from './screen';
+import { analystsDemo, analystsSamples } from './analysts';
+import { eventsDemo, eventsSamples, eventsUnknownVariant } from './events';
+import { fundamentalsDemo, fundamentalsSamples } from './fundamentals';
+import { insiderDemo, insiderSamples } from './insider';
+import { metricDemo, metricSamples, metricUnknownVariant } from './metric';
+import { moveBreakdownDemo, moveBreakdownSamples } from './move-breakdown';
+import { newsDemo, newsSamples } from './news';
+import { priceSeriesDemo, priceSeriesSamples } from './price-series';
+import { TYPOLOGY_SCHEMAS, type TypologyKey, type TypologySchema } from './schemas';
+import { screenDemo, screenSamples } from './screen';
 
-export interface Typology<P extends z.ZodMiniType = z.ZodMiniType, D extends z.ZodMiniType = z.ZodMiniType> {
-  id: string;
-  params: P;
-  payload: D;
-  demo: (p: z.infer<P>) => z.infer<D>;
-  freshness: 'eod' | { ttlSeconds: number };
+type S = typeof TYPOLOGY_SCHEMAS;
+interface Extras<P extends z.ZodMiniType, D extends z.ZodMiniType> {
+  /** Deterministic fake payload: tests, parity, the admin bench and (later) the community sandbox. */
+  demo: (p: z.output<P>) => z.output<D>;
+  /** Params the checks and the bench use: at least one per typology. */
+  samples: readonly z.input<P>[];
+  /** The payload plus catalogue entries this build has never seen; the contract renders components against it. */
+  unknownVariant?: (payload: z.output<D>) => unknown;
 }
+export type Typology<P extends z.ZodMiniType = z.ZodMiniType, D extends z.ZodMiniType = z.ZodMiniType> = TypologySchema<P, D> & Extras<P, D>;
 
-const def = <P extends z.ZodMiniType, D extends z.ZodMiniType>(t: Typology<P, D>) => t;
+const EXTRAS: { [K in TypologyKey]: Extras<S[K]['params'], S[K]['payload']> } = {
+  'metric@1': { demo: metricDemo, samples: metricSamples, unknownVariant: metricUnknownVariant },
+  'price-series@1': { demo: priceSeriesDemo, samples: priceSeriesSamples },
+  'events@1': { demo: eventsDemo, samples: eventsSamples, unknownVariant: eventsUnknownVariant },
+  'analysts@1': { demo: analystsDemo, samples: analystsSamples },
+  'fundamentals@1': { demo: fundamentalsDemo, samples: fundamentalsSamples },
+  'insider@1': { demo: insiderDemo, samples: insiderSamples },
+  'news@1': { demo: newsDemo, samples: newsSamples },
+  'move-breakdown@1': { demo: moveBreakdownDemo, samples: moveBreakdownSamples },
+  'screen@1': { demo: screenDemo, samples: screenSamples },
+};
 
-export const TYPOLOGIES = {
-  'metric@1': def({ id: 'metric@1', params: MetricParams, payload: MetricPayload, demo: metricDemo, freshness: 'eod' }),
-  'price-series@1': def({ id: 'price-series@1', params: PriceSeriesParams, payload: PriceSeriesPayload, demo: priceSeriesDemo, freshness: 'eod' }),
-  'events@1': def({ id: 'events@1', params: EventsParams, payload: EventsPayload, demo: eventsDemo, freshness: 'eod' }),
-  'analysts@1': def({ id: 'analysts@1', params: AnalystsParams, payload: AnalystsPayload, demo: analystsDemo, freshness: 'eod' }),
-  'fundamentals@1': def({ id: 'fundamentals@1', params: FundamentalsParams, payload: FundamentalsPayload, demo: fundamentalsDemo, freshness: 'eod' }),
-  'insider@1': def({ id: 'insider@1', params: InsiderParams, payload: InsiderPayload, demo: insiderDemo, freshness: 'eod' }),
-  'news@1': def({ id: 'news@1', params: NewsParams, payload: NewsPayload, demo: newsDemo, freshness: 'eod' }),
-  'move-breakdown@1': def({ id: 'move-breakdown@1', params: MoveBreakdownParams, payload: MoveBreakdownPayload, demo: moveBreakdownDemo, freshness: 'eod' }),
-  'screen@1': def({ id: 'screen@1', params: ScreenParams, payload: ScreenPayload, demo: screenDemo, freshness: 'eod' }),
-} as const;
+function withExtras(): { [K in TypologyKey]: S[K] & Extras<S[K]['params'], S[K]['payload']> } {
+  return Object.fromEntries(Object.entries(TYPOLOGY_SCHEMAS).map(([id, s]) => [id, { ...s, ...EXTRAS[id as TypologyKey] }])) as never;
+}
+/** Every typology: schemas, demo and samples. Pure, so a bundle that only reads TYPOLOGY_SCHEMAS drops the demos. */
+export const TYPOLOGIES = /* @__PURE__ */ withExtras();
 
 export const getTypology = (id: string): Typology | undefined =>
-  (TYPOLOGIES as unknown as Record<string, Typology>)[id];
+  Object.hasOwn(TYPOLOGIES, id) ? (TYPOLOGIES as unknown as Record<string, Typology>)[id] : undefined;
 
+/** The demo payload of one need. Throws with what is wrong: an unknown typology or params it rejects. */
+export function demoFor(need: { t: string; params: unknown }): unknown {
+  const t = getTypology(need.t);
+  if (!t) throw new Error(`unknown typology ${need.t}`);
+  const p = t.params.safeParse(need.params);
+  if (!p.success) throw new Error(`invalid params for ${need.t}`);
+  return t.demo(p.data);
+}
+
+export * from './schemas';
 export * from './common';
 export * from './metric';
 export * from './price-series';

@@ -4,7 +4,7 @@ import { elementName } from '../sdk/define';
 import { classFor } from '../sdk/element';
 import { needKey, stableStringify } from '../sdk/key';
 import type { ComponentModule, HostApi, Need } from '../sdk/types';
-import { getTypology } from '../typologies';
+import { getTypologySchema } from '../typologies';
 
 export interface PageData { buildId: string; api: string; data: Record<string, unknown>; components: Record<string, string> }
 interface Mount { c: string; p: unknown; k: Record<string, string> }
@@ -15,7 +15,7 @@ export function createHost(page: PageData, fetchImpl: typeof fetch = (...a) => f
   const cache = new Map<string, Promise<unknown>>(Object.entries(page.data).map(([k, v]) => [k, Promise.resolve(v)]));
   return {
     resolve(need: Need) {
-      const t = getTypology(need.t);
+      const t = getTypologySchema(need.t);
       if (!t) return Promise.reject(new Error(`unknown typology ${need.t}`));
       if (!t.params.safeParse(need.params).success) return Promise.reject(new Error(`invalid params for ${need.t}`));
       const key = needKey(need);

@@ -1,9 +1,8 @@
 import * as z from 'zod/mini';
-import { addDays, DEMO_ASOF, IsoDate, prng, round, Ticker } from './common';
+import { addDays, DEMO_ASOF, intParam, IsoDate, Num as n, prng, round, Ticker } from './common';
 
 /** Quarterly fundamentals, oldest first: raw material for derived badges (growth, margins, valuation history). */
-export const FundamentalsParams = z.object({ ticker: Ticker, periods: z._default(z.int().check(z.minimum(1), z.maximum(40)), 12) });
-const n = z.nullable(z.number());
+export const FundamentalsParams = z.object({ ticker: Ticker, periods: intParam(1, 40, 12) });
 export const FundamentalsPayload = z.object({
   asOf: IsoDate,
   periods: z.array(z.object({
@@ -14,9 +13,12 @@ export const FundamentalsPayload = z.object({
     pe: n, shares: n,
   })),
 });
+export type FundamentalsParams = z.output<typeof FundamentalsParams>;
 export type Fundamentals = z.infer<typeof FundamentalsPayload>;
 
-export function fundamentalsDemo(p: z.infer<typeof FundamentalsParams>): Fundamentals {
+export const fundamentalsSamples: z.input<typeof FundamentalsParams>[] = [{ ticker: 'NVDA' }, { ticker: 'BRK.B', periods: 4 }];
+
+export function fundamentalsDemo(p: FundamentalsParams): Fundamentals {
   const r = prng(`${p.ticker}:fundamentals`);
   let rev = 1e9 + r() * 4e10;
   const periods = Array.from({ length: p.periods }, (_, i) => {

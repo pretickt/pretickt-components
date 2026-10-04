@@ -1,22 +1,14 @@
 import { checkMarkup } from './markup';
-import { getTypology } from '../typologies';
+import { demoFor, getTypology } from '../typologies';
 import { helpers } from './helpers';
 import type { ComponentModule } from './types';
 
-/** Payload variants a component must survive: catalogue entries it has never seen. */
-function withUnknown(t: string, payload: unknown): unknown {
-  if (t === 'metric@1' && Array.isArray(payload) && payload[0])
-    return [...payload, { ...payload[0], key: 'unknown_metric', label: 'Unknown', icon: 'no-such-icon', text: null }];
-  if (t === 'events@1' && payload && typeof payload === 'object') {
-    const p = payload as { asOf: string; items: Record<string, unknown>[] };
-    const first = p.items[0] ?? { date: p.asOf, ticker: 'ZZZ', name: 'Unknown', logo: null, mcap: null };
-    // one unknown kind shaped like a company event, one shaped like a market-wide date (no ticker)
-    return { ...p, items: [...p.items, { ...first, kind: 'unknown_kind', meta: {} }, { date: (p.items.at(-1)?.date as string | undefined) ?? p.asOf, kind: 'unknown_market_kind', meta: {} }] };
-  }
-  return payload;
-}
-
 export const NO_SAMPLES = 'declares no samples, so nothing can be checked';
+
+/** The data a component gets for `params` when every need is answered by its typology's demo. Throws on a bad need. */
+export function demoData(mod: ComponentModule, params: unknown): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(mod.manifest.needs(params as never)).map(([name, need]) => [name, demoFor(need)]));
+}
 
 export function checkContract(mod: ComponentModule, samples: unknown[] = mod.samples ?? []): string[] {
   const tag = mod.manifest.tag;
@@ -32,12 +24,9 @@ export function checkContract(mod: ComponentModule, samples: unknown[] = mod.sam
     const unknown: Record<string, unknown> = {};
     let ok = true;
     for (const [name, need] of Object.entries(needs)) {
-      const t = getTypology(need.t);
-      if (!t) { errors.push(`${label}: need "${name}" uses unknown typology ${need.t}`); ok = false; continue; }
-      const np = t.params.safeParse(need.params);
-      if (!np.success) { errors.push(`${label}: need "${name}" has invalid params for ${need.t}`); ok = false; continue; }
-      demo[name] = t.demo(np.data);
-      unknown[name] = withUnknown(need.t, demo[name]);
+      try { demo[name] = demoFor(need); } catch (e) { errors.push(`${label}: need "${name}" ${(e as Error).message}`); ok = false; continue; }
+      const variant = getTypology(need.t)!.unknownVariant;
+      unknown[name] = variant ? variant(demo[name] as never) : demo[name];
     }
     if (!ok) continue;
     const render = (d: Record<string, unknown>, what: string): string | null => {

@@ -1,23 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { getTypology, TYPOLOGIES } from './index';
+import { build } from 'esbuild';
+import { demoFor, getTypology, getTypologySchema, TYPOLOGIES, TYPOLOGY_SCHEMAS } from './index';
 import { Ticker } from './common';
 import { METRIC_KEYS, METRIC_LABELS } from './metric';
 import { moveBreakdownDemo } from './move-breakdown';
-
-const samples: Record<string, unknown[]> = {
-  'metric@1': [{ ticker: 'NVDA', metrics: ['pe', 'pt_upside', 'off_high', 'range_52w', 'trend_ma', 'earnings_in', 'pe_vs_sector'] },
-               { ticker: 'NVDA', metrics: [...METRIC_KEYS] }],
-  'fundamentals@1': [{ ticker: 'NVDA' }, { ticker: 'BRK.B', periods: 4 }],
-  'insider@1': [{ ticker: 'NVDA' }, { ticker: 'AAPL', days: 90 }],
-  'news@1': [{ ticker: 'NVDA' }, { ticker: 'AAPL', limit: 5 }],
-  'move-breakdown@1': [{ ticker: 'NVDA' }, { ticker: 'BRK.B', window: '5d' }],
-  'screen@1': [{ scope: { list: 'biggest_losers' } }, { scope: { peersOf: 'NVDA' }, limit: 8 }, { scope: { list: 'undervalued' }, limit: 25 }],
-  'price-series@1': [{ tickers: ['NVDA'], range: '1y' }, { tickers: ['AAPL', 'MSFT'], range: '1m', rebase: true }],
-  'events@1': [{ scope: { by: 'ticker', ticker: 'BRK.B', range: '1y', ahead: 90 }, kinds: ['earnings', 'dividend', 'split', 'analyst'] },
-               { scope: { by: 'universe', month: '2026-10' }, kinds: ['earnings'] },
-               { scope: { by: 'universe', month: '2026-10' }, kinds: ['earnings', 'macro'] }],
-  'analysts@1': [{ ticker: 'NVDA' }],
-};
 
 describe('typologies', () => {
   it('registers exactly the release-1 typologies', () => {
@@ -25,15 +11,14 @@ describe('typologies', () => {
     expect(getTypology('metric@2')).toBeUndefined();
   });
 
-  for (const [id, list] of Object.entries(samples)) {
+  for (const [id, t] of Object.entries(TYPOLOGIES)) {
     describe(id, () => {
-      const t = getTypology(id)!;
-      for (const raw of list) {
+      for (const raw of t.samples) {
         it(`demo is valid and deterministic for ${JSON.stringify(raw)}`, () => {
           const p = t.params.parse(raw);
-          const a = t.demo(p);
+          const a = (t.demo as (p: unknown) => unknown)(p);
           expect(t.payload.parse(a)).toEqual(a);
-          expect(t.demo(p)).toEqual(a);
+          expect(demoFor({ t: id, params: raw })).toEqual(a);
         });
       }
     });
@@ -89,6 +74,30 @@ describe('typologies', () => {
   });
 });
 
+describe('registry', () => {
+  it('one entry per typology: the id is written once, samples are declared, no dead fields', () => {
+    expect(Object.keys(TYPOLOGY_SCHEMAS)).toEqual(Object.keys(TYPOLOGIES));
+    for (const [id, t] of Object.entries(TYPOLOGIES)) {
+      expect(t.id).toBe(id);
+      expect(getTypologySchema(id)!.id).toBe(id);
+      expect(getTypologySchema(id)!.payload).toBe(t.payload);
+      expect(t.samples.length, id).toBeGreaterThan(0);
+      expect('freshness' in t, id).toBe(false);
+    }
+    expect(getTypologySchema('constructor')).toBeUndefined();
+  });
+  it('demoFor names what is wrong with a need', () => {
+    expect(() => demoFor({ t: 'nope@1', params: {} })).toThrow('unknown typology nope@1');
+    expect(() => demoFor({ t: 'news@1', params: { ticker: '^GSPC' } })).toThrow('invalid params for news@1');
+  });
+  it('code that only validates (the host, the Worker) carries no demo generators', async () => {
+    const out = await build({ stdin: { contents: `import { getTypologySchema } from './src/typologies'; export const t = getTypologySchema('news@1');`,
+      resolveDir: process.cwd(), loader: 'ts' }, bundle: true, write: false, format: 'esm', minify: true, platform: 'browser', logLevel: 'silent' });
+    const js = out.outputFiles[0]!.text;
+    for (const demo of ['Demo Corp', 'demo headline', 'Morgan Stanley', 'Average of the latest target']) expect(js, demo).not.toContain(demo);
+  });
+});
+
 describe('range windows', () => {
   it('a range is the last N sessions: events@1 and price-series@1 start on the same day', async () => {
     const { rangeStart, DEMO_ASOF, eventsDemo, priceSeriesDemo } = await import('./index');
@@ -98,5 +107,24 @@ describe('range windows', () => {
       const past = eventsDemo({ scope: { by: 'ticker', ticker: 'KO', range, ahead: 0 }, kinds: ['earnings', 'dividend'] }).items;
       expect(past.every((e) => e.date >= first), range).toBe(true);
     }
+  });
+});
+
+describe('metric catalogue, one source', () => {
+  it('the catalogue is its two groups, in page order', async () => {
+    const { METRIC_GROUPS } = await import('./index');
+    expect([...METRIC_GROUPS.snapshot, ...METRIC_GROUPS.technicals]).toEqual([...METRIC_KEYS]);
+  });
+  it('one tone rule per value-only key, applied by the demo exactly as by the nightly', async () => {
+    const { metricTone, metricDemo, VALUE_TONED } = await import('./index');
+    expect(metricTone('pt_upside', 0.03)).toBe('flat');
+    expect(metricTone('pt_upside', 0.06)).toBe('pos');
+    expect(metricTone('off_high', -0.02)).toBe('pos');
+    expect(metricTone('off_high', -0.25)).toBe('neg');
+    expect(metricTone('rsi14', 70)).toBe('neg');
+    expect(metricTone('pe_vs_own', -0.05)).toBe('flat');
+    expect(metricTone('trend', 1)).toBeNull(); // categorical: its tone comes from the text, not a number
+    for (const t of ['NVDA', 'KO', 'AAPL', 'BRK.B', 'MSFT', 'AMD'])
+      for (const m of metricDemo({ ticker: t, metrics: [...VALUE_TONED] })) expect(m.tone, `${t} ${m.key} ${m.value}`).toBe(metricTone(m.key as never, m.value));
   });
 });

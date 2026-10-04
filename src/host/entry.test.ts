@@ -16,3 +16,12 @@ describe('host modules', () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe('host bundle', () => {
+  it('validates with schemas only: no demo generator reaches the page', async () => {
+    const { build } = await import('esbuild');
+    const out = await build({ entryPoints: ['src/host/entry.ts'], bundle: true, write: false, format: 'esm', minify: true, platform: 'browser', logLevel: 'silent' });
+    const js = out.outputFiles[0]!.text;
+    for (const demo of ['Demo Corp', 'demo headline', 'Average of the latest target']) expect(js, demo).not.toContain(demo);
+  });
+});
