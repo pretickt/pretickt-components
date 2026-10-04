@@ -92,8 +92,46 @@
   .pt-pt-summary { @apply mb-3 grid grid-cols-2 gap-2 sm:grid-cols-5; }
   .pt-pt-stat { @apply rounded-control border border-border bg-surface px-3 py-2 text-sm; }
   .pt-pt-stat b { @apply block font-mono text-base; }
-  .pt-seg { stroke-width: 1; stroke-opacity: 0.35; @apply stroke-primary; }
-  .pt-dot { @apply cursor-pointer fill-primary stroke-surface-raised; stroke-width: 1; }
+  /* price-target chart — ported from beta (pt-chart): dashed segments with a grey→green/red gradient, dots sized by count */
+  .pt-wrap { @apply relative; }
+  .pt-today { @apply stroke-ink-soft; stroke-width: 0.75; stroke-dasharray: 3 3; opacity: 0.6; }
+  .pt-price { fill: none; @apply stroke-ink-soft; stroke-width: 1.5; opacity: 0.7; }
+  .pt-axis-edge { @apply stroke-border; stroke-width: 1; }
+  .pt-seg { fill: none; stroke-width: 1.5; stroke-dasharray: 4 3; }
+  .pt-grad-from { stop-color: var(--color-ink-soft); stop-opacity: 0.35; }
+  .pt-grad-up { stop-color: var(--color-pos); }
+  .pt-grad-down { stop-color: var(--color-neg); }
+  .pt-dot { @apply cursor-pointer stroke-surface-raised outline-none; stroke-width: 0.75; }
+  .pt-dot.pt-up { @apply fill-pos; }
+  .pt-dot.pt-down { @apply fill-neg; }
+  .pt-start { @apply pointer-events-none fill-ink-soft stroke-surface-raised; stroke-width: 0.5; opacity: 0.4; }
+  .pt-pct { font-size: 9px; font-weight: 600; @apply pointer-events-none; }
+  .pt-pct.pt-up { @apply fill-pos; }
+  .pt-pct.pt-down { @apply fill-neg; }
+  /* hover: a wide invisible hit path per segment; the hovered segment (or every segment feeding a hovered dot) marches
+     its dashes toward the dot while a dashed ring spins around it */
+  .pt-seg-hit { fill: none; stroke: transparent; stroke-width: 12; pointer-events: stroke; }
+  .pt-sg:hover .pt-seg, .pt-cl:has(.pt-dot:hover) .pt-seg, .pt-cl:has(.pt-dot:focus-visible) .pt-seg { stroke-width: 2.25; }
+  .pt-orbit { fill: none; stroke-width: 1.25; stroke-dasharray: 5 4; pointer-events: none; visibility: hidden; }
+  .pt-orbit.pt-up { stroke: var(--color-pos); }
+  .pt-orbit.pt-down { stroke: var(--color-neg); }
+  .pt-cl:hover .pt-orbit, .pt-cl:has(.pt-dot:focus-visible) .pt-orbit { visibility: visible; }
+  /* member rows revealed one by one under the hovered dot */
+  .pt-members { @apply pointer-events-none absolute z-10 flex w-60 -translate-x-1/2 flex-col gap-1; }
+  .pt-members-above { @apply -translate-y-full; }
+  .pt-mem { @apply flex items-baseline gap-2 rounded-control border border-border bg-surface-raised px-2 py-1 text-[11px] shadow-sm; opacity: 0; animation: pt-mem-in 0.3s ease-out both; }
+  .pt-mem-analyst { @apply min-w-0 flex-1 truncate font-medium; }
+  .pt-mem-target { @apply font-mono tabular-nums; }
+  .pt-mem-target.pt-up, .pt-mem-acc.acc-good, .pt-lg-up { @apply text-pos; }
+  .pt-mem-target.pt-down, .pt-mem-acc.acc-bad, .pt-lg-down { @apply text-neg; }
+  .pt-mem-date, .pt-mem-acc { @apply font-mono text-[10px] tabular-nums text-ink-soft; }
+  .pt-mem-more { @apply justify-center text-ink-soft; }
+  .pt-lg-hint { @apply text-[10px] text-ink-soft/80; }
+  @media (prefers-reduced-motion: no-preference) {
+    .pt-sg:hover .pt-seg, .pt-cl:has(.pt-dot:hover) .pt-seg, .pt-cl:has(.pt-dot:focus-visible) .pt-seg { animation: pt-dash-flow 0.45s linear infinite; }
+    .pt-cl:hover .pt-orbit, .pt-cl:has(.pt-dot:focus-visible) .pt-orbit { animation: pt-orbit-spin 1.6s linear infinite; }
+  }
+  @media (prefers-reduced-motion: reduce) { .pt-mem { animation: none; opacity: 1; } }
   .pt-consensus { @apply mt-3 flex h-2 overflow-hidden rounded-full bg-border; }
   .pt-consensus-sb { @apply bg-pos; }
   .pt-consensus-b { @apply bg-pos/60; }
@@ -156,7 +194,7 @@
   .pt-fin-chart { @apply my-2 block h-auto w-full overflow-visible; }
   .pt-fin-rev { @apply cursor-pointer fill-primary; }
   .pt-fin-fcf { @apply cursor-pointer fill-pos; }
-  .pt-legend { @apply mt-2 flex gap-4 text-xs text-ink-soft; }
+  .pt-legend { @apply mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft; }
   .pt-key::before { content: ''; @apply mr-1 inline-block h-2 w-2 rounded-sm; }
   .pt-key-rev::before { @apply bg-primary; }
   .pt-key-fcf::before { @apply bg-pos; }
@@ -167,3 +205,7 @@
   .pt-ins-sell .pt-ins-type { @apply bg-neg/15 text-neg; }
   .pt-ins-other .pt-ins-type { @apply bg-surface text-ink-soft; }
 }
+
+@keyframes pt-dash-flow { to { stroke-dashoffset: -7; } }
+@keyframes pt-orbit-spin { to { transform: rotate(360deg); } }
+@keyframes pt-mem-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
