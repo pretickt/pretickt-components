@@ -165,25 +165,3 @@ function sidewaysIfContradicted(state: Trend, ev: number): Trend {
   return state;
 }
 
-/** Human sentence for the badge tooltip — the evidence, not the label. */
-export function explainTrend(s: TrendState): string {
-  if (s.highs.length < 2 || s.lows.length < 2) return 'Not enough confirmed swings to read a structure yet.';
-  const dir = (a: number, b: number) => (b > a ? 'higher' : b < a ? 'lower' : 'equal');
-  const h = dir(s.highs[0]!.price, s.highs[1]!.price);
-  const l = dir(s.lows[0]!.price, s.lows[1]!.price);
-  const label =
-    s.broken === 'above'
-      ? 'No trend — the price has taken out the last lower high, so the downtrend structure is over'
-      : s.broken === 'below'
-        ? 'No trend — the price has broken the last higher low, so the uptrend structure is over'
-        : s.trend === 'bullish'
-          ? 'Uptrend'
-          : s.trend === 'bearish'
-            ? 'Downtrend'
-            : 'No trend — the structure is mixed or broken';
-  return (
-    `${label}. Last two highs: ${h} (${s.highs[0]!.price.toFixed(2)} → ${s.highs[1]!.price.toFixed(2)}). ` +
-    `Last two lows: ${l} (${s.lows[0]!.price.toFixed(2)} → ${s.lows[1]!.price.toFixed(2)}).` +
-    (s.since ? ` In this state since ${s.since}.` : '')
-  );
-}

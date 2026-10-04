@@ -34,7 +34,11 @@ export function createHost(page: PageData, fetchImpl: typeof fetch = (...a) => f
 }
 
 export type Send = (url: string, body: string) => void;
-const sendBeacon: Send = (url, body) => { try { navigator.sendBeacon?.(url, new Blob([body], { type: 'application/json' })); } catch { /* analytics never breaks a page */ } };
+/** keepalive survives the page unloading like sendBeacon, but `credentials: 'omit'` keeps any cookie off analytics events. */
+const sendBeacon: Send = (url, body) => {
+  try { void fetch(url, { method: 'POST', body, keepalive: true, credentials: 'omit', headers: { 'Content-Type': 'application/json' } }).catch(() => undefined); }
+  catch { /* analytics never breaks a page */ }
+};
 
 /** First-party analytics: one page view, then each component+action once per page view. No cookies, no identifiers. */
 function startBeacon(doc: Document, api: string, send: Send) {

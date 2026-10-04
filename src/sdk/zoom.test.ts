@@ -61,6 +61,13 @@ describe('zoom & pan in the base element (any component with data-zoom)', () => 
     await el.updateComplete;
     expect(probe()).toBe('0.180|0.980|1.000');
   });
+  it('vertical drag follows the pointer: dragging down looks higher up the price range', async () => {
+    wheel(790, 100, -100); // stretch the price axis so it can be dragged
+    await el.updateComplete;
+    ptr('pointerdown', 400, 100); ptr('pointermove', 400, 134); ptr('pointerup', 400, 134);
+    await el.updateComplete;
+    expect(((el.params.view as { yShift?: number }).yShift ?? 0)).toBeLessThan(0);
+  });
   it('controls appear only when there is something to undo, and undo it', async () => {
     expect(el.querySelector('.pt-vctl')).toBeNull();
     wheel(400, 100, -100); wheel(790, 100, 100);

@@ -16,7 +16,7 @@ the clock or touches anything outside its own markup.
 ```ts
 import * as z from 'zod/mini';                                   // ONLY zod/mini, never 'zod'
 import { defineComponent, type DataFor, type Helpers } from '../src/sdk';           // community: '@pretickt/components/sdk'
-import { Ticker, type MetricPayload } from '../src/typologies';                     // community: '@pretickt/components/typologies'
+import { Ticker, type PriceSeries } from '../src/typologies';                       // community: '@pretickt/components/typologies'
 // optional: import { rsi, supportResistance } from '../src/sdk/indicators';      // community: '@pretickt/components/indicators'
 
 export const manifest = defineComponent({

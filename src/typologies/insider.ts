@@ -1,5 +1,5 @@
 import * as z from 'zod/mini';
-import { addDays, DEMO_ASOF, IsoDate, prng, round, Ticker } from './common';
+import { addDays, DEMO_ASOF, IsoDate, prng, round, Ticker, cmp } from './common';
 
 /** Insider transactions (SEC Form 4 via FMP), newest first. `type` is open-market buy, sell, or anything else. */
 export const InsiderParams = z.object({ ticker: Ticker, days: z._default(z.int().check(z.minimum(30), z.maximum(730)), 365) });
@@ -23,6 +23,6 @@ export function insiderDemo(p: z.infer<typeof InsiderParams>): Insider {
     const price = round(50 + r() * 200);
     const date = addDays(DEMO_ASOF, -Math.floor(r() * p.days));
     return { date, filingDate: addDays(date, 2), name, title, type, shares, price, value: round(shares * price, 0) };
-  }).sort((a, b) => b.date.localeCompare(a.date));
+  }).sort((a, b) => cmp(b.date, a.date));
   return { asOf: DEMO_ASOF, items };
 }

@@ -13,7 +13,7 @@ export interface Viewport {
   end: number;
   /** Vertical zoom: 1 = fit the data, <1 = stretched (finer detail), >1 = compressed. */
   yScale?: number;
-  /** Vertical pan, in fractions of the (scaled) price range; positive shifts the view up. */
+  /** Vertical pan, in fractions of the (scaled) price range; positive looks lower down the range (the content moves up). */
   yShift?: number;
 }
 
@@ -49,7 +49,7 @@ export function scaleYViewport(vp: Viewport, factor: number): Viewport {
   return { ...vp, yScale: next };
 }
 
-/** Slide the price axis (positive = look higher up the price range). */
+/** Slide the price axis (positive = look lower down the price range). */
 export function shiftYViewport(vp: Viewport, delta: number): Viewport {
   const next = Math.min(3, Math.max(-3, (vp.yShift ?? 0) + delta));
   return { ...vp, yShift: next };
@@ -75,20 +75,6 @@ export function panViewport(vp: Viewport, deltaFrac: number): Viewport {
   return { ...vp, start, end: start + span };
 }
 
-/** Index window [from, to) over an array of `len`, never shorter than `minItems`. */
-export function viewportSlice(len: number, vp: Viewport, minItems = 10): { from: number; to: number } {
-  if (len <= minItems) return { from: 0, to: len };
-  let from = Math.floor(vp.start * len);
-  let to = Math.ceil(vp.end * len);
-  if (to - from < minItems) {
-    const need = minItems - (to - from);
-    from = Math.max(0, from - Math.ceil(need / 2));
-    to = Math.min(len, from + minItems);
-    from = Math.max(0, to - minItems);
-  }
-  return { from, to };
-}
-
 export function isFullViewport(vp: Viewport): boolean {
   return vp.start <= 0 && vp.end >= 1 && isYFitted(vp) && isAtLatest(vp);
 }
@@ -104,16 +90,6 @@ export function latestViewport(vp: Viewport): Viewport {
   return { ...vp, start: 1 - span, end: 1 };
 }
 
-/** Same time window and same price lens, within rounding. */
-export function isSameViewport(a: Viewport, b: Viewport, eps = 1e-6): boolean {
-  return (
-    Math.abs(a.start - b.start) < eps &&
-    Math.abs(a.end - b.end) < eps &&
-    Math.abs((a.yScale ?? 1) - (b.yScale ?? 1)) < eps &&
-    Math.abs((a.yShift ?? 0) - (b.yShift ?? 0)) < eps
-  );
-}
-
 export function isYFitted(vp: Viewport): boolean {
   return (vp.yScale ?? 1) === 1 && (vp.yShift ?? 0) === 0;
 }
@@ -122,18 +98,6 @@ export function isAtLatest(vp: Viewport): boolean {
   return vp.end >= 1 - 1e-6;
 }
 
-/** Linear y→value inversion for a chart panel (top/height in viewBox px, lo/hi in data units). */
-export interface YDomain {
-  lo: number;
-  hi: number;
-  top: number;
-  height: number;
-}
-
-export function invertY(y: number, d: YDomain): number | null {
-  if (y < d.top || y > d.top + d.height || d.height <= 0) return null;
-  return d.lo + (1 - (y - d.top) / d.height) * (d.hi - d.lo);
-}
 
 /** The `view` param a zoomable component declares: `view: z.optional(ViewportParam)`. Absent = the full view. */
 export const ViewportParam = z.object({

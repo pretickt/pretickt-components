@@ -41,3 +41,6 @@ export const round = (v: number, digits = 2) => Math.round(v * 10 ** digits) / 1
 
 /** An absolute http(s) URL: links in payloads come from third parties, and no other scheme may reach an href. */
 export const HttpUrl = z.string().check(z.regex(/^https?:\/\/[^\s"'<>]+$/i));
+
+/** Code-unit string order: the same in Node and every browser (localeCompare depends on the locale). */
+export const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);

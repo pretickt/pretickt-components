@@ -1,5 +1,5 @@
 import * as z from 'zod/mini';
-import { addDays, DEMO_ASOF, IsoDate, Month, prng, Range, RANGE_SESSIONS, round, Ticker } from './common';
+import { addDays, DEMO_ASOF, IsoDate, Month, prng, Range, RANGE_SESSIONS, round, Ticker, cmp } from './common';
 
 /** The kind catalogue. Adding a kind is a minor version of events@1; components render unknown kinds generically. */
 export const EVENT_KINDS = ['earnings', 'dividend', 'split', 'analyst', 'macro'] as const;
@@ -38,7 +38,7 @@ const sizeOf = (e: EventItem) => (e.kind === 'macro' ? Infinity : e.mcap ?? 0);
 const tickerOf = (e: EventItem) => (e.kind === 'macro' ? '' : e.ticker);
 /** Calendar order: date, then macro first, then biggest companies first. */
 export const byDateThenSize = (a: EventItem, b: EventItem) =>
-  a.date.localeCompare(b.date) || sizeOf(b) - sizeOf(a) || tickerOf(a).localeCompare(tickerOf(b)) || a.kind.localeCompare(b.kind);
+  cmp(a.date, b.date) || sizeOf(b) - sizeOf(a) || cmp(tickerOf(a), tickerOf(b)) || cmp(a.kind, b.kind);
 
 export function eventsDemo(p: z.infer<typeof EventsParams>): Events {
   const items: EventItem[] = [];

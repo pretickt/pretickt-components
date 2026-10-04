@@ -29,20 +29,27 @@ export function pct(v: number | null | undefined, digits = 1): string {
 
 export function money(v: number | null | undefined, digits = 2): string {
   if (!finite(v)) return '—';
-  return (v < 0 ? '-' : '') + '$' + num(Math.abs(v), digits);
+  const s = num(Math.abs(v), digits);
+  return (v < 0 && Number(s.replace(/,/g, '')) !== 0 ? '-' : '') + '$' + s; // no "-$0.00"
 }
 
+const UNITS: [number, string][] = [[1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K'], [1, '']];
 export function compact(v: number | null | undefined): string {
   if (!finite(v)) return '—';
   const a = Math.abs(v);
-  const [div, suf] = a >= 1e12 ? [1e12, 'T'] : a >= 1e9 ? [1e9, 'B'] : a >= 1e6 ? [1e6, 'M'] : a >= 1e3 ? [1e3, 'K'] : [1, ''];
-  const n = v / div;
-  const digits = suf === '' ? 0 : Math.abs(n) >= 100 ? 0 : 2;
-  const s = num(n, digits);
+  let i = UNITS.findIndex(([d]) => a >= d);
+  if (i < 0) i = UNITS.length - 1;
+  const digitsAt = (j: number) => (UNITS[j]![1] === '' || a / UNITS[j]![0] >= 100 ? 0 : 2);
+  // rounding can carry into the next unit: 999,999 is "1M", not "1,000K"
+  if (i > 0 && Number((a / UNITS[i]![0]).toFixed(digitsAt(i))) >= 1000) i--;
+  const [div, suf] = UNITS[i]!;
+  const digits = digitsAt(i);
+  const s = num(v / div, digits);
   return (digits ? s.replace(/\.?0+$/, '') : s) + suf;
 }
 
 export function date(iso: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(String(iso))) return esc(iso); // never "Jan NaN, 2026"; whatever it is, it reaches HTML escaped
   const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
   return `${MONTHS[(m ?? 1) - 1]} ${d}, ${y}`;
 }
@@ -69,7 +76,7 @@ export function tip(o: Record<string, string | number | null>): string {
 }
 
 export function icon(name: string | null | undefined): string {
-  return (name && ICONS[name]) || '';
+  return (name && Object.hasOwn(ICONS, name) && ICONS[name]) || ''; // not 'constructor' & co. from the prototype
 }
 
 /** A badge: the shape of a metric@1 item. Any component can build one from any data and draw it with `badge`. */

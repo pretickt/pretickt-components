@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyXViewport,
-  isSameViewport,
   ViewportParam,
   applyYViewport,
   fitYViewport,
@@ -13,7 +12,6 @@ import {
   panViewport,
   scaleYViewport,
   shiftYViewport,
-  viewportSlice,
   zoomViewport,
 } from './viewport';
 
@@ -42,16 +40,6 @@ describe('panViewport', () => {
     expect(panViewport(vp, -100).start).toBe(0);
   });
 });
-
-describe('viewportSlice', () => {
-  it('maps fractions to indices with a minimum width', () => {
-    expect(viewportSlice(200, { start: 0.25, end: 0.75 })).toEqual({ from: 50, to: 150 });
-    const tiny = viewportSlice(200, { start: 0.5, end: 0.51 }, 10);
-    expect(tiny.to - tiny.from).toBeGreaterThanOrEqual(10);
-    expect(viewportSlice(5, FULL_VIEWPORT)).toEqual({ from: 0, to: 5 });
-  });
-});
-
 
 describe('price-axis scaling', () => {
   it('stretches and compresses around the middle, leaving the time window alone', () => {
@@ -136,8 +124,5 @@ describe('pretickt additions', () => {
     expect(ViewportParam.safeParse({ start: 0.1, end: 0.9, yScale: 1, yShift: 0 }).success).toBe(true);
     expect(ViewportParam.safeParse({ start: 0.9, end: 0.1 }).success).toBe(false);
     expect(ViewportParam.safeParse({ start: -1, end: 0.5 }).success).toBe(false);
-  });
-  it('isSameViewport treats a missing y lens as fitted', () => {
-    expect(isSameViewport({ start: 0, end: 1 }, FULL_VIEWPORT)).toBe(true);
   });
 });

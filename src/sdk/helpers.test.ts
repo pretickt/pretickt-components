@@ -43,4 +43,15 @@ describe('helpers', () => {
     for (const bad of ['javascript:alert(1)', ' JavaScript:alert(1)', 'data:text/html,x', '//evil.com', 'vbscript:x', '"><img onerror=x>'])
       expect(h.href(bad), bad).toBe('#');
   });
+  it('formats edge values honestly', () => {
+    expect(h.compact(999_999)).toBe('1M');
+    expect(h.compact(999_499)).toBe('999K');
+    expect(h.compact(-999_999_999)).toBe('-1B');
+    expect(h.money(-0.001)).toBe('$0.00');
+    expect(h.money(-1.5)).toBe('-$1.50');
+    expect(h.icon('constructor')).toBe('');
+    expect(h.icon('toString')).toBe('');
+    expect(h.date('2026-1-x')).toBe('2026-1-x');
+    expect(h.date('<b>')).toBe('&lt;b&gt;');
+  });
 });

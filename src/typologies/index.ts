@@ -31,7 +31,6 @@ export const TYPOLOGIES = {
   'screen@1': def({ id: 'screen@1', params: ScreenParams, payload: ScreenPayload, demo: screenDemo, freshness: 'eod' }),
 } as const;
 
-export type TypologyIdKnown = keyof typeof TYPOLOGIES;
 export const getTypology = (id: string): Typology | undefined =>
   (TYPOLOGIES as unknown as Record<string, Typology>)[id];
 

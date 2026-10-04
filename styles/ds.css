@@ -41,11 +41,10 @@
   .pt-icon { @apply inline-block h-3.5 w-3.5 shrink-0 fill-none stroke-current; stroke-width: 1.5; }
   .pt-tip { @apply pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-full rounded-md bg-ink px-2 py-1 text-xs text-surface shadow-lg; }
   .pt-tip b { @apply font-semibold; }
-  [busy] { @apply opacity-60 transition-opacity; }
-  [error]::after { content: 'Could not load data — showing the last values.'; @apply mt-2 block text-xs text-danger; }
-  /* Component hosts anchor their tooltip. Never put position on [class^='pt-']: it would override .pt-tip's absolute. */
-  pt-metric-v1, pt-price-events-v1, pt-price-target-v1, pt-calendar-v1, pt-why-today-v1, pt-screen-v1, pt-financials-v1,
-  pt-news-v1, pt-insiders-v1 { @apply relative block; }
+  [data-pt][busy] { @apply opacity-60 transition-opacity; }
+  [data-pt][error]::after { content: 'Could not load data — showing the last values.'; @apply mt-2 block text-xs text-danger; }
+  /* Component hosts (every mount carries data-pt) anchor their tooltip. Never put position on [class^='pt-']: it would override .pt-tip's absolute. */
+  [data-pt] { @apply relative block; }
 
   /* badges */
   .pt-badges { @apply m-0 flex list-none flex-wrap gap-2 p-0; }

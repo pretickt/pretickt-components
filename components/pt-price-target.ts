@@ -1,10 +1,10 @@
 import * as z from 'zod/mini';
 import { applyXViewport, applyYViewport, defineComponent, FULL_VIEWPORT, ViewportParam, type DataFor, type Helpers, type Kit, type Viewport } from '../src/sdk';
-import { Ticker, type Analysts, type PriceSeries } from '../src/typologies';
+import { cmp, Ticker, type Analysts, type PriceSeries } from '../src/typologies';
 
 export const manifest = defineComponent({
   tag: 'pt-price-target',
-  version: '1.2.0',
+  version: '1.2.1',
   need: {
     question: 'Where do analysts think this stock is going, and how spread out are they?',
     evidence: [
@@ -106,7 +106,7 @@ export function buildPtChart(points: Point[], targets: Target[], asOf: string, c
     const x = f(sx(cx(c))), r = f(2.4 + Math.min(Math.sqrt(c.count) * 1.5, 8));
     return { x, y: f(sy(cy)), r, up: c.ups > c.count / 2, labelLeft: x + r + LABEL_W > W - MR,
       pctLabel: `${pct >= 0 ? '+' : ''}${Math.round(pct)}%`,
-      members: [...c.members].sort((a, b) => b.date.localeCompare(a.date) || a.firm.localeCompare(b.firm)) };
+      members: [...c.members].sort((a, b) => cmp(b.date, a.date) || cmp(a.firm, b.firm)) };
   });
   const seen = new Map<string, PtSegment>();
   items.forEach((_, i) => {

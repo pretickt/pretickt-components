@@ -22,7 +22,6 @@ export interface Manifest<P extends z.ZodMiniType = z.ZodMiniType> {
 /** Every key may be null: the resolver failed or its payload did not validate. */
 export type DataFor<T extends Record<string, unknown>> = { [K in keyof T]: T[K] | null };
 
-export type RenderStatic = (data: Record<string, unknown>, params: unknown, h: Helpers) => string;
 
 export interface HostApi {
   /** Resolve one need to its validated payload (API in the browser, demo in the sandbox). Rejects on failure. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyPrice, explainTrend, structuralTrend } from './trend-structure';
+import { applyPrice, structuralTrend } from './trend-structure';
 import type { Pivot } from './pivots';
 
 /** Build pivots alternating trough/peak from a price list, knowable two bars after each. */
@@ -137,24 +137,3 @@ describe('applyPrice', () => {
   });
 });
 
-describe('explainTrend', () => {
-  it('states the evidence, not just the label', () => {
-    const s = structuralTrend(pivots([100, 120, 110, 130, 120, 140]));
-    const text = explainTrend(s);
-    expect(text).toContain('Uptrend');
-    expect(text).toContain('higher');
-    expect(text).toMatch(/Last two highs/);
-    expect(text).toMatch(/Last two lows/);
-  });
-
-  it('says so plainly when there is nothing to read', () => {
-    expect(explainTrend(structuralTrend([]))).toContain('Not enough');
-  });
-
-  it('explains a structure the price has broken, instead of naming the dead trend', () => {
-    const s = applyPrice(structuralTrend(pivots([140, 120, 130, 110, 120, 100], 'peak')), 125);
-    const text = explainTrend(s);
-    expect(text).toContain('taken out the last lower high');
-    expect(text).not.toContain('Downtrend.');
-  });
-});

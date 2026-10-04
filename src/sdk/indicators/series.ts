@@ -82,28 +82,6 @@ export function bollinger(closes: number[], period = 20, mult = 2): Bollinger {
   return { lower, upper, mid };
 }
 
-/** Close-only stochastic %K over `period` (no OHLC available): (c−min)/(max−min)·100. */
-export function stochasticK(closes: number[], period = 14): A {
-  const out: A = Array(closes.length).fill(null);
-  for (let i = period - 1; i < closes.length; i++) {
-    const w = closes.slice(i - period + 1, i + 1);
-    const lo = Math.min(...w);
-    const hi = Math.max(...w);
-    out[i] = hi === lo ? 50 : ((closes[i]! - lo) / (hi - lo)) * 100;
-  }
-  return out;
-}
-
-/** Max/min of the `n` bars ending at i−1 (excludes the current bar), null before enough history. */
-export function priorExtreme(closes: number[], n: number, kind: 'max' | 'min'): A {
-  const out: A = Array(closes.length).fill(null);
-  for (let i = n; i < closes.length; i++) {
-    const w = closes.slice(i - n, i);
-    out[i] = kind === 'max' ? Math.max(...w) : Math.min(...w);
-  }
-  return out;
-}
-
 /** SMA at each index (null during warm-up). */
 export function sma(closes: number[], period: number): A {
   const out: A = Array(closes.length).fill(null);
@@ -116,38 +94,3 @@ export function sma(closes: number[], period: number): A {
   return out;
 }
 
-/** Indices where `a` crosses from below `level` to at/above it (entry event). */
-export function crossUp(a: A, level: number): number[] {
-  const out: number[] = [];
-  for (let i = 1; i < a.length; i++) {
-    if (a[i - 1] != null && a[i] != null && a[i - 1]! < level && a[i]! >= level) out.push(i);
-  }
-  return out;
-}
-
-/** Indices where `a` crosses from above `level` to at/below it. */
-export function crossDown(a: A, level: number): number[] {
-  const out: number[] = [];
-  for (let i = 1; i < a.length; i++) {
-    if (a[i - 1] != null && a[i] != null && a[i - 1]! > level && a[i]! <= level) out.push(i);
-  }
-  return out;
-}
-
-/** Indices where series `a` crosses above series `b`. */
-export function crossAbove(a: A, b: A): number[] {
-  const out: number[] = [];
-  for (let i = 1; i < a.length; i++) {
-    if (a[i - 1] != null && b[i - 1] != null && a[i] != null && b[i] != null && a[i - 1]! <= b[i - 1]! && a[i]! > b[i]!) out.push(i);
-  }
-  return out;
-}
-
-/** Indices where series `a` crosses below series `b`. */
-export function crossBelow(a: A, b: A): number[] {
-  const out: number[] = [];
-  for (let i = 1; i < a.length; i++) {
-    if (a[i - 1] != null && b[i - 1] != null && a[i] != null && b[i] != null && a[i - 1]! >= b[i - 1]! && a[i]! < b[i]!) out.push(i);
-  }
-  return out;
-}

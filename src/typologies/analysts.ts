@@ -1,5 +1,5 @@
 import * as z from 'zod/mini';
-import { addDays, DEMO_ASOF, IsoDate, prng, round, Ticker } from './common';
+import { addDays, DEMO_ASOF, IsoDate, prng, round, Ticker, cmp } from './common';
 
 export const AnalystsParams = z.object({ ticker: Ticker, window: z._default(z.enum(['1y', '2y']), '1y') });
 const Counts = z.object({ strongBuy: z.number(), buy: z.number(), hold: z.number(), sell: z.number(), strongSell: z.number(), period: IsoDate });
@@ -28,7 +28,7 @@ export function analystsDemo(p: z.infer<typeof AnalystsParams>): Analysts {
     const date = addDays(DEMO_ASOF, -Math.floor(r() * days));
     const pwp = round(price * (0.8 + r() * 0.3));
     return { date, firm: FIRMS[i % FIRMS.length]!, target: round(pwp * (0.9 + r() * 0.5)), priceWhenPosted: pwp };
-  }).sort((a, b) => a.date.localeCompare(b.date) || a.firm.localeCompare(b.firm));
+  }).sort((a, b) => cmp(a.date, b.date) || cmp(a.firm, b.firm));
   const latest = new Map<string, number>();
   for (const t of targets) latest.set(t.firm, t.target);
   const vals = [...latest.values()].sort((a, b) => a - b);
