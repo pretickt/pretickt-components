@@ -9,7 +9,7 @@ const base = (o: Partial<MoveBreakdown> = {}): MoveBreakdown => ({ ...moveBreakd
   ret: -0.031, marketRet: -0.012, sectorRet: -0.02, market: -0.012, sector: -0.008, specific: -0.011, driver: 'market', ...o });
 
 describe('pt-why-today', () => {
-  standardSuite('pt-why-today.ts', mod);
+  standardSuite(mod);
   it('answers first, in one templated sentence, with the three parts', () => {
     const out = mod.renderStatic({ move: base() }, { ticker: 'NVDA', window: '1d' }, h);
     expect(out).toMatch(/NVIDIA \(NVDA\) fell 3\.1% on Sep 30, 2026\./);
@@ -33,7 +33,8 @@ describe('pt-why-today', () => {
     expect(out).not.toContain('30-day average');
   });
   it('offers 1D, 5D and 1M', () => {
-    expect(mod.renderStatic({ move: base() }, { ticker: 'NVDA', window: '1d' }, h)).toContain(`data-set='{"window":"5d"}'`);
+    const out = mod.renderStatic({ move: base() }, { ticker: 'NVDA', window: '1d' }, h);
+    expect(out).toContain(h.toggles('window', [['1d', '1D'], ['5d', '5D'], ['1m', '1M']], '1d', 'Window'));
+    expect(out).toContain('<div class="pt-head">');
   });
-  it('renders not-available for null', () => expect(mod.renderStatic({ move: null }, { ticker: 'NVDA', window: '1d' }, h)).toContain('pt-na'));
 });

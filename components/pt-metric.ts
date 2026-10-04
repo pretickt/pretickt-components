@@ -1,10 +1,9 @@
-import * as z from 'zod/mini';
 import { defineComponent, type DataFor, type Helpers } from '../src/sdk';
-import { METRIC_KEYS, Ticker, type MetricPayload } from '../src/typologies';
+import { MetricParams, type MetricPayload } from '../src/typologies';
 
 export const manifest = defineComponent({
   tag: 'pt-metric',
-  version: '1.1.0',
+  version: '1.1.1',
   need: {
     question: 'Is this stock cheap, stretched, or close to a catalyst — at a glance?',
     evidence: [
@@ -12,7 +11,7 @@ export const manifest = defineComponent({
       'stockanalysis.com and finance.yahoo.com quote pages open with a key-stats strip; MarketBeat shows scores as percentile badges (checked 2026-10-03)',
     ],
   },
-  params: z.object({ ticker: Ticker, metrics: z.array(z.enum(METRIC_KEYS)).check(z.minLength(1), z.maxLength(32)) }),
+  params: MetricParams,
   user: [],
   uses: [],
   needs: (p) => ({ metrics: { t: 'metric@1', params: { ticker: p.ticker, metrics: p.metrics } } }),

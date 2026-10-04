@@ -7,12 +7,12 @@ import { standardSuite } from './_harness';
 
 const series = priceSeriesDemo({ tickers: ['NVDA'], range: '1y', interval: '1d', rebase: false });
 const events = eventsDemo({ scope: { by: 'ticker', ticker: 'NVDA', range: '1y', ahead: 90 }, kinds: ['earnings', 'dividend', 'split', 'analyst'] });
-const params = { ticker: 'NVDA', range: '1y' };
+const params = { ticker: 'NVDA', range: '1y' as const };
 
 describe('pt-price-events', () => {
-  standardSuite('pt-price-events.ts', mod);
+  standardSuite(mod);
 
-  const shown = (from: string) => events.items.filter((e) => e.date >= from && !(e.kind === 'analyst' && e.meta.action === 'maintain'));
+  const shown = (from: string) => events.items.filter((e) => e.date >= from && mod.isEvent(e));
   const groups = (list: EventItem[]) => new Set(list.map((e) => `${e.date}|${e.kind}`)).size;
 
   it('draws one path and one marker per day and kind, skipping rating reiterations', () => {
@@ -51,16 +51,28 @@ describe('pt-price-events', () => {
   });
   it('renders the range toggles with the current one pressed', () => {
     const out = mod.renderStatic({ series, events }, { ticker: 'NVDA', range: '6m' }, h);
-    expect(out).toContain(`data-set='{"range":"6m"}' aria-pressed="true"`);
-    expect(out).toContain(`data-set='{"range":"5y"}' aria-pressed="false"`);
+    expect(out).toContain(`${h.set({ range: '6m' })} aria-pressed="true"`);
+    expect(out).toContain(`${h.set({ range: '5y' })} aria-pressed="false"`);
+    expect(out).toContain('role="group" aria-label="Range"');
+  });
+  it('draws through the shared chart frame: month labels on the time axis, price labels above the grab strip, no inline styling', () => {
+    const out = mod.renderStatic({ series, events }, params, h);
+    expect(out).toMatch(/text-anchor="(start|middle|end)">[A-Z][a-z]{2} \d{2}</);
+    expect(out.indexOf('class="pt-axis-strip"')).toBeLessThan(out.indexOf('text-anchor="end">$'));
+    expect(out).not.toContain('fill="white"');
+    expect(out).toContain('E earnings · D dividend · S split · A analyst rating change');
+  });
+  it('shows a dividend as declared in its tooltip', () => {
+    const d = series[0]!.points.at(-10)!.t;
+    const div = { date: d, ticker: 'NVDA', name: 'NVIDIA', logo: null, mcap: null, kind: 'dividend' as const, meta: { amount: 0.2625, payDate: null } };
+    expect(mod.renderStatic({ series, events: { asOf: events.asOf, items: [div] } }, params, h)).toContain(h.esc(JSON.stringify({ Dividend: '$0.2625', 'Ex-date': h.date(d), 'Pay date': null })));
   });
   it('still draws the chart when events are missing', () => {
     const out = mod.renderStatic({ series, events: null }, params, h);
     expect(out).toContain('pt-line');
     expect(out).toContain('Events not available');
   });
-  it('renders not-available without a series', () => {
-    expect(mod.renderStatic({ series: null, events }, params, h)).toContain('pt-na');
+  it('renders not-available without points', () => {
     expect(mod.renderStatic({ series: [{ ticker: 'NVDA', points: [] }], events }, params, h)).toContain('pt-na');
   });
   it('stacks same-day markers instead of overlapping them', () => {

@@ -16,14 +16,14 @@ the clock or touches anything outside its own markup.
 ```ts
 import * as z from 'zod/mini';                                   // ONLY zod/mini, never 'zod'
 import { defineComponent, type DataFor, type Helpers } from '../src/sdk';           // community: '@pretickt/components/sdk'
-import { Ticker, type PriceSeries } from '../src/typologies';                       // community: '@pretickt/components/typologies'
+import { Range, Ticker, type PriceSeries } from '../src/typologies';                // community: '@pretickt/components/typologies'
 // optional: import { rsi, supportResistance } from '../src/sdk/indicators';      // community: '@pretickt/components/indicators'
 
 export const manifest = defineComponent({
   tag: 'pt-my-thing',            // pt- prefix, lowercase, NO -v1 suffix (the host adds -v<major>)
   version: '1.0.0',              // semver; ANY change to a deployed component needs a new version (bundles are cached immutable)
   need: { question: 'What market question does this answer?', evidence: ['DataForSEO …', 'r/stocks thread …', 'beta: …'] },
-  params: z.object({ ticker: Ticker, range: z._default(z.enum(['1m', '1y']), '1y') }),
+  params: z.object({ ticker: Ticker, range: z._default(Range, '1y') }),   // reuse typology schemas (or a whole XParams) for limits
   user: [],                      // user data (type 3) — not available yet
   uses: [],                      // composition — must stay empty for now
   needs: (p) => ({               // name → { t: '<typology>@<major>', params } ; names are the keys of `data`
@@ -35,11 +35,11 @@ export const samples = [{ ticker: 'NVDA', range: '1y' }, { ticker: 'BRK.B', rang
 
 type Data = DataFor<{ series: PriceSeries }>;    // every key may be null
 
-export function renderStatic(data: Data, params: { ticker: string; range: string }, h: Helpers): string {
+export function renderStatic(data: Data, params: z.output<typeof manifest.params>, h: Helpers): string {   // params arrive parsed (defaults applied)
   if (!data.series?.[0]?.points.length) return h.na();      // ALWAYS handle null / empty
   return `<figure class="pt-chart">…${h.esc(something)}…</figure>`;
 }
-// optional: export const element = ({ PtElement, html, svg, unsafeHTML }) => class extends PtElement { … }
+// optional: export const element = ({ PtElement }: Kit<HTMLElement>) => class extends PtElement { firstUpdated() { super.firstUpdated(); … } }
 // Rarely needed: the default element already renders renderStatic, shows [data-tip] tooltips and handles [data-set] clicks.
 ```
 
@@ -53,11 +53,12 @@ the platform side — never by the lint alone.
   "Today" is never known: use the `asOf` field that typologies return.
 - **Top level**: only imports, exports, `const`, functions and types (no side effects, no classes — `element` is a factory).
 - **Escape everything from data** with `h.esc` (attributes too); every link from data goes through `h.href(url)` (http(s) or a site
-  path; anything else becomes `#`). Rendered HTML must pass `checkMarkup` (no script/style/iframe/form…, no `on*=` handlers, no
+  path; anything else becomes `#`), a company page through `h.stockHref(ticker)`. Rendered HTML must pass `checkMarkup` (no script/style/iframe/form…, no `on*=` handlers, no
   non-http URL schemes, no `id="pt-data"` or `data-pt`): the contract checks it on demo data and the platform on every real render. Tooltips: `h.tip({ Label: value })` → `data-tip`; the base
   element renders them as text.
-- **Interactivity without code**: a button with `data-set='{"range":"5y"}'` patches params; the base element re-resolves only
-  the needs whose key changed (via the API) and re-renders.
+- **Interactivity without code**: `<button type="button" ${h.set({ range: '5y' })}>` patches params (or `h.toggles('range', [['1y','1Y'],
+  ['5y','5Y']], params.range, 'Range')` for the whole button group); the base element re-resolves only the needs whose key changed
+  (via the API) and re-renders. Never hand-write `data-set` JSON.
 - **Null & unknown**: every `data` key can be `null` → render `h.na()` (or a reduced view). Payload lists may contain catalogue
   entries you don't know (new metric keys, new event kinds, events **without ticker**): render them generically or skip them,
   never throw. `checkContract` injects such items on purpose. (Typology schemas are closed per build — the host and the API ship
@@ -66,21 +67,25 @@ the platform side — never by the lint alone.
 - **Licence**: never show index symbols (`^…`); "the market" is SPY.
 
 ## Helpers (`h`)
-`esc, num(v,digits), pct(fraction), money, compact, date(iso), toneOf, href(url), na(label?), tip(obj), icon(name), badge(item), badgeValue(item)`.
+Text: `esc, num(v,digits), pct(fraction → "+12.3%"), level(fraction → "12.3%", no sign), usd(v,{compact,signed}), money(v,digits),
+amount(cash, 2–4 decimals), compact, date(iso), month(ym → "Mar 26"), toneOf(v, flatBand)`. Links and states: `href(url), stockHref(ticker),
+na(label?), tip(obj), set(patch), toggles(key, options, current, label), icon(name), badge(item), badgeValue(item)`.
+Charts: `chartFrame(frame, parts), yAxis(frame, ticks), timeAxis(frame, ticks), svgId(s)`; pure geometry from the SDK:
+`closeAt(points, iso), isoDay(iso), linePath([[x,y]…]), monthTicks(fromDay, toDay)`. Use these instead of local formatters.
 Icons: `calendar target trend-up trend-down alert peak`.
 
-## Zoom & pan — any chart, three lines (ported from beta's ZoomPan + ChartControls)
+## Zoom & pan — any chart (ported from beta's ZoomPan + ChartControls)
 1. Params: `view: z.optional(ViewportParam)` (absent = full view; the static page always renders the full view).
-2. Geometry: pass `params.view` through `applyXViewport(min, max, view)` and `applyYViewport(lo, hi, view)` (from the SDK);
-   clip the plot with a `<clipPath>`; put the price labels in the right-hand strip.
-3. Markup: `<svg … ${h.zoomable(w, h, plotW, plotH)}>${h.zoomStrips(w, h, plotW, plotH)}…</svg>${h.viewControls(params.view)}`
-   inside a `pt-wrap`.
+2. Geometry: pass `params.view` through `applyXViewport(min, max, view)` and `applyYViewport(lo, hi, view)` (from the SDK).
+3. Markup, one call: `h.chartFrame({ w, h, plotW, plotH, id, label, view: params.view }, { defs?, axes: h.yAxis(fr, yTicks) +
+   h.timeAxis(fr, xTicks), plot, front?, after? })` — wrapper, `data-zoom`, clip, grab strips under the axis labels, the plot clipped,
+   the view controls. Price labels sit in the right-hand strip.
 The base element does the rest: wheel/drag on the plot = time, on the right strip = price scale, on the bottom strip = time
 around the grab point, double-click = reset; fit / today » / reset view buttons appear only when there is something to undo.
 A `data-set` patch (new data) drops the view. Examples: `pt-price-target`, `pt-price-events`.
 
 ## Badges — the way to add a new metric from a component
-Build an object with the `Badge` shape and call `h.badge(b)` inside `<ul class="pt-badges">`:
+Build an object with the `Badge` shape (= a `metric@1` item, `MetricItem`) and call `h.badge(b)` inside `<ul class="pt-badges">`:
 `{ key, label, value: number|null, text: string|null, unit: 'x'|'%'|'$'|'$c'|'d'|'', delta, tone: 'pos'|'neg'|'flat'|'na',
 range: {lo,hi,marks}|null, icon, hint, asOf, dots?: ('pos'|'neg')[] }` (`%` = fraction, `$c` = compact dollars).
 Compute it from any typology you receive (e.g. RSI from `price-series` with `indicators.rsi`, FCF growth from `fundamentals`).
@@ -103,21 +108,25 @@ Each typology has `demo(params)`: deterministic fake data used by tests, parity 
 Adding a typology or a catalogue entry is a platform change (schema here + resolver in the private platform + a public-data test).
 
 ## Indicators (`src/sdk/indicators`, pure, ported from beta with tests)
-`sma ema rsi macd(→{macd,signal}) bollinger atr technicalSnapshot supportResistance vectorise(pivots) structuralTrend applyPrice trend(series, nowMs) buildSectorIndex maCrossEta`.
+`sma smaLast ema wilder rsi macd(→{macd,signal}) bollinger atr technicalSnapshot supportResistance vectorise(pivots) dailySigmaPct SCALES
+structuralTrend applyPrice trend(series, nowMs) buildSectorIndex maCrossEta`, and `barsOf(points)` to turn price-series points into the
+bars they read. Fields named `*Pct` are in percent (2.5 = +2.5%), not fractions: divide by 100 for `h.pct` or a Badge with unit `%`.
 
 ## Workflow
-1. Write `components/pt-x.test.ts` first (`// @vitest-environment happy-dom`, call `standardSuite('pt-x.ts', mod)` + specific tests).
+1. Write `components/pt-x.test.ts` first (`// @vitest-environment happy-dom`, call `standardSuite(mod)` + specific tests; the suite
+   already checks samples, lint, contract — null data included — and parity, so test only what is specific).
 2. Write `components/pt-x.ts`. 3. `npm test` (all) and `npx tsc --noEmit`. 4. `npm run build` → `dist/` (static + browser bundles,
-`host.js`, `ds.css`, `index.json`; size budget: host < 100 KB, component < 60 KB). 5. Styles: add semantic classes to `styles/ds.css`
+`host.js`, `ds.css`, `index.json`; the build refuses a host over 100 KB or a component bundle over 32 KB — `scripts/budget.ts`). 5. Styles: add semantic classes to `styles/ds.css`
 (Tailwind v4 `@apply`), keep markup classes short. 6. Commit on `develop`; `main` = release. Pages that use a component are
 defined in the platform repo (`plant/src/generate/pages.ts`).
 
-## Existing components
-`pt-metric` (1.1.0, badge strip of the catalogue) · `pt-price-events` (1.1.0, price line + E/D/S/A markers grouped per day, range
-toggles, zoom & pan) · `pt-price-target` (1.2.0, beta's pt-chart with zoom & pan: clustered dots, gradient segments, hover dash-flow + orbit + staggered analyst rows via a small `element` factory — the reference example of `element`) · `pt-calendar` (1.2.0, month grid + macro dates + full
-list; `kind` earnings|dividend) · `pt-why-today` (1.0.0, answer-first sentence + market/sector/stock bars + news spike) ·
-`pt-screen` (1.0.0, ranked table with list-specific column and sparklines; lists and peers) · `pt-financials` (1.0.0, quarterly
-revenue/FCF bars + margins table) · `pt-news` (1.0.0, headlines with AI sentiment dots, nofollow links) · `pt-insiders` (1.0.0,
-buy/sell totals + Form 4 table).
-Shared DS classes worth reusing: `pt-table-wrap/pt-table/pt-num`, `pt-toggles` (buttons with `aria-pressed`), `pt-t-pos/neg/flat/na`
-(signed text; never `pt-na`, which is the not-available box), `pt-dot-pos/neg/flat/na`, `pt-note`, `pt-spark`.
+## Existing components (versions: `dist/index.json`)
+`pt-metric` (badge strip of the catalogue) · `pt-price-events` (price line + E/D/S/A markers grouped per day, range toggles, zoom & pan
+through `h.chartFrame`) · `pt-price-target` (beta's pt-chart with zoom & pan: clustered dots, gradient segments, hover dash-flow + orbit +
+staggered analyst rows via a small `element` factory — the reference example of `element`) · `pt-calendar` (month grid + macro dates +
+full list; `kind` earnings|dividend) · `pt-why-today` (answer-first sentence + market/sector/stock bars + news spike) · `pt-screen` (ranked
+table with list-specific column and sparklines; lists and peers) · `pt-financials` (quarterly revenue/FCF bars + margins table) ·
+`pt-news` (headlines with AI sentiment dots, nofollow links) · `pt-insiders` (buy/sell totals + Form 4 table).
+Shared DS classes worth reusing: `pt-head` (title row with controls), `pt-meta` (small secondary text), `pt-table-wrap/pt-table/pt-num`,
+`pt-toggles` (via `h.toggles`), `pt-t-pos/neg/flat/na` (signed text; never `pt-na`, which is the not-available box),
+`pt-dot-pos/neg/flat/na`, `pt-note`, `pt-spark`. Tones are always `pos/neg/flat/na`.

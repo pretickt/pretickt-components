@@ -6,7 +6,7 @@ import * as mod from './pt-metric';
 import { standardSuite } from './_harness';
 
 describe('pt-metric', () => {
-  standardSuite('pt-metric.ts', mod);
+  standardSuite(mod);
 
   const item = (o: Partial<MetricItem>): MetricItem => ({ key: 'pe', label: 'P/E', value: 29.17, text: null, unit: 'x', delta: null,
     tone: 'flat', range: null, icon: null, hint: 'h', asOf: '2026-10-02', ...o });
@@ -29,8 +29,7 @@ describe('pt-metric', () => {
     expect(at(150)).toContain('left:50.0%');
     expect(at(500)).toContain('left:100.0%');
   });
-  it('renders the not-available state for null and empty payloads', () => {
-    expect(mod.renderStatic({ metrics: null }, {}, h)).toContain('pt-na');
+  it('renders the not-available state for an empty payload', () => {
     expect(mod.renderStatic({ metrics: [] }, {}, h)).toContain('pt-na');
   });
   it('renders every demo metric', () => {

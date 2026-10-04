@@ -7,9 +7,10 @@ import { standardSuite } from './_harness';
 
 const events = eventsDemo({ scope: { by: 'universe', month: '2026-10' }, kinds: ['earnings', 'macro'] });
 const companies = events.items.filter((e) => e.kind !== 'macro') as Extract<EventItem, { ticker: string }>[];
+const P = (o: { month: string; kind?: 'earnings' | 'dividend' }) => mod.manifest.params.parse(o);
 
 describe('pt-calendar', () => {
-  standardSuite('pt-calendar.ts', mod);
+  standardSuite(mod);
 
   it('builds Monday-first weeks covering the month', () => {
     const m = mod.buildMonth('2026-10', [], '2026-10-02');
@@ -24,21 +25,22 @@ describe('pt-calendar', () => {
   });
   it('caps each day at four chips and reports the overflow', () => {
     const many = Array.from({ length: 7 }, (_, i) => ({ ...companies[0]!, date: '2026-10-15', ticker: `T${i}` }));
-    const out = mod.renderStatic({ events: { asOf: '2026-10-02', items: many } }, { month: '2026-10' }, h);
+    const out = mod.renderStatic({ events: { asOf: '2026-10-02', items: many } }, P({ month: '2026-10' }), h);
     expect(out.match(/class="pt-cal-ev"/g)).toHaveLength(4);
     expect(out).toContain('+3 more');
   });
   it('lists every report in the text list, so nothing hides behind the cap', () => {
-    const out = mod.renderStatic({ events }, { month: '2026-10' }, h);
+    const out = mod.renderStatic({ events }, P({ month: '2026-10' }), h);
     for (const e of companies) expect(out).toContain(`/stocks/${e.ticker.toLowerCase()}/`);
   });
   it('offers previous and next month', () => {
-    const out = mod.renderStatic({ events }, { month: '2026-10' }, h);
-    expect(out).toContain(`data-set='{"month":"2026-09"}'`);
-    expect(out).toContain(`data-set='{"month":"2026-11"}'`);
+    const out = mod.renderStatic({ events }, P({ month: '2026-10' }), h);
+    expect(out).toContain(h.set({ month: '2026-09' }));
+    expect(out).toContain(h.set({ month: '2026-11' }));
+    expect(out).toContain('<div class="pt-head">');
   });
   it('shows macro dates as labels on their day and in the list, without a stock link', () => {
-    const out = mod.renderStatic({ events }, { month: '2026-10' }, h);
+    const out = mod.renderStatic({ events }, P({ month: '2026-10' }), h);
     const macro = events.items.filter((e) => e.kind === 'macro');
     expect(macro.length).toBeGreaterThan(0);
     expect(out.match(/class="pt-cal-macro"/g)!.length).toBe(macro.length);
@@ -50,11 +52,10 @@ describe('pt-calendar', () => {
   });
   it('shows a dividend calendar with amounts when asked', () => {
     const d = { asOf: '2026-10-02', items: [{ date: '2026-10-15', ticker: 'KO', name: 'Coca-Cola', logo: null, mcap: 3e11, kind: 'dividend' as const, meta: { amount: 0.51, payDate: '2026-10-30' } }] };
-    const out = mod.renderStatic({ events: d }, { month: '2026-10', kind: 'dividend' }, h);
+    const out = mod.renderStatic({ events: d }, P({ month: '2026-10', kind: 'dividend' }), h);
     expect(out).toContain('$0.51');
+    const quarter = { ...d, items: [{ ...d.items[0]!, meta: { amount: 0.2625, payDate: null } }] };
+    expect(mod.renderStatic({ events: quarter }, P({ month: '2026-10', kind: 'dividend' }), h)).toContain('$0.2625'); // as declared, like the chart tooltip
     expect(mod.manifest.needs({ month: '2026-10', kind: 'dividend' }).events!.params).toMatchObject({ kinds: ['dividend', 'macro'] });
-  });
-  it('renders not-available for null', () => {
-    expect(mod.renderStatic({ events: null }, { month: '2026-10' }, h)).toContain('pt-na');
   });
 });

@@ -45,9 +45,10 @@ describe('buildPtChart (ported from beta pt-chart.geometry)', () => {
     const c = mod.buildPtChart(pts, [tg({ firm: 'A', date: '2025-09-02' }), tg({ firm: 'B', date: '2025-09-20' })], '2026-01-05', 120)!;
     expect(c.clusters[0]!.members.map((m) => m.firm)).toEqual(['B', 'A']);
   });
-  it('today is the as-of date, never the clock', () => {
-    const a = mod.buildPtChart(pts, [tg({})], '2026-01-05', 120)!;
-    expect(a.todayX).toBe(mod.buildPtChart(pts, [tg({})], '2026-01-05', 120)!.todayX);
+  it('today is the as-of date, never the clock: a later as-of moves the today line right', () => {
+    const early = mod.buildPtChart(pts, [tg({})], '2025-12-01', 120)!;
+    const late = mod.buildPtChart(pts, [tg({})], '2026-01-05', 120)!;
+    expect(late.todayX).toBeGreaterThan(early.todayX);
   });
 });
 
@@ -63,7 +64,7 @@ describe('buildPtChart with a viewport (beta spec)', () => {
     const full = mod.buildPtChart(pts, two, '2026-01-05', 120)!;
     const tall = mod.buildPtChart(pts, two, '2026-01-05', 120, { start: 0, end: 1, yScale: 2, yShift: 0 })!;
     expect(tall.todayX).toBeCloseTo(full.todayX, 6);
-    expect(tall.yTicks.map((t) => t.label)).not.toEqual(full.yTicks.map((t) => t.label));
+    expect(tall.yTicks.map((t) => t.v)).not.toEqual(full.yTicks.map((t) => t.v));
   });
   it('is unchanged by the identity viewport', () => {
     expect(mod.buildPtChart(pts, two, '2026-01-05', 120, { start: 0, end: 1, yScale: 1, yShift: 0 })!.pricePath)
@@ -72,7 +73,7 @@ describe('buildPtChart with a viewport (beta spec)', () => {
 });
 
 describe('pt-price-target', () => {
-  standardSuite('pt-price-target.ts', mod);
+  standardSuite(mod);
 
   it('shows low, average, median, high and upside against the last close', () => {
     const out = mod.renderStatic({ analysts, series }, p, h);
@@ -90,11 +91,21 @@ describe('pt-price-target', () => {
     expect(out.match(/class="pt-orbit /g)).toHaveLength(c.clusters.length);
     expect(out.match(/class="pt-members/g)).toHaveLength(c.clusters.length);
   });
-  it('each member panel lists the analysts behind its dot, newest first', () => {
+  it('each member panel lists the analysts behind its dot (at most six rows, then "+n more")', () => {
+    const c = mod.buildPtChart(series[0]!.points, analysts.targets, analysts.asOf, analysts.price!)!;
     const out = mod.renderStatic({ analysts, series }, p, h);
-    const rows = out.match(/class="pt-mem"/g) ?? [];
-    expect(rows.length).toBeGreaterThanOrEqual(Math.min(analysts.targets.length, 1));
+    expect((out.match(/class="pt-mem"/g) ?? []).length).toBe(c.clusters.reduce((n, cl) => n + Math.min(cl.members.length, 6), 0));
     expect(out).toContain('animation-delay:0.13s');
+  });
+  it('one tone vocabulary: dots, labels and member targets are pt-pos / pt-neg, accuracy is pt-acc-*', () => {
+    const out = mod.renderStatic({ analysts, series }, p, h);
+    expect(out).toMatch(/<circle class="pt-dot pt-(pos|neg)"/);
+    expect(out).not.toMatch(/pt-up|pt-down|"acc-/);
+  });
+  it('price labels sit above the grab strip (readable), time labels name the month', () => {
+    const out = mod.renderStatic({ analysts, series }, p, h);
+    expect(out.indexOf('class="pt-axis-strip"')).toBeLessThan(out.indexOf('text-anchor="end">$'));
+    expect(out).toMatch(/>[A-Z][a-z]{2} \d{2}</);
   });
   it('renders the consensus bar with counts as text', () => {
     const out = mod.renderStatic({ analysts, series }, p, h);
@@ -109,15 +120,16 @@ describe('pt-price-target', () => {
     const moved = mod.renderStatic({ analysts, series }, { ...p, view: { start: 0.2, end: 0.8, yScale: 1, yShift: 0 } }, h);
     expect(moved).toContain('data-view="latest"');
   });
-  it('edge time labels stay inside the plot (first left-aligned, last right-aligned)', () => {
+  it('edge time labels stay inside the plot (the first one at the left edge is left-aligned)', () => {
     const out = mod.renderStatic({ analysts, series }, p, h);
-    const ticks = [...out.matchAll(/<text class="pt-axis" x="[\d.]+" y="[\d.]+" text-anchor="(\w+)">\d{4}-\d{2}</g)].map((m) => m[1]);
-    expect(ticks).toEqual(['start', 'middle', 'middle', 'end']);
+    const ticks = [...out.matchAll(/<text class="pt-axis" x="([\d.]+)" y="[\d.]+" text-anchor="(\w+)">[A-Z][a-z]{2} \d{2}</g)];
+    expect(ticks.length).toBeGreaterThan(2);
+    expect(ticks[0]![2]).toBe('start');
+    expect(ticks.every((m) => Number(m[1]) <= 754)).toBe(true);
   });
   it('explains missing coverage', () => {
     const none = { ...analysts, summary: null, targets: [], consensus: null, history: [] };
     expect(mod.renderStatic({ analysts: none, series }, p, h)).toContain('No analyst targets in the last 12 months');
-    expect(mod.renderStatic({ analysts: null, series }, p, h)).toContain('pt-na');
   });
   it('keeps the stats when the price series is missing', () => {
     const out = mod.renderStatic({ analysts, series: null }, p, h);
