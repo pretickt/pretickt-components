@@ -66,6 +66,24 @@ describe('makeBase', () => {
     expect(tip.hidden).toBe(false);
     expect(tip.textContent).toContain('Ticker NVDA');
   });
+  it('moving between the parts of one tooltip target neither hides the tooltip nor reports a second hover', async () => {
+    const two: ComponentModule = { ...mod, renderStatic: (_d, _p, h) => `<p ${h.tip({ A: 'b' })}><i class="one">1</i><i class="two">2</i></p>` };
+    customElements.define('pt-probe-tip2', classFor(lit, two, { resolve: async () => null }));
+    const el = document.createElement('pt-probe-tip2') as HTMLElement & { params: unknown; updateComplete: Promise<boolean> };
+    el.params = { ticker: 'NVDA' };
+    document.body.append(el);
+    await el.updateComplete;
+    const hovers: unknown[] = [];
+    el.addEventListener('pt-interact', (e) => hovers.push((e as CustomEvent).detail.action));
+    const one = el.querySelector('.one')!, two2 = el.querySelector('.two')!;
+    one.dispatchEvent(new Event('pointerover', { bubbles: true }));
+    const out = new Event('pointerout', { bubbles: true });
+    Object.defineProperty(out, 'relatedTarget', { value: two2 });
+    one.dispatchEvent(out);
+    two2.dispatchEvent(new Event('pointerover', { bubbles: true }));
+    expect((el.querySelector('.pt-tip') as HTMLElement).hidden).toBe(false);
+    expect(hovers).toEqual(['hover']);
+  });
   it('checkParity passes for the default element', async () => {
     expect(await checkParity(lit, mod, [{ ticker: 'NVDA' }])).toEqual([]);
   });

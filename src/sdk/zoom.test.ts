@@ -101,6 +101,23 @@ describe('zoom & pan in the base element (any component with data-zoom)', () => 
     await el.updateComplete;
     expect(probe()).toBe('0.200|1.000|1.000');
   });
+  it('hovering an axis strip is a class on the svg (the cursor comes from CSS) and it survives a re-render', async () => {
+    ptr('pointermove', 790, 100);
+    expect(svgEl().classList.contains('pt-over-axis')).toBe(true);
+    expect((svgEl() as SVGSVGElement).style.cursor).toBe('');
+    wheel(790, 100, 100); // re-renders: a new svg
+    await el.updateComplete;
+    expect(svgEl().classList.contains('pt-over-axis')).toBe(true);
+    ptr('pointermove', 400, 330);
+    expect(svgEl().classList.contains('pt-over-taxis')).toBe(true);
+    expect(svgEl().classList.contains('pt-over-axis')).toBe(false);
+  });
+  it('a pointer moving outside the chart costs no layout read', async () => {
+    const rect = vi.mocked(Element.prototype.getBoundingClientRect);
+    rect.mockClear();
+    el.querySelector('.probe')!.dispatchEvent(at(new Event('pointermove', { bubbles: true }), { clientX: 10, clientY: 10 }));
+    expect(rect).not.toHaveBeenCalled();
+  });
   it('controls appear only when there is something to undo, and undo it', async () => {
     expect(el.querySelector('.pt-vctl')).toBeNull();
     wheel(400, 100, -100); wheel(790, 100, 100);

@@ -2,9 +2,9 @@ import type { LitElement as LitElementType, PropertyValues } from 'lit';
 import { helpers } from './helpers';
 import { needKey } from './key';
 import type { ComponentModule, HostApi, Kit, Need } from './types';
-import {
-  fitYViewport, FULL_VIEWPORT, isFullViewport, latestViewport, panViewport, scaleYViewport, shiftYViewport, zoomViewport, type Viewport,
-} from './viewport';
+import { attachTips } from './tips';
+import { FULL_VIEWPORT, isFullViewport, type Viewport } from './viewport';
+import { attachZoom } from './zoom-controller';
 
 export type LitKit = Omit<Kit, 'PtElement'> & { LitElement: typeof LitElementType };
 
@@ -49,18 +49,35 @@ export function makeBase(lit: LitKit, mod: ComponentModule, host: HostApi) {
       this.dispatchEvent(new CustomEvent('pt-interact', { bubbles: true, composed: true, detail: { component: `${mod.manifest.tag}@${mod.manifest.version}`, action } }));
     }
 
+    private zoom: ReturnType<typeof attachZoom> | null = null;
+
     protected firstUpdated() {
-      this.enableTips();
-      this.enableZoom();
+      attachTips(this, (a) => this.interact(a));
+      this.zoom = attachZoom(this, {
+        view: () => (this.params as { view?: Viewport }).view ?? FULL_VIEWPORT,
+        setView: (v) => {
+          const { view: _old, ...rest } = this.params as Record<string, unknown>;
+          this.params = isFullViewport(v) ? rest : { ...rest, view: v };
+        },
+        interact: (a) => this.interact(a),
+      });
+      // one delegate for the two kinds of no-code controls: data-view (zoom buttons) and data-set (params patches)
       this.addEventListener('click', (e) => {
-        const t = (e.target as Element).closest?.('[data-set]');
+        const t = (e.target as Element).closest?.('[data-view],[data-set]');
         if (!t || !this.contains(t)) return;
+        if (t.hasAttribute('data-view')) { this.zoom?.control(t.getAttribute('data-view')); return; }
         e.preventDefault();
         let patch: Record<string, unknown>;
         try { patch = JSON.parse(t.getAttribute('data-set')!); } catch { return; }
         this.interact('set');
         void this.setParams(patch);
       });
+    }
+
+    /** Each view change replaces the svg: re-apply the axis hover state to the new one. */
+    protected updated(changed: PropertyValues) {
+      super.updated(changed);
+      this.zoom?.sync();
     }
 
     /** Params of the newest pending patch: the next patch builds on them, so quick successive clicks compose. */
@@ -93,152 +110,6 @@ export function makeBase(lit: LitKit, mod: ComponentModule, host: HostApi) {
       } finally {
         if (seq === this.seq) { this.busy = false; this.requested = null; }
       }
-    }
-
-    /** Hover state of the axis strips survives re-renders (each view change replaces the svg). */
-    private overAxis = false;
-    private overTimeAxis = false;
-
-    protected updated(changed: PropertyValues) {
-      super.updated(changed);
-      const svg = this.querySelector('svg[data-zoom]');
-      svg?.classList.toggle('pt-over-axis', this.overAxis);
-      svg?.classList.toggle('pt-over-taxis', this.overTimeAxis);
-    }
-
-    /**
-     * TradingView-style zoom & pan for any component whose svg carries `data-zoom` (beta's ZoomPan directive):
-     * the view lives in `params.view`, so renderStatic stays the only renderer and no data is fetched.
-     * Listeners sit on the host, not the svg: every view change re-renders (replaces) the svg mid-gesture.
-     */
-    private enableZoom() {
-      const svgOf = () => this.querySelector<SVGSVGElement>('svg[data-zoom]');
-      const view = (): Viewport => ((this.params as { view?: Viewport }).view ?? FULL_VIEWPORT);
-      const setView = (v: Viewport) => {
-        const { view: _old, ...rest } = this.params as Record<string, unknown>;
-        this.params = isFullViewport(v) ? rest : { ...rest, view: v };
-      };
-      const geo = (e: { clientX: number; clientY: number }) => {
-        const svg = svgOf();
-        if (!svg) return null;
-        let zones = { px: 0.93, ty: 0.9 };
-        try { zones = { ...zones, ...JSON.parse(svg.getAttribute('data-zoom') ?? '{}') }; } catch { /* defaults */ }
-        const r = svg.getBoundingClientRect();
-        const fx = r.width > 0 ? (e.clientX - r.left) / r.width : 0.5;
-        const fy = r.height > 0 ? (e.clientY - r.top) / r.height : 0.5;
-        const onAxis = fx >= zones.px;
-        return { r, fx, onAxis, onTimeAxis: !onAxis && fy >= zones.ty };
-      };
-      const inSvg = (e: Event) => !!(e.target as Element).closest?.('svg[data-zoom]');
-      let drag: { axis: boolean; taxis: boolean; anchor: number; x: number; y: number; moved: boolean } | null = null;
-
-      this.addEventListener('wheel', (e) => {
-        if (!inSvg(e)) return;
-        const g = geo(e);
-        if (!g) return;
-        e.preventDefault();
-        this.interact('zoom');
-        const factor = e.deltaY > 0 ? 1.25 : 0.8;
-        setView(g.onAxis ? scaleYViewport(view(), factor) : zoomViewport(view(), g.fx, factor));
-      }, { passive: false });
-
-      this.addEventListener('pointerdown', (e) => {
-        if (e.button !== 0 || !inSvg(e)) return;
-        const g = geo(e);
-        if (!g) return;
-        drag = { axis: g.onAxis, taxis: g.onTimeAxis, anchor: g.fx, x: e.clientX, y: e.clientY, moved: false };
-        try { this.setPointerCapture(e.pointerId); } catch { /* synthetic pointer */ }
-      });
-
-      this.addEventListener('pointermove', (e) => {
-        const g = geo(e);
-        if (!g) return;
-        if (!drag) {
-          const over = inSvg(e) && g.onAxis, overT = inSvg(e) && g.onTimeAxis;
-          if (over !== this.overAxis || overT !== this.overTimeAxis) {
-            this.overAxis = over;
-            this.overTimeAxis = overT;
-            const svg = svgOf();
-            svg?.classList.toggle('pt-over-axis', over);
-            svg?.classList.toggle('pt-over-taxis', overT);
-          }
-          const svg = svgOf();
-          if (svg) svg.style.cursor = over ? 'ns-resize' : overT ? 'ew-resize' : 'crosshair';
-          return;
-        }
-        const { r } = g;
-        if (r.width === 0 || r.height === 0) return;
-        const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-        if (drag.axis) {   // down stretches the price scale, up compresses it
-          if (Math.abs(dy) < 1) return;
-          drag.moved = true; drag.y = e.clientY;
-          setView(scaleYViewport(view(), 1 + dy / r.height));
-          return;
-        }
-        if (drag.taxis) {  // squeeze or stretch time around the grabbed point
-          if (Math.abs(dx) < 1) return;
-          drag.moved = true; drag.x = e.clientX;
-          setView(zoomViewport(view(), drag.anchor, Math.max(0.5, Math.min(2, 1 - (2 * dx) / r.width))));
-          return;
-        }
-        if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
-        drag.moved = true; drag.x = e.clientX; drag.y = e.clientY;
-        let v = panViewport(view(), -dx / r.width);
-        const yScale = view().yScale ?? 1; // the visible price span is yScale × the fitted one: the content follows the pointer 1:1
-        if (yScale !== 1 && Math.abs(dy) >= 1) v = shiftYViewport(v, (-dy / r.height) * yScale);
-        setView(v);
-      });
-
-      const end = (e: Event) => {
-        if (drag?.moved) { e.stopPropagation(); this.interact('zoom'); } // a real drag is not a click
-        drag = null;
-      };
-      this.addEventListener('pointerup', end);
-      this.addEventListener('pointercancel', end);
-      this.addEventListener('pointerleave', () => {
-        this.overAxis = this.overTimeAxis = false;
-        svgOf()?.classList.remove('pt-over-axis', 'pt-over-taxis');
-      });
-      this.addEventListener('dblclick', (e) => { if (inSvg(e)) { this.interact('reset'); setView(FULL_VIEWPORT); } });
-      this.addEventListener('click', (e) => {
-        const b = (e.target as Element).closest?.('[data-view]');
-        if (!b || !this.contains(b)) return;
-        const k = b.getAttribute('data-view');
-        this.interact(k ?? 'reset');
-        setView(k === 'fit' ? fitYViewport(view()) : k === 'latest' ? latestViewport(view()) : FULL_VIEWPORT);
-      });
-    }
-
-    private enableTips() {
-      const tip = document.createElement('div');
-      tip.className = 'pt-tip';
-      tip.hidden = true;
-      tip.setAttribute('role', 'tooltip');
-      this.prepend(tip); // before Lit's markers: a re-render (new HTML) must not delete it
-      const show = (e: Event) => {
-        const t = (e.target as Element).closest?.('[data-tip]');
-        if (!t || !this.contains(t)) return;
-        this.interact('hover');
-        let o: Record<string, unknown>;
-        try { o = JSON.parse(t.getAttribute('data-tip')!); } catch { return; }
-        tip.replaceChildren(...Object.entries(o).filter(([, v]) => v != null && v !== '').map(([k, v]) => {
-          const row = document.createElement('div');
-          const b = document.createElement('b');
-          b.textContent = k;
-          row.append(b, document.createTextNode(` ${String(v)}`));
-          return row;
-        }));
-        const a = t.getBoundingClientRect();
-        const h = this.getBoundingClientRect();
-        tip.style.left = `${a.left - h.left + a.width / 2}px`;
-        tip.style.top = `${a.top - h.top}px`;
-        tip.hidden = false;
-      };
-      const hide = (e: Event) => { if ((e.target as Element).closest?.('[data-tip]')) tip.hidden = true; };
-      this.addEventListener('pointerover', show);
-      this.addEventListener('focusin', show);
-      this.addEventListener('pointerout', hide);
-      this.addEventListener('focusout', hide);
     }
   };
 }

@@ -94,6 +94,8 @@
   /* zoom & pan (any svg[data-zoom]) — ported from beta: grab strips on the price (right) and time (bottom) axes, lit while
      hovered, and the fit / today / reset cluster that grows as the view moves */
   svg[data-zoom] { touch-action: pan-y; cursor: crosshair; }
+  svg[data-zoom].pt-over-axis { cursor: ns-resize; }
+  svg[data-zoom].pt-over-taxis { cursor: ew-resize; }
   .pt-axis-strip, .pt-taxis { fill: var(--color-surface); opacity: 0.6; transition: opacity 120ms; }
   .pt-axis-edge, .pt-taxis-edge { @apply stroke-border; stroke-width: 1; }
   .pt-axis-hint, .pt-taxis-hint { @apply fill-ink-soft; font-size: 9px; opacity: 0; transition: opacity 120ms; pointer-events: none; }
