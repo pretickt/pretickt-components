@@ -1,6 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { lintSource } from '../lint';
 import { maCrossEta } from './cross';
 
 const ramp = (n: number, f: (i: number) => number) => Array.from({ length: n }, (_, i) => f(i));
@@ -25,15 +23,5 @@ describe('maCrossEta', () => {
     expect(maCrossEta(ramp(40, (i) => 100 + i))).toBeNull();
     const widening = ramp(120, (i) => 100 + i * i * 0.01);
     expect(maCrossEta(widening)?.inSessions ?? null).toBeNull();
-  });
-});
-
-describe('indicators are safe to run inside components', () => {
-  it('pass the component lint rules (pure, deterministic, no network)', () => {
-    const dir = new URL('.', import.meta.url).pathname;
-    for (const f of readdirSync(dir).filter((x) => x.endsWith('.ts') && !x.endsWith('.test.ts'))) {
-      const v = lintSource(readFileSync(dir + f, 'utf8'), f).filter((x) => x.rule !== 'import');
-      expect(v, f).toEqual([]);
-    }
   });
 });

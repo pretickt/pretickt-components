@@ -3,10 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { build } from 'esbuild';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { LitElement, html, svg } from 'lit';
-import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import * as z from 'zod/mini';
 import { defineComponent } from './define';
+import { lit } from './testing';
 import type { ComponentModule } from './types';
 
 const mod: ComponentModule = {
@@ -25,7 +24,7 @@ describe('PtElement under a consumer toolchain', () => {
     const file = join(dir, 'element.mjs');
     writeFileSync(file, out.outputFiles[0]!.text);
     const { classFor } = (await import(/* @vite-ignore */ file)) as typeof import('./element');
-    customElements.define('pt-fields-probe-v1', classFor({ LitElement, html, svg, unsafeHTML }, mod, { resolve: async () => null }));
+    customElements.define('pt-fields-probe-v1', classFor(lit, mod, { resolve: async () => null }));
     const el = document.createElement('pt-fields-probe-v1') as HTMLElement & { params: unknown; updateComplete: Promise<boolean> };
     document.body.append(el);
     el.params = { t: 'first' };

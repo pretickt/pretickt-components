@@ -1,16 +1,9 @@
 import type { Bar } from './types';
 
-/** Simple moving average of the last `n` closes; null when there are fewer than `n`. */
-export function movingAverage(closes: number[], n: number): number | null {
-  if (closes.length < n) return null;
-  const slice = closes.slice(closes.length - n);
-  return slice.reduce((a, b) => a + b, 0) / n;
-}
-
 /**
  * Equal-weighted, rebased sector index from member price series (each rebased to
  * the first common date, then averaged). Returns [] when too few members/history
- * to be meaningful. Ported from beta (ma-crossover/engine.ts).
+* to be meaningful.
  */
 export function buildSectorIndex(members: Bar[][], minMembers = 4, minHistory = 200): Bar[] {
   const withHistory = members.filter((m) => m.length >= minHistory);

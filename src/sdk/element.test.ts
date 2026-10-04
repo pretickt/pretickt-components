@@ -1,20 +1,11 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
-import { LitElement, html, svg } from 'lit';
-import { unsafeHTML } from 'lit/directives/unsafe-html.js';
-import * as z from 'zod/mini';
-import { defineComponent } from './define';
 import { classFor } from './element';
 import { checkParity } from './parity';
+import { lit, probeManifest } from './testing';
 import type { ComponentModule, Kit } from './types';
-import { Ticker } from '../typologies';
 
-const lit = { LitElement, html, svg, unsafeHTML };
-const manifest = defineComponent({
-  tag: 'pt-probe', version: '1.0.0', need: { question: 'q', evidence: [] },
-  params: z.object({ ticker: Ticker }), user: [], uses: [],
-  needs: (p) => ({ m: { t: 'metric@1', params: { ticker: p.ticker, metrics: ['pe'] } } }),
-});
+const manifest = probeManifest();
 const mod: ComponentModule = {
   manifest,
   renderStatic: (d, p, h) =>

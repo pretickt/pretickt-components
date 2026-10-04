@@ -1,8 +1,8 @@
 /**
  * The price line as a sequence of directional vectors: `(duration, signed %)`.
  *
- * Two things make this layer different from `companies/swings.ts::zigzag`, and both are required
- * before anything downstream may be backtested:
+ * Two things make this layer different from a plain zigzag, and both are required before anything downstream may be
+ * backtested:
  *
  *  1. The reversal threshold is scaled by the ticker's own volatility (θ = k · σ_daily), estimated
  *     on a TRAILING window and frozen per epoch. A fixed 10% yields two legs in five years on KO
@@ -10,7 +10,7 @@
  *  2. Every pivot carries `knowableFrom`: a zigzag extreme is only recognised once price has moved
  *     θ away from it, days later. A consumer that uses a pivot before that date is reading the
  *     future — the class of look-ahead that once inflated our cross-sectional IC from 0.035 to
- *     0.058. `vectors.spec.ts` pins this down with a prefix-stability property: what this layer
+ *     0.058. `pivots.test.ts` pins this down with a prefix-stability property: what this layer
  *     says about the past must never change as more bars arrive.
  */
 import type { Bar } from './types';
@@ -40,7 +40,7 @@ export interface VectorSeries {
   legs: Leg[];
 }
 
-/** k multipliers on daily σ. Provisional until `npm run vectors:calibrate` fixes them. */
+/** k multipliers on daily σ (calibrated on beta). */
 export const SCALES = { fast: 1.5, mid: 3.0, slow: 6.0 } as const;
 export type ScaleName = keyof typeof SCALES;
 
@@ -166,9 +166,9 @@ export function vectorise(
     legs.push({
       from,
       to,
-      days: to!.idx - from!.idx,
-      pct: (to!.price / from!.price - 1) * 100,
-      up: to!.price > from!.price,
+      days: to.idx - from.idx,
+      pct: (to.price / from.price - 1) * 100,
+      up: to.price > from.price,
     });
   }
   return { pivots, legs };

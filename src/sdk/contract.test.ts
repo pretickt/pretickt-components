@@ -1,15 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import * as z from 'zod/mini';
 import { defineComponent } from './define';
 import { checkContract } from './contract';
+import { probeManifest } from './testing';
 import type { ComponentModule } from './types';
-import { Ticker } from '../typologies';
 
-const manifest = defineComponent({
-  tag: 'pt-probe', version: '1.0.0', need: { question: 'q', evidence: [] },
-  params: z.object({ ticker: Ticker }), user: [], uses: [],
-  needs: (p) => ({ m: { t: 'metric@1', params: { ticker: p.ticker, metrics: ['pe'] } } }),
-});
+const manifest = probeManifest();
 
 describe('checkContract', () => {
   it('passes a component that handles null and unknown items', () => {

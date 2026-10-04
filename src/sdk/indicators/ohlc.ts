@@ -1,5 +1,5 @@
-/** OHLCV indicators. Same contract as technical-signals/indicators.ts: pure functions over number
- *  arrays returning an array aligned to the input, `null` during warm-up. */
+/** OHLCV indicators: pure functions over number arrays returning an array aligned to the input, `null` during warm-up. */
+import { wilder } from './series';
 
 type A = (number | null)[];
 
@@ -20,17 +20,6 @@ export function trueRange(highs: number[], lows: number[], closes: number[]): A 
 
 /** Wilder's ATR: SMA-seeded over bars 1…period, then smoothed. */
 export function atr(highs: number[], lows: number[], closes: number[], period = 14): A {
-  const out: A = Array(closes.length).fill(null);
-  if (closes.length <= period) return out;
-  const tr = trueRange(highs, lows, closes);
-  let sum = 0;
-  for (let i = 1; i <= period; i++) sum += tr[i]!;
-  let prev = sum / period;
-  out[period] = prev;
-  for (let i = period + 1; i < closes.length; i++) {
-    prev = (prev * (period - 1) + tr[i]!) / period;
-    out[i] = prev;
-  }
-  return out;
+  return wilder(trueRange(highs, lows, closes) as number[], period);
 }
 

@@ -1,5 +1,6 @@
 export interface SrLevel {
   price: number;
+  /** Level versus the last close, in % (−3 = 3% below), not a fraction. */
   distPct: number;
   touches: number;
   near: boolean;

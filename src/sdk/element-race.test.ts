@@ -1,10 +1,9 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
 import * as z from 'zod/mini';
-import { LitElement, html, svg } from 'lit';
-import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { defineComponent, helpers as h, type ComponentModule, type Need } from './index';
 import { classFor } from './element';
+import { controlledHost, lit } from './testing';
 
 /** A component whose single need depends on `t`, so each patch fetches; it prints what it shows. */
 const mod: ComponentModule = {
@@ -16,20 +15,6 @@ const mod: ComponentModule = {
   renderStatic: (d: Record<string, unknown>, p: { t: string; range: string }) =>
     `<p class="shows">${h.esc(p.t)}|${h.esc(p.range)}|${h.esc(String(d.m))}|${h.esc(String(d.s))}</p><span class="tipped" ${h.tip({ A: 'b' })}>x</span>`,
 };
-const lit = { LitElement, html, svg, unsafeHTML };
-
-/** Resolves on demand: `release(match)` settles the requests whose params contain `match`. Like the real host, one promise per key. */
-function controlledHost() {
-  const pending = new Map<string, { p: Promise<unknown>; r: (v: unknown) => void }>();
-  return {
-    host: { resolve: (n: Need) => {
-      const k = JSON.stringify(n.params);
-      if (!pending.has(k)) { let r!: (v: unknown) => void; const p = new Promise((res) => { r = res; }); pending.set(k, { p, r }); }
-      return pending.get(k)!.p;
-    } },
-    release: (match: string, value: unknown) => { for (const [k, x] of pending) if (k.includes(match)) x.r(value); },
-  };
-}
 let seq = 0;
 async function mount(host: { resolve: (n: Need) => Promise<unknown> }) {
   const name = `pt-race-probe-v1-t${seq++}`;
@@ -65,6 +50,18 @@ describe('base element', () => {
     await Promise.all([a, b]); await el.updateComplete;
     expect(shows(el)).toBe('AMD|5y|m-AMD|s-5y');
     expect(el.hasAttribute('busy')).toBe(false);
+  });
+  it('a superseded request that fails leaves no error behind', async () => {
+    const { host, release, fail } = controlledHost();
+    const el = await mount(host);
+    const a = el.setParams({ t: 'AAPL' });
+    const b = el.setParams({ t: 'AMD' });
+    release('AMD', 'm-AMD');
+    await b; await el.updateComplete;
+    fail('AAPL');
+    await a; await el.updateComplete;
+    expect(shows(el)).toBe('AMD|1y|m-AMD|s-1y');
+    expect(el.hasAttribute('error')).toBe(false);
   });
   it('tooltips keep working after a re-render', async () => {
     const { host, release } = controlledHost();

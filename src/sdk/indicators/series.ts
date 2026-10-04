@@ -1,5 +1,4 @@
-/** Close-only technical indicators, shared by the backend signal plugins and the frontend
- *  TA chart. Each returns an array aligned to the input, `null` during the warm-up period. */
+/** Close-only indicators. Each returns an array aligned to the input, `null` during the warm-up period. */
 
 type A = (number | null)[];
 
@@ -19,27 +18,30 @@ export function ema(closes: number[], period: number): A {
   return out;
 }
 
-/** Wilder's RSI. */
-export function rsi(closes: number[], period = 14): A {
-  const out: A = Array(closes.length).fill(null);
-  if (closes.length <= period) return out;
-  let g = 0;
-  let l = 0;
-  for (let i = 1; i <= period; i++) {
-    const d = closes[i]! - closes[i - 1]!;
-    if (d >= 0) g += d;
-    else l -= d;
-  }
-  let avgG = g / period;
-  let avgL = l / period;
-  out[period] = avgL === 0 ? 100 : 100 - 100 / (1 + avgG / avgL);
-  for (let i = period + 1; i < closes.length; i++) {
-    const d = closes[i]! - closes[i - 1]!;
-    avgG = (avgG * (period - 1) + (d > 0 ? d : 0)) / period;
-    avgL = (avgL * (period - 1) + (d < 0 ? -d : 0)) / period;
-    out[i] = avgL === 0 ? 100 : 100 - 100 / (1 + avgG / avgL);
+/**
+ * Wilder's smoothing of `xs` from index 1: the first value (at `period`) is the mean of xs[1..period], then
+ * prev·(period−1)+x over period. RSI smooths gains and losses with it, ATR the true range.
+ */
+export function wilder(xs: number[], period: number): A {
+  const out: A = Array(xs.length).fill(null);
+  if (xs.length <= period) return out;
+  let sum = 0;
+  for (let i = 1; i <= period; i++) sum += xs[i]!;
+  let prev = sum / period;
+  out[period] = prev;
+  for (let i = period + 1; i < xs.length; i++) {
+    prev = (prev * (period - 1) + xs[i]!) / period;
+    out[i] = prev;
   }
   return out;
+}
+
+/** Wilder's RSI. */
+export function rsi(closes: number[], period = 14): A {
+  const d = closes.map((c, i) => (i ? c - closes[i - 1]! : 0));
+  const gains = wilder(d.map((x) => (x > 0 ? x : 0)), period);
+  const losses = wilder(d.map((x) => (x < 0 ? -x : 0)), period);
+  return gains.map((g, i) => (g == null ? null : losses[i] === 0 ? 100 : 100 - 100 / (1 + g / losses[i]!)));
 }
 
 export interface Macd {
@@ -82,7 +84,7 @@ export function bollinger(closes: number[], period = 20, mult = 2): Bollinger {
   return { lower, upper, mid };
 }
 
-/** SMA at each index (null during warm-up). */
+/** SMA at each index (null during warm-up). For the last value only, use `smaLast`. */
 export function sma(closes: number[], period: number): A {
   const out: A = Array(closes.length).fill(null);
   let sum = 0;
@@ -94,3 +96,11 @@ export function sma(closes: number[], period: number): A {
   return out;
 }
 
+
+/** Simple moving average of the last `n` closes; null when there are fewer than `n`. */
+export function smaLast(closes: number[], n: number): number | null {
+  if (closes.length < n) return null;
+  let sum = 0;
+  for (let i = closes.length - n; i < closes.length; i++) sum += closes[i]!;
+  return sum / n;
+}

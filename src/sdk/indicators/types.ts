@@ -1,4 +1,4 @@
-/** Close-only bar. `close` stays REQUIRED; the OHLCV fields are optional additions. */
+/** The bar every indicator reads. `close` is required; OHLCV fields are optional (close-only history). Oldest first. */
 export type Bar = {
   date: string;
   close: number;
@@ -8,12 +8,6 @@ export type Bar = {
   volume?: number | null;
 };
 
-/** A bar with a complete adjusted OHLC. `volume` may be missing on pre-backfill history. */
-export interface OhlcBar {
-  date: string;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number | null;
-}
+/** price-series@1 points (`{t,o,h,l,c,v}`) as indicator bars. */
+export const barsOf = (points: { t: string; o: number; h: number; l: number; c: number; v: number }[]): Bar[] =>
+  points.map((p) => ({ date: p.t, open: p.o, high: p.h, low: p.l, close: p.c, volume: p.v }));

@@ -1,10 +1,9 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as z from 'zod/mini';
-import { LitElement, html, svg } from 'lit';
-import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { defineComponent, helpers as h, type ComponentModule } from './index';
 import { classFor } from './element';
+import { lit } from './testing';
 import { FULL_VIEWPORT, ViewportParam, type Viewport } from './viewport';
 
 /** A minimal zoomable component: prints its view so the test can read what the element did. */
@@ -21,7 +20,6 @@ const mod: ComponentModule = {
       `<button data-set='{"range":"5y"}'>5y</button>`;
   },
 };
-const lit = { LitElement, html, svg, unsafeHTML };
 customElements.define('pt-zoom-probe-v1', classFor(lit, mod, { resolve: async () => ({}) }));
 
 type El = HTMLElement & { params: Record<string, unknown>; data: unknown; updateComplete: Promise<boolean> };
@@ -76,6 +74,32 @@ describe('zoom & pan in the base element (any component with data-zoom)', () => 
     await el.updateComplete;
     // 34 of 340 px is a tenth of what is visible, and what is visible is `scale` of the fitted range
     expect((el.params.view as { yShift: number }).yShift).toBeCloseTo(-0.1 * scale, 6);
+  });
+  it('drag on the price axis strip stretches the price scale (down stretches, up compresses)', async () => {
+    ptr('pointerdown', 790, 100); ptr('pointermove', 790, 134); ptr('pointerup', 790, 134);
+    await el.updateComplete;
+    expect(probe()).toBe('0.000|1.000|1.100');
+  });
+  it('drag on the time strip squeezes or stretches time around the grabbed point', async () => {
+    ptr('pointerdown', 400, 330); ptr('pointermove', 360, 330); ptr('pointerup', 360, 330);
+    await el.updateComplete;
+    const [start, end] = probe()!.split('|').map(Number);
+    expect(end! - start!).toBeCloseTo(1, 3); // already full: stretching past the whole series is clamped
+    wheel(400, 100, -100);
+    await el.updateComplete;
+    ptr('pointerdown', 400, 330); ptr('pointermove', 440, 330); ptr('pointerup', 440, 330);
+    await el.updateComplete;
+    const [s2, e2] = probe()!.split('|').map(Number);
+    expect(e2! - s2!).toBeCloseTo(0.8 * 0.9, 3);
+  });
+  it('"today »" slides the window to the latest data and keeps its width', async () => {
+    wheel(400, 100, -100);
+    await el.updateComplete;
+    ptr('pointerdown', 400, 100); ptr('pointermove', 480, 100); ptr('pointerup', 480, 100); // pan back in time
+    await el.updateComplete;
+    (el.querySelector('[data-view="latest"]') as HTMLElement).click();
+    await el.updateComplete;
+    expect(probe()).toBe('0.200|1.000|1.000');
   });
   it('controls appear only when there is something to undo, and undo it', async () => {
     expect(el.querySelector('.pt-vctl')).toBeNull();

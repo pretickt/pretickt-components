@@ -113,10 +113,9 @@ export function structuralTrend(pivots: Pivot[], before?: string): TrendState {
       runDir = -1;
     }
 
-    // Same hysteresis as before: two consecutive breaks the same way establish a trend, one break
-    // the other way only demotes it to sideways.
-    const next: Trend =
-      run >= 2 ? (runDir > 0 ? 'bullish' : 'bearish') : state === 'sideways' ? 'sideways' : sidewaysIfContradicted(state, runDir);
+    // Hysteresis: two consecutive breaks the same way establish a trend. Below two, this break went against the previous one
+    // (or is the first), so whatever trend there was is demoted to sideways — never handed to the other side.
+    const next: Trend = run >= 2 ? (runDir > 0 ? 'bullish' : 'bearish') : 'sideways';
     if (next !== state) {
       state = next;
       since = p.date;
@@ -156,12 +155,5 @@ export function applyPrice(s: TrendState, price: number | null): TrendState {
     return { ...s, trend: 'sideways', broken: 'below' };
   }
   return s;
-}
-
-/** A single contrary pivot costs you the trend but does not hand it to the other side. */
-function sidewaysIfContradicted(state: Trend, ev: number): Trend {
-  if (state === 'bullish' && ev < 0) return 'sideways';
-  if (state === 'bearish' && ev > 0) return 'sideways';
-  return state;
 }
 
