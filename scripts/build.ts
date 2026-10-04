@@ -1,4 +1,5 @@
 import { build } from 'esbuild';
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { elementName, majorOf, type ComponentModule } from '../src/sdk';
@@ -9,7 +10,7 @@ mkdirSync('dist/static', { recursive: true });
 mkdirSync('dist/browser', { recursive: true });
 
 const common = { bundle: true, format: 'esm' as const, target: 'es2022', minify: true, legalComments: 'none' as const, logLevel: 'error' as const };
-const files = readdirSync('components').filter((f) => /^pt-[a-z0-9-]+\.ts$/.test(f) && !f.endsWith('.test.ts')).sort();
+const files = readdirSync('components').filter((f) => /^pt-[a-z0-9-]+\.ts$/.test(f)).sort();
 const index: Record<string, unknown>[] = [];
 
 for (const f of files) {
@@ -23,9 +24,13 @@ for (const f of files) {
   const id = `${tag}@${version}`;
   await build({ ...common, platform: 'neutral', mainFields: ['module', 'main'], outfile: `dist/static/${id}.js`,
     stdin: { contents: `export { manifest, renderStatic, samples } from './components/${f}';`, resolveDir: process.cwd(), loader: 'ts' } });
-  await build({ ...common, platform: 'browser', outfile: `dist/browser/${id}.js`,
+  const browser = await build({ ...common, platform: 'browser', write: false,
     stdin: { contents: `export * from './components/${f}';`, resolveDir: process.cwd(), loader: 'ts' } });
-  index.push({ tag, version, major: majorOf(version), element: elementName(mod.manifest), static: `static/${id}.js`, browser: `browser/${id}.js` });
+  const bytes = browser.outputFiles[0]!.contents;
+  // served as immutable: the name carries a hash of the bytes, so an SDK-only change still gets a new URL
+  const file = `browser/${id}.${createHash('sha256').update(bytes).digest('hex').slice(0, 12)}.js`;
+  writeFileSync(`dist/${file}`, bytes);
+  index.push({ tag, version, major: majorOf(version), element: elementName(mod.manifest), static: `static/${id}.js`, browser: file });
 }
 
 await build({ ...common, platform: 'browser', entryPoints: ['src/host/browser.ts'], outfile: 'dist/host.js' });
