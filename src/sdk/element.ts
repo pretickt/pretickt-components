@@ -41,6 +41,11 @@ export function makeBase(lit: LitKit, mod: ComponentModule, host: HostApi) {
 
     render() { return unsafeHTML(mod.renderStatic(this.data, this.params, helpers)); }
 
+    /** Tell the page what the reader did with this component; the host turns it into an analytics beacon (no cookies, no ids). */
+    protected interact(action: string) {
+      this.dispatchEvent(new CustomEvent('pt-interact', { bubbles: true, composed: true, detail: { component: `${mod.manifest.tag}@${mod.manifest.version}`, action } }));
+    }
+
     protected firstUpdated() {
       this.enableTips();
       this.enableZoom();
@@ -50,6 +55,7 @@ export function makeBase(lit: LitKit, mod: ComponentModule, host: HostApi) {
         e.preventDefault();
         let patch: Record<string, unknown>;
         try { patch = JSON.parse(t.getAttribute('data-set')!); } catch { return; }
+        this.interact('set');
         void this.setParams(patch);
       });
     }
@@ -118,6 +124,7 @@ export function makeBase(lit: LitKit, mod: ComponentModule, host: HostApi) {
         const g = geo(e);
         if (!g) return;
         e.preventDefault();
+        this.interact('zoom');
         const factor = e.deltaY > 0 ? 1.25 : 0.8;
         setView(g.onAxis ? scaleYViewport(view(), factor) : zoomViewport(view(), g.fx, factor));
       }, { passive: false });
@@ -169,7 +176,7 @@ export function makeBase(lit: LitKit, mod: ComponentModule, host: HostApi) {
       });
 
       const end = (e: Event) => {
-        if (drag?.moved) e.stopPropagation(); // a real drag is not a click
+        if (drag?.moved) { e.stopPropagation(); this.interact('zoom'); } // a real drag is not a click
         drag = null;
       };
       this.addEventListener('pointerup', end);
@@ -178,11 +185,12 @@ export function makeBase(lit: LitKit, mod: ComponentModule, host: HostApi) {
         this.overAxis = this.overTimeAxis = false;
         svgOf()?.classList.remove('pt-over-axis', 'pt-over-taxis');
       });
-      this.addEventListener('dblclick', (e) => { if (inSvg(e)) setView(FULL_VIEWPORT); });
+      this.addEventListener('dblclick', (e) => { if (inSvg(e)) { this.interact('reset'); setView(FULL_VIEWPORT); } });
       this.addEventListener('click', (e) => {
         const b = (e.target as Element).closest?.('[data-view]');
         if (!b || !this.contains(b)) return;
         const k = b.getAttribute('data-view');
+        this.interact(k ?? 'reset');
         setView(k === 'fit' ? fitYViewport(view()) : k === 'latest' ? latestViewport(view()) : FULL_VIEWPORT);
       });
     }
@@ -196,6 +204,7 @@ export function makeBase(lit: LitKit, mod: ComponentModule, host: HostApi) {
       const show = (e: Event) => {
         const t = (e.target as Element).closest?.('[data-tip]');
         if (!t || !this.contains(t)) return;
+        this.interact('hover');
         let o: Record<string, unknown>;
         try { o = JSON.parse(t.getAttribute('data-tip')!); } catch { return; }
         tip.replaceChildren(...Object.entries(o).filter(([, v]) => v != null && v !== '').map(([k, v]) => {

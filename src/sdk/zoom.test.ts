@@ -81,6 +81,15 @@ describe('zoom & pan in the base element (any component with data-zoom)', () => 
     await el.updateComplete;
     expect(probe()).toBe('0.000|1.000|1.000');
   });
+  it('reports interactions as pt-interact events (the host turns them into analytics beacons)', async () => {
+    const seen: string[] = [];
+    el.addEventListener('pt-interact', (e) => seen.push(`${(e as CustomEvent).detail.component}:${(e as CustomEvent).detail.action}`));
+    wheel(400, 100, -100);
+    await el.updateComplete;
+    svgEl().dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+    (el.querySelector('[data-set]') as HTMLElement).click();
+    expect(seen).toEqual(['pt-zoom-probe@1.0.0:zoom', 'pt-zoom-probe@1.0.0:reset', 'pt-zoom-probe@1.0.0:set']);
+  });
   it('a params patch (new data) drops the view', async () => {
     wheel(400, 100, -100);
     await el.updateComplete;

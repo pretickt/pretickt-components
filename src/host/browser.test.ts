@@ -51,3 +51,19 @@ describe('boot', () => {
     expect(el.textContent).not.toContain('static');
   });
 });
+
+describe('beacon (first-party analytics, no cookies)', () => {
+  it('sends one page view, then each component interaction once per page view', async () => {
+    document.body.innerHTML = `<script type="application/json" id="pt-data">${JSON.stringify(page())}</script><div id="w"></div>`;
+    const sent: { url: string; body: Record<string, unknown> }[] = [];
+    await boot(document, async () => metric, (url, body) => { sent.push({ url, body: JSON.parse(body) }); });
+    expect(sent).toEqual([{ url: '/v1/e', body: { t: 'pv', p: location.pathname, r: '' } }]);
+    const w = document.getElementById('w')!;
+    const ix = (action: string) => w.dispatchEvent(new CustomEvent('pt-interact', { bubbles: true, detail: { component: 'pt-price-target@1.2.0', action } }));
+    ix('zoom'); ix('zoom'); ix('hover');
+    expect(sent.slice(1).map((s) => s.body)).toEqual([
+      { t: 'ix', p: location.pathname, c: 'pt-price-target@1.2.0', a: 'zoom' },
+      { t: 'ix', p: location.pathname, c: 'pt-price-target@1.2.0', a: 'hover' },
+    ]);
+  });
+});

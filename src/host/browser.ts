@@ -33,10 +33,30 @@ export function createHost(page: PageData, fetchImpl: typeof fetch = (...a) => f
   };
 }
 
-export async function boot(doc: Document = document, importer: (url: string) => Promise<unknown> = (u) => import(/* @vite-ignore */ u)) {
+export type Send = (url: string, body: string) => void;
+const sendBeacon: Send = (url, body) => { try { navigator.sendBeacon?.(url, new Blob([body], { type: 'application/json' })); } catch { /* analytics never breaks a page */ } };
+
+/** First-party analytics: one page view, then each component+action once per page view. No cookies, no identifiers. */
+function startBeacon(doc: Document, api: string, send: Send) {
+  const p = doc.location?.pathname ?? '/';
+  let r = '';
+  try { const ref = new URL(doc.referrer); r = ref.host === doc.location.host ? '' : ref.host; } catch { /* no referrer */ }
+  send(`${api}/v1/e`, JSON.stringify({ t: 'pv', p, r }));
+  const seen = new Set<string>();
+  doc.addEventListener('pt-interact', (e) => {
+    const d = (e as CustomEvent<{ component?: string; action?: string }>).detail ?? {};
+    const k = `${d.component}|${d.action}`;
+    if (!d.component || !d.action || seen.has(k)) return;
+    seen.add(k);
+    send(`${api}/v1/e`, JSON.stringify({ t: 'ix', p, c: d.component, a: d.action }));
+  });
+}
+
+export async function boot(doc: Document = document, importer: (url: string) => Promise<unknown> = (u) => import(/* @vite-ignore */ u), send: Send = sendBeacon) {
   const dataEl = doc.getElementById('pt-data');
   if (!dataEl?.textContent) return;
   const page = JSON.parse(dataEl.textContent) as PageData;
+  startBeacon(doc, page.api, send);
   const host = createHost(page);
   const byComponent = new Map<string, HTMLElement[]>();
   for (const el of doc.querySelectorAll<HTMLElement>('[data-pt]')) {
