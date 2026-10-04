@@ -4,7 +4,8 @@ export interface Violation { rule: string; message: string; line: number }
 
 const ALLOWED_IMPORTS = new Set(['zod/mini', '@pretickt/components/sdk', '@pretickt/components/typologies', '@pretickt/components/indicators']);
 /** In-repo components may import the lean SDK and the typologies — never the build tools or DOM-only modules. */
-const IN_REPO = /^(\.\.\/)+src\/(sdk|typologies)(\/(?!tools|element|parity|lint|contract)[\w./-]*)?$/;
+/** Path segments are plain names: no `.`/`..`, so a path can never climb out of sdk/ or typologies/. */
+const IN_REPO = /^(\.\.\/)+src\/(sdk|typologies)(\/(?!(tools|element|parity|lint|contract)$)[\w-]+)*$/;
 const NETWORK = new Set(['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'importScripts']);
 const STORAGE = new Set(['localStorage', 'sessionStorage', 'indexedDB', 'caches']);
 const GLOBAL_OBJ = new Set(['window', 'globalThis', 'self', 'document', 'navigator']);
@@ -16,13 +17,18 @@ export function lintSource(source: string, fileName = 'component.ts'): Violation
   const add = (node: ts.Node, rule: string, message: string) =>
     out.push({ rule, message, line: sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1 });
 
+  const checkSpecifier = (st: ts.ImportDeclaration | ts.ExportDeclaration) => {
+    if (!st.moduleSpecifier) return;
+    const spec = (st.moduleSpecifier as ts.StringLiteral).text;
+    if (!ALLOWED_IMPORTS.has(spec) && !IN_REPO.test(spec)) add(st, 'import', `import from "${spec}" is not allowed`);
+    // `with { type: 'text' }` would make a bundler inline arbitrary files as strings
+    if (st.attributes) add(st, 'import', 'import attributes are not allowed');
+  };
   for (const st of sf.statements) {
-    if (ts.isImportDeclaration(st)) {
-      const spec = (st.moduleSpecifier as ts.StringLiteral).text;
-      if (!ALLOWED_IMPORTS.has(spec) && !IN_REPO.test(spec)) add(st, 'import', `import from "${spec}" is not allowed`);
-      continue;
-    }
-    if (ts.isExportDeclaration(st) || ts.isTypeAliasDeclaration(st) || ts.isInterfaceDeclaration(st) || ts.isFunctionDeclaration(st)) continue;
+    if (ts.isImportDeclaration(st)) { checkSpecifier(st); continue; }
+    if (ts.isImportEqualsDeclaration(st)) { add(st, 'import', '`import x = require(...)` is not allowed'); continue; }
+    if (ts.isExportDeclaration(st)) { checkSpecifier(st); continue; }
+    if (ts.isTypeAliasDeclaration(st) || ts.isInterfaceDeclaration(st) || ts.isFunctionDeclaration(st)) continue;
     if (ts.isVariableStatement(st) && st.declarationList.flags & ts.NodeFlags.Const) continue;
     add(st, 'side-effect', 'only imports, exports, const declarations, functions and types are allowed at the top level');
   }

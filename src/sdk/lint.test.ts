@@ -49,4 +49,13 @@ describe('lintSource', () => {
     expect(rules(`import { helpers } from '../src/sdk'; import { Ticker } from '../src/typologies';`)).toEqual([]);
     expect(rules(`import { lintSource } from '../src/sdk/tools';`)).toContain('import');
   });
+  it('closes the import holes: path traversal, re-exports, import attributes, require', () => {
+    expect(rules(`import x from '../src/sdk/x/../../host/browser';`)).toContain('import');
+    expect(rules(`import x from '../src/sdk/./tools';`)).toContain('import');
+    expect(rules(`export { readFileSync } from 'node:fs';`)).toContain('import');
+    expect(rules(`export * from '../src/sdk/tools';`)).toContain('import');
+    expect(rules(`import env from '../src/sdk' with { type: 'text' };`)).toContain('import');
+    expect(rules(`import fs = require('fs');`)).toContain('import');
+    expect(rules(`export { helpers } from '../src/sdk'; import { rsi } from '../src/sdk/indicators';`)).toEqual([]);
+  });
 });

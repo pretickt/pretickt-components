@@ -21,7 +21,8 @@
     "./components/*": "./components/*.ts",
     "./indicators": "./src/sdk/indicators/index.ts",
     "./parity": "./src/sdk/parity.ts",
-    "./element": "./src/sdk/element.ts"
+    "./element": "./src/sdk/element.ts",
+    "./contract": "./src/sdk/contract.ts"
   },
   "dependencies": {
     "lit": "^3.3.3",

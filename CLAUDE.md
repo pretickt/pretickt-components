@@ -43,7 +43,10 @@ export function renderStatic(data: Data, params: { ticker: string; range: string
 // Rarely needed: the default element already renders renderStatic, shows [data-tip] tooltips and handles [data-set] clicks.
 ```
 
-## Rules (enforced by `lintSource` + `checkContract` + parity test; the build refuses a component that breaks them)
+## Rules (checked by `lintSource` + `checkContract` + parity test; the build refuses a component that breaks them)
+These checks are **quality feedback, not a security boundary**: a determined author can get past an AST lint. Untrusted code
+(community or LLM-generated) is contained by isolation — a network-less, read-restricted sandbox process and sandboxed iframes on
+the platform side — never by the lint alone.
 - **No data access**: no `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `sendBeacon`, `import()`, `eval`, `Function`,
   storage, cookies, `window.top/parent/opener`, `postMessage`, `customElements`.
 - **Deterministic & QuickJS-safe**: no `Date.now()`, `new Date()` without argument, `Math.random()`, `Intl`, `toLocale*`.
