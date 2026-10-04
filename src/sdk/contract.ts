@@ -16,9 +16,12 @@ function withUnknown(t: string, payload: unknown): unknown {
   return payload;
 }
 
-export function checkContract(mod: ComponentModule, samples: unknown[]): string[] {
-  const errors: string[] = [];
+export const NO_SAMPLES = 'declares no samples, so nothing can be checked';
+
+export function checkContract(mod: ComponentModule, samples: unknown[] = mod.samples ?? []): string[] {
   const tag = mod.manifest.tag;
+  if (!samples.length) return [`${tag}: ${NO_SAMPLES}`];
+  const errors: string[] = [];
   for (const raw of samples) {
     const label = `${tag} ${JSON.stringify(raw)}`;
     const parsed = mod.manifest.params.safeParse(raw);

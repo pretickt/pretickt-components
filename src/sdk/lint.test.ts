@@ -31,6 +31,13 @@ describe('lintSource', () => {
     ['new Date()', 'nondeterministic'],
     ['Math.random()', 'nondeterministic'],
     ['(1).toLocaleString()', 'nondeterministic'],
+    ['Date()', 'nondeterministic'],
+    ['"a".localeCompare("b")', 'nondeterministic'],
+    ['"a".toLocaleUpperCase()', 'nondeterministic'],
+    ['"a".toLocaleLowerCase()', 'nondeterministic'],
+    ['performance.now()', 'nondeterministic'],
+    ['crypto.randomUUID()', 'nondeterministic'],
+    ['crypto.getRandomValues(new Uint8Array(4))', 'nondeterministic'],
     ['Intl.NumberFormat', 'nondeterministic'],
     ['customElements.define("x-y", class {})', 'define'],
   ])('flags %s as %s', (expr, rule) => {
@@ -48,6 +55,16 @@ describe('lintSource', () => {
   it('allows the in-repo relative sdk and typologies paths, but not the build tools', () => {
     expect(rules(`import { helpers } from '../src/sdk'; import { Ticker } from '../src/typologies';`)).toEqual([]);
     expect(rules(`import { lintSource } from '../src/sdk/tools';`)).toContain('import');
+  });
+  it('allows only the component-facing modules: a new SDK file is closed until it is listed', () => {
+    expect(rules(`import { rsi } from '../src/sdk/indicators'; import { Ticker } from '../src/typologies';`)).toEqual([]);
+    for (const m of ['element', 'parity', 'contract', 'lint', 'tools', 'zoom-controller', 'testing', 'helpers', 'indicators/pivots'])
+      expect(rules(`import x from '../src/sdk/${m}';`), m).toContain('import');
+    expect(rules(`import x from '../src/host/browser';`)).toContain('import');
+  });
+  it('exports the allowed bare specifiers for the sandbox bundler', async () => {
+    const { ALLOWED_IMPORTS } = await import('./lint');
+    expect([...ALLOWED_IMPORTS].sort()).toEqual(['@pretickt/components/indicators', '@pretickt/components/sdk', '@pretickt/components/typologies', 'zod/mini']);
   });
   it('closes the import holes: path traversal, re-exports, import attributes, require', () => {
     expect(rules(`import x from '../src/sdk/x/../../host/browser';`)).toContain('import');

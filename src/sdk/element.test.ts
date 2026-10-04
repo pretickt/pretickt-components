@@ -70,4 +70,8 @@ describe('makeBase', () => {
     const bad: ComponentModule = { ...mod, element: (kit) => class extends (kit.PtElement as unknown as typeof LitElement) { render() { return kit.html`<p>different</p>`; } } };
     expect((await checkParity(lit, bad, [{ ticker: 'NVDA' }])).join('\n')).toMatch(/parity/);
   });
+  it('checkParity reads the module samples by default and fails a module that declares none', async () => {
+    expect(await checkParity(lit, { ...mod, samples: [{ ticker: 'NVDA' }] })).toEqual([]);
+    expect(await checkParity(lit, mod)).toEqual(['pt-probe: declares no samples, so nothing can be checked']);
+  });
 });

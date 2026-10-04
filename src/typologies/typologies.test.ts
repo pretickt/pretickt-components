@@ -88,3 +88,15 @@ describe('typologies', () => {
     expect(getTypology('move-breakdown@1')!.payload.safeParse(bad).success).toBe(false);
   });
 });
+
+describe('range windows', () => {
+  it('a range is the last N sessions: events@1 and price-series@1 start on the same day', async () => {
+    const { rangeStart, DEMO_ASOF, eventsDemo, priceSeriesDemo } = await import('./index');
+    for (const range of ['1m', '1y', '5y'] as const) {
+      const first = priceSeriesDemo({ tickers: ['KO'], range, interval: '1d', rebase: false })[0]!.points[0]!.t;
+      expect(rangeStart(DEMO_ASOF, range), range).toBe(first);
+      const past = eventsDemo({ scope: { by: 'ticker', ticker: 'KO', range, ahead: 0 }, kinds: ['earnings', 'dividend'] }).items;
+      expect(past.every((e) => e.date >= first), range).toBe(true);
+    }
+  });
+});

@@ -37,6 +37,9 @@ export function sessionsBack(asOf: string, count: number): string[] {
   return out.reverse();
 }
 
+/** First session of a `range` window ending at `asOf`: a range is the last N sessions (the platform counts real bars). */
+export const rangeStart = (asOf: string, range: Range): string => sessionsBack(asOf, RANGE_SESSIONS[range])[0]!;
+
 export const round = (v: number, digits = 2) => Math.round(v * 10 ** digits) / 10 ** digits;
 
 /** An absolute http(s) URL: links in payloads come from third parties, and no other scheme may reach an href. */

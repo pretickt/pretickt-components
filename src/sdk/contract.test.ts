@@ -40,4 +40,10 @@ describe('checkContract', () => {
     } };
     expect(checkContract(mod, [{ ticker: 'NVDA' }]).join('\n')).toMatch(/unknown/);
   });
+  it('reads the module samples by default and fails a module that declares none', () => {
+    const render: ComponentModule['renderStatic'] = (d, _p, h) => (d.m ? '<p>ok</p>' : h.na());
+    expect(checkContract({ manifest, renderStatic: render, samples: [{ ticker: 'NVDA' }] })).toEqual([]);
+    expect(checkContract({ manifest, renderStatic: render })).toEqual(['pt-probe: declares no samples, so nothing can be checked']);
+    expect(checkContract({ manifest, renderStatic: render, samples: [] })).toEqual(['pt-probe: declares no samples, so nothing can be checked']);
+  });
 });

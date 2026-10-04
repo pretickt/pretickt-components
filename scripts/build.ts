@@ -18,7 +18,7 @@ for (const f of files) {
   const lint = lintSource(src, f);
   if (lint.length) throw new Error(`${f}: ${lint.map((v) => `${v.line}:${v.rule} ${v.message}`).join('; ')}`);
   const mod = (await import(`../components/${f}`)) as ComponentModule;
-  const errors = checkContract(mod, mod.samples ?? []);
+  const errors = checkContract(mod);
   if (errors.length) throw new Error(`${f}: ${errors.join('; ')}`);
   const { tag, version } = mod.manifest;
   const id = `${tag}@${version}`;
@@ -33,7 +33,7 @@ for (const f of files) {
   index.push({ tag, version, major: majorOf(version), element: elementName(mod.manifest), static: `static/${id}.js`, browser: file });
 }
 
-await build({ ...common, platform: 'browser', entryPoints: ['src/host/browser.ts'], outfile: 'dist/host.js' });
+await build({ ...common, platform: 'browser', entryPoints: ['src/host/entry.ts'], outfile: 'dist/host.js' });
 execFileSync('npx', ['@tailwindcss/cli', '-i', 'styles/ds.css', '-o', 'dist/ds.css', '--minify'], { stdio: 'inherit' });
 writeFileSync('dist/index.json', JSON.stringify({ components: index }, null, 2));
 console.log(`built ${index.length} components`);

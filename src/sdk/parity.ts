@@ -1,5 +1,6 @@
 import { getTypology } from '../typologies';
 import { elementName } from './define';
+import { NO_SAMPLES } from './contract';
 import { classFor, type LitKit } from './element';
 import { helpers } from './helpers';
 import type { ComponentModule } from './types';
@@ -8,7 +9,8 @@ let seq = 0;
 const norm = (s: string | null) => (s ?? '').replace(/\s+/g, ' ').trim();
 
 /** Browser/happy-dom only. The element's visible text must equal the static HTML's text on demo data. */
-export async function checkParity(lit: LitKit, mod: ComponentModule, samples: unknown[]): Promise<string[]> {
+export async function checkParity(lit: LitKit, mod: ComponentModule, samples: unknown[] = mod.samples ?? []): Promise<string[]> {
+  if (!samples.length) return [`${mod.manifest.tag}: ${NO_SAMPLES}`];
   const errors: string[] = [];
   const name = `${elementName(mod.manifest)}-parity${seq++}`;
   customElements.define(name, classFor(lit, mod, { resolve: async () => { throw new Error('no network during parity'); } }));

@@ -63,25 +63,20 @@ export async function boot(doc: Document = document, importer: (url: string) => 
   const page = JSON.parse(dataEl.textContent) as PageData;
   startBeacon(doc, page.api, send);
   const host = createHost(page);
-  const byComponent = new Map<string, HTMLElement[]>();
+  const used = new Set<string>();
   for (const el of doc.querySelectorAll<HTMLElement>('[data-pt]')) {
     if (el.parentElement?.closest('[data-pt]')) continue; // a mount inside a component's markup is not a component
     let m: Mount;
     try { m = JSON.parse(el.dataset.pt!) as Mount; } catch { continue; } // one broken mount must not stop the page
-    byComponent.set(m.c, [...(byComponent.get(m.c) ?? []), el]);
+    used.add(m.c);
     // Set before the element is defined: Lit restores pre-upgrade properties on its first update.
     Object.assign(el, { params: m.p, data: Object.fromEntries(Object.entries(m.k).map(([name, key]) => [name, page.data[key] ?? null])) });
   }
-  await Promise.all([...byComponent.keys()].map(async (c) => {
+  await Promise.all([...used].map(async (c) => {
     const url = page.components[c];
     if (!url) return;
     const mod = (await importer(url)) as ComponentModule;
     const name = elementName(mod.manifest);
     if (!customElements.get(name)) customElements.define(name, classFor(lit, mod, host));
   }));
-}
-
-if (typeof document !== 'undefined' && !(globalThis as { __PT_NO_BOOT__?: boolean }).__PT_NO_BOOT__) {
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => void boot());
-  else void boot();
 }

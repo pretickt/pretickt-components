@@ -1,12 +1,12 @@
 import * as z from 'zod/mini';
-import { addDays, DEMO_ASOF, IsoDate, Month, prng, Range, RANGE_SESSIONS, round, Ticker, cmp } from './common';
+import { addDays, DEMO_ASOF, IsoDate, Month, prng, Range, rangeStart, round, Ticker, cmp } from './common';
 
 /** The kind catalogue. Adding a kind is a minor version of events@1; components render unknown kinds generically. */
 export const EVENT_KINDS = ['earnings', 'dividend', 'split', 'analyst', 'macro'] as const;
 
 export const EventsParams = z.object({
   scope: z.discriminatedUnion('by', [
-    /** One ticker: events in the `range` before the latest session plus `ahead` calendar days after it. */
+    /** One ticker: events in the `range` (the last N sessions, as in price-series@1) plus `ahead` calendar days after it. */
     z.object({ by: z.literal('ticker'), ticker: Ticker, range: Range, ahead: z._default(z.int().check(z.minimum(0), z.maximum(180)), 90) }),
     /** The whole universe for one calendar month (calendar pages). */
     z.object({ by: z.literal('universe'), month: Month }),
@@ -46,7 +46,7 @@ export function eventsDemo(p: z.infer<typeof EventsParams>): Events {
   if (p.scope.by === 'ticker') {
     const { ticker, range, ahead } = p.scope;
     const r = prng(`${ticker}:events`);
-    const from = addDays(DEMO_ASOF, -Math.ceil((RANGE_SESSIONS[range] * 7) / 5));
+    const from = rangeStart(DEMO_ASOF, range);
     const to = addDays(DEMO_ASOF, ahead);
     const co = { ticker, name: `${ticker} Demo Corp.`, logo: null, mcap: round(1e10 + r() * 1e12, 0) };
     for (let d = addDays(to, -Math.floor(r() * 80)); d >= from; d = addDays(d, -91)) {

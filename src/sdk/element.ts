@@ -20,15 +20,23 @@ export function makeBase(lit: LitKit, mod: ComponentModule, host: HostApi) {
     static properties = {
       data: { attribute: false },
       params: { attribute: false },
-      user: { attribute: false },
       error: { type: Boolean, reflect: true },
       busy: { type: Boolean, reflect: true },
     };
-    data: Record<string, unknown> = {};
-    params: unknown = {};
-    user: Record<string, unknown> = {};
-    error = false;
-    busy = false;
+    /* `declare` + constructor defaults, not field initialisers: whoever bundles this TypeScript may compile with
+       useDefineForClassFields, and a native field would shadow Lit's reactive accessor (assignments would never re-render). */
+    declare data: Record<string, unknown>;
+    declare params: unknown;
+    declare error: boolean;
+    declare busy: boolean;
+
+    constructor() {
+      super();
+      this.data = {};
+      this.params = {};
+      this.error = false;
+      this.busy = false;
+    }
 
     /** Light DOM: the design system's global CSS applies. */
     createRenderRoot() { return this; }

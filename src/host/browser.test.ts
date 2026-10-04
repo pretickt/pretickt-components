@@ -1,6 +1,5 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
-(globalThis as { __PT_NO_BOOT__?: boolean }).__PT_NO_BOOT__ = true;
 import { boot, createHost } from './browser';
 import { needKey } from '../sdk/key';
 import { metricDemo } from '../typologies';
