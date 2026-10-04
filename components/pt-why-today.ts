@@ -4,7 +4,7 @@ import { Ticker, type MoveBreakdown } from '../src/typologies';
 
 export const manifest = defineComponent({
   tag: 'pt-why-today',
-  version: '1.0.0',
+  version: '1.0.1',
   need: {
     question: 'Why did this stock move today: the whole market, its sector, or something specific to the company?',
     evidence: [
@@ -55,7 +55,7 @@ function news(m: MoveBreakdown, h: Helpers): string {
     : `<p class="pt-bd-news-head">${n.today} ${n.today === 1 ? 'story' : 'stories'} on the day${n.avg30 > 0 ? ` (30-day average ${h.num(n.avg30, 1)})` : ''}.</p>`;
   const list = n.top.length
     ? `<ul class="pt-news">${n.top.map((s) => `<li class="pt-news-item"><span class="${dot(s.sentiment)}"></span>` +
-      `<a href="${h.esc(s.url)}" target="_blank" rel="nofollow noopener noreferrer">${h.esc(s.title)}</a> <span class="pt-news-meta">${h.esc(s.site)}</span></li>`).join('')}</ul>`
+      `<a href="${h.href(s.url)}" target="_blank" rel="nofollow noopener noreferrer">${h.esc(s.title)}</a> <span class="pt-news-meta">${h.esc(s.site)}</span></li>`).join('')}</ul>`
     : '';
   return head + list;
 }

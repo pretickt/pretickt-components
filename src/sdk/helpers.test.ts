@@ -37,4 +37,10 @@ describe('helpers', () => {
     expect(h.icon('calendar')).toMatch(/^<svg class="pt-icon"/);
     expect(h.icon('nope')).toBe('');
   });
+  it('href keeps http(s) and site-relative links and neutralises every other scheme', () => {
+    expect(h.href('https://x.com/a?b=1&c=2')).toBe('https://x.com/a?b=1&amp;c=2');
+    expect(h.href('/stocks/nvda/')).toBe('/stocks/nvda/');
+    for (const bad of ['javascript:alert(1)', ' JavaScript:alert(1)', 'data:text/html,x', '//evil.com', 'vbscript:x', '"><img onerror=x>'])
+      expect(h.href(bad), bad).toBe('#');
+  });
 });

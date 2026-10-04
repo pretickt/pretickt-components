@@ -1,12 +1,12 @@
 import * as z from 'zod/mini';
-import { addDays, DEMO_ASOF, IsoDate, prng, round, Ticker } from './common';
+import { addDays, DEMO_ASOF, HttpUrl, IsoDate, prng, round, Ticker } from './common';
 
 /** Recent headlines, newest first. `sentiment` (−1…+1) is classified by AI per story; never prose. */
 export const NewsParams = z.object({ ticker: Ticker, limit: z._default(z.int().check(z.minimum(1), z.maximum(50)), 20) });
 export const NewsPayload = z.object({
   asOf: IsoDate,
   items: z.array(z.object({
-    publishedAt: z.string(), title: z.string(), site: z.string(), url: z.string().check(z.regex(/^https?:\/\//)), sentiment: z.nullable(z.number()),
+    publishedAt: z.string(), title: z.string(), site: z.string(), url: HttpUrl, sentiment: z.nullable(z.number()),
   })),
 });
 export type News = z.infer<typeof NewsPayload>;

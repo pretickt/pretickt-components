@@ -1,5 +1,5 @@
 import * as z from 'zod/mini';
-import { DEMO_ASOF, IsoDate, prng, round, Ticker } from './common';
+import { DEMO_ASOF, HttpUrl, IsoDate, prng, round, Ticker } from './common';
 
 /**
  * Why did the stock move: the stock's return split into market (SPY), sector excess and stock-specific parts.
@@ -20,7 +20,7 @@ export const MoveBreakdownPayload = z.object({
   driver: z.enum(['market', 'sector', 'stock']),
   /** Stories on the as-of day versus the 30-day daily average. */
   news: z.object({ today: z.int(), avg30: z.number(), spike: z.boolean(),
-    top: z.array(z.object({ title: z.string(), site: z.string(), url: z.string(), sentiment: z.nullable(z.number()) })) }),
+    top: z.array(z.object({ title: z.string(), site: z.string(), url: HttpUrl, sentiment: z.nullable(z.number()) })) }),
 });
 export type MoveBreakdown = z.infer<typeof MoveBreakdownPayload>;
 

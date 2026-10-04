@@ -53,6 +53,12 @@ export function toneOf(v: number | null | undefined, flatBand = 0): Tone {
   return v > 0 ? 'pos' : 'neg';
 }
 
+/** A safe href: absolute http(s) or a site path ("/…", not "//host"); any other scheme (javascript:, data:, …) becomes "#". */
+export function href(url: string | null | undefined): string {
+  const u = String(url ?? '').trim();
+  return /^(https?:\/\/|\/(?!\/))[^\s"'<>]*$/i.test(u) ? esc(u) : '#';
+}
+
 export function na(label = 'Data not available'): string {
   return `<p class="pt-na">${esc(label)}</p>`;
 }
@@ -146,5 +152,5 @@ export function viewControls(view: Viewport | null | undefined): string {
     b('reset', 'reset view', 'Back to the full view (or double-click the chart)', true) + `</div>`;
 }
 
-export const helpers = { esc, num, pct, money, compact, date, toneOf, na, tip, icon, badge, badgeValue, zoomable, zoomStrips, viewControls };
+export const helpers = { esc, num, pct, money, compact, date, toneOf, href, na, tip, icon, badge, badgeValue, zoomable, zoomStrips, viewControls };
 export type Helpers = typeof helpers;

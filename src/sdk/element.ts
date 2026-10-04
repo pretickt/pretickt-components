@@ -60,25 +60,35 @@ export function makeBase(lit: LitKit, mod: ComponentModule, host: HostApi) {
       });
     }
 
-    /** Apply a params patch: resolve only the needs whose key changed, then swap data and params together. */
+    /** Params of the newest pending patch: the next patch builds on them, so quick successive clicks compose. */
+    private requested: Record<string, unknown> | null = null;
+    private seq = 0;
+
+    /**
+     * Apply a params patch: resolve the needs whose key differs from what is shown, then swap data and params together. Only the
+     * newest patch commits — an older request that finishes last is dropped — so data and params never disagree.
+     */
     async setParams(patch: Record<string, unknown>) {
       // new data means a new chart: the zoom/pan view starts over
-      const { view: _view, ...current } = this.params as Record<string, unknown>;
+      const { view: _view, ...current } = (this.requested ?? this.params) as Record<string, unknown>;
       const parsed = mod.manifest.params.safeParse({ ...current, ...patch });
       if (!parsed.success) return;
+      const seq = ++this.seq;
+      this.requested = parsed.data as Record<string, unknown>;
       const before = mod.manifest.needs(this.params as never);
       const after = mod.manifest.needs(parsed.data as never);
       const changed = Object.entries(after).filter(([k, n]) => !before[k] || needKey(before[k]!) !== needKey(n));
       this.busy = true;
       try {
         const got = await Promise.all(changed.map(async ([k, n]: [string, Need]) => [k, await host.resolve(n)] as const));
+        if (seq !== this.seq) return;
         this.data = { ...this.data, ...Object.fromEntries(got) };
         this.params = parsed.data;
         this.error = false;
       } catch {
-        this.error = true;
+        if (seq === this.seq) this.error = true;
       } finally {
-        this.busy = false;
+        if (seq === this.seq) { this.busy = false; this.requested = null; }
       }
     }
 
@@ -200,7 +210,7 @@ export function makeBase(lit: LitKit, mod: ComponentModule, host: HostApi) {
       tip.className = 'pt-tip';
       tip.hidden = true;
       tip.setAttribute('role', 'tooltip');
-      this.append(tip);
+      this.prepend(tip); // before Lit's markers: a re-render (new HTML) must not delete it
       const show = (e: Event) => {
         const t = (e.target as Element).closest?.('[data-tip]');
         if (!t || !this.contains(t)) return;

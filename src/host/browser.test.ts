@@ -40,10 +40,10 @@ describe('createHost', () => {
 
 describe('boot', () => {
   it('defines the element and hands it its embedded data', async () => {
+    document.head.innerHTML = `<script type="application/json" id="pt-data">${JSON.stringify(page({ [needKey(need)]: payload }))}</script>`;
     document.body.innerHTML =
-      `<script type="application/json" id="pt-data">${JSON.stringify(page({ [needKey(need)]: payload }))}</script>` +
       `<pt-metric-v1 data-pt='${JSON.stringify({ c: 'pt-metric@1.0.0', p: { ticker: 'NVDA', metrics: ['pe'] }, k: { metrics: needKey(need) } })}'>static</pt-metric-v1>`;
-    await boot(document, async () => metric);
+    await boot(document, async () => metric, () => {}); // no real beacon from the test
     const el = document.querySelector('pt-metric-v1') as HTMLElement & { updateComplete: Promise<boolean> };
     await el.updateComplete;
     expect(customElements.get('pt-metric-v1')).toBeDefined();
@@ -54,7 +54,8 @@ describe('boot', () => {
 
 describe('beacon (first-party analytics, no cookies)', () => {
   it('sends one page view, then each component interaction once per page view', async () => {
-    document.body.innerHTML = `<script type="application/json" id="pt-data">${JSON.stringify(page())}</script><div id="w"></div>`;
+    document.head.innerHTML = `<script type="application/json" id="pt-data">${JSON.stringify(page())}</script>`;
+    document.body.innerHTML = `<div id="w"></div>`;
     const sent: { url: string; body: Record<string, unknown> }[] = [];
     await boot(document, async () => metric, (url, body) => { sent.push({ url, body: JSON.parse(body) }); });
     expect(sent).toEqual([{ url: '/v1/e', body: { t: 'pv', p: location.pathname, r: '' } }]);
@@ -65,5 +66,25 @@ describe('beacon (first-party analytics, no cookies)', () => {
       { t: 'ix', p: location.pathname, c: 'pt-price-target@1.2.0', a: 'zoom' },
       { t: 'ix', p: location.pathname, c: 'pt-price-target@1.2.0', a: 'hover' },
     ]);
+  });
+});
+
+describe('boot cannot be steered by component markup', () => {
+  const mount = (p: object) => `data-pt='${JSON.stringify({ c: 'pt-metric@1.0.0', p, k: { metrics: needKey(need) } })}'`;
+  it('reads page data only from <head>: a data block in the body is ignored', async () => {
+    document.head.innerHTML = '';
+    document.body.innerHTML = `<pt-metric-v1 ${mount({ ticker: 'NVDA', metrics: ['pe'] })}></pt-metric-v1>` +
+      `<script type="application/json" id="pt-data">${JSON.stringify({ ...page(), api: '/evil' })}</script>`;
+    const imported: string[] = [];
+    await boot(document, async (url) => { imported.push(url); return metric; }, () => {});
+    expect(imported).toEqual([]);
+  });
+  it('mounts only top-level [data-pt]: a mount rendered inside a component is not a component', async () => {
+    document.head.innerHTML = `<script type="application/json" id="pt-data">${JSON.stringify(page({ [needKey(need)]: payload }))}</script>`;
+    document.body.innerHTML = `<pt-metric-v1 ${mount({ ticker: 'NVDA', metrics: ['pe'] })}><div id="nested" ${mount({ ticker: 'EVIL', metrics: ['pe'] })}></div></pt-metric-v1>`;
+    const nested = document.getElementById('nested') as unknown as { params?: unknown };
+    await boot(document, async () => metric, () => {});
+    expect(nested.params).toBeUndefined();
+    document.head.innerHTML = '';
   });
 });

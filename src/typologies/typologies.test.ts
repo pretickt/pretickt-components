@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getTypology, TYPOLOGIES } from './index';
 import { Ticker } from './common';
 import { METRIC_KEYS, METRIC_LABELS } from './metric';
+import { moveBreakdownDemo } from './move-breakdown';
 
 const samples: Record<string, unknown[]> = {
   'metric@1': [{ ticker: 'NVDA', metrics: ['pe', 'pt_upside', 'off_high', 'range_52w', 'trend_ma', 'earnings_in', 'pe_vs_sector'] },
@@ -80,5 +81,10 @@ describe('typologies', () => {
     const out = t.demo(t.params.parse({ tickers: ['NVDA'], range: '1m' })) as { points: { t: string }[] }[];
     expect(out[0]!.points).toHaveLength(21);
     expect(out[0]!.points.at(-1)!.t <= '2026-09-30').toBe(true);
+  });
+  it('move-breakdown story links must be http(s)', () => {
+    const m = moveBreakdownDemo({ ticker: 'NVDA', window: '1d' });
+    const bad = { ...m, news: { ...m.news, top: [{ title: 't', site: 's', url: 'javascript:alert(1)', sentiment: null }] } };
+    expect(getTypology('move-breakdown@1')!.payload.safeParse(bad).success).toBe(false);
   });
 });

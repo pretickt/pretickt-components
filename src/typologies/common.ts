@@ -38,3 +38,6 @@ export function sessionsBack(asOf: string, count: number): string[] {
 }
 
 export const round = (v: number, digits = 2) => Math.round(v * 10 ** digits) / 10 ** digits;
+
+/** An absolute http(s) URL: links in payloads come from third parties, and no other scheme may reach an href. */
+export const HttpUrl = z.string().check(z.regex(/^https?:\/\/[^\s"'<>]+$/i));

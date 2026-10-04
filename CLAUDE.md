@@ -52,18 +52,21 @@ the platform side — never by the lint alone.
 - **Deterministic & QuickJS-safe**: no `Date.now()`, `new Date()` without argument, `Math.random()`, `Intl`, `toLocale*`.
   "Today" is never known: use the `asOf` field that typologies return.
 - **Top level**: only imports, exports, `const`, functions and types (no side effects, no classes — `element` is a factory).
-- **Escape everything from data** with `h.esc` (attributes too). Tooltips: `h.tip({ Label: value })` → `data-tip`; the base
+- **Escape everything from data** with `h.esc` (attributes too); every link from data goes through `h.href(url)` (http(s) or a site
+  path; anything else becomes `#`). Rendered HTML must pass `checkMarkup` (no script/style/iframe/form…, no `on*=` handlers, no
+  non-http URL schemes, no `id="pt-data"` or `data-pt`): the contract checks it on demo data and the platform on every real render. Tooltips: `h.tip({ Label: value })` → `data-tip`; the base
   element renders them as text.
 - **Interactivity without code**: a button with `data-set='{"range":"5y"}'` patches params; the base element re-resolves only
   the needs whose key changed (via the API) and re-renders.
 - **Null & unknown**: every `data` key can be `null` → render `h.na()` (or a reduced view). Payload lists may contain catalogue
   entries you don't know (new metric keys, new event kinds, events **without ticker**): render them generically or skip them,
-  never throw. `checkContract` injects such items on purpose.
+  never throw. `checkContract` injects such items on purpose. (Typology schemas are closed per build — the host and the API ship
+  together — so new entries reach *older component bundles*, which is why components must tolerate them.)
 - **Public copy is US English**, templated from data. **No LLM prose** on pages.
 - **Licence**: never show index symbols (`^…`); "the market" is SPY.
 
 ## Helpers (`h`)
-`esc, num(v,digits), pct(fraction), money, compact, date(iso), toneOf, na(label?), tip(obj), icon(name), badge(item), badgeValue(item)`.
+`esc, num(v,digits), pct(fraction), money, compact, date(iso), toneOf, href(url), na(label?), tip(obj), icon(name), badge(item), badgeValue(item)`.
 Icons: `calendar target trend-up trend-down alert peak`.
 
 ## Zoom & pan — any chart, three lines (ported from beta's ZoomPan + ChartControls)

@@ -53,14 +53,17 @@ function startBeacon(doc: Document, api: string, send: Send) {
 }
 
 export async function boot(doc: Document = document, importer: (url: string) => Promise<unknown> = (u) => import(/* @vite-ignore */ u), send: Send = sendBeacon) {
-  const dataEl = doc.getElementById('pt-data');
+  // Page data lives in <head>: component markup is in <body>, so nothing a component renders can stand in for it.
+  const dataEl = doc.head?.querySelector('script#pt-data[type="application/json"]');
   if (!dataEl?.textContent) return;
   const page = JSON.parse(dataEl.textContent) as PageData;
   startBeacon(doc, page.api, send);
   const host = createHost(page);
   const byComponent = new Map<string, HTMLElement[]>();
   for (const el of doc.querySelectorAll<HTMLElement>('[data-pt]')) {
-    const m = JSON.parse(el.dataset.pt!) as Mount;
+    if (el.parentElement?.closest('[data-pt]')) continue; // a mount inside a component's markup is not a component
+    let m: Mount;
+    try { m = JSON.parse(el.dataset.pt!) as Mount; } catch { continue; } // one broken mount must not stop the page
     byComponent.set(m.c, [...(byComponent.get(m.c) ?? []), el]);
     // Set before the element is defined: Lit restores pre-upgrade properties on its first update.
     Object.assign(el, { params: m.p, data: Object.fromEntries(Object.entries(m.k).map(([name, key]) => [name, page.data[key] ?? null])) });

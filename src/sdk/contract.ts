@@ -1,3 +1,4 @@
+import { checkMarkup } from './markup';
 import { getTypology } from '../typologies';
 import { helpers } from './helpers';
 import type { ComponentModule } from './types';
@@ -44,7 +45,7 @@ export function checkContract(mod: ComponentModule, samples: unknown[]): string[
     const b = render(demo, 'demo data');
     if (a != null && b != null) {
       if (a !== b) errors.push(`${label}: renderStatic is not deterministic`);
-      if (/<script/i.test(a)) errors.push(`${label}: renderStatic must not emit <script>`);
+      for (const why of checkMarkup(a)) errors.push(`${label}: renderStatic output has ${why}`);
       if (!a.trim()) errors.push(`${label}: renderStatic returned an empty string`);
     }
     const nulls = Object.fromEntries(Object.keys(needs).map((k) => [k, null]));
