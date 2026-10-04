@@ -80,6 +80,9 @@ export type MetricParams = z.output<typeof MetricParams>;
 export type MetricItem = z.infer<typeof MetricItem>;
 export type MetricPayload = z.infer<typeof MetricPayload>;
 
+/** The window of the insider_net metric (open-market buys minus sales), in calendar days: the badge, the nightly and the screen list. */
+export const INSIDER_WINDOW_DAYS = 90;
+
 export const METRIC_LABELS: Record<MetricKey, { label: string; unit: MetricItem['unit']; hint: string }> = {
   pe: { label: 'P/E', unit: 'x', hint: 'Price divided by trailing twelve-month earnings per share.' },
   pe_vs_sector: { label: 'P/E vs sector', unit: '%', hint: 'P/E relative to the median P/E of the same sector in the tracked universe.' },
@@ -88,7 +91,7 @@ export const METRIC_LABELS: Record<MetricKey, { label: string; unit: MetricItem[
   consensus: { label: 'Consensus', unit: '', hint: 'Analyst rating consensus from the latest monthly snapshot of strong buy to strong sell counts.' },
   market_cap: { label: 'Market cap', unit: '$c', hint: 'Market capitalisation from the company profile.' },
   fcf_yield: { label: 'FCF yield', unit: '%', hint: 'Free cash flow of the last four reported quarters divided by market capitalisation.' },
-  insider_net: { label: 'Insiders', unit: '$c', hint: 'Open-market insider purchases minus sales over the last 90 days (SEC Form 4 filings).' },
+  insider_net: { label: 'Insiders', unit: '$c', hint: `Open-market insider purchases minus sales over the last ${INSIDER_WINDOW_DAYS} days (SEC Form 4 filings).` },
   earnings_in: { label: 'Earnings in', unit: 'd', hint: 'Calendar days until the next scheduled earnings report (provider estimate until confirmed).' },
   news: { label: 'News', unit: '', hint: 'Stories published in the last session; each dot is one story, coloured by its sentiment as classified by AI.' },
   off_high: { label: 'Off 52w high', unit: '%', hint: 'Last close versus the highest close of the last 52 weeks.' },
