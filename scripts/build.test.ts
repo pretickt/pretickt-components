@@ -18,6 +18,15 @@ describe('build', () => {
       expect(m.manifest.tag).toBe(c.tag);
     }
     expect(existsSync('dist/host.js')).toBe(true); // the size budget is enforced by the build itself (scripts/budget.ts)
+    // Shared code (zod, typology schemas, SDK pieces) is one set of immutable chunks, not a copy per bundle: each browser file imports
+    // /c/chunk-*.js files that exist and carries no zod of its own.
+    const chunkImports = (file: string) => [...readFileSync(file, 'utf8').matchAll(/from\s*"\/c\/(chunk-[A-Z0-9]+\.js)"/g)].map((m) => m[1]!);
+    for (const file of ['dist/host.js', ...index.components.map((c) => `dist/${c.browser}`)]) {
+      const js = readFileSync(file, 'utf8');
+      expect(js, file).not.toContain('ZodError');
+      expect(chunkImports(file).length, file).toBeGreaterThan(0);
+      for (const ch of chunkImports(file)) expect(existsSync(`dist/browser/${ch}`), ch).toBe(true);
+    }
     // Browser bundles are served as immutable for a year: the file name carries a hash of the bytes, so any change (component
     // or SDK) is a new URL and no visitor keeps stale code.
     for (const c of index.components) {
