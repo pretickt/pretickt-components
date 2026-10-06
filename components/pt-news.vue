@@ -6,7 +6,7 @@
 -->
 <script setup lang="ts">
 import { usePt } from '../src/context/pt';
-import { SENTIMENT_FLAT } from '../src/typologies';
+import { SENTIMENT_FLAT } from '../src/typologies/values';
 import { date, href, tip, tone } from '../src/ds/format';
 
 const props = withDefaults(defineProps<{ ticker: string; limit?: number }>(), { limit: 20 });

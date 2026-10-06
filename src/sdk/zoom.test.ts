@@ -4,7 +4,8 @@ import * as z from 'zod/mini';
 import { defineComponent, helpers as h, type ComponentModule } from './index';
 import { classFor } from './element';
 import { lit } from './testing';
-import { FULL_VIEWPORT, ViewportParam, type Viewport } from '../ds/viewport';
+import { FULL_VIEWPORT, type Viewport } from '../ds/viewport';
+import { ViewportParam } from './viewport-param';
 
 /** A minimal zoomable component: prints its view so the test can read what the element did. */
 const mod: ComponentModule = {

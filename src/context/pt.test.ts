@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { needKey } from '../sdk/key';
 import { createPt, methodOf, typologyOf } from './pt';
+import { validateParams } from './validate';
 
 const NVDA = { ticker: 'NVDA', window: '1d' } as const;
 const keyOf = (t: string, params: unknown) => needKey({ t: t as never, params });
@@ -16,19 +17,19 @@ describe('the pt context', () => {
     expect((pt as unknown as { then?: unknown }).then).toBeUndefined(); // never mistaken for a promise
   });
 
-  it('build: resolves with parsed params (defaults applied) and records every call, null included', async () => {
+  it('build: records every call by the params the component passed (the browser passes the same ones), null included', async () => {
     const asked: unknown[] = [];
     const record: Record<string, unknown> = {};
     const pt = createPt({ resolve: async (t, p) => { asked.push([t, p]); return t === 'news@1' ? null : { ok: 1 }; }, record });
-    expect(await pt.moveBreakdown({ ticker: 'NVDA' })).toEqual({ ok: 1 });
+    expect(await pt.moveBreakdown({ ticker: 'NVDA', window: '1d' })).toEqual({ ok: 1 });
     expect(await pt.news({ ticker: 'NVDA' })).toBeNull();
-    expect(asked).toEqual([['move-breakdown@1', NVDA], ['news@1', { ticker: 'NVDA', limit: 20 }]]);
-    expect(record).toEqual({ [keyOf('move-breakdown@1', NVDA)]: { ok: 1 }, [keyOf('news@1', { ticker: 'NVDA', limit: 20 })]: null });
+    expect(asked).toEqual([['move-breakdown@1', NVDA], ['news@1', { ticker: 'NVDA' }]]);
+    expect(record).toEqual({ [keyOf('move-breakdown@1', NVDA)]: { ok: 1 }, [keyOf('news@1', { ticker: 'NVDA' })]: null });
   });
 
   it('browser: replays recorded calls (null too) without the network, then fetches new ones and caches them', async () => {
     let calls = 0;
-    const replay = { [keyOf('move-breakdown@1', NVDA)]: { from: 'page' }, [keyOf('news@1', { ticker: 'NVDA', limit: 20 })]: null };
+    const replay = { [keyOf('move-breakdown@1', NVDA)]: { from: 'page' }, [keyOf('news@1', { ticker: 'NVDA' })]: null };
     const pt = createPt({ resolve: async () => { calls++; return { from: 'api' }; }, replay });
     expect(await pt.moveBreakdown({ ticker: 'NVDA', window: '1d' })).toEqual({ from: 'page' });
     expect(await pt.news({ ticker: 'NVDA' })).toBeNull();
@@ -45,9 +46,10 @@ describe('the pt context', () => {
     expect(await pt.news({ ticker: 'NVDA' })).toEqual({ ok: 1 });
   });
 
-  it('params the typology rejects are a component bug: the call throws with the reason', async () => {
-    const pt = createPt({ resolve: async () => ({}) });
-    await expect(pt.moveBreakdown({ ticker: 'NVDA', window: '2d' as never })).rejects.toThrow(/move-breakdown@1/);
+  it('with a validator (build and checks), params the typology rejects are a component bug: the call throws with the reason', async () => {
+    const pt = createPt({ resolve: async () => ({}), validate: validateParams });
+    await expect(pt.moveBreakdown({ ticker: 'NVDA', window: '2d' as never })).rejects.toThrow(/move-breakdown@1.*window/);
+    await expect(createPt({ resolve: async () => ({ ok: 1 }) }).moveBreakdown({ ticker: 'NVDA', window: '2d' as never })).resolves.toEqual({ ok: 1 }); // the browser trusts the API
   });
 
   it('latest wins: a call superseded by a newer one of the same method (a later click) never settles', async () => {

@@ -7,7 +7,8 @@
 <script lang="ts">
 import { closeAt, isoDay, linePath, monthTicks } from '../src/ds/chart';
 import { applyXViewport, applyYViewport, FULL_VIEWPORT, type Viewport } from '../src/ds/viewport';
-import { cmp, type Analysts, type PriceBar } from '../src/typologies';
+import type { Analysts, PriceBar } from '../src/typologies';
+import { cmp } from '../src/typologies/values';
 
 type Target = Analysts['targets'][number];
 

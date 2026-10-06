@@ -1,7 +1,6 @@
 import type { Component } from 'vue';
 import { needPath } from '../api';
 import { createPt } from '../context/pt';
-import { getTypologySchema } from '../typologies/schemas';
 import { sendBeacon, startBeacon, type Send } from './beacon';
 import { readPage } from './page';
 import { islandApp } from './server';
@@ -15,7 +14,7 @@ export interface HydrateOptions {
 
 /**
  * The page runtime: hydrate every island with its component, replaying the calls the build recorded (no network on first paint);
- * later calls go to `/v1/t` and are checked against the typology. One `pt` per island (latest wins stays per island), one cache
+ * later calls go to `/v1/t`. One `pt` per island (latest wins stays per island), one cache
  * per page. One island that fails to load or hydrate never stops the others.
  */
 export async function hydrateIslands(doc: Document = document, o: HydrateOptions = {}) {
@@ -28,7 +27,7 @@ export async function hydrateIslands(doc: Document = document, o: HydrateOptions
   const resolve = async (t: string, params: unknown) => {
     const r = await fetchImpl(`${page.api}${needPath({ t: t as `${string}@${number}`, params }, page.buildId)}`);
     if (!r.ok) throw new Error(`api ${r.status}`);
-    return getTypologySchema(t)!.payload.parse(await r.json());
+    return r.json(); // the API validated it (and the browser does not ship the schemas)
   };
   await Promise.all([...doc.querySelectorAll<HTMLElement>('[data-island]')].map(async (island) => {
     if (island.parentElement?.closest('[data-island]')) return; // an island inside a component's markup is not an island

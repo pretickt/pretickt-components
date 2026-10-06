@@ -1,10 +1,12 @@
 import * as z from 'zod/mini';
+import { RANGES } from './values';
+export { cmp } from './values';
 
 /** US tickers as the platform stores them: uppercase, share classes with a dot (BRK.B). Never '^'. */
 export const Ticker = z.string().check(z.regex(/^[A-Z][A-Z0-9]{0,5}(\.[A-Z])?$/, 'invalid ticker'));
 export const IsoDate = z.string().check(z.regex(/^\d{4}-\d{2}-\d{2}$/));
 export const Month = z.string().check(z.regex(/^\d{4}-(0[1-9]|1[0-2])$/));
-export const Range = z.enum(['1m', '3m', '6m', '1y', '2y', '5y']);
+export const Range = z.enum(RANGES);
 export type Range = z.infer<typeof Range>;
 export const RANGE_SESSIONS: Record<Range, number> = { '1m': 21, '3m': 63, '6m': 126, '1y': 252, '2y': 504, '5y': 1260 };
 /** How a value reads: good, bad, neutral, or not available. Drives the colour of badges, dots and signed text. */
@@ -59,5 +61,3 @@ export const round = (v: number, digits = 2) => Math.round(v * 10 ** digits) / 1
 /** An absolute http(s) URL: links in payloads come from third parties, and no other scheme may reach an href. */
 export const HttpUrl = z.string().check(z.regex(/^https?:\/\/[^\s"'<>]+$/i));
 
-/** Code-unit string order: the same in Node and every browser (localeCompare depends on the locale). */
-export const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);

@@ -13,7 +13,7 @@ export type NewsParams = z.output<typeof NewsParams>;
 export type News = z.infer<typeof NewsPayload>;
 
 /** |sentiment| at or below this reads as neutral: no coloured dot, a flat tone (badge, headlines, why-today). */
-export const SENTIMENT_FLAT = 0.15;
+export { SENTIMENT_FLAT } from './values';
 
 export const newsSamples: z.input<typeof NewsParams>[] = [{ ticker: 'NVDA' }, { ticker: 'AAPL', limit: 5 }];
 

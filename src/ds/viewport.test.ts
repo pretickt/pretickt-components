@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyXViewport,
-  ViewportParam,
   applyYViewport,
   fitYViewport,
   FULL_VIEWPORT,
@@ -14,6 +13,7 @@ import {
   shiftYViewport,
   zoomViewport,
 } from './viewport';
+import { ViewportParam } from '../sdk/viewport-param';
 
 describe('zoomViewport', () => {
   it('zooms in around the anchor and clamps at the edges', () => {

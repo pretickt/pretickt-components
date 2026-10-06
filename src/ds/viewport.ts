@@ -1,5 +1,3 @@
-import * as z from 'zod/mini';
-
 /** Ported from beta (pretickt-frontend/src/app/companies/chart-viewport.ts). Pure and QuickJS-safe: components use it
  *  in their geometry; the base element drives it from wheel/drag (see element.ts, `data-zoom`). */
 /** TradingView-style x-viewport for time charts, as a pure fraction window over the full series.
@@ -7,7 +5,9 @@ import * as z from 'zod/mini';
  *  viewports and each chart re-renders its geometry on the sliced data (true re-scale, no SVG
  *  stretching). */
 
-export type Viewport = z.infer<typeof ViewportParam>;
+/** A window over a chart: time as fractions of the full series (0 ≤ start < end ≤ 1); `yScale` 1 = fit the data, <1 = stretched,
+ *  >1 = compressed; `yShift` vertical pan in fractions of the (scaled) price range. */
+export interface Viewport { start: number; end: number; yScale?: number; yShift?: number }
 
 export const FULL_VIEWPORT: Viewport = { start: 0, end: 1, yScale: 1, yShift: 0 };
 
@@ -90,17 +90,6 @@ export function isAtLatest(vp: Viewport): boolean {
   return vp.end >= 1 - 1e-6;
 }
 
-
-/** The `view` param a zoomable component declares: `view: z.optional(ViewportParam)`. Absent = the full view. */
-export const ViewportParam = z.object({
-  /** Fractions of the full series, 0 ≤ start < end ≤ 1. */
-  start: z.number().check(z.minimum(0), z.maximum(1)),
-  end: z.number().check(z.minimum(0), z.maximum(1)),
-  /** Vertical zoom: 1 = fit the data, <1 = stretched (finer detail), >1 = compressed. */
-  yScale: z.optional(z.number().check(z.positive())),
-  /** Vertical pan, in fractions of the (scaled) price range; positive looks lower down the range (the content moves up). */
-  yShift: z.optional(z.number()),
-}).check(z.refine((v) => v.end > v.start, 'end must be after start'));
 
 /** The time (or any numeric x) domain seen through the window. */
 export function applyXViewport(min: number, max: number, vp: Viewport): { min: number; max: number } {

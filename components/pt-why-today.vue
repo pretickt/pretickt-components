@@ -9,7 +9,8 @@ import { computed, ref } from 'vue';
 import { usePt } from '../src/context/pt';
 import { date, href, level, num, pct, tone } from '../src/ds/format';
 import PtToggles from '../src/ds/PtToggles.vue';
-import { SENTIMENT_FLAT, type MoveBreakdown } from '../src/typologies';
+import type { MoveBreakdown } from '../src/typologies';
+import { SENTIMENT_FLAT } from '../src/typologies/values';
 
 type Window = '1d' | '5d' | '1m';
 const props = withDefaults(defineProps<{ ticker: string; window?: Window }>(), { window: '1d' });

@@ -1,69 +1,78 @@
-import { build, type Metafile } from 'esbuild';
-import { createHash } from 'node:crypto';
+import tailwindcss from '@tailwindcss/vite';
+import vue from '@vitejs/plugin-vue';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { basename } from 'node:path';
-import { elementName, majorOf, type ComponentModule } from '../src/sdk';
+import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { gzipSync } from 'node:zlib';
+import { build, type Manifest } from 'vite';
+import { createChecker } from 'vue-component-meta';
+import { readComponentMeta } from '../src/checks/meta';
 import { componentFiles, overBudget } from './budget';
-import { checkContract } from '../src/sdk/contract';
-import { lintSource } from '../src/sdk/lint';
 
 rmSync('dist', { recursive: true, force: true });
-mkdirSync('dist/static', { recursive: true });
-mkdirSync('dist/browser', { recursive: true });
+const files = componentFiles(readdirSync('components'));
+const tagOf = (f: string) => f.slice(0, -'.vue'.length);
+const plugins = [tailwindcss(), vue()];
+// Vue's compile-time flags: no Options API, no devtools, short hydration warnings in production.
+const define = { __VUE_OPTIONS_API__: 'false', __VUE_PROD_DEVTOOLS__: 'false', __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'false' };
 
-const common = { bundle: true, format: 'esm' as const, target: 'es2022', minify: true, legalComments: 'none' as const, logLevel: 'error' as const };
-const built: { f: string; id: string; mod: ComponentModule }[] = [];
+// Metadata first: a component without its question, version and evidence never ships.
+const meta = new Map(files.map((f) => {
+  const m = readComponentMeta(readFileSync(`components/${f}`, 'utf8'));
+  if (!m.ok) throw new Error(`${f}: ${m.errors.join('; ')}`);
+  return [f, m];
+}));
+const checker = createChecker('tsconfig.json', { forceUseTs: true, schema: { ignore: [] } });
 
-// Static bundles (Node and QuickJS render them at build time): one self-contained file per component.
-for (const f of componentFiles(readdirSync('components'))) {
-  const lint = lintSource(readFileSync(`components/${f}`, 'utf8'), f);
-  if (lint.length) throw new Error(`${f}: ${lint.map((v) => `${v.line}:${v.rule} ${v.message}`).join('; ')}`);
-  const mod = (await import(`../components/${f}`)) as ComponentModule;
-  const errors = checkContract(mod);
-  if (errors.length) throw new Error(`${f}: ${errors.join('; ')}`);
-  const id = `${mod.manifest.tag}@${mod.manifest.version}`;
-  await build({ ...common, platform: 'neutral', mainFields: ['module', 'main'], outfile: `dist/static/${id}.js`,
-    stdin: { contents: `export { manifest, renderStatic, samples } from './components/${f}';`, resolveDir: process.cwd(), loader: 'ts' } });
-  built.push({ f, id, mod });
-}
-
-// Browser bundles: the host and every component in one build, so the code they share (zod, typology schemas, SDK pieces) is one set of
-// chunks the browser caches once, instead of a copy inside every bundle. Chunks are imported by absolute path (/c/, where the site serves
-// dist/browser), so host.js can stay at the site root.
-const out = await build({
-  ...common, platform: 'browser', write: false, metafile: true, splitting: true, outdir: 'dist/browser', publicPath: '/c/', chunkNames: 'chunk-[hash]',
-  entryPoints: [{ in: 'src/host/entry.ts', out: 'host' }, ...built.map((b) => ({ in: `components/${b.f}`, out: b.id }))],
+// Client: the islands runtime and one module per component in one build, so Vue and the shared code are one set of chunks the
+// browser caches once. Served from /c/ as immutable: names carry a content hash and no "@" (asset hosting rewrites it).
+await build({
+  configFile: false, logLevel: 'warn', plugins, define, base: '/c/',
+  build: {
+    outDir: 'dist/client', emptyOutDir: true, manifest: true, minify: true, cssCodeSplit: true, target: 'es2022',
+    rollupOptions: {
+      input: { islands: 'src/islands/entry.ts', ...Object.fromEntries(files.map((f) => [tagOf(f), `components/${f}`])) },
+      preserveEntrySignatures: 'exports-only', // the runtime imports a component module for its default export
+      output: { entryFileNames: '[name].[hash].js', chunkFileNames: 'chunk-[hash].js', assetFileNames: '[name].[hash][extname]' },
+    },
+  },
 });
-const bytesOf = new Map(out.outputFiles.map((o) => [basename(o.path), o.contents]));
-const meta: Metafile['outputs'] = Object.fromEntries(Object.entries(out.metafile.outputs).map(([k, v]) => [basename(k), v]));
-/** A file plus every chunk it pulls in. */
-const closure = (name: string, seen = new Set<string>()): Set<string> => {
-  if (seen.has(name)) return seen;
-  seen.add(name);
-  for (const i of meta[name]?.imports ?? []) if (i.kind === 'import-statement') closure(basename(i.path), seen);
+// Server: every component and the island renderer, for the generator (Node). Dependencies (vue, zod) stay external.
+await build({
+  configFile: false, logLevel: 'warn', plugins, define,
+  build: { ssr: 'src/server-entry.ts', outDir: 'dist/server', emptyOutDir: true, target: 'node22', rollupOptions: { output: { entryFileNames: 'index.js', format: 'es' } } },
+});
+
+const manifest = JSON.parse(readFileSync('dist/client/.vite/manifest.json', 'utf8')) as Manifest;
+const bytes = (file: string) => readFileSync(`dist/client/${file}`).length;
+/** A manifest entry plus every chunk it imports statically. */
+const closure = (key: string, seen = new Set<string>()): Set<string> => {
+  const e = manifest[key];
+  if (!e || seen.has(e.file)) return seen;
+  seen.add(e.file);
+  for (const i of e.imports ?? []) closure(i, seen);
   return seen;
 };
-const size = (names: Iterable<string>) => [...names].reduce((n, x) => n + (bytesOf.get(x)?.length ?? 0), 0);
+const runtimeKey = 'src/islands/entry.ts';
+const runtimeFiles = closure(runtimeKey);
+const runtimeBytes = [...runtimeFiles].reduce((n, f) => n + bytes(f), 0);
+const big = overBudget('runtime', runtimeBytes);
+if (big) throw new Error(big);
 
-for (const [name, bytes] of bytesOf) if (name.startsWith('chunk-')) writeFileSync(`dist/browser/${name}`, bytes); // esbuild hashes chunk names
-const hostFiles = closure('host.js');
-const hostBig = overBudget('host', size(hostFiles)); // what every page loads
-if (hostBig) throw new Error(hostBig);
-writeFileSync('dist/host.js', bytesOf.get('host.js')!);
-
-const index = built.map(({ f, id, mod }) => {
-  const bytes = bytesOf.get(`${id}.js`)!;
-  // budgeted on what the component adds to a page that already has the host
-  const big = overBudget('component', size([...closure(`${id}.js`)].filter((x) => !hostFiles.has(x))));
-  if (big) throw new Error(`${f}: ${big}`);
-  // served as immutable: the name carries a hash of the bytes (which name the chunks they import), so any change is a new URL
-  const file = `browser/${id}.${createHash('sha256').update(bytes).digest('hex').slice(0, 12)}.js`;
-  writeFileSync(`dist/${file}`, bytes);
-  const { tag, version } = mod.manifest;
-  return { tag, version, major: majorOf(version), element: elementName(mod.manifest), static: `static/${id}.js`, browser: file };
+const components = files.map((f) => {
+  const m = meta.get(f)!;
+  if (!m.ok) throw new Error(f);
+  const key = `components/${f}`;
+  const entry = manifest[key]!;
+  const own = [...closure(key)].filter((x) => !runtimeFiles.has(x)); // what the component adds to a page that has the runtime
+  const over = overBudget('component', own.reduce((n, x) => n + bytes(x), 0));
+  if (over) throw new Error(`${f}: ${over}`);
+  const props = checker.getComponentMeta(`components/${f}`).props.filter((p) => !p.global)
+    .map((p) => ({ name: p.name, required: p.required, type: p.type, default: p.default ?? null }));
+  return { tag: tagOf(f), version: m.version, major: m.major, question: m.question, evidence: m.evidence, props,
+    client: `client/${entry.file}`, css: (entry.css ?? []).map((c) => `client/${c}`) };
 });
 
 execFileSync('npx', ['@tailwindcss/cli', '-i', 'styles/ds.css', '-o', 'dist/ds.css', '--minify'], { stdio: 'inherit' });
-writeFileSync('dist/index.json', JSON.stringify({ components: index }, null, 2));
-console.log(`built ${index.length} components; a page loads ${size(hostFiles)} bytes of host code`);
+writeFileSync('dist/index.json', JSON.stringify({ runtime: `client/${manifest[runtimeKey]!.file}`, components }, null, 2));
+const gz = [...runtimeFiles].reduce((n, f) => n + gzipSync(readFileSync(`dist/client/${f}`)).length, 0);
+console.log(`built ${components.length} components; every page loads ${runtimeBytes} bytes of runtime (${gz} gzip)`);

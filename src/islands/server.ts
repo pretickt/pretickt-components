@@ -2,6 +2,7 @@ import { createSSRApp, h, Suspense, type Component } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 import { checkMarkup } from '../checks/markup';
 import { createPt, PT, type PtOptions } from '../context/pt';
+import { validateParams } from '../context/validate';
 
 export interface IslandResult {
   /** The component's server HTML (the inner content of the island). */
@@ -24,6 +25,6 @@ export function islandApp(component: Component, props: Record<string, unknown>, 
 /** Build time: render one component with a `pt` that resolves (database) and records. A render that throws is a component bug: it propagates. */
 export async function renderIsland(component: Component, props: Record<string, unknown>, o: Pick<PtOptions, 'resolve' | 'cache'>): Promise<IslandResult> {
   const calls: Record<string, unknown> = {};
-  const html = await renderToString(islandApp(component, props, createPt({ ...o, record: calls })));
+  const html = await renderToString(islandApp(component, props, createPt({ ...o, record: calls, validate: validateParams })));
   return { html, calls, failed: Object.keys(calls).filter((k) => calls[k] === null), markup: checkMarkup(html) };
 }

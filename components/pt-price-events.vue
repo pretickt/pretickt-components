@@ -58,12 +58,12 @@ import PtChart from '../src/ds/PtChart.vue';
 import PtTimeAxis from '../src/ds/PtTimeAxis.vue';
 import PtToggles from '../src/ds/PtToggles.vue';
 import PtYAxis from '../src/ds/PtYAxis.vue';
-import { Range } from '../src/typologies';
+import { RANGES, type RangeValue } from '../src/typologies/values';
 
-type RangeT = (typeof Range.options)[number];
+type RangeT = RangeValue;
 const props = withDefaults(defineProps<{ ticker: string; range?: RangeT }>(), { range: '1y' });
 const pt = usePt();
-const RANGES = Range.options.map((r) => [r, r.toUpperCase()] as const);
+const RANGE_TOGGLES = RANGES.map((r) => [r, r.toUpperCase()] as const);
 /** One row per event kind: marker glyph, plural for grouped tooltips, legend entry. Unknown kinds render as a plain dot. */
 const KINDS: Record<string, { glyph: string; plural: string; legend: string }> = {
   earnings: { glyph: 'E', plural: 'earnings reports', legend: 'earnings' },
@@ -134,7 +134,7 @@ const caption = computed(() => {
 <template>
   <p v-if="!g" class="pt-na">Data not available</p>
   <figure v-else class="pt-chart" :class="{ 'pt-busy': loading }">
-    <PtToggles :model-value="range" :options="RANGES" label="Range" @update:model-value="show" />
+    <PtToggles :model-value="range" :options="RANGE_TOGGLES" label="Range" @update:model-value="show" />
     <PtChart v-model:view="view" :w="W" :h="H" :plot-w="PLOT_W" :plot-h="PLOT_H" :id="`pe${ticker}`" :label="`${ticker} price, ${range}`">
       <template #axes>
         <PtYAxis :w="W" :plot-w="PLOT_W" :ticks="g.yTicks" />

@@ -47,6 +47,6 @@
     "vue-tsc": "^3.3.12"
   },
   "sideEffects": [
-    "./src/host/entry.ts"
+    "./src/islands/entry.ts"
   ]
 }

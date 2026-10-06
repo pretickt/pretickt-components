@@ -1,7 +1,8 @@
 import { inject, type InjectionKey } from 'vue';
 import type * as z from 'zod/mini';
-import { needKey } from '../sdk/key';
-import { TYPOLOGY_SCHEMAS, type TypologyKey } from '../typologies/schemas';
+import { needKey } from '../api';
+import { TYPOLOGY_IDS } from '../typologies/ids';
+import type { TYPOLOGY_SCHEMAS, TypologyKey } from '../typologies/schemas';
 
 type T = typeof TYPOLOGY_SCHEMAS;
 type Camel<S extends string> = S extends `${infer A}-${infer B}` ? `${A}${Capitalize<Camel<B>>}` : S;
@@ -14,7 +15,7 @@ export type PtContext = { readonly [K in TypologyKey as MethodName<K>]: (params:
 
 /** `move-breakdown@1` → `moveBreakdown`. */
 export const methodOf = (id: string): string => id.split('@')[0]!.replace(/-(\w)/g, (_, c: string) => c.toUpperCase());
-const BY_METHOD = new Map(Object.keys(TYPOLOGY_SCHEMAS).map((id) => [methodOf(id), id as TypologyKey]));
+const BY_METHOD = new Map(TYPOLOGY_IDS.map((id) => [methodOf(id), id as TypologyKey]));
 /** `moveBreakdown` → `move-breakdown@1`. */
 export const typologyOf = (method: string): TypologyKey | undefined => BY_METHOD.get(method);
 
@@ -36,11 +37,14 @@ export interface PtOptions {
   record?: Record<string, unknown>;
   /** Answers by need key, shared between contexts (the islands of a page, the pages of a build step). */
   cache?: Map<string, Promise<unknown>>;
+  /** Build time and checks: throw on params the typology rejects (validateParams). The browser trusts the API, which validates. */
+  validate?: (t: TypologyKey, params: unknown) => void;
 }
 
 /**
- * The platform's implementation of the context. Params are parsed by the typology (defaults applied, so equal calls share a key);
- * answers are cached per key. Latest wins per method: a call started in an earlier turn than a newer call of the same method never
+ * The platform's implementation of the context. A call's key is its typology and the params exactly as the component passed them
+ * (the same component makes the same call on the server and in the browser, so the browser finds the recorded answer); answers are
+ * cached per key. Latest wins per method: a call started in an earlier turn than a newer call of the same method never
  * settles if it would answer after it (a stale click cannot overwrite a fresh one); calls started together (Promise.all) do not
  * supersede each other.
  */
@@ -55,14 +59,13 @@ export function createPt(o: PtOptions): PtContext {
   const newest = new Map<string, number>();
 
   const call = (t: TypologyKey) => async (raw: unknown): Promise<unknown> => {
-    const parsed = TYPOLOGY_SCHEMAS[t].params.safeParse(raw);
-    if (!parsed.success) throw new Error(`pt.${methodOf(t)}: params rejected by ${t}: ${parsed.error.issues.map((i) => `${i.path.join('.')} ${i.message}`).join('; ')}`);
-    const key = needKey({ t, params: parsed.data });
+    o.validate?.(t, raw);
+    const key = needKey({ t, params: raw });
     const mine = currentTurn();
     newest.set(t, Math.max(newest.get(t) ?? 0, mine));
     let p = cache.get(key);
     if (!p) {
-      p = o.resolve(t, parsed.data).then((v) => v ?? null, () => { cache.delete(key); return null; });
+      p = o.resolve(t, raw).then((v) => v ?? null, () => { cache.delete(key); return null; });
       cache.set(key, p);
     }
     const value = await p;
@@ -70,5 +73,5 @@ export function createPt(o: PtOptions): PtContext {
     if ((newest.get(t) ?? 0) > mine) return new Promise(() => {}); // superseded by a newer call: never settles
     return value;
   };
-  return Object.freeze(Object.fromEntries(Object.keys(TYPOLOGY_SCHEMAS).map((t) => [methodOf(t), call(t as TypologyKey)]))) as unknown as PtContext;
+  return Object.freeze(Object.fromEntries(TYPOLOGY_IDS.map((t) => [methodOf(t), call(t)]))) as unknown as PtContext;
 }
