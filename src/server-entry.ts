@@ -10,3 +10,5 @@ export { renderIsland, type IslandResult } from './islands/server';
 export { islandMarkup, type PageData } from './islands/page';
 export { checkMarkup } from './checks/markup';
 export { needKey, stableStringify, type Need } from './api';
+/** The Vue this bundle renders with — for tooling and tests that build a component (one Vue instance, never two). */
+export { defineComponent, h } from 'vue';

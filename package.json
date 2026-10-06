@@ -23,7 +23,15 @@
     "./indicators": "./src/sdk/indicators/index.ts",
     "./parity": "./src/sdk/parity.ts",
     "./element": "./src/sdk/element.ts",
-    "./contract": "./src/sdk/contract.ts"
+    "./contract": "./src/sdk/contract.ts",
+    "./api": "./src/api.ts",
+    "./context": "./src/context/pt.ts",
+    "./ds": "./src/ds/index.ts",
+    "./format": "./src/ds/format.ts",
+    "./checks": "./src/checks/index.ts",
+    "./islands": "./src/islands/index.ts",
+    "./server": "./dist/server/index.js",
+    "./islands/client": "./src/islands/client.ts"
   },
   "dependencies": {
     "lit": "^3.3.3",
