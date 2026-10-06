@@ -8,7 +8,7 @@
  *   -->
  */
 export type ComponentMeta =
-  | { ok: true; question: string; version: string; major: number; evidence: string[] }
+  | { ok: true; question: string; version: string; major: number; evidence: string[]; tag?: string }
   | { ok: false; errors: string[] };
 
 export function readComponentMeta(source: string): ComponentMeta {
@@ -24,5 +24,8 @@ export function readComponentMeta(source: string): ComponentMeta {
     ...(/^\d+\.\d+\.\d+$/.test(version) ? [] : ['@version must be semver x.y.z']),
     ...(evidence.length ? [] : ['at least one @evidence line']),
   ];
-  return errors.length ? { ok: false, errors } : { ok: true, question, version, major: Number(version.split('.')[0]), evidence };
+  const tagLine = tag('tag')[0];
+  if (tagLine !== undefined && !/^pt-[a-z][a-z0-9-]*$/.test(tagLine)) errors.push('@tag must look like pt-my-thing');
+  // @tag names a draft that has no file yet (the generator); a published component is named by its file
+  return errors.length ? { ok: false, errors } : { ok: true, question, version, major: Number(version.split('.')[0]), evidence, ...(tagLine ? { tag: tagLine } : {}) };
 }

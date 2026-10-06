@@ -8,13 +8,14 @@ describe('lintSfc (quality feedback for authors and the generator; the sandbox i
     expect(lintSfc(sfc(`import { usePt } from '@pretickt/components/context';\nconst x = await usePt().news({ ticker: 'NVDA' });\nconst m = await usePt().moveBreakdown({ ticker: 'NVDA', window: props.window });`))).toEqual([]);
   });
   it('names the line of every forbidden thing', () => {
-    const out = lintSfc(sfc(`import x from 'node:fs';\nconst r = await fetch('/x');\nconst t = Date.now();\nwindow.alert(1);`, '<div v-html="r"></div>'));
+    const out = lintSfc(sfc(`import x from 'node:fs';\nconst r = await fetch('/x');\nconst t = Date.now();\nwindow.alert(1);\n/// <reference path="/etc/x" />`, '<div v-html="r"></div>'));
     expect(out).toEqual([
       expect.stringMatching(/^7: import "node:fs" is not allowed/),
       expect.stringMatching(/^8: fetch/),
       expect.stringMatching(/^9: Date\.now/),
       expect.stringMatching(/^10: window/),
-      expect.stringMatching(/^12: v-html/),
+      expect.stringMatching(/^11: .*triple-slash/),
+      expect.stringMatching(/^13: v-html/),
     ]);
   });
   it('the allowed imports are the package entry points a component may use', () => {

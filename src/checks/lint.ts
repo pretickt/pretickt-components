@@ -10,6 +10,7 @@ const RULES: [RegExp, string][] = [
   [/\bDate\.now\s*\(|new\s+Date\s*\(\s*\)|Math\.random\s*\(/, 'deterministic only: no clock, no randomness ("today" is the payload asOf)'],
   [/\bIntl\b|\.toLocale\w*\s*\(/, 'no Intl / toLocale*: use @pretickt/components/format (the same text on server and browser)'],
   [/postMessage\b/, 'no messaging'],
+  [/^\s*\/\/\/\s*<reference\b/, 'no triple-slash references'],
 ];
 
 /**
