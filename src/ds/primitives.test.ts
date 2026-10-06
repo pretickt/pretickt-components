@@ -57,6 +57,7 @@ describe('PtLogo / PtCompany', () => {
       .toBe('<img class="pt-logo" src="/logos/nvda" alt width="24" height="24" loading="lazy" decoding="async">'); // alt="" (decorative)
     expect(await html(PtLogo, { ticker: 'BRK.B', src: null })).toBe('<span class="pt-logo pt-logo-initials" style="width:20px;height:20px;" aria-hidden="true">BR</span>');
     expect(await html(PtLogo, { ticker: 'NVDA', src: 'https://evil.example/x.png' })).toContain('pt-logo-initials'); // only site paths
+    expect(await html(PtLogo, { ticker: 'BRK.B', src: '/logos/brk.b.1a2b3c4d.webp' })).toContain('src="/logos/brk.b.1a2b3c4d.webp"'); // published, content-hashed files
   });
   it('a company: logo, ticker and name, linked to its page (the runtime gives the link its card)', async () => {
     const out = await html(PtCompany, { ticker: 'NVDA', name: 'NVIDIA Corporation', logo: '/logos/nvda' });

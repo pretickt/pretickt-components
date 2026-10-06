@@ -80,7 +80,7 @@ So **labels that name a parameter** (a month, a range) come from the data on scr
 | `pt.insider` | `{ticker, days 30–730}` | `{asOf, items[{date,filingDate,name,title,type buy\|sell\|other,shares,price,value}]}` |
 | `pt.news` | `{ticker, limit ≤50}` | `{asOf, items[{publishedAt,title,site,url,sentiment −1…1\|null}]}` (sentiment by AI, numbers only) |
 | `pt.moveBreakdown` | `{ticker, window 1d\|5d\|1m}` | `{asOf, ticker, name, sectorName, window, from, ret, marketRet, sectorRet, market, sector, specific, driver, news{today,avg30,spike,top[]}}` — `market+sector+specific = ret` |
-| `pt.company` | `{ticker}` | `{ticker, name, sector, industry, logo}` — `logo` is the site path `/logos/<ticker>` (never an external URL) |
+| `pt.company` | `{ticker}` | `{ticker, name, sector, industry, logo}` — `logo` is a file the site publishes (`/logos/<file>`), or null |
 | `pt.screen` | `{scope: {list: biggest_losers\|biggest_gainers\|52w_low\|52w_high\|undervalued\|insider_buying\|most_active} \| {peersOf}, limit ≤50}` | `{asOf, rows[{ticker,name,sector,logo,close,chg1d,offHigh,pe,ptUpside,marketCap,insiderNet,volumeRatio,spark[20],self}]}` |
 
 Types (`MoveBreakdown`, `News`, `MetricItem`, `EventItem`, `ScreenList`, …) and plain values (`RANGES`, `SENTIMENT_FLAT`, `cmp`)
@@ -98,7 +98,7 @@ typology is a platform change (schema here + resolver in the private platform + 
   `date(iso → "Sep 30, 2026")`, `month(ym → "Mar 26")`, `tone(v, flatBand)`, `href(url)` (http(s) or a site path, else `#`),
   `stockHref(ticker)`, `tip({ Label: value })`, `badgeValue(badge)`, `svgId(s)`.
 - **Companies**: `PtCompany` (`ticker`, `name?`, `logo?`: logo + ticker + name, linked to the company page) and `PtLogo` (`ticker`,
-  `src` = a payload's `logo` or `logoHref(ticker)`, `size`; no `src` → initials, no request). **Every link to `/stocks/<t>/` opens the
+  `src` = a payload's `logo` — `company@1`, `events@1`, `screen@1` carry it —, `size`; no `src` → initials, no request). **Every link to `/stocks/<t>/` opens the
   company card on hover** (the runtime does it, desktop only): link companies with `stockHref` / `PtCompany`, nothing else to do; a
   `data-tip` on such a link becomes the card's footer instead of a text tooltip.
 - **Primitives** (`@pretickt/components/ds`): `PtToggles` (`v-model` + `options: [value,label][]` + `label`), `PtBadge` (`:badge` = a
