@@ -2,10 +2,12 @@ import tailwindcss from '@tailwindcss/vite';
 import vue from '@vitejs/plugin-vue';
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { build, type Manifest } from 'vite';
 import { createChecker } from 'vue-component-meta';
 import { readComponentMeta } from '../src/checks/meta';
+import { sampleProps, type PropInfo } from '../src/checks/props';
 import { componentFiles, overBudget } from './budget';
 import { selfImports } from './self';
 
@@ -22,7 +24,8 @@ const meta = new Map(files.map((f) => {
   if (!m.ok) throw new Error(`${f}: ${m.errors.join('; ')}`);
   return [f, m];
 }));
-const checker = createChecker('tsconfig.json', { forceUseTs: true, schema: { ignore: [] } });
+// absolute paths: with relative ones the checker cannot follow the package's self imports and types fall back to `any`
+const checker = createChecker(resolve('tsconfig.json'), { forceUseTs: true, schema: { ignore: [] } });
 
 // Client: the islands runtime and one module per component in one build, so Vue and the shared code are one set of chunks the
 // browser caches once. Served from /c/ as immutable: names carry a content hash and no "@" (asset hosting rewrites it).
@@ -67,9 +70,11 @@ const components = files.map((f) => {
   const own = [...closure(key)].filter((x) => !runtimeFiles.has(x)); // what the component adds to a page that has the runtime
   const over = overBudget('component', own.reduce((n, x) => n + bytes(x), 0));
   if (over) throw new Error(`${f}: ${over}`);
-  const props = checker.getComponentMeta(`components/${f}`).props.filter((p) => !p.global)
-    .map((p) => ({ name: p.name, required: p.required, type: p.type, default: p.default ?? null }));
-  return { tag: tagOf(f), version: m.version, major: m.major, question: m.question, evidence: m.evidence, props,
+  const propMeta = checker.getComponentMeta(resolve(`components/${f}`)).props.filter((p) => !p.global);
+  const props = propMeta.map((p) => ({ name: p.name, required: p.required, type: p.type, default: p.default ?? null }));
+  // the props the checks render with (and the bench starts from): sampled from the prop types
+  const samples = sampleProps(propMeta.map((p) => ({ name: p.name, required: p.required, schema: p.schema as PropInfo['schema'], default: p.default })));
+  return { tag: tagOf(f), version: m.version, major: m.major, question: m.question, evidence: m.evidence, props, samples,
     client: `client/${entry.file}`, css: (entry.css ?? []).map((c) => `client/${c}`) };
 });
 

@@ -25,6 +25,12 @@ export function islandApp(component: Component, props: Record<string, unknown>, 
 /** Build time: render one component with a `pt` that resolves (database) and records. A render that throws is a component bug: it propagates. */
 export async function renderIsland(component: Component, props: Record<string, unknown>, o: Pick<PtOptions, 'resolve' | 'cache'>): Promise<IslandResult> {
   const calls: Record<string, unknown> = {};
-  const html = await renderToString(islandApp(component, props, createPt({ ...o, record: calls, validate: validateParams })));
+  const app = islandApp(component, props, createPt({ ...o, record: calls, validate: validateParams }));
+  // Vue's server renderer turns an error thrown after an await into an empty comment: catch it, so a broken component fails the
+  // build instead of shipping an empty island.
+  let error: unknown;
+  app.config.errorHandler = (e) => { error ??= e; };
+  const html = await renderToString(app);
+  if (error) throw error;
   return { html, calls, failed: Object.keys(calls).filter((k) => calls[k] === null), markup: checkMarkup(html) };
 }

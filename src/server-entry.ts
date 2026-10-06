@@ -12,3 +12,6 @@ export { checkMarkup } from './checks/markup';
 export { needKey, stableStringify, type Need } from './api';
 /** The Vue this bundle renders with — for tooling and tests that build a component (one Vue instance, never two). */
 export { defineComponent, h } from 'vue';
+/** The catalogue's checks, from this bundle (its components inject this bundle's pt context). */
+export { checkComponent } from './checks/component';
+export { sampleProps } from './checks/props';

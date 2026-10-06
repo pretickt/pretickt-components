@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { defineComponent } from 'vue';
 import { needKey } from '../api';
 import { newsDemo, NewsParams } from '../typologies';
 import Broken from './__fixtures__/Broken.vue';
@@ -37,6 +38,10 @@ describe('renderIsland (build time)', () => {
   });
   it('reports markup that could run script', async () => {
     expect((await renderIsland(Evil, { ticker: 'X' }, { resolve: db })).markup).toEqual([expect.stringMatching(/non-http URL scheme/)]);
+  });
+  it('a component that throws after an await fails the render (Vue would otherwise render an empty island)', async () => {
+    const C = defineComponent({ async setup() { await Promise.resolve(); throw new Error('component bug'); } });
+    await expect(renderIsland(C, {}, { resolve: db })).rejects.toThrow('component bug');
   });
   it('shares a cache between islands of a build step (each need resolved once)', async () => {
     let n = 0;
