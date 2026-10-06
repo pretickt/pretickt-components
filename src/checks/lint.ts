@@ -27,6 +27,13 @@ function lintStyle(text: string, n: number, out: string[]) {
   if (url) out.push(`${n}: ${url[0].replace(/\s+/g, '')} — no urls in a component's CSS`);
 }
 
+/** A style block on its own, as a compiler sees it (the admin checks a draft's CSS again at that point). */
+export function lintCss(css: string): string[] {
+  const out: string[] = [];
+  css.split('\n').forEach((text, i) => lintStyle(text, i + 1, out));
+  return out;
+}
+
 /**
  * A line-oriented lint of a component file: forbidden APIs in its scripts, imports outside ALLOWED_IMPORTS, `v-html` in its template,
  * anything that makes the compiler read a file (external blocks, import.meta, CSS that loads).
