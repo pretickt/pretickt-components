@@ -52,7 +52,8 @@ const rangeAt = range?.range && range.value != null && range.range.hi > range.ra
 const main = CARD_KEYS.flatMap((k) => byKey.get(k) ?? []);
 // everything else the payload holds — keys added to the catalogue later included — behind "Show all"
 const rest = (metrics ?? []).filter((m) => !CARD_KEYS.includes(m.key as MetricKey) && !IN_BODY.has(m.key));
-const footer = Object.entries(props.extra ?? {}).filter(([, v]) => v != null && v !== '').map(([k, v]) => [k, String(v)] as const);
+// the link's tooltip rows, minus the company row (the header says it) and the empty ones
+const footer = Object.entries(props.extra ?? {}).filter(([k, v]) => k !== props.ticker && v != null && v !== '').map(([k, v]) => [k, String(v)] as const);
 </script>
 
 <template>

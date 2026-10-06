@@ -50,10 +50,11 @@ describe('pt-company-card', () => {
     w.unmount();
   });
   it('compact size, with the tooltip rows of the link as a footer', async () => {
-    const { html } = await render(PtCompanyCard, { ticker: 'NVDA', size: 'compact', extra: { Earnings: 'Oct 28, 2026', Time: 'AMC', 'EPS est.': null } }, demo());
+    const { html } = await render(PtCompanyCard, { ticker: 'NVDA', size: 'compact', extra: { NVDA: 'NVIDIA Corporation', Earnings: 'Oct 28, 2026', Time: 'AMC', 'EPS est.': null } }, demo());
     expect(html).toMatch(/class="pt-card pt-card-compact"/);
     expect(html).toContain('<b>Earnings</b> Oct 28, 2026');
     expect(html).not.toContain('EPS est.');
+    expect(html).not.toContain('<b>NVDA</b>'); // the company row of a chip's tooltip: the card's header says it already
   });
   it('shows what it has: no profile → the ticker as name; no prices → no sparkline; nothing → not available', async () => {
     const noProfile = (await render(PtCompanyCard, { ticker: 'NVDA' }, withData({ 'company@1': null }))).html;
