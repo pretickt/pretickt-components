@@ -1,0 +1,89 @@
+// @vitest-environment happy-dom
+import { describe, expect, it } from 'vitest';
+import { flushPromises, mount } from '@vue/test-utils';
+import { h, Suspense } from 'vue';
+import { createPt, PT } from '../src/context/pt';
+import { tone, usd } from '../src/ds/format';
+import { eventsDemo, screenDemo, type EventItem } from '../src/typologies';
+import PtCalendar, { buildMonth, shiftMonth } from './pt-calendar.vue';
+import PtScreen from './pt-screen.vue';
+import { demo, render, standardSuite, withData } from './_suite';
+
+describe('pt-screen', () => {
+  standardSuite('pt-screen.vue', PtScreen);
+  it('renders one linked row per company with a sparkline', async () => {
+    const data = screenDemo({ scope: { list: 'biggest_losers' }, limit: 10 });
+    const { html } = await render(PtScreen, { list: 'biggest_losers', limit: 10 }, withData({ 'screen@1': data }));
+    expect(html.match(/<tr class="pt-scr-row/g)).toHaveLength(data.rows.length);
+    expect(html).toContain('href="/stocks/brk.b/"');
+    expect(html.match(/<polyline/g)).toHaveLength(data.rows.length);
+  });
+  it('highlights the subject of a peer list', async () => {
+    const data = screenDemo({ scope: { peersOf: 'NVDA' }, limit: 5 });
+    expect((await render(PtScreen, { peersOf: 'NVDA', limit: 5 }, withData({ 'screen@1': data }))).html).toContain('pt-scr-row pt-scr-self');
+  });
+  it('shows the list-specific column', async () => {
+    const data = screenDemo({ scope: { list: 'insider_buying' }, limit: 5 });
+    const { html } = await render(PtScreen, { list: 'insider_buying', limit: 5 }, withData({ 'screen@1': data }));
+    expect(html).toContain('>Insiders 90d<');
+    const r = data.rows[0]!;
+    expect(html).toContain(`<span class="pt-t-${tone(r.insiderNet)}">${usd(r.insiderNet, { compact: true, signed: true })}</span>`);
+  });
+  it('explains an empty list', async () => {
+    expect((await render(PtScreen, { list: '52w_low' }, withData({ 'screen@1': { asOf: '2026-10-02', rows: [] } }))).html).toContain('No companies match');
+  });
+});
+
+describe('pt-calendar', () => {
+  standardSuite('pt-calendar.vue', PtCalendar);
+  const events = eventsDemo({ scope: { by: 'universe', month: '2026-10' }, kinds: ['earnings', 'macro'] });
+  const companies = events.items.filter((e) => e.kind !== 'macro') as Extract<EventItem, { ticker: string }>[];
+  const html = async (ev: unknown, kind?: 'earnings' | 'dividend') => (await render(PtCalendar, { month: '2026-10', ...(kind ? { kind } : {}) }, withData({ 'events@1': ev }))).html;
+  it('builds Monday-first weeks covering the month', () => {
+    const m = buildMonth('2026-10', [], '2026-10-02');
+    expect(m.weeks[0]![0]!.date).toBe('2026-09-28');
+    expect(m.weeks.flat().filter((c) => c.inMonth)).toHaveLength(31);
+    expect(m.label).toBe('October 2026');
+    expect(m.weeks.flat().find((c) => c.date === '2026-10-02')!.isAsOf).toBe(true);
+  });
+  it('shifts months across years', () => {
+    expect(shiftMonth('2026-12', 1)).toBe('2027-01');
+    expect(shiftMonth('2026-01', -1)).toBe('2025-12');
+  });
+  it('caps each day at four chips and reports the overflow', async () => {
+    const many = Array.from({ length: 7 }, (_, i) => ({ ...companies[0]!, date: '2026-10-15', ticker: `T${i}` }));
+    const out = await html({ asOf: '2026-10-02', items: many });
+    expect(out.match(/class="pt-cal-ev"/g)).toHaveLength(4);
+    expect(out).toContain('+3 more');
+  });
+  it('lists every report in the text list, so nothing hides behind the cap', async () => {
+    const out = await html(events);
+    for (const e of companies) expect(out).toContain(`/stocks/${e.ticker.toLowerCase()}/`);
+  });
+  it('shows macro dates as labels on their day and in the list, without a stock link', async () => {
+    const out = await html(events);
+    const macro = events.items.filter((e) => e.kind === 'macro');
+    expect(macro.length).toBeGreaterThan(0);
+    expect(out.match(/class="pt-cal-macro"/g)!.length).toBe(macro.length);
+    expect(out).toContain('Fed');
+    expect(out).not.toContain('/stocks//');
+  });
+  it('shows a dividend calendar with amounts when asked', async () => {
+    const d = { asOf: '2026-10-02', items: [{ date: '2026-10-15', ticker: 'KO', name: 'Coca-Cola', logo: null, mcap: 3e11, kind: 'dividend' as const, meta: { amount: 0.51, payDate: '2026-10-30' } }] };
+    expect(await html(d, 'dividend')).toContain('$0.51');
+    expect(await html({ ...d, items: [{ ...d.items[0]!, meta: { amount: 0.2625, payDate: null } }] }, 'dividend')).toContain('$0.2625');
+  });
+  it('asks earnings (or dividend) dates with the macro calendar, and moves between months', async () => {
+    const asked: unknown[] = [];
+    const resolve = async (t: string, p: unknown) => { asked.push(p); return demo()(t, p); };
+    const w = mount({ render: () => h(Suspense, null, { default: () => h(PtCalendar, { month: '2026-10' }) }) },
+      { global: { provide: { [PT as symbol]: createPt({ resolve }) } }, attachTo: document.body });
+    await flushPromises();
+    expect(w.text()).toContain('October 2026');
+    await w.findAll('.pt-cal-nav button')[1]!.trigger('click');
+    await flushPromises();
+    expect(w.text()).toContain('November 2026');
+    expect(asked).toEqual([{ scope: { by: 'universe', month: '2026-10' }, kinds: ['earnings', 'macro'] }, { scope: { by: 'universe', month: '2026-11' }, kinds: ['earnings', 'macro'] }]);
+    w.unmount();
+  });
+});
