@@ -57,3 +57,7 @@ export async function hydrateIslands(doc: Document = document, o: HydrateOptions
     }
   }));
 }
+
+// for runtimes that mount a component without a page around it (the admin's draft preview)
+export { islandApp } from './server';
+export { attachTips } from './tips';

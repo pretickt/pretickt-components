@@ -18,6 +18,22 @@ describe('lintSfc (quality feedback for authors and the generator; the sandbox i
       expect.stringMatching(/^13: v-html/),
     ]);
   });
+  it('refuses what makes the compiler read files: block src, import.meta, CSS imports and urls', () => {
+    const src = '<!--\n  Q?\n  @version 1.0.0\n  @evidence e\n-->\n<script setup lang="ts" src="../x.ts"></script>\n<template src="/etc/hosts"></template>\n' +
+      '<script setup lang="ts">\nconst g = import.meta.glob(\'/*\');\nconst u = new URL(\'./x\', import . meta.url);\n</script>\n' +
+      '<style scoped>\n@reference "@pretickt/components/ds.css";\n@import "/etc/hosts";\n.a { @apply text-neg; background: url(/etc/hosts); }\n@media (width > 1px) { .b { color: red } }\n@\\69mport "x";\n@plugin "x";\n</style>';
+    expect(lintSfc(src)).toEqual([
+      expect.stringMatching(/^6: .*src=/),
+      expect.stringMatching(/^7: .*src=/),
+      expect.stringMatching(/^9: import\.meta/),
+      expect.stringMatching(/^10: import \. meta/),
+      expect.stringMatching(/^14: @import/),
+      expect.stringMatching(/^15: url\(/),
+      expect.stringMatching(/^17: .*\\/),
+      expect.stringMatching(/^18: @plugin/),
+    ]);
+    expect(lintSfc('<!--\n  Q?\n-->\n<style scoped>\n@reference "./other.css";\n</style>')).toEqual([expect.stringMatching(/^5: @reference/)]);
+  });
   it('the allowed imports are the package entry points a component may use', () => {
     expect([...ALLOWED_IMPORTS].sort()).toEqual(['@pretickt/components/context', '@pretickt/components/ds', '@pretickt/components/format', '@pretickt/components/indicators', '@pretickt/components/typologies', 'vue']);
   });
