@@ -1,16 +1,8 @@
 import * as z from 'zod/mini';
 import { DEMO_ASOF, IsoDate, prng, round, Ticker, ToneSchema } from './common';
 
-/** The metric catalogue in its two page groups, in display order (as on beta's company page). Adding a key is a minor version of metric@1. */
-export const METRIC_GROUPS = {
-  /** Valuation, analysts, insiders, cash flow, news. */
-  snapshot: ['pe', 'pe_vs_sector', 'pe_vs_own', 'pt_upside', 'consensus', 'market_cap', 'fcf_yield', 'insider_net', 'earnings_in', 'news'],
-  /** Price and technicals. */
-  technicals: ['trend', 'sector_trend', 'ma_detail', 'trend_ma', 'ma_cross', 'rsi14', 'support', 'resistance', 'off_high', 'off_ath', 'range_52w',
-    'bollinger', 'macd', 'atr_pct', 'volume_ratio'],
-} as const;
-export const METRIC_KEYS = [...METRIC_GROUPS.snapshot, ...METRIC_GROUPS.technicals] as const;
-export type MetricKey = (typeof METRIC_KEYS)[number];
+import { METRIC_GROUPS, METRIC_KEYS, type MetricKey } from './values';
+export { METRIC_GROUPS, METRIC_KEYS, type MetricKey };
 type Tone = z.infer<typeof ToneSchema>;
 
 /** Above `pos` reads good, below `neg` bad, flat in between. */

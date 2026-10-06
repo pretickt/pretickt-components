@@ -59,6 +59,32 @@
   .pt-co-t { @apply font-mono font-semibold; }
   .pt-co-n { @apply truncate text-ink-soft; }
 
+  /* company card: the page header (wide) and the hover card (compact) */
+  .pt-card { @apply grid gap-2 rounded-control border border-border bg-surface-raised p-3 text-sm; }
+  .pt-card-compact { @apply w-80 max-w-full; }
+  .pt-card-wide { @apply sm:grid-cols-2 sm:gap-x-6; }
+  .pt-card-wide :is(.pt-card-tags, .pt-card-more, .pt-card-all, .pt-card-foot) { @apply sm:col-span-2; }
+  .pt-card-id { @apply flex min-w-0 items-center gap-3; }
+  .pt-card-who { @apply min-w-0; }
+  .pt-card-name { @apply truncate text-base font-semibold text-ink; }
+  .pt-card-price { @apply flex flex-wrap items-center gap-x-3 gap-y-0.5; }
+  .pt-card-close { @apply font-mono text-xl font-semibold text-ink; }
+  .pt-card-spark { @apply h-8 w-[120px]; }
+  .pt-card-spark polyline { @apply fill-none stroke-primary; stroke-width: 1.5; }
+  .pt-card-asof { @apply basis-full; }
+  .pt-card-range { @apply flex flex-wrap items-center gap-x-2; }
+  .pt-card-bar { @apply relative h-1.5 flex-1 rounded-full bg-primary/20; }
+  .pt-card-dot { @apply absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary; }
+  .pt-card-analysts { @apply flex flex-wrap items-center justify-between gap-2 font-semibold; }
+  .pt-card-pt { @apply rounded-full border px-2 py-0.5 font-mono; }
+  .pt-card-tags, .pt-card-more { @apply gap-1; }
+  .pt-card-all { @apply justify-self-start; }
+  .pt-card-foot { @apply border-t border-border pt-2 text-xs text-ink-soft; }
+  .pt-card-foot b { @apply font-semibold text-ink; }
+  /* the floating panel the islands runtime opens over a company link */
+  .pt-hovercard { @apply fixed z-50 rounded-control shadow-lg; }
+  .pt-hovercard-loading { @apply w-80 rounded-control border border-border bg-surface-raised p-3 text-sm text-ink-soft; }
+
   /* badges */
   .pt-badges { @apply m-0 flex list-none flex-wrap gap-2 p-0; }
   .pt-badge { @apply inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-raised px-3 py-1 text-sm; }
