@@ -88,6 +88,11 @@ export function href(url: string | null | undefined): string {
   return /^(https?:\/\/|\/(?![/\\]))[^\s"'<>\\]*$/i.test(u) ? u : '#'; // browsers read "\" as "/": "/\host" is another site
 }
 
+/** The site path of a company's logo (the platform serves it from its own origin, as the site's CSP requires). */
+export function logoHref(ticker: string): string {
+  return `/logos/${String(ticker).toLowerCase()}`;
+}
+
 /** The site path of a company's page. */
 export function stockHref(ticker: string): string {
   return href(`/stocks/${String(ticker).toLowerCase()}/`);

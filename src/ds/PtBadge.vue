@@ -1,10 +1,10 @@
-<!-- One catalogue badge (a metric@1 item, or any Badge you build) as an <li> for a <ul class="pt-badges">. -->
+<!-- One catalogue badge (a metric@1 item, or any Badge you build) as an <li> for a <ul class="pt-badges">; size="mini" for dense rows (the company card). -->
 <script setup lang="ts">
 import { computed } from 'vue';
 import { badgeValue, date, money, tip, type Badge } from './format';
 import PtIcon from './PtIcon.vue';
 
-const props = defineProps<{ badge: Badge }>();
+const props = defineProps<{ badge: Badge; size?: 'mini' }>();
 const tooltip = computed(() => {
   const b = props.badge;
   const t: Record<string, string> = { [b.label]: b.hint, 'As of': date(b.asOf) };
@@ -19,7 +19,7 @@ const rangeLeft = computed(() => {
 </script>
 
 <template>
-  <li class="pt-badge" :class="`pt-tone-${badge.tone}`" tabindex="0" :data-tip="tooltip">
+  <li class="pt-badge" :class="[size === 'mini' ? 'pt-badge-mini' : '', `pt-tone-${badge.tone}`]" tabindex="0" :data-tip="tooltip">
     <PtIcon :name="badge.icon" />
     <span class="pt-badge-k">{{ badge.label }}</span>
     <span v-if="badge.dots?.length" class="pt-dots" :aria-label="`${badge.dots.length} items`">

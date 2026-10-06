@@ -4,6 +4,8 @@ import { renderToString } from 'vue/server-renderer';
 import { createSSRApp, h } from 'vue';
 import { describe, expect, it } from 'vitest';
 import PtBadge from './PtBadge.vue';
+import PtCompany from './PtCompany.vue';
+import PtLogo from './PtLogo.vue';
 import PtToggles from './PtToggles.vue';
 import type { Badge } from './format';
 
@@ -45,5 +47,23 @@ describe('PtBadge', () => {
   it('an unknown icon name renders nothing (never prototype keys)', async () => {
     const html = await renderToString(createSSRApp(() => h(PtBadge, { badge: { ...badge, icon: 'constructor' } })));
     expect(html).not.toMatch(/<svg/);
+  });
+});
+
+describe('PtLogo / PtCompany', () => {
+  const html = (c: Parameters<typeof h>[0], props: Record<string, unknown>) => renderToString(createSSRApp({ render: () => h(c, props) }));
+  it('a logo is a fixed-size lazy image from the site; without a source, the initials (no request)', async () => {
+    expect(await html(PtLogo, { ticker: 'NVDA', src: '/logos/nvda', size: 24 }))
+      .toBe('<img class="pt-logo" src="/logos/nvda" alt width="24" height="24" loading="lazy" decoding="async">'); // alt="" (decorative)
+    expect(await html(PtLogo, { ticker: 'BRK.B', src: null })).toBe('<span class="pt-logo pt-logo-initials" style="width:20px;height:20px;" aria-hidden="true">BR</span>');
+    expect(await html(PtLogo, { ticker: 'NVDA', src: 'https://evil.example/x.png' })).toContain('pt-logo-initials'); // only site paths
+  });
+  it('a company: logo, ticker and name, linked to its page (the runtime gives the link its card)', async () => {
+    const out = await html(PtCompany, { ticker: 'NVDA', name: 'NVIDIA Corporation', logo: '/logos/nvda' });
+    expect(out).toMatch(/^<a class="pt-co" href="\/stocks\/nvda\/"><img class="pt-logo"[^>]*><span class="pt-co-t">NVDA<\/span><span class="pt-co-n">NVIDIA Corporation<\/span><\/a>$/);
+    expect(await html(PtCompany, { ticker: 'NVDA', logo: null })).not.toContain('pt-co-n');
+  });
+  it('PtBadge mini: the compact tag of the company card', async () => {
+    expect(await html(PtBadge, { badge, size: 'mini' })).toMatch(/^<li class="pt-badge pt-badge-mini pt-tone-pos"/);
   });
 });

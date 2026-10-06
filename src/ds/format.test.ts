@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { amount, badgeValue, compact, date, href, level, money, month, num, pct, stockHref, tip, tone, usd } from './format';
+import { amount, badgeValue, compact, date, href, level, logoHref, money, month, num, pct, stockHref, tip, tone, usd } from './format';
 
 describe('format (the design system\'s numbers and dates; Vue escapes what it prints, so nothing here escapes)', () => {
   it('numbers', () => {
@@ -11,6 +11,9 @@ describe('format (the design system\'s numbers and dates; Vue escapes what it pr
     expect([date('2026-09-30'), month('2026-03'), date('<b>'), month('a&b')]).toEqual(['Sep 30, 2026', 'Mar 26', '<b>', 'a&b']);
   });
   it('tone', () => expect([tone(0.01), tone(-0.01), tone(0.0001, 0.0005), tone(null)]).toEqual(['pos', 'neg', 'flat', 'na']));
+  it('logoHref: the site path of a company logo (served by the platform, same origin)', () => {
+    expect([logoHref('NVDA'), logoHref('BRK.B')]).toEqual(['/logos/nvda', '/logos/brk.b']);
+  });
   it('href keeps http(s) and site paths as they are, anything else becomes #', () => {
     expect([href('https://x.com/a?b=1&c=2'), href('/stocks/nvda/'), href('javascript:alert(1)'), href('//evil.com'), href(null), href('/\\evil.com'), href('https://x.com/a\\b')])
       .toEqual(['https://x.com/a?b=1&c=2', '/stocks/nvda/', '#', '#', '#', '#', '#']); // a backslash reads as a slash

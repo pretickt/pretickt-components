@@ -52,11 +52,19 @@
   .pt-island-error::after { content: 'Could not load data — showing the last values.'; @apply mt-2 block text-xs text-danger; }
   .pt-island-error .pt-busy { @apply opacity-100; }
 
+  /* companies: logo, ticker, name */
+  .pt-logo { @apply inline-block shrink-0 rounded-md bg-surface-raised object-contain align-middle; }
+  .pt-logo-initials { @apply inline-flex items-center justify-center bg-primary/10 text-[0.6rem] font-semibold leading-none text-primary; }
+  .pt-co { @apply inline-flex min-w-0 items-center gap-1.5 text-ink no-underline hover:text-primary; }
+  .pt-co-t { @apply font-mono font-semibold; }
+  .pt-co-n { @apply truncate text-ink-soft; }
+
   /* badges */
   .pt-badges { @apply m-0 flex list-none flex-wrap gap-2 p-0; }
   .pt-badge { @apply inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-raised px-3 py-1 text-sm; }
   .pt-badge-k { @apply text-ink-soft; }
   .pt-badge-v { @apply font-mono font-semibold; }
+  .pt-badge-mini { @apply gap-1 px-2 py-0.5 text-xs; }
   .pt-tone-pos { @apply border-pos/40 bg-pos/5; }
   .pt-tone-pos .pt-badge-v { @apply text-pos; }
   .pt-tone-neg { @apply border-neg/40 bg-neg/5; }

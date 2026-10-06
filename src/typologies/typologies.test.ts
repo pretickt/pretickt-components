@@ -6,8 +6,8 @@ import { METRIC_KEYS, METRIC_LABELS } from './metric';
 import { moveBreakdownDemo } from './move-breakdown';
 
 describe('typologies', () => {
-  it('registers exactly the release-1 typologies', () => {
-    expect(Object.keys(TYPOLOGIES).sort()).toEqual(['analysts@1', 'events@1', 'fundamentals@1', 'insider@1', 'metric@1', 'move-breakdown@1', 'news@1', 'price-series@1', 'screen@1']);
+  it('registers exactly the typologies of the platform', () => {
+    expect(Object.keys(TYPOLOGIES).sort()).toEqual(['analysts@1', 'company@1', 'events@1', 'fundamentals@1', 'insider@1', 'metric@1', 'move-breakdown@1', 'news@1', 'price-series@1', 'screen@1']);
     expect(getTypology('metric@2')).toBeUndefined();
   });
 
