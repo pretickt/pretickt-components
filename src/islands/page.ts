@@ -1,7 +1,14 @@
 /** What the generator writes into a page and the island runtime reads back. */
 
-/** `<head>` JSON (script#pt-data): the build, the API origin ('' = same origin), every recorded call by need key, and the client module of each component. */
-export interface PageData { buildId: string; api: string; calls: Record<string, unknown>; components: Record<string, string> }
+/**
+ * `<head>` JSON (script#pt-data): the build, the API origin ('' = same origin), every recorded call by need key, the client module of
+ * each component, the company card's module (hover cards on company links) and, on a company's pages, that company.
+ */
+export interface PageData {
+  buildId: string; api: string; calls: Record<string, unknown>; components: Record<string, string>;
+  card?: { id: string; url: string };
+  subject?: string;
+}
 
 const ENT: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ENT[c]!);

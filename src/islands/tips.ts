@@ -1,9 +1,10 @@
 /**
- * Tooltips for `[data-tip]` (JSON of label → value, built with `tip()`), rendered as text only. The tip node lives in the island
+ * Tooltips for `[data-tip]` (JSON of label → value, built with `tip()`), rendered as text only; `skip` leaves some targets out (company
+ * links, when their card opens instead). The tip node lives in the island
  * wrapper, outside the Vue container, so hydration and re-renders never touch it. Moving between the parts of one target keeps it
  * shown and reports one hover.
  */
-export function attachTips(island: HTMLElement, interact: (action: string) => void) {
+export function attachTips(island: HTMLElement, interact: (action: string) => void, skip?: (target: Element) => boolean) {
   const tip = island.ownerDocument.createElement('div');
   tip.className = 'pt-tip';
   tip.hidden = true;
@@ -12,7 +13,7 @@ export function attachTips(island: HTMLElement, interact: (action: string) => vo
   let current: Element | null = null;
   const targetOf = (n: EventTarget | null) => {
     const t = (n as Element | null)?.closest?.('[data-tip]');
-    return t && island.contains(t) ? t : null;
+    return t && island.contains(t) && !skip?.(t) ? t : null; // skipped: a company link whose card replaces its tooltip
   };
   const show = (e: Event) => {
     const t = targetOf(e.target);
