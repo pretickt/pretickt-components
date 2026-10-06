@@ -10,7 +10,6 @@ const RULES: [RegExp, string][] = [
   [/\bDate\.now\s*\(|new\s+Date\s*\(\s*\)|Math\.random\s*\(/, 'deterministic only: no clock, no randomness ("today" is the payload asOf)'],
   [/\bIntl\b|\.toLocale\w*\s*\(/, 'no Intl / toLocale*: use @pretickt/components/format (the same text on server and browser)'],
   [/postMessage\b/, 'no messaging'],
-  [/^\s*\/\/\/\s*<reference\b/, 'no triple-slash references'],
 ];
 
 /**
@@ -34,6 +33,7 @@ export function lintSfc(source: string): string[] {
         if (!ALLOWED_IMPORTS.has(spec)) out.push(`${n}: import "${spec}" is not allowed (only ${[...ALLOWED_IMPORTS].join(', ')})`);
       }
       for (const [re, why] of RULES) { const m = re.exec(code); if (m) out.push(`${n}: ${m[0].trim()} — ${why}`); }
+      if (/^\s*\/\/\/\s*<reference\b/.test(text)) out.push(`${n}: /// <reference> — no triple-slash references`); // a comment to the stripper above
     }
     if (block === 'template' && /\sv-html\s*=/.test(text)) out.push(`${n}: v-html — never: Vue escapes text, links go through href()`);
   });
