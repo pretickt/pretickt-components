@@ -21,7 +21,7 @@ describe('lintSfc (quality feedback for authors and the generator; the sandbox i
   it('refuses what makes the compiler read files: block src, import.meta, CSS imports and urls', () => {
     const src = '<!--\n  Q?\n  @version 1.0.0\n  @evidence e\n-->\n<script setup lang="ts" src="../x.ts"></script>\n<template src="/etc/hosts"></template>\n' +
       '<script setup lang="ts">\nconst g = import.meta.glob(\'/*\');\nconst u = new URL(\'./x\', import . meta.url);\n</script>\n' +
-      '<style scoped>\n@reference "@pretickt/components/ds.css";\n@import "/etc/hosts";\n.a { @apply text-neg; background: url(/etc/hosts); }\n@media (width > 1px) { .b { color: red } }\n@\\69mport "x";\n@plugin "x";\n</style>';
+      '<style scoped>\n@reference "@pretickt/components/ds.css";\n@import "/etc/hosts";\n.a { @apply text-neg; background: url(/etc/hosts); }\n@media (width > 1px) { .b { color: red } }\n.c { content: "\\69" }\n@plugin "x";\n</style>';
     expect(lintSfc(src)).toEqual([
       expect.stringMatching(/^6: .*src=/),
       expect.stringMatching(/^7: .*src=/),
@@ -34,9 +34,30 @@ describe('lintSfc (quality feedback for authors and the generator; the sandbox i
     ]);
     expect(lintSfc('<!--\n  Q?\n-->\n<style scoped>\n@reference "./other.css";\n</style>')).toEqual([expect.stringMatching(/^5: @reference/)]);
   });
+  it('reads CSS as CSS: quotes in comments cannot hide an @import or @plugin', () => {
+    expect(lintCss(`/* ' */ @import "x.css"; /* ' */`)).toEqual([expect.stringMatching(/^1: @import/)]);
+    expect(lintCss(`/* " */ @plugin "./x.mjs"; /* " */`)).toEqual([expect.stringMatching(/^1: @plugin/)]);
+    expect(lintCss('.a { background: URL( "/etc/hosts" ) }')).toEqual([expect.stringMatching(/^1: url\(/i)]);
+    expect(lintCss('.a { color: red')).toEqual([expect.stringMatching(/^1: .*parse/)]);
+    expect(lintCss('.a { color: red }\n@\\69mport "x";')).toEqual([expect.stringMatching(/^2: \\/), expect.stringMatching(/^2: .*parse/)]);
+  });
+  it('CSS stays the component\'s own: scoped, no global selectors, no !important, plain CSS only', () => {
+    const out = lintSfc('<!--\n  Q?\n-->\n<style>\nbody, .a :global(.b) { color: red !important; }\n:root { --x: 1px; }\n</style>\n<style scoped lang="scss">\n.a { color: red }\n</style>');
+    expect(out).toEqual([
+      expect.stringMatching(/^4: <style> without scoped/),
+      expect.stringMatching(/^5: body, \.a :global\(\.b\) — no global selectors/),
+      expect.stringMatching(/^5: !important/),
+      expect.stringMatching(/^6: :root — no global selectors/),
+      expect.stringMatching(/^8: <style lang="scss">/),
+    ]);
+  });
   it('lintCss checks a style block alone, as a compiler sees it', () => {
     expect(lintCss('@reference "@pretickt/components/ds.css";\n.a { @apply text-neg; }')).toEqual([]);
     expect(lintCss('.a { color: red }\n@import "/etc/hosts";')).toEqual([expect.stringMatching(/^2: @import/)]);
+  });
+  it('never writes HTML: innerHTML / outerHTML in the template or the script', () => {
+    const out = lintSfc(sfc(`const s = '<b>';\nconst el = { innerHTML: s };`, '<div :innerHTML="s"></div><p v-bind:inner-html="s"></p>'));
+    expect(out).toEqual([expect.stringMatching(/^8: innerHTML/), expect.stringMatching(/^10: :innerHTML/), expect.stringMatching(/^10: :inner-html/)]);
   });
   it('the allowed imports are the package entry points a component may use', () => {
     expect([...ALLOWED_IMPORTS].sort()).toEqual(['@pretickt/components/context', '@pretickt/components/ds', '@pretickt/components/format', '@pretickt/components/indicators', '@pretickt/components/typologies', 'vue']);

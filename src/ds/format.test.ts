@@ -12,8 +12,8 @@ describe('format (the design system\'s numbers and dates; Vue escapes what it pr
   });
   it('tone', () => expect([tone(0.01), tone(-0.01), tone(0.0001, 0.0005), tone(null)]).toEqual(['pos', 'neg', 'flat', 'na']));
   it('href keeps http(s) and site paths as they are, anything else becomes #', () => {
-    expect([href('https://x.com/a?b=1&c=2'), href('/stocks/nvda/'), href('javascript:alert(1)'), href('//evil.com'), href(null)])
-      .toEqual(['https://x.com/a?b=1&c=2', '/stocks/nvda/', '#', '#', '#']);
+    expect([href('https://x.com/a?b=1&c=2'), href('/stocks/nvda/'), href('javascript:alert(1)'), href('//evil.com'), href(null), href('/\\evil.com'), href('https://x.com/a\\b')])
+      .toEqual(['https://x.com/a?b=1&c=2', '/stocks/nvda/', '#', '#', '#', '#', '#']); // a backslash reads as a slash
     expect(stockHref('BRK.B')).toBe('/stocks/brk.b/');
   });
   it('tip is the JSON a data-tip attribute carries', () => expect(JSON.parse(tip({ Sentiment: 'positive', N: 3 }))).toEqual({ Sentiment: 'positive', N: 3 }));

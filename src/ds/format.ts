@@ -85,7 +85,7 @@ export function tone(v: number | null | undefined, flatBand = 0): Tone {
 /** A safe href: absolute http(s) or a site path ("/…", not "//host"); any other scheme (javascript:, data:, …) becomes "#". */
 export function href(url: string | null | undefined): string {
   const u = String(url ?? '').trim();
-  return /^(https?:\/\/|\/(?!\/))[^\s"'<>]*$/i.test(u) ? u : '#';
+  return /^(https?:\/\/|\/(?![/\\]))[^\s"'<>\\]*$/i.test(u) ? u : '#'; // browsers read "\" as "/": "/\host" is another site
 }
 
 /** The site path of a company's page. */

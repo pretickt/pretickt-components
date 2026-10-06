@@ -16,6 +16,16 @@ describe('checkMarkup (rendered HTML a page will accept)', () => {
     };
     for (const [name, html] of Object.entries(bad)) expect(checkMarkup(html).length, name).toBeGreaterThan(0);
   });
+  it('judges a URL as the browser reads it: entities decoded, controls and spaces gone, backslash as slash', () => {
+    const bad = {
+      entity: '<a href="&#106;avascript:alert(1)">x</a>', hexEntity: '<a href="&#x6A;avascript:x">x</a>', named: '<a href="javascript&colon;x">x</a>',
+      tab: '<a href="java\tscript:x">x</a>', tabEntity: '<a href="java&#9;script:x">x</a>', newline: '<a href="java\nscript:x">x</a>',
+      backslash: '<a href="/\\evil.example">x</a>', backslashes: '<a href="\\\\evil.example">x</a>', slashEntity: '<a href="&#x2F;&#x2F;evil">x</a>',
+      unknownEntity: '<a href="&Jfr;avascript:x">x</a>', srcset: '<img srcset="/a.png 1x, javascript:x 2x">',
+    };
+    for (const [name, html] of Object.entries(bad)) expect(checkMarkup(html).length, name).toBeGreaterThan(0);
+    expect(checkMarkup('<a href="https://x.com/?a=1&amp;b=2">x</a><a href="#top">t</a><a href="/stocks/brk.b/">b</a><a href="news/">n</a>')).toEqual([]);
+  });
 });
 
 it('component output may not forge an island or its props (the page owns them)', async () => {
