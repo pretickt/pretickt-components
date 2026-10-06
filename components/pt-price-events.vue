@@ -77,14 +77,16 @@ const load = (r: RangeT) => Promise.all([
   pt.priceSeries({ tickers: [props.ticker], range: r, interval: '1d', rebase: false }),
   pt.events({ scope: { by: 'ticker', ticker: props.ticker, range: r, ahead: 90 }, kinds: ['earnings', 'dividend', 'split', 'analyst'] }),
 ]);
-const range = ref<RangeT>(props.range);
+const range = ref<RangeT>(props.range);   // the reader's choice (the toggle)
+const shown = ref<RangeT>(props.range);   // the range of the data on screen (the captions)
 const view = ref<Viewport>(FULL_VIEWPORT);
 const [s0, e0] = await load(range.value);
 const series = ref(s0), events = ref(e0), loading = ref(false);
 async function show(r: RangeT) {
   range.value = r;
   loading.value = true;
-  [series.value, events.value] = await load(r);
+  const [s, e] = await load(r);
+  [series.value, events.value, shown.value] = [s, e, r];
   view.value = FULL_VIEWPORT; // new data: back to the full view
   loading.value = false;
 }
@@ -127,7 +129,7 @@ function tipForGroup(m: Marker): string {
 const caption = computed(() => {
   const p = points.value;
   if (!p.length) return '';
-  return `Last close ${money(p.at(-1)!.c)} · ${pct(p.at(-1)!.c / p[0]!.c - 1)} over ${range.value} · ${LEGEND}${events.value ? '' : ' · Events not available'}`;
+  return `Last close ${money(p.at(-1)!.c)} · ${pct(p.at(-1)!.c / p[0]!.c - 1)} over ${shown.value} · ${LEGEND}${events.value ? '' : ' · Events not available'}`;
 });
 </script>
 
@@ -135,7 +137,7 @@ const caption = computed(() => {
   <p v-if="!g" class="pt-na">Data not available</p>
   <figure v-else class="pt-chart" :class="{ 'pt-busy': loading }">
     <PtToggles :model-value="range" :options="RANGE_TOGGLES" label="Range" @update:model-value="show" />
-    <PtChart v-model:view="view" :w="W" :h="H" :plot-w="PLOT_W" :plot-h="PLOT_H" :id="`pe${ticker}`" :label="`${ticker} price, ${range}`">
+    <PtChart v-model:view="view" :w="W" :h="H" :plot-w="PLOT_W" :plot-h="PLOT_H" :id="`pe${ticker}`" :label="`${ticker} price, ${shown}`">
       <template #axes>
         <PtYAxis :w="W" :plot-w="PLOT_W" :ticks="g.yTicks" />
         <PtTimeAxis :h="H" :plot-w="PLOT_W" :ticks="g.xTicks" />

@@ -39,38 +39,48 @@ export interface PtOptions {
   cache?: Map<string, Promise<unknown>>;
   /** Build time and checks: throw on params the typology rejects (validateParams). The browser trusts the API, which validates. */
   validate?: (t: TypologyKey, params: unknown) => void;
+  /**
+   * Browser: the island's interaction counter (the runtime bumps it on every pointer or key press inside the island). It is what
+   * "latest wins" compares; without it (build, checks) no call is ever dropped.
+   */
+  epoch?: () => number;
+  /**
+   * Browser: hears whether each request was answered or failed. With it, a failed request (429, 5xx, offline) never settles — the
+   * component keeps what it shows — instead of answering null, which means "not available"; without it (build) a failure is null.
+   */
+  status?: (s: 'ok' | 'failed') => void;
 }
+
+const FAILED = Symbol('failed');
+const never = () => new Promise<never>(() => {});
 
 /**
  * The platform's implementation of the context. A call's key is its typology and the params exactly as the component passed them
  * (the same component makes the same call on the server and in the browser, so the browser finds the recorded answer); answers are
- * cached per key. Latest wins per method: a call started in an earlier turn than a newer call of the same method never
- * settles if it would answer after it (a stale click cannot overwrite a fresh one); calls started together (Promise.all) do not
- * supersede each other.
+ * cached per key. Latest wins per method, between interactions: a call made in an earlier interaction than a newer call of the
+ * same method never settles (a stale click cannot overwrite a fresh one); calls of one interaction — or of the build, which has
+ * none — never supersede each other, however they are nested.
  */
 export function createPt(o: PtOptions): PtContext {
   const cache = o.cache ?? new Map<string, Promise<unknown>>();
   for (const [k, v] of Object.entries(o.replay ?? {})) if (!cache.has(k)) cache.set(k, Promise.resolve(v));
-  let turn = 0, turnScheduled = false;
-  const currentTurn = () => {
-    if (!turnScheduled) { turnScheduled = true; queueMicrotask(() => { turn++; turnScheduled = false; }); }
-    return turn;
-  };
   const newest = new Map<string, number>();
 
   const call = (t: TypologyKey) => async (raw: unknown): Promise<unknown> => {
     o.validate?.(t, raw);
     const key = needKey({ t, params: raw });
-    const mine = currentTurn();
+    const mine = o.epoch?.() ?? 0;
     newest.set(t, Math.max(newest.get(t) ?? 0, mine));
     let p = cache.get(key);
     if (!p) {
-      p = o.resolve(t, raw).then((v) => v ?? null, () => { cache.delete(key); return null; });
+      p = o.resolve(t, raw).then((v) => v ?? null, () => { cache.delete(key); return o.status ? FAILED : null; });
       cache.set(key, p);
     }
     const value = await p;
+    o.status?.(value === FAILED ? 'failed' : 'ok');
+    if (value === FAILED) return never(); // the component keeps what it shows; the runtime says the data could not load
     if (o.record) o.record[key] = value;
-    if ((newest.get(t) ?? 0) > mine) return new Promise(() => {}); // superseded by a newer call: never settles
+    if ((newest.get(t) ?? 0) > mine) return never(); // superseded by a newer interaction's call
     return value;
   };
   return Object.freeze(Object.fromEntries(TYPOLOGY_IDS.map((t) => [methodOf(t), call(t)]))) as unknown as PtContext;

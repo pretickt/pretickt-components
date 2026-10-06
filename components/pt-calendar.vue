@@ -62,9 +62,10 @@ const month = ref(props.month);
 const events = ref(await pt.events({ scope: { by: 'universe', month: month.value }, kinds: [props.kind, 'macro'] }));
 const loading = ref(false);
 async function go(m: string) {
-  month.value = m;
   loading.value = true;
-  events.value = await pt.events({ scope: { by: 'universe', month: m }, kinds: [props.kind, 'macro'] });
+  const next = await pt.events({ scope: { by: 'universe', month: m }, kinds: [props.kind, 'macro'] });
+  month.value = m;           // the month on screen changes with its data, never before
+  events.value = next;
   loading.value = false;
 }
 

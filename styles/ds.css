@@ -48,6 +48,9 @@
   .pt-busy { @apply opacity-60 transition-opacity; }
   /* Islands anchor their tooltip. Never put position on [class^='pt-']: it would override .pt-tip's absolute. */
   .pt-island { @apply relative block; }
+  /* A request failed (rate limit, offline): the island keeps its last values and says so; it is not loading any more. */
+  .pt-island-error::after { content: 'Could not load data — showing the last values.'; @apply mt-2 block text-xs text-danger; }
+  .pt-island-error .pt-busy { @apply opacity-100; }
 
   /* badges */
   .pt-badges { @apply m-0 flex list-none flex-wrap gap-2 p-0; }

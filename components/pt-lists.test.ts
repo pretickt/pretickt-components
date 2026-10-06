@@ -86,4 +86,19 @@ describe('pt-calendar', () => {
     expect(asked).toEqual([{ scope: { by: 'universe', month: '2026-10' }, kinds: ['earnings', 'macro'] }, { scope: { by: 'universe', month: '2026-11' }, kinds: ['earnings', 'macro'] }]);
     w.unmount();
   });
+  it('while the next month loads (or if it never does), the calendar still names the month its data is for', async () => {
+    let n = 0;
+    const resolve = (t: string, p: unknown) => (n++ === 0 ? demo()(t, p) : new Promise(() => {}));
+    const w = mount({ render: () => h(Suspense, null, { default: () => h(PtCalendar, { month: '2026-10' }) }) },
+      { global: { provide: { [PT as symbol]: createPt({ resolve }) } }, attachTo: document.body });
+    await flushPromises();
+    const before = w.find('.pt-cal-grid').html();
+    await w.findAll('.pt-cal-nav button')[1]!.trigger('click');
+    await flushPromises();
+    expect(w.text()).toContain('October 2026');
+    expect(w.text()).not.toContain('November 2026');
+    expect(w.find('.pt-cal-grid').html()).toBe(before);
+    expect(w.find('.pt-cal').classes()).toContain('pt-busy');
+    w.unmount();
+  });
 });

@@ -31,7 +31,7 @@ const win = ref(props.window);
 const move = ref(await pt.moveBreakdown({ ticker: props.ticker, window: win.value }));   // payload | null
 const loading = ref(false);
 async function show(w: '1d' | '5d' | '1m') {          // interaction = ordinary Vue: change state, ask again
-  win.value = w;
+  win.value = w;                                       // the toggle shows the choice at once
   loading.value = true;
   move.value = await pt.moveBreakdown({ ticker: props.ticker, window: w });
   loading.value = false;
@@ -61,10 +61,14 @@ async function show(w: '1d' | '5d' | '1m') {          // interaction = ordinary 
 
 ## Data: `usePt()` (`@pretickt/components/context`)
 One async method per typology; params are checked by the types (and by the typology at build time); the answer is the payload or
-**`null`** when it is not available. Call it at the top level of `<script setup>` (awaited) and again in handlers. Calls started
-together (`Promise.all`) all answer; a call superseded by a newer call of the same method (a later click) never answers — so the
-pattern above cannot show stale data. **Params must be deterministic** (never the clock or randomness): the browser finds the
-build's answer by the same params.
+**`null`** when it is not available. Call it at the top level of `<script setup>` (awaited) and again in handlers. All the calls
+of one interaction answer, however they are nested (and at build time there are no interactions: every call answers); a call
+superseded by a call of the same method from a **later interaction** (the reader clicked again) never answers — so the pattern
+above cannot show stale data. A request that **fails** in the browser (rate limit, offline) never answers either: the island keeps
+what it shows and the runtime adds the notice "Could not load data — showing the last values"; pressing the toggle again retries.
+So **labels that name a parameter** (a month, a range) come from the data on screen — update them with the data, after the
+`await` (`move.window` above, or a `shown` ref set next to the data) — while the toggle shows the reader's choice at once.
+**Params must be deterministic** (never the clock or randomness): the browser finds the build's answer by the same params.
 
 | method | params | payload |
 |---|---|---|

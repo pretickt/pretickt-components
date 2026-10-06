@@ -12,10 +12,13 @@ export interface HydrateOptions {
   send?: Send;
 }
 
+/** What starts a new interaction in an island. */
+const INTERACTIONS = ['pointerdown', 'keydown', 'click', 'input', 'change'] as const;
+
 /**
  * The page runtime: hydrate every island with its component, replaying the calls the build recorded (no network on first paint);
- * later calls go to `/v1/t`. One `pt` per island (latest wins stays per island), one cache
- * per page. One island that fails to load or hydrate never stops the others.
+ * later calls go to `/v1/t`. One `pt` per island (latest wins stays per island, between its interactions), one cache per page. A
+ * request that fails leaves the island as it was, with a notice. One island that fails to load or hydrate never stops the others.
  */
 export async function hydrateIslands(doc: Document = document, o: HydrateOptions = {}) {
   const page = readPage(doc);
@@ -42,8 +45,14 @@ export async function hydrateIslands(doc: Document = document, o: HydrateOptions
       // Hydration finishes when the component's top-level awaits resolve (replayed data); until then it is the static HTML.
       // A component that throws is unmounted and its server HTML put back: a page never loses content to a client error.
       const serverHtml = root.innerHTML;
+      // "latest wins" compares interactions: every press inside the island starts a new one
+      let interaction = 0;
+      for (const ev of INTERACTIONS) island.addEventListener(ev, () => { interaction++; }, { capture: true });
       await new Promise<void>((done) => {
-        const app = islandApp(component, props, createPt({ resolve, replay: page.calls, cache }), done);
+        // a request that fails keeps the island as it is and shows the notice (ds.css) until the next answer; one that fails
+        // before the island has hydrated leaves it static (its server HTML) instead of holding the page runtime
+        const status = (s: 'ok' | 'failed') => { island.classList.toggle('pt-island-error', s === 'failed'); if (s === 'failed') done(); };
+        const app = islandApp(component, props, createPt({ resolve, replay: page.calls, cache, epoch: () => interaction, status }), done);
         app.config.errorHandler = (err) => {
           console.error(`island ${id}:`, err);
           try { app.unmount(); } catch { /* already gone */ }

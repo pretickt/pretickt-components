@@ -73,6 +73,36 @@ describe('hydrateIslands (browser)', () => {
     await vi.waitFor(() => expect(document.querySelectorAll('.probe li')).toHaveLength(8));
     expect(fetchImpl.mock.calls[0]![0]).toBe('/v1/t/news%401?p=%7B%22limit%22%3A8%2C%22ticker%22%3A%22NVDA%22%7D&b=b1');
   });
+  it('a request that fails keeps what the island shows and says so; the next answer clears the notice', async () => {
+    await pageWith();
+    let fail = true;
+    const fetchImpl = vi.fn(async (url: string) => (fail ? new Response('{"error":"rate limited"}', { status: 429 })
+      : new Response(JSON.stringify(newsDemo(NewsParams.parse(JSON.parse(new URL(url, 'https://x').searchParams.get('p')!)))))));
+    await hydrateIslands(document, { importer: async () => ({ default: Probe }), fetchImpl, send: () => {} });
+    const island = document.querySelector<HTMLElement>('.pt-island')!;
+    const eight = () => document.querySelectorAll<HTMLButtonElement>('.pt-toggles button')[1]!;
+    eight().click();
+    await vi.waitFor(() => expect(island.classList.contains('pt-island-error')).toBe(true));
+    expect(document.querySelectorAll('.probe li')).toHaveLength(5);           // the last values, not "not available"
+    fail = false;
+    eight().click();
+    await vi.waitFor(() => expect(document.querySelectorAll('.probe li')).toHaveLength(8));
+    expect(island.classList.contains('pt-island-error')).toBe(false);
+  });
+  it('latest wins between clicks: an older click answered last never overwrites the newer one', async () => {
+    await pageWith();
+    const answers: Record<string, (r: Response) => void> = {};
+    const fetchImpl = vi.fn((url: string) => new Promise<Response>((r) => { answers[JSON.parse(new URL(url, 'https://x').searchParams.get('p')!).limit] = r; }));
+    await hydrateIslands(document, { importer: async () => ({ default: Probe }), fetchImpl, send: () => {} });
+    const [five, eight] = [...document.querySelectorAll<HTMLButtonElement>('.pt-toggles button')];
+    eight!.click();
+    await new Promise((r) => setTimeout(r, 0));                                 // the page renders between two clicks
+    five!.click();                                                              // limit 5 is replayed from the page: answers at once
+    await vi.waitFor(() => expect(answers[8]).toBeDefined());
+    answers[8]!(new Response(JSON.stringify(newsDemo(NewsParams.parse({ ticker: 'NVDA', limit: 8 })))));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(document.querySelectorAll('.probe li')).toHaveLength(5);
+  });
   it('tooltips: hovering a [data-tip] shows its rows as text, outside the Vue container', async () => {
     await pageWith();
     await hydrateIslands(document, { importer: async () => ({ default: Probe }), fetchImpl: vi.fn(), send: () => {} });

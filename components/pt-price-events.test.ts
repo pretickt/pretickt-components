@@ -1,5 +1,8 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
+import { flushPromises, mount } from '@vue/test-utils';
+import { h, Suspense } from 'vue';
+import { createPt, PT } from '../src/context/pt';
 import { date } from '../src/ds/format';
 import { eventsDemo, priceSeriesDemo, type EventItem } from '../src/typologies';
 import PtPriceEvents, { isEvent, layout } from './pt-price-events.vue';
@@ -45,6 +48,19 @@ describe('pt-price-events', () => {
     expect(out).toContain('data-zoom=');
     expect(out).toContain('clip-path=');
     expect(out).not.toContain('pt-vctl');
+  });
+  it('while another range loads, the toggle shows the choice and the caption still names the range on screen', async () => {
+    let n = 0;
+    const resolve = (t: string, p: unknown) => (n++ < 2 ? withData({ 'price-series@1': series, 'events@1': events })(t, p) : new Promise(() => {}));
+    const w = mount({ render: () => h(Suspense, null, { default: () => h(PtPriceEvents, { ticker: 'NVDA', range: '1y' }) }) },
+      { global: { provide: { [PT as symbol]: createPt({ resolve }) } }, attachTo: document.body });
+    await flushPromises();
+    await w.findAll('.pt-toggles button').find((b) => b.text() === '5Y')!.trigger('click');
+    await flushPromises();
+    expect(w.find('.pt-toggles button[aria-pressed="true"]').text()).toBe('5Y');
+    expect(w.text()).toContain('over 1y');
+    expect(w.text()).not.toContain('over 5y');
+    w.unmount();
   });
   it('renders the range toggles with the current one pressed', async () => {
     const out = await html(series, events, '6m');
