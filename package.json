@@ -31,7 +31,8 @@
     "./checks": "./src/checks/index.ts",
     "./islands": "./src/islands/index.ts",
     "./server": "./dist/server/index.js",
-    "./islands/client": "./src/islands/client.ts"
+    "./islands/client": "./src/islands/client.ts",
+    "./ds.css": "./styles/ds.css"
   },
   "dependencies": {
     "lit": "^3.3.3",
