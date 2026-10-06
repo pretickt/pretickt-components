@@ -105,11 +105,14 @@ typology is a platform change (schema here + resolver in the private platform + 
 ## CSS
 Design-system classes first. Custom CSS **only** in `<style scoped>`, **only** for what the design system does not have:
 `@reference "@pretickt/components/ds.css";` to use its tokens and `@apply`; tokens only (no raw colours); no global selectors
-(`:global`, `html`, `body`), no `!important`, no external `url()`. If a class would help other components, propose it for `ds.css`.
+(`:global`, `html`, `body`), no `!important`. A component's CSS **loads nothing**: no `@import`, no `url()`, no other
+`@reference`, no escapes (`\`); at-rules are `@apply`, `@media`, `@supports`, `@keyframes`, `@container`. If a class would help
+other components, propose it for `ds.css`.
 
 ## Rules (the checks enforce what they can; the platform sandbox contains the rest)
 - **No data access of your own**: no `fetch`, `XMLHttpRequest`, `WebSocket`, storage, cookies, `window`/`document` in setup, no
-  `import()`, no `eval`. Only these imports: `vue`, `@pretickt/components/{context,ds,format,typologies,indicators}`.
+  `import()`, no `eval`, no `import.meta`. Only these imports: `vue`, `@pretickt/components/{context,ds,format,typologies,indicators}`.
+  The whole component is its one file: no `src=` on `<script>`, `<template>` or `<style>`.
 - **Deterministic**: no `Date.now()`, `new Date()` without argument, `Math.random()`, `Intl`, `toLocale*` — "today" is the `asOf`
   the payload carries. Server and browser must render the same HTML (hydration).
 - **Never `v-html`.** Vue escapes text and attributes; links from data go through `href(url)` (external ones get

@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { lintSource } from '../lint';
+import { lintSfc } from '../checks/lint';
 import * as ind from './index';
 
 describe('indicators entry point', () => {
@@ -18,7 +18,8 @@ describe('indicators entry point', () => {
   it('every indicator passes the component lint rules (pure, deterministic, no network)', () => {
     const dir = new URL('.', import.meta.url).pathname;
     for (const f of readdirSync(dir).filter((x) => x.endsWith('.ts') && !x.endsWith('.test.ts'))) {
-      expect(lintSource(readFileSync(dir + f, 'utf8'), f).filter((x) => x.rule !== 'import'), f).toEqual([]);
+      const asScript = `<script setup lang="ts">\n${readFileSync(dir + f, 'utf8')}\n</script>`; // its own relative imports aside
+      expect(lintSfc(asScript).filter((x) => !/^\d+: import "\./.test(x)), f).toEqual([]);
     }
   });
 });

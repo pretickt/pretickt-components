@@ -13,7 +13,6 @@ import {
   shiftYViewport,
   zoomViewport,
 } from './viewport';
-import { ViewportParam } from '../sdk/viewport-param';
 
 describe('zoomViewport', () => {
   it('zooms in around the anchor and clamps at the edges', () => {
@@ -119,10 +118,5 @@ describe('pretickt additions', () => {
   it('applyXViewport narrows a numeric domain to the window', () => {
     expect(applyXViewport(0, 100, { start: 0.25, end: 0.75 })).toEqual({ min: 25, max: 75 });
     expect(applyXViewport(10, 20, FULL_VIEWPORT)).toEqual({ min: 10, max: 20 });
-  });
-  it('ViewportParam validates the window and rejects nonsense', () => {
-    expect(ViewportParam.safeParse({ start: 0.1, end: 0.9, yScale: 1, yShift: 0 }).success).toBe(true);
-    expect(ViewportParam.safeParse({ start: 0.9, end: 0.1 }).success).toBe(false);
-    expect(ViewportParam.safeParse({ start: -1, end: 0.5 }).success).toBe(false);
   });
 });

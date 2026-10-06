@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { needKey } from '../sdk/key';
+import { needKey } from '../api';
 import { createPt, methodOf, typologyOf } from './pt';
 import { validateParams } from './validate';
 
