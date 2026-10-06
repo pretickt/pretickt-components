@@ -1,6 +1,6 @@
 import type { MetricItem, TONES } from '../typologies';
-import { ICONS } from './icons';
-import { isAtLatest, isFullViewport, isYFitted, type Viewport } from './viewport';
+import { ICONS } from '../ds/icons';
+import { isAtLatest, isFullViewport, isYFitted, type Viewport } from '../ds/viewport';
 
 export type Tone = (typeof TONES)[number];
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { checkMarkup } from './markup';
 import { helpers as h } from './helpers';
-import { closeAt, isoDay, linePath, monthTicks } from './chart';
+import { closeAt, isoDay, linePath, monthTicks } from '../ds/chart';
 
 describe('no-code controls', () => {
   it('h.set writes an escaped data-set attribute, whatever the value', () => {

@@ -4,7 +4,7 @@
   "description": "",
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "vue-tsc --noEmit",
     "build": "tsx scripts/build.ts"
   },
   "keywords": [],
@@ -27,17 +27,24 @@
   },
   "dependencies": {
     "lit": "^3.3.3",
-    "zod": "^4.6.5",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vue": "3.5",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.3.3",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.6.4",
+    "@vitejs/plugin-vue": "^6.0.9",
+    "@vue/test-utils": "^2.5.1",
     "esbuild": "^0.28.2",
     "happy-dom": "^20.14.5",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
-    "vitest": "^5.0.3"
+    "vite": "^8.3.3",
+    "vitest": "^5.0.3",
+    "vue-component-meta": "^3.3.12",
+    "vue-tsc": "^3.3.12"
   },
   "sideEffects": [
     "./src/host/entry.ts"

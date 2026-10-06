@@ -3,8 +3,8 @@ import { helpers } from './helpers';
 import { needKey } from './key';
 import type { ComponentModule, HostApi, Kit, Need } from './types';
 import { attachTips } from './tips';
-import { FULL_VIEWPORT, isFullViewport, type Viewport } from './viewport';
-import { attachZoom } from './zoom-controller';
+import { FULL_VIEWPORT, isFullViewport, type Viewport } from '../ds/viewport';
+import { attachZoom } from '../ds/zoom';
 
 export type LitKit = Omit<Kit, 'PtElement'> & { LitElement: typeof LitElementType };
 
