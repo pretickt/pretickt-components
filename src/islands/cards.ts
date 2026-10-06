@@ -23,20 +23,33 @@ export interface CardOptions {
   hover: boolean;
   openMs?: number;
   closeMs?: number;
+  /** After a card fails to load (typically the API's rate limit), cards pause this long and links show their text tooltips. */
+  pauseMs?: number;
 }
+
+/** What the tooltips need to know: whether a company link opens its card right now. */
+export interface Cards { active(): boolean }
 
 /** Whether a page's company links get a card instead of a text tooltip. */
 export const cardsOn = (page: PageData, hover: boolean): boolean => hover && !!page.card;
 
-/** Puts the panel under the link (above when there is no room), inside the window. */
+/**
+ * Where the panel goes: under the link when it fits, above it when that fits, else pinned to the top of the window with a height
+ * that scrolls — the whole card (after "Show all" too) stays reachable.
+ */
+export function panelPosition(r: { left: number; top: number; bottom: number }, w: number, h: number, vw: number, vh: number) {
+  const x = Math.max(GAP, Math.min(r.left, vw - w - GAP));
+  if (r.bottom + GAP + h <= vh - GAP) return { x, y: r.bottom + GAP, maxHeight: null };
+  if (r.top - GAP - h >= GAP) return { x, y: r.top - GAP - h, maxHeight: null };
+  return { x, y: GAP, maxHeight: vh - 2 * GAP };
+}
+
 function place(panel: HTMLElement, link: Element, win: Window) {
-  const r = link.getBoundingClientRect();
-  const w = panel.offsetWidth || 340, hgt = panel.offsetHeight || 0;
-  const x = Math.max(GAP, Math.min(r.left, win.innerWidth - w - GAP));
-  const below = r.bottom + GAP;
-  const y = below + hgt > win.innerHeight - GAP && r.top - GAP - hgt > GAP ? r.top - GAP - hgt : below;
-  panel.style.left = `${Math.round(x)}px`;
-  panel.style.top = `${Math.round(y)}px`;
+  panel.style.maxHeight = '';
+  const p = panelPosition(link.getBoundingClientRect(), panel.offsetWidth || 340, panel.scrollHeight || panel.offsetHeight || 0, win.innerWidth, win.innerHeight);
+  panel.style.left = `${Math.round(p.x)}px`;
+  panel.style.top = `${Math.round(p.y)}px`;
+  if (p.maxHeight !== null) panel.style.maxHeight = `${Math.round(p.maxHeight)}px`;
 }
 
 const rowsOf = (raw: string | null): Record<string, unknown> | null => {
@@ -50,10 +63,10 @@ const rowsOf = (raw: string | null): Record<string, unknown> | null => {
  * while the pointer is on the link or on it, closes a moment after leaving or on Escape; one at a time. Its calls go through the
  * page's API resolver and cache; a card whose data cannot load is not shown.
  */
-export function attachCards(doc: Document, page: PageData, o: CardOptions): void {
+export function attachCards(doc: Document, page: PageData, o: CardOptions): Cards {
   ATTACHED.get(doc)?.abort();
   ATTACHED.delete(doc);
-  if (!cardsOn(page, o.hover) || !doc.defaultView) return;
+  if (!cardsOn(page, o.hover) || !doc.defaultView) return { active: () => false };
   const ctl = new AbortController();
   ATTACHED.set(doc, ctl);
   const on = { signal: ctl.signal };
@@ -61,20 +74,24 @@ export function attachCards(doc: Document, page: PageData, o: CardOptions): void
   const card = page.card!;
   const subject = page.subject?.toUpperCase();
   let link: Element | null = null, panel: HTMLElement | null = null, app: App | null = null;
-  let openTimer = 0, closeTimer = 0;
+  let openTimer = 0, closeTimer = 0, pausedUntil = 0;
+  const paused = () => win.performance.now() < pausedUntil;
 
   const linkOf = (t: EventTarget | null): Element | null => {
     const a = (t as Element | null)?.closest?.('a[href]') ?? null;
     const ticker = companyOf(a);
     return ticker && ticker !== subject ? a : null;
   };
-  const close = () => {
-    win.clearTimeout(openTimer); win.clearTimeout(closeTimer);
+  /** Removes the open panel; a card about to open (the next link) is left alone. */
+  const teardown = () => {
+    win.clearTimeout(closeTimer);
     try { app?.unmount(); } catch { /* already gone */ }
     panel?.remove();
     app = null; panel = null; link = null;
   };
-  const closeSoon = () => { win.clearTimeout(closeTimer); closeTimer = win.setTimeout(close, o.closeMs ?? 250); };
+  /** Escape, a new card, a new hookup: nothing stays open or about to open. */
+  const close = () => { win.clearTimeout(openTimer); teardown(); };
+  const closeSoon = () => { win.clearTimeout(closeTimer); closeTimer = win.setTimeout(teardown, o.closeMs ?? 250); };
 
   async function open(a: Element) {
     close();
@@ -107,8 +124,10 @@ export function attachCards(doc: Document, page: PageData, o: CardOptions): void
       p.replaceChildren(root);
       attachTips(p, (action) => p.dispatchEvent(new CustomEvent('pt-interact', { bubbles: true, detail: { action } })));
       place(p, a, win);
+      p.addEventListener('click', () => win.setTimeout(() => { if (panel === p) place(p, a, win); }, 0)); // "Show all" changes its height
       p.dispatchEvent(new CustomEvent('pt-interact', { bubbles: true, detail: { action: 'hover' } }));
     } catch {
+      pausedUntil = win.performance.now() + (o.pauseMs ?? 60_000); // most likely the rate limit: stop asking for a while
       if (panel === p) close();
     }
   }
@@ -116,7 +135,7 @@ export function attachCards(doc: Document, page: PageData, o: CardOptions): void
   ctl.signal.addEventListener('abort', () => close());
   doc.addEventListener('pointerover', (e) => {
     const a = linkOf(e.target);
-    if (!a) return;
+    if (!a || paused()) return;
     if (a === link) { win.clearTimeout(closeTimer); return; }
     win.clearTimeout(openTimer);
     openTimer = win.setTimeout(() => void open(a), o.openMs ?? 250);
@@ -128,4 +147,5 @@ export function attachCards(doc: Document, page: PageData, o: CardOptions): void
     if (a === link) closeSoon();
   }, on);
   doc.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); }, on);
+  return { active: () => !ctl.signal.aborted && !paused() };
 }

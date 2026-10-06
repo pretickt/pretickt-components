@@ -84,7 +84,7 @@
   .pt-card-foot { @apply border-t border-border pt-2 text-xs text-ink-soft; }
   .pt-card-foot b { @apply font-semibold text-ink; }
   /* the floating panel the islands runtime opens over a company link */
-  .pt-hovercard { @apply fixed z-50 rounded-control shadow-lg; }
+  .pt-hovercard { @apply fixed z-50 overflow-auto rounded-control shadow-lg; }
   .pt-hovercard-loading { @apply w-[340px] rounded-control border border-border bg-surface-raised p-3 text-sm text-ink-soft; }
 
   /* badges */

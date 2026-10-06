@@ -4,7 +4,7 @@ import { createPt } from '../context/pt';
 import { sendBeacon, startBeacon, type Send } from './beacon';
 import { readPage } from './page';
 import { islandApp } from './server';
-import { attachCards, cardsOn, companyOf } from './cards';
+import { attachCards, companyOf } from './cards';
 import { attachTips } from './tips';
 
 export interface HydrateOptions {
@@ -12,7 +12,7 @@ export interface HydrateOptions {
   fetchImpl?: (url: string) => Promise<Response>;
   send?: Send;
   /** Company cards on hover: the device test (default: matchMedia) and the delays, for tests. */
-  cards?: { hover?: boolean; openMs?: number; closeMs?: number };
+  cards?: { hover?: boolean; openMs?: number; closeMs?: number; pauseMs?: number };
 }
 
 /** What starts a new interaction in an island. */
@@ -36,9 +36,10 @@ export async function hydrateIslands(doc: Document = document, o: HydrateOptions
     return r.json(); // the API validated it (and the browser does not ship the schemas)
   };
   const hover = o.cards?.hover ?? !!doc.defaultView?.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
-  attachCards(doc, page, { importer, resolve, cache, replay: page.calls, hover, openMs: o.cards?.openMs, closeMs: o.cards?.closeMs });
-  // where cards open, a company link shows its card instead of its text tooltip
-  const skip = cardsOn(page, hover) ? (t: Element) => companyOf(t.closest('a[href]')) !== null : undefined;
+  const cards = attachCards(doc, page, { importer, resolve, cache, replay: page.calls, hover, openMs: o.cards?.openMs, closeMs: o.cards?.closeMs,
+    pauseMs: o.cards?.pauseMs });
+  // where a card opens on hover, a company link shows it instead of its text tooltip (the keyboard still gets the tooltip)
+  const skip = (t: Element) => cards.active() && companyOf(t.closest('a[href]')) !== null;
   await Promise.all([...doc.querySelectorAll<HTMLElement>('[data-island]')].map(async (island) => {
     if (island.parentElement?.closest('[data-island]')) return; // an island inside a component's markup is not an island
     const id = island.getAttribute('data-island')!;

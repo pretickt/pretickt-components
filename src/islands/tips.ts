@@ -11,12 +11,13 @@ export function attachTips(island: HTMLElement, interact: (action: string) => vo
   tip.setAttribute('role', 'tooltip');
   island.append(tip);
   let current: Element | null = null;
-  const targetOf = (n: EventTarget | null) => {
+  const targetOf = (e: Event, n: EventTarget | null) => {
     const t = (n as Element | null)?.closest?.('[data-tip]');
-    return t && island.contains(t) && !skip?.(t) ? t : null; // skipped: a company link whose card replaces its tooltip
+    // skipped for the pointer only: a company link whose card opens on hover; keyboard focus still shows the tooltip
+    return t && island.contains(t) && !(e.type.startsWith('pointer') && skip?.(t)) ? t : null;
   };
   const show = (e: Event) => {
-    const t = targetOf(e.target);
+    const t = targetOf(e, e.target);
     if (!t || t === current) return;
     let o: Record<string, unknown>;
     try { o = JSON.parse(t.getAttribute('data-tip')!); } catch { return; }
@@ -36,8 +37,8 @@ export function attachTips(island: HTMLElement, interact: (action: string) => vo
     tip.hidden = false;
   };
   const hide = (e: Event) => {
-    const t = targetOf(e.target);
-    if (!t || targetOf((e as PointerEvent | FocusEvent).relatedTarget) === t) return; // still inside the same target
+    const t = targetOf(e, e.target);
+    if (!t || targetOf(e, (e as PointerEvent | FocusEvent).relatedTarget) === t) return; // still inside the same target
     current = null;
     tip.hidden = true;
   };
