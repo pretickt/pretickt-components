@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { needPath, typologyInPath } from './page';
+import { needPath, typologyInPath } from './api';
 
 describe('page contract', () => {
   it('one URL shape for a need, written by the host and read by the API', () => {

@@ -17,3 +17,10 @@ describe('checkMarkup (rendered HTML a page will accept)', () => {
     for (const [name, html] of Object.entries(bad)) expect(checkMarkup(html).length, name).toBeGreaterThan(0);
   });
 });
+
+it('component output may not forge an island or its props (the page owns them)', async () => {
+  const { checkMarkup } = await import('./markup');
+  expect(checkMarkup('<div data-island="pt-x">')).toEqual([expect.stringMatching(/reserved for the page/)]);
+  expect(checkMarkup('<div data-props=\'{}\'>')).toEqual([expect.stringMatching(/reserved for the page/)]);
+  expect(checkMarkup('<p>data-island is a word here</p>')).toEqual([]);
+});

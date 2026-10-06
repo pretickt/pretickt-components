@@ -34,6 +34,8 @@ export interface PtOptions {
   replay?: Record<string, unknown>;
   /** Build: filled with every answered call, by need key (nulls included, so the browser replays "not available" too). */
   record?: Record<string, unknown>;
+  /** Answers by need key, shared between contexts (the islands of a page, the pages of a build step). */
+  cache?: Map<string, Promise<unknown>>;
 }
 
 /**
@@ -43,7 +45,8 @@ export interface PtOptions {
  * supersede each other.
  */
 export function createPt(o: PtOptions): PtContext {
-  const cache = new Map<string, Promise<unknown>>(Object.entries(o.replay ?? {}).map(([k, v]) => [k, Promise.resolve(v)]));
+  const cache = o.cache ?? new Map<string, Promise<unknown>>();
+  for (const [k, v] of Object.entries(o.replay ?? {})) if (!cache.has(k)) cache.set(k, Promise.resolve(v));
   let turn = 0, turnScheduled = false;
   const currentTurn = () => {
     if (!turnScheduled) { turnScheduled = true; queueMicrotask(() => { turn++; turnScheduled = false; }); }

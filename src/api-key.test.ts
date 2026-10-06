@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { needKey, stableStringify } from './key';
+import { needKey, stableStringify } from './api';
 
 it('serialises objects independently of key order', () => {
   expect(stableStringify({ b: 1, a: { d: [2, { y: 1, x: 0 }], c: null } }))
