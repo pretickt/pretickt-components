@@ -18,6 +18,13 @@ describe('pt-screen', () => {
     expect(html).toContain('href="/stocks/brk.b/"');
     expect(html.match(/<polyline/g)).toHaveLength(data.rows.length);
   });
+  it('shows each company\'s logo from the site (initials when there is none)', async () => {
+    const data = screenDemo({ scope: { list: 'biggest_losers' }, limit: 3 });
+    data.rows[0]!.logo = `/logos/${data.rows[0]!.ticker.toLowerCase()}`;
+    const { html } = await render(PtScreen, { list: 'biggest_losers', limit: 3 }, withData({ 'screen@1': data }));
+    expect(html).toContain(`<img class="pt-logo" src="/logos/${data.rows[0]!.ticker.toLowerCase()}"`);
+    expect(html.match(/pt-logo-initials/g)).toHaveLength(2);
+  });
   it('highlights the subject of a peer list', async () => {
     const data = screenDemo({ scope: { peersOf: 'NVDA' }, limit: 5 });
     expect((await render(PtScreen, { peersOf: 'NVDA', limit: 5 }, withData({ 'screen@1': data }))).html).toContain('pt-scr-row pt-scr-self');
@@ -85,6 +92,15 @@ describe('pt-calendar', () => {
     expect(w.text()).toContain('November 2026');
     expect(asked).toEqual([{ scope: { by: 'universe', month: '2026-10' }, kinds: ['earnings', 'macro'] }, { scope: { by: 'universe', month: '2026-11' }, kinds: ['earnings', 'macro'] }]);
     w.unmount();
+  });
+  it('puts each company\'s logo in its chip and in the list; the chip keeps its tooltip rows (the hover card shows them)', async () => {
+    const ev = eventsDemo({ scope: { by: 'universe', month: '2026-10' }, kinds: ['earnings', 'macro'] });
+    const first = ev.items.find((e) => e.kind === 'earnings')!;
+    first.logo = `/logos/${first.ticker.toLowerCase()}`;
+    const { html } = await render(PtCalendar, { month: '2026-10' }, withData({ 'events@1': ev }));
+    const chip = html.slice(html.indexOf(`class="pt-cal-ev" href="/stocks/${first.ticker.toLowerCase()}/"`));
+    expect(chip.slice(0, 400)).toMatch(/data-tip="[^"]*"><span class="pt-cal-who"><img class="pt-logo" src="\/logos\/[a-z.]+"/);
+    expect(html).toMatch(/<li><span class="pt-cal-list-day">[^<]*<\/span>[^]*?<img class="pt-logo"/);
   });
   it('while the next month loads (or if it never does), the calendar still names the month its data is for', async () => {
     let n = 0;

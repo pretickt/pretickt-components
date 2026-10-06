@@ -1,12 +1,13 @@
 <!--
   Which companies are on this list today (biggest movers, 52-week extremes, undervalued, insider buying, peers)?
-  @version 2.0.0
+  @version 2.1.0
   @evidence DataForSEO: "biggest stock losers today", "52 week low stocks", "undervalued stocks" (launch/data/08c-serp-undervalued-stocks.json)
   @evidence stockanalysis.com / finviz market-mover tables; beta: peers table on the company page
 -->
 <script setup lang="ts">
 import { computed } from 'vue';
 import { usePt } from '@pretickt/components/context';
+import { PtLogo } from '@pretickt/components/ds';
 import { date, money, num, pct, stockHref, tone, usd } from '@pretickt/components/format';
 import type { ScreenList, ScreenRow } from '@pretickt/components/typologies';
 
@@ -49,7 +50,7 @@ const rows = computed(() => (screen?.rows ?? []).map((r) => ({ r, chg: signed(r.
       <tbody>
         <tr v-for="(x, i) in rows" :key="x.r.ticker" :class="['pt-scr-row', { 'pt-scr-self': x.r.self }]">
           <td class="pt-scr-rank">{{ i + 1 }}</td>
-          <td><a class="pt-scr-co" :href="stockHref(x.r.ticker)"><strong>{{ x.r.ticker }}</strong> <span>{{ x.r.name }}</span></a></td>
+          <td><a class="pt-scr-co" :href="stockHref(x.r.ticker)"><PtLogo :ticker="x.r.ticker" :src="x.r.logo" /> <strong>{{ x.r.ticker }}</strong> <span>{{ x.r.name }}</span></a></td>
           <td class="pt-num">{{ money(x.r.close) }}</td>
           <td class="pt-num"><span :class="x.chg.tone">{{ x.chg.text }}</span></td>
           <td v-for="(c, j) in x.extra" :key="j" class="pt-num"><span v-if="c.tone" :class="c.tone">{{ c.text }}</span><template v-else>{{ c.text }}</template></td>

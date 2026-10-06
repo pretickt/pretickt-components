@@ -1,6 +1,6 @@
 <!--
   Which companies report earnings (or go ex-dividend) this month, and which market-wide dates (Fed, CPI, jobs) fall around them?
-  @version 2.0.0
+  @version 2.1.0
   @evidence DataForSEO: "earnings calendar" ~153k searches/month, SERP without AI overview (reports/Funzioni pretickt da tenere e aggiungere.md)
   @evidence DataForSEO: "dividend calendar" in launch/data/08c-serp-dividend-calendar.json
   @evidence beta: events-calendar month grid (pretickt-frontend/src/app/home/events-calendar.ts); stockanalysis.com earnings calendar
@@ -50,6 +50,7 @@ export { isCompany };
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { usePt } from '@pretickt/components/context';
+import { PtLogo } from '@pretickt/components/ds';
 import { amount, date, num, stockHref, tip } from '@pretickt/components/format';
 
 type Kind = 'earnings' | 'dividend';
@@ -104,16 +105,14 @@ const listed = computed(() => cal.value.weeks.flat().filter((c) => c.inMonth && 
       <div v-for="c in cal.weeks.flat()" :key="c.date" :class="['pt-cal-day', { 'pt-cal-out': !c.inMonth, 'pt-cal-asof': c.isAsOf }]">
         <div>{{ c.day }}</div>
         <div v-for="(e, i) in c.macro" :key="`m${i}`" class="pt-cal-macro" :data-tip="macroTip(e)">{{ e.meta.label }}</div>
-        <a v-for="e in c.items.slice(0, CAP)" :key="`${e.kind}${e.ticker}`" class="pt-cal-ev" :href="stockHref(e.ticker)" :data-tip="chipTip(e)">
-          {{ e.ticker }}<span class="pt-cal-time">{{ tag(e) }}</span>
-        </a>
+        <a v-for="e in c.items.slice(0, CAP)" :key="`${e.kind}${e.ticker}`" class="pt-cal-ev" :href="stockHref(e.ticker)" :data-tip="chipTip(e)"><span class="pt-cal-who"><PtLogo :ticker="e.ticker" :src="e.logo" :size="14" />{{ e.ticker }}</span><span class="pt-cal-time">{{ tag(e) }}</span></a>
         <div v-if="c.items.length > CAP" class="pt-cal-more">+{{ c.items.length - CAP }} more</div>
       </div>
     </div>
     <ol v-if="listed.length" class="pt-cal-list">
       <li v-for="c in listed" :key="c.date">
         <span class="pt-cal-list-day">{{ date(c.date) }}</span>
-        <template v-for="(e, i) in [...c.macro, ...c.items]" :key="i">{{ i ? ', ' : ' ' }}<strong v-if="e.kind === 'macro'">{{ e.meta.label }}</strong><template v-if="e.kind === 'macro'"> ({{ e.meta.event }})</template><a v-else :href="stockHref(e.ticker)">{{ e.name }} ({{ e.ticker }}){{ tag(e) ? ` ${tag(e)}` : '' }}</a></template>
+        <template v-for="(e, i) in [...c.macro, ...c.items]" :key="i">{{ i ? ', ' : ' ' }}<strong v-if="e.kind === 'macro'">{{ e.meta.label }}</strong><template v-if="e.kind === 'macro'"> ({{ e.meta.event }})</template><a v-else class="pt-co" :href="stockHref(e.ticker)"><PtLogo :ticker="e.ticker" :src="e.logo" :size="16" />{{ e.name }} ({{ e.ticker }}){{ tag(e) ? ` ${tag(e)}` : '' }}</a></template>
       </li>
     </ol>
     <p v-else class="pt-lede">No {{ kind === 'dividend' ? 'ex-dividend dates' : 'earnings reports' }} scheduled for {{ cal.label }} in the tracked universe yet.</p>

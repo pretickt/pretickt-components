@@ -80,6 +80,7 @@ So **labels that name a parameter** (a month, a range) come from the data on scr
 | `pt.insider` | `{ticker, days 30–730}` | `{asOf, items[{date,filingDate,name,title,type buy\|sell\|other,shares,price,value}]}` |
 | `pt.news` | `{ticker, limit ≤50}` | `{asOf, items[{publishedAt,title,site,url,sentiment −1…1\|null}]}` (sentiment by AI, numbers only) |
 | `pt.moveBreakdown` | `{ticker, window 1d\|5d\|1m}` | `{asOf, ticker, name, sectorName, window, from, ret, marketRet, sectorRet, market, sector, specific, driver, news{today,avg30,spike,top[]}}` — `market+sector+specific = ret` |
+| `pt.company` | `{ticker}` | `{ticker, name, sector, industry, logo}` — `logo` is the site path `/logos/<ticker>` (never an external URL) |
 | `pt.screen` | `{scope: {list: biggest_losers\|biggest_gainers\|52w_low\|52w_high\|undervalued\|insider_buying\|most_active} \| {peersOf}, limit ≤50}` | `{asOf, rows[{ticker,name,sector,logo,close,chg1d,offHigh,pe,ptUpside,marketCap,insiderNet,volumeRatio,spark[20],self}]}` |
 
 Types (`MoveBreakdown`, `News`, `MetricItem`, `EventItem`, `ScreenList`, …) and plain values (`RANGES`, `SENTIMENT_FLAT`, `cmp`)
@@ -96,8 +97,12 @@ typology is a platform change (schema here + resolver in the private platform + 
   "+12.3%")`, `level(fraction → "12.3%")`, `usd(v,{compact,signed,digits})`, `money(v,digits)`, `amount(cash)`, `compact`,
   `date(iso → "Sep 30, 2026")`, `month(ym → "Mar 26")`, `tone(v, flatBand)`, `href(url)` (http(s) or a site path, else `#`),
   `stockHref(ticker)`, `tip({ Label: value })`, `badgeValue(badge)`, `svgId(s)`.
+- **Companies**: `PtCompany` (`ticker`, `name?`, `logo?`: logo + ticker + name, linked to the company page) and `PtLogo` (`ticker`,
+  `src` = a payload's `logo` or `logoHref(ticker)`, `size`; no `src` → initials, no request). **Every link to `/stocks/<t>/` opens the
+  company card on hover** (the runtime does it, desktop only): link companies with `stockHref` / `PtCompany`, nothing else to do; a
+  `data-tip` on such a link becomes the card's footer instead of a text tooltip.
 - **Primitives** (`@pretickt/components/ds`): `PtToggles` (`v-model` + `options: [value,label][]` + `label`), `PtBadge` (`:badge` = a
-  `metric@1` item or any Badge you build, inside `<ul class="pt-badges">`), `PtIcon` (`name`: calendar target trend-up trend-down
+  `metric@1` item or any Badge you build, inside `<ul class="pt-badges">`; `size="mini"` for dense rows), `PtIcon` (`name`: calendar target trend-up trend-down
   alert peak), `PtChart` (zoomable chart frame: `w h plotW plotH id label`, `v-model:view`; slots `defs`, `axes`, default = the plot
   (clipped), `front`, `after`), `PtYAxis` / `PtTimeAxis` (for the `axes` slot). Geometry: `applyXViewport`, `applyYViewport`,
   `FULL_VIEWPORT`, `closeAt`, `isoDay`, `linePath`, `monthTicks`.
@@ -142,7 +147,8 @@ tolerated; the leading comment has the question, `@version` and `@evidence`. The
    `develop`; `main` = release. Pages that place a component are defined in the platform repo (`plant/src/generate/pages.ts`).
 
 ## Existing components (`dist/index.json`)
-`pt-metric` (badge strip of the catalogue) · `pt-price-events` (price line + E/D/S/A markers grouped per day, range toggles, zoom &
+`pt-company-card` (the company at a glance — logo, price over 60 sessions, 52-week range, consensus, PT, tags with "Show all";
+`size` wide = page header, compact = the hover card) · `pt-metric` (badge strip of the catalogue) · `pt-price-events` (price line + E/D/S/A markers grouped per day, range toggles, zoom &
 pan) · `pt-price-target` (beta's pt-chart: clustered target dots, gradient segments, hover panel of the analysts, zoom & pan) ·
 `pt-calendar` (month grid + macro dates + full list, previous/next month; `kind` earnings|dividend) · `pt-why-today` (answer-first
 sentence + market/sector/stock bars + news spike) · `pt-screen` (ranked table with list-specific column and sparklines; `list` or

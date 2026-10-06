@@ -58,6 +58,8 @@
   .pt-co { @apply inline-flex min-w-0 items-center gap-1.5 text-ink no-underline hover:text-primary; }
   .pt-co-t { @apply font-mono font-semibold; }
   .pt-co-n { @apply truncate text-ink-soft; }
+  .pt-scr-co .pt-logo { @apply mr-1 align-[-4px]; }
+  .pt-cal-who { @apply inline-flex min-w-0 items-center gap-1; }
 
   /* company card: the page header (wide) and the hover card (compact) */
   .pt-card { @apply grid gap-2 rounded-control border border-border bg-surface-raised p-3 text-sm; }
