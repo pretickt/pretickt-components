@@ -5,9 +5,9 @@
   @evidence video badges (pretickt-shorts DailyBrief)
 -->
 <script setup lang="ts">
-import { usePt } from '../src/context/pt';
-import PtBadge from '../src/ds/PtBadge.vue';
-import type { MetricKey } from '../src/typologies';
+import { usePt } from '@pretickt/components/context';
+import { PtBadge } from '@pretickt/components/ds';
+import type { MetricKey } from '@pretickt/components/typologies';
 
 const props = defineProps<{ ticker: string; metrics: MetricKey[] }>();
 const items = await usePt().metric({ ticker: props.ticker, metrics: props.metrics });

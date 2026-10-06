@@ -5,10 +5,10 @@
   @evidence beta: pt-chart (pretickt-frontend/src/app/companies/pt-chart.ts) — geometry, clustering, hover animations and zoom/pan ported 1:1
 -->
 <script lang="ts">
-import { closeAt, isoDay, linePath, monthTicks } from '../src/ds/chart';
-import { applyXViewport, applyYViewport, FULL_VIEWPORT, type Viewport } from '../src/ds/viewport';
-import type { Analysts, PriceBar } from '../src/typologies';
-import { cmp } from '../src/typologies/values';
+import { closeAt, isoDay, linePath, monthTicks } from '@pretickt/components/ds';
+import { applyXViewport, applyYViewport, FULL_VIEWPORT, type Viewport } from '@pretickt/components/ds';
+import type { Analysts, PriceBar } from '@pretickt/components/typologies';
+import { cmp } from '@pretickt/components/typologies';
 
 type Target = Analysts['targets'][number];
 
@@ -114,11 +114,11 @@ export function buildPtChart(points: PriceBar[], targets: Target[], asOf: string
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { usePt } from '../src/context/pt';
-import { date, money, pct, svgId } from '../src/ds/format';
-import PtChart from '../src/ds/PtChart.vue';
-import PtTimeAxis from '../src/ds/PtTimeAxis.vue';
-import PtYAxis from '../src/ds/PtYAxis.vue';
+import { usePt } from '@pretickt/components/context';
+import { date, money, pct, svgId } from '@pretickt/components/format';
+import { PtChart } from '@pretickt/components/ds';
+import { PtTimeAxis } from '@pretickt/components/ds';
+import { PtYAxis } from '@pretickt/components/ds';
 
 const props = defineProps<{ ticker: string }>();
 const pt = usePt();

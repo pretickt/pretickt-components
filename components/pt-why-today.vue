@@ -6,11 +6,11 @@
 -->
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { usePt } from '../src/context/pt';
-import { date, href, level, num, pct, tone } from '../src/ds/format';
-import PtToggles from '../src/ds/PtToggles.vue';
-import type { MoveBreakdown } from '../src/typologies';
-import { SENTIMENT_FLAT } from '../src/typologies/values';
+import { usePt } from '@pretickt/components/context';
+import { date, href, level, num, pct, tone } from '@pretickt/components/format';
+import { PtToggles } from '@pretickt/components/ds';
+import type { MoveBreakdown } from '@pretickt/components/typologies';
+import { SENTIMENT_FLAT } from '@pretickt/components/typologies';
 
 type Window = '1d' | '5d' | '1m';
 const props = withDefaults(defineProps<{ ticker: string; window?: Window }>(), { window: '1d' });

@@ -6,9 +6,9 @@
 -->
 <script setup lang="ts">
 import { computed } from 'vue';
-import { usePt } from '../src/context/pt';
-import { date, money, num, pct, stockHref, tone, usd } from '../src/ds/format';
-import type { ScreenList, ScreenRow } from '../src/typologies';
+import { usePt } from '@pretickt/components/context';
+import { date, money, num, pct, stockHref, tone, usd } from '@pretickt/components/format';
+import type { ScreenList, ScreenRow } from '@pretickt/components/typologies';
 
 /** A market list (`list`) or the peers of one company (`peersOf`). */
 const props = withDefaults(defineProps<{ list?: ScreenList; peersOf?: string; limit?: number }>(), { limit: 25 });

@@ -6,7 +6,7 @@
   @evidence beta: events-calendar month grid (pretickt-frontend/src/app/home/events-calendar.ts); stockanalysis.com earnings calendar
 -->
 <script lang="ts">
-import type { EventItem } from '../src/typologies';
+import type { EventItem } from '@pretickt/components/typologies';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const iso = (y: number, m0: number, d: number) => new Date(Date.UTC(y, m0, d)).toISOString().slice(0, 10);
@@ -49,8 +49,8 @@ export { isCompany };
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { usePt } from '../src/context/pt';
-import { amount, date, num, stockHref, tip } from '../src/ds/format';
+import { usePt } from '@pretickt/components/context';
+import { amount, date, num, stockHref, tip } from '@pretickt/components/format';
 
 type Kind = 'earnings' | 'dividend';
 const props = withDefaults(defineProps<{ month: string; kind?: Kind }>(), { kind: 'earnings' });

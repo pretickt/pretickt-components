@@ -6,8 +6,8 @@
 -->
 <script setup lang="ts">
 import { computed } from 'vue';
-import { usePt } from '../src/context/pt';
-import { date, level, num, pct, tip, usd } from '../src/ds/format';
+import { usePt } from '@pretickt/components/context';
+import { date, level, num, pct, tip, usd } from '@pretickt/components/format';
 
 const props = withDefaults(defineProps<{ ticker: string; periods?: number }>(), { periods: 8 });
 const fin = await usePt().fundamentals({ ticker: props.ticker, periods: props.periods });

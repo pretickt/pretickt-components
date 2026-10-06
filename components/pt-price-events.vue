@@ -5,9 +5,9 @@
   @evidence TradingView marks earnings/dividends/splits on its symbol chart; beta event map and SL/TP charts use the same markers
 -->
 <script lang="ts">
-import { closeAt, isoDay, linePath, monthTicks } from '../src/ds/chart';
-import { applyXViewport, applyYViewport, FULL_VIEWPORT, type Viewport } from '../src/ds/viewport';
-import type { EventItem, PriceBar } from '../src/typologies';
+import { closeAt, isoDay, linePath, monthTicks } from '@pretickt/components/ds';
+import { applyXViewport, applyYViewport, FULL_VIEWPORT, type Viewport } from '@pretickt/components/ds';
+import type { EventItem, PriceBar } from '@pretickt/components/typologies';
 
 // Price labels sit in the right-hand strip you can grab to stretch the scale (beta / TradingView layout).
 export const W = 720, H = 260, L = 6, R = 46, T = 12, B = 24;
@@ -52,13 +52,13 @@ export function layout(points: PriceBar[], items: EventItem[], viewport: Viewpor
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { usePt } from '../src/context/pt';
-import { amount, date, money, num, pct, tip } from '../src/ds/format';
-import PtChart from '../src/ds/PtChart.vue';
-import PtTimeAxis from '../src/ds/PtTimeAxis.vue';
-import PtToggles from '../src/ds/PtToggles.vue';
-import PtYAxis from '../src/ds/PtYAxis.vue';
-import { RANGES, type RangeValue } from '../src/typologies/values';
+import { usePt } from '@pretickt/components/context';
+import { amount, date, money, num, pct, tip } from '@pretickt/components/format';
+import { PtChart } from '@pretickt/components/ds';
+import { PtTimeAxis } from '@pretickt/components/ds';
+import { PtToggles } from '@pretickt/components/ds';
+import { PtYAxis } from '@pretickt/components/ds';
+import { RANGES, type RangeValue } from '@pretickt/components/typologies';
 
 type RangeT = RangeValue;
 const props = withDefaults(defineProps<{ ticker: string; range?: RangeT }>(), { range: '1y' });

@@ -7,11 +7,12 @@ import { build, type Manifest } from 'vite';
 import { createChecker } from 'vue-component-meta';
 import { readComponentMeta } from '../src/checks/meta';
 import { componentFiles, overBudget } from './budget';
+import { selfImports } from './self';
 
 rmSync('dist', { recursive: true, force: true });
 const files = componentFiles(readdirSync('components'));
 const tagOf = (f: string) => f.slice(0, -'.vue'.length);
-const plugins = [tailwindcss(), vue()];
+const plugins = [selfImports(), tailwindcss(), vue()];
 // Vue's compile-time flags: no Options API, no devtools, short hydration warnings in production.
 const define = { __VUE_OPTIONS_API__: 'false', __VUE_PROD_DEVTOOLS__: 'false', __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'false' };
 

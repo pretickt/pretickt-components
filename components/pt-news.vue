@@ -5,9 +5,9 @@
   @evidence beta: news list + attention chart on the company page
 -->
 <script setup lang="ts">
-import { usePt } from '../src/context/pt';
-import { SENTIMENT_FLAT } from '../src/typologies/values';
-import { date, href, tip, tone } from '../src/ds/format';
+import { usePt } from '@pretickt/components/context';
+import { SENTIMENT_FLAT } from '@pretickt/components/typologies';
+import { date, href, tip, tone } from '@pretickt/components/format';
 
 const props = withDefaults(defineProps<{ ticker: string; limit?: number }>(), { limit: 20 });
 const news = await usePt().news({ ticker: props.ticker, limit: props.limit });
