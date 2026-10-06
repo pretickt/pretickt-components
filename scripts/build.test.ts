@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { demoFor } from '../src/typologies';
 import { componentFiles } from './budget';
 
-interface Entry { tag: string; version: string; major: number; question: string; evidence: string[]; props: { name: string; required: boolean }[]; samples: Record<string, unknown>[]; client: string; css: string[] }
+interface Entry { tag: string; version: string; major: number; question: string; evidence: string[]; props: { name: string; required: boolean; type: string }[]; samples: Record<string, unknown>[]; client: string; css: string[] }
 
 describe('build', () => {
   it('emits the server bundle, the client modules, the runtime, the design system and the index', async () => {

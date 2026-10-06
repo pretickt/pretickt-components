@@ -1,12 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { expect, it, vi } from 'vitest';
+import { expect, it } from 'vitest';
 import type { Component } from 'vue';
 import { createChecker, type ComponentMeta } from 'vue-component-meta';
 import { readComponentMeta } from '../src/checks/meta';
 import { sampleProps, type PropInfo } from '../src/checks/props';
-import { hydrateIslands } from '../src/islands/client';
-import { islandMarkup, type PageData } from '../src/islands/page';
+import { checkHydration } from '../src/checks/hydration';
+import { lintSfc } from '../src/checks/lint';
 import { renderIsland } from '../src/islands/server';
 import { demoFor, getTypology } from '../src/typologies';
 
@@ -29,21 +29,7 @@ export const withData = (answers: Record<string, unknown>) => async (t: string, 
 export const render = (component: Component, props: Record<string, unknown>, resolve = demo()) => renderIsland(component, props, { resolve });
 
 /** Hydrate the server HTML in a page like the generator writes it; returns the warnings Vue printed about hydration. */
-export async function hydrationWarnings(component: Component, props: Record<string, unknown>, resolve = demo()) {
-  const r = await renderIsland(component, props, { resolve });
-  const page: PageData = { buildId: 'test', api: '', calls: r.calls, components: { 'pt-test@1.0.0': '/c/test.js' } };
-  document.head.innerHTML = `<script type="application/json" id="pt-data">${JSON.stringify(page)}</script>`;
-  document.body.innerHTML = islandMarkup('pt-test@1.0.0', props, r.html);
-  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-  const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-  try {
-    await hydrateIslands(document, { importer: async () => ({ default: component }), fetchImpl: async () => { throw new Error('no network in the check'); }, send: () => {} });
-    return [...warn.mock.calls, ...error.mock.calls].map((c) => c.map(String).join(' ')).filter((m) => /[Hh]ydration|mismatch|island/.test(m));
-  } finally {
-    warn.mockRestore(); error.mockRestore();
-    document.head.innerHTML = ''; document.body.innerHTML = '';
-  }
-}
+export const hydrationWarnings = (component: Component, props: Record<string, unknown>, resolve = demo()) => checkHydration(component, props, resolve);
 
 /**
  * What every component must pass (call at the top level of a `// @vitest-environment happy-dom` test file): its metadata, and for
@@ -51,9 +37,9 @@ export async function hydrationWarnings(component: Component, props: Record<stri
  * not-available state; catalogue entries it does not know are tolerated.
  */
 export function standardSuite(file: string, component: Component) {
-  it('declares its question, version and evidence', () => {
-    expect(readComponentMeta(readFileSync(join(process.cwd(), 'components', file), 'utf8'))).toMatchObject({ ok: true });
-  });
+  const source = readFileSync(join(process.cwd(), 'components', file), 'utf8');
+  it('declares its question, version and evidence', () => expect(readComponentMeta(source)).toMatchObject({ ok: true }));
+  it('passes the lint', () => expect(lintSfc(source)).toEqual([]));
   for (const props of sampleProps(propsOf(file))) {
     const name = JSON.stringify(props);
     it(`${name}: demo data renders with safe markup and hydrates without mismatch`, async () => {
