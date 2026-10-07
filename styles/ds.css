@@ -218,7 +218,7 @@
 
   /* calendar */
   .pt-cal-nav { @apply flex gap-1; }
-  .pt-cal-nav button { @apply rounded-md border border-border px-2 py-0.5 text-xs; }
+  .pt-cal-nav button { @apply rounded-md border border-border px-2 py-0.5 text-xs disabled:cursor-default disabled:opacity-40; }
   .pt-cal-grid { @apply grid grid-cols-7 gap-px overflow-hidden rounded-control border border-border bg-border; }
   .pt-cal-dow { @apply bg-surface px-2 py-1 text-3xs font-semibold uppercase text-ink-soft; }
   .pt-cal-day { @apply min-h-20 bg-surface-raised p-1 text-xs; }

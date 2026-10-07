@@ -10,6 +10,8 @@ export const EventsParams = z.object({
     z.object({ by: z.literal('ticker'), ticker: Ticker, range: Range, ahead: intParam(0, 180, 90) }),
     /** The whole universe for one calendar month (calendar pages). */
     z.object({ by: z.literal('universe'), month: Month }),
+    /** The whole universe between two dates, at most 14 days apart (a week on the home page). Added in 1.1. */
+    z.object({ by: z.literal('dates'), from: IsoDate, to: IsoDate }).check(z.refine((s) => s.from <= s.to && s.to <= addDays(s.from, 13), 'from ≤ to, at most 14 days')),
   ]),
   kinds: z.array(z.enum(EVENT_KINDS)).check(z.minLength(1)),
 });
@@ -72,6 +74,12 @@ export function eventsDemo(p: EventsParams): Events {
         from: 'Hold', to: i % 4 === 0 ? 'Buy' : 'Hold' } });
     }
     if (want.has('split') && r() > 0.5) items.push({ ...co, date: addDays(DEMO_ASOF, -120), kind: 'split', meta: { numerator: 4, denominator: 1 } });
+  } else if (p.scope.by === 'dates') {
+    // the months the span covers, cut to its days
+    const { from, to } = p.scope;
+    const months = [...new Set([from.slice(0, 7), to.slice(0, 7)])];
+    const all = months.flatMap((month) => eventsDemo({ scope: { by: 'universe', month }, kinds: p.kinds }).items);
+    return { asOf: DEMO_ASOF, items: all.filter((e) => e.date >= from && e.date <= to).sort(byDateThenSize) };
   } else {
     const r = prng(`universe:${p.scope.month}`);
     for (let i = 0; i < 40; i++) {

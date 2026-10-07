@@ -7,7 +7,7 @@
   @evidence beta: events-calendar month grid (pretickt-frontend/src/app/home/events-calendar.ts); stockanalysis.com earnings calendar
 -->
 <script lang="ts">
-import type { EventItem } from '@pretickt/components/typologies';
+import { CALENDAR_MONTHS, type EventItem } from '@pretickt/components/typologies';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const iso = (y: number, m0: number, d: number) => new Date(Date.UTC(y, m0, d)).toISOString().slice(0, 10);
@@ -18,12 +18,14 @@ const weekday = (d: string) => new Date(`${d}T00:00:00Z`).getUTCDay();
 /** 0 = Sunday … 6 = Saturday. */
 export const weekdayOf = weekday;
 
-/** The Monday of the week a reader looks forward to: the week of the first weekday after the latest session `asOf`. */
-export function comingWeek(asOf: string): string {
-  let d = addDays(asOf, 1);
-  while (weekday(d) === 0 || weekday(d) === 6) d = addDays(d, 1);
-  return addDays(d, -((weekday(d) + 6) % 7));
-}
+/** The Monday of the week of `d` (a Monday stays itself). */
+export const mondayOf = (d: string): string => addDays(d, -((weekday(d) + 6) % 7));
+const monthIndex = (m: string) => Number(m.slice(0, 4)) * 12 + Number(m.slice(5, 7)) - 1;
+/** Whether `month` lies in the calendar window around the latest session's month (the API refuses outside it). */
+export const inWindow = (month: string, asOf: string): boolean => {
+  const off = monthIndex(month) - monthIndex(asOf);
+  return off >= -CALENDAR_MONTHS.back && off <= CALENDAR_MONTHS.ahead;
+};
 
 export function shiftMonth(month: string, delta: number): string {
   const [y, m] = month.split('-').map(Number);
@@ -76,16 +78,22 @@ import { PtLogo } from '@pretickt/components/ds';
 import { amount, date, num, stockHref, tip } from '@pretickt/components/format';
 
 type Kind = 'earnings' | 'dividend';
-/** `month`: the month grid with every report listed below it; `week`: the coming week's five sessions (compact, the home page). */
-const props = withDefaults(defineProps<{ month: string; kind?: Kind; view?: 'month' | 'week' }>(), { kind: 'earnings', view: 'month' });
+/**
+ * `month`: the month grid with every report listed below it. `week`: five sessions (Mon–Fri) starting at `start` — the home page passes
+ * the coming week, from the market calendar; without it, the first week of `month`.
+ */
+const props = withDefaults(defineProps<{ month: string; kind?: Kind; view?: 'month' | 'week'; start?: string }>(), { kind: 'earnings', view: 'month' });
 const view = computed(() => props.view);
 const pt = usePt();
 const CAP = 4;
 const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const load = (m: string) => pt.events({ scope: { by: 'universe', month: m }, kinds: [props.kind, 'macro'] });
+const kinds = [props.kind, 'macro'] as ['earnings' | 'dividend', 'macro'];
+const load = (m: string) => pt.events({ scope: { by: 'universe', month: m }, kinds });
+const loadWeek = (start: string) => pt.events({ scope: { by: 'dates', from: start, to: addDays(start, 4) }, kinds });
+const isWeek = props.view === 'week';
 
 const month = ref(props.month);
-const events = ref(await load(month.value));
+const events = ref(isWeek ? null : await load(month.value));
 const loading = ref(false);
 async function go(m: string) {
   close();
@@ -96,31 +104,29 @@ async function go(m: string) {
   loading.value = false;
 }
 
-/** The events of the week starting `start`, from the month(s) it spans. */
-async function weekOf(start: string): Promise<EventItem[]> {
-  const months = [...new Set([start.slice(0, 7), addDays(start, 4).slice(0, 7)])];
-  const got = await Promise.all(months.map(load));
-  const end = addDays(start, 4);
-  return got.flatMap((e) => e?.items ?? []).filter((e) => e.date >= start && e.date <= end && (e.kind === 'macro' || e.kind === props.kind));
-}
-const weekStart = ref(props.view === 'week' && events.value ? comingWeek(events.value.asOf) : '');
-const weekItems = ref(weekStart.value ? await weekOf(weekStart.value) : []);
+const weekStart = ref(isWeek ? mondayOf(props.start && /^\d{4}-\d{2}-\d{2}$/.test(props.start) ? props.start : `${props.month}-01`) : '');
+const weekData = ref(isWeek ? await loadWeek(weekStart.value) : null);
 async function goWeek(delta: number) {
   close();
   loading.value = true;
   const start = addDays(weekStart.value, 7 * delta);
-  const items = await weekOf(start);
+  const next = await loadWeek(start);
   weekStart.value = start;   // the week on screen changes with its data
-  weekItems.value = items;
+  weekData.value = next;
   loading.value = false;
 }
-const week = computed(() => (weekStart.value ? buildWeek(weekStart.value, weekItems.value, events.value?.asOf ?? '') : []));
+const weekItems = computed(() => (weekData.value?.items ?? []).filter((e) => e.kind === 'macro' || e.kind === props.kind));
+const week = computed(() => (weekStart.value ? buildWeek(weekStart.value, weekItems.value, weekData.value?.asOf ?? '') : []));
+/** The latest session, which fixes the window the arrows may reach. */
+const asOf = computed(() => (isWeek ? weekData.value?.asOf : events.value?.asOf) ?? '');
+const canGo = computed(() => isWeek
+  ? { back: inWindow(addDays(weekStart.value, -7).slice(0, 7), asOf.value), on: inWindow(addDays(weekStart.value, 11).slice(0, 7), asOf.value) }
+  : { back: inWindow(shiftMonth(month.value, -1), asOf.value), on: inWindow(shiftMonth(month.value, 1), asOf.value) });
 
 // "+N more": the whole day over its cell (as Google Calendar), outside the grid so nothing clips it; ×, Escape or a click outside close it
-const POP_W = 224;
 const openDay = ref<string | null>(null);
 const popAt = ref({ left: 0, top: 0 });
-let popEl: HTMLElement | null = null, opener: HTMLElement | null = null;
+let popEl: HTMLElement | null = null, opener: HTMLElement | null = null, cellLeft = 0, boxWidth = 0;
 const popRef = (el: unknown) => { popEl = (el as HTMLElement | null) ?? null; };
 /** Closes the day box and gives the focus back to the "+N more" that opened it. */
 function close() {
@@ -135,11 +141,19 @@ function more(d: string, e: Event) {
   const box = cell?.closest('.pt-cal');
   if (cell && box) {
     const c = cell.getBoundingClientRect(), b = box.getBoundingClientRect();
-    popAt.value = { left: Math.max(0, Math.min(c.left - b.left, b.width - POP_W)), top: c.top - b.top };
+    cellLeft = c.left - b.left;
+    boxWidth = b.width;
+    popAt.value = { left: cellLeft, top: c.top - b.top };
   }
   openDay.value = d;
 }
-watch(openDay, async (d) => { if (d) { await nextTick(); popEl?.focus(); } });
+// once it is drawn, keep it inside the calendar with its real width (whatever the font size)
+watch(openDay, async (d) => {
+  if (!d) return;
+  await nextTick();
+  if (popEl) popAt.value = { ...popAt.value, left: Math.max(0, Math.min(cellLeft, boxWidth - popEl.offsetWidth)) };
+  popEl?.focus();
+});
 
 const time = (e: EventItem) => (e.kind === 'earnings' && e.meta.time ? e.meta.time.toUpperCase() : '');
 /** Short per-event suffix: report time for earnings, cash amount for dividends. */
@@ -162,17 +176,18 @@ const listed = computed(() => cal.value.weeks.flat().filter((c) => c.inMonth && 
 </script>
 
 <template>
-  <p v-if="!events" class="pt-na">Data not available</p>
+  <p v-if="isWeek ? !weekData : !events" class="pt-na">Data not available</p>
   <section v-else class="pt-cal" :class="{ 'pt-busy': loading }">
     <div class="pt-head">
-      <h2 class="pt-section-title">{{ view === 'week' ? `Week of ${date(weekStart)}` : cal.label }}</h2>
+      <h3 v-if="view === 'week'" class="pt-section-title">Week of {{ date(weekStart) }}</h3>
+      <h2 v-else class="pt-section-title">{{ cal.label }}</h2>
       <div v-if="view === 'week'" class="pt-cal-nav">
-        <button type="button" @click="goWeek(-1)">← Previous week</button>
-        <button type="button" @click="goWeek(1)">Next week →</button>
+        <button type="button" :disabled="!canGo.back" @click="goWeek(-1)">← Previous week</button>
+        <button type="button" :disabled="!canGo.on" @click="goWeek(1)">Next week →</button>
       </div>
       <div v-else class="pt-cal-nav">
-        <button type="button" @click="go(prev)">← {{ prev }}</button>
-        <button type="button" @click="go(next)">{{ next }} →</button>
+        <button type="button" :disabled="!canGo.back" @click="go(prev)">← {{ prev }}</button>
+        <button type="button" :disabled="!canGo.on" @click="go(next)">{{ next }} →</button>
       </div>
     </div>
     <div class="pt-cal-grid" :class="{ 'pt-cal-week': view === 'week' }">

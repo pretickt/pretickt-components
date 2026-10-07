@@ -1,4 +1,4 @@
-<!-- A sortable column header: the label as a button that emits `sort`; `state` shows the order (aria-sort for screen readers). -->
+<!-- A sortable column header: the label as a button that emits `sort`; `state` shows the order (aria-sort on the sorted column only). -->
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { SortState } from './sort';
@@ -15,5 +15,5 @@ function sort(e: Event) {
 </script>
 
 <template>
-  <th :aria-sort="aria"><button type="button" class="pt-sort" @click="sort">{{ label }}<span class="pt-sort-i" aria-hidden="true">{{ arrow }}</span></button></th>
+  <th :aria-sort="state ? aria : undefined"><button type="button" class="pt-sort" @click="sort">{{ label }}<span class="pt-sort-i" aria-hidden="true">{{ arrow }}</span></button></th>
 </template>

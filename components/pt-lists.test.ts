@@ -113,23 +113,42 @@ describe('pt-calendar', () => {
     w.unmount();
   });
   it('a week with nothing scheduled says so', async () => {
-    const w = await mountIsland(PtCalendar, { month: '2026-09', kind: 'dividend', view: 'week' }, withData({ 'events@1': { asOf: '2026-09-30', items: [] } }));
+    const w = await mountIsland(PtCalendar, { month: '2026-09', kind: 'dividend', view: 'week', start: '2026-09-28' }, withData({ 'events@1': { asOf: '2026-09-30', items: [] } }));
     expect(w.text()).toContain('No ex-dividend dates scheduled this week in the tracked universe yet.');
     w.unmount();
   });
-  it('week view: the five sessions of the coming week (from the latest session), across a month end, with week arrows', async () => {
+  it('week view: the five sessions of the week it is given, one call for the week (across a month end), week arrows', async () => {
     const asked: unknown[] = [];
     const resolve = async (t: string, p: unknown) => { asked.push(p); return demo()(t, p); };
-    const w = await mountIsland(PtCalendar, { month: '2026-09', view: 'week' }, resolve);
-    // the demo's latest session is Wed 2026-09-30: the coming week is Mon Sep 28 – Fri Oct 2, half in each month
+    const w = await mountIsland(PtCalendar, { month: '2026-09', view: 'week', start: '2026-09-28' }, resolve);
     expect(w.findAll('.pt-cal-day')).toHaveLength(5);
-    expect(w.find('.pt-section-title').text()).toBe('Week of Sep 28, 2026');
+    expect(w.find('h3.pt-section-title').text()).toBe('Week of Sep 28, 2026');   // under the page section's own h2
     expect(w.findAll('.pt-cal-dow').map((d) => d.text())).toEqual(['Mon 28', 'Tue 29', 'Wed 30', 'Thu 1', 'Fri 2']);
-    expect(asked.map((p) => (p as { scope: { month: string } }).scope.month)).toEqual(['2026-09', '2026-10']);
+    expect(asked).toEqual([{ scope: { by: 'dates', from: '2026-09-28', to: '2026-10-02' }, kinds: ['earnings', 'macro'] }]);
     expect(w.find('.pt-cal-list').exists()).toBe(false);             // compact: no month list
     await w.findAll('.pt-cal-nav button')[1]!.trigger('click');
     await flushPromises();
-    expect(w.find('.pt-section-title').text()).toBe('Week of Oct 5, 2026');
+    expect(w.find('h3.pt-section-title').text()).toBe('Week of Oct 5, 2026');
+    expect(asked.at(-1)).toEqual({ scope: { by: 'dates', from: '2026-10-05', to: '2026-10-09' }, kinds: ['earnings', 'macro'] });
+    w.unmount();
+  });
+  it('week view without a start: the first week of its month', async () => {
+    const w = await mountIsland(PtCalendar, { month: '2026-09', view: 'week' });
+    expect(w.find('h3.pt-section-title').text()).toBe('Week of Aug 31, 2026');
+    w.unmount();
+  });
+  it('the arrows stop at the calendar window (a month back, three ahead of the latest session)', async () => {
+    const at = (month: string) => mountIsland(PtCalendar, { month }, withData({ 'events@1': { asOf: '2026-10-02', items: [] } }));
+    const nav = (w: Awaited<ReturnType<typeof at>>) => w.findAll('.pt-cal-nav button').map((b) => b.attributes('disabled') !== undefined);
+    expect(nav(await at('2026-09'))).toEqual([true, false]);
+    expect(nav(await at('2026-10'))).toEqual([false, false]);
+    expect(nav(await at('2027-01'))).toEqual([false, true]);
+    const week = await mountIsland(PtCalendar, { month: '2027-01', view: 'week', start: '2027-01-25' }, withData({ 'events@1': { asOf: '2026-10-02', items: [] } }));
+    expect(nav(week)).toEqual([false, true]);                        // the next week ends in February: outside
+  });
+  it('a week whose dates cannot be read says so', async () => {
+    const w = await mountIsland(PtCalendar, { month: '2026-09', view: 'week', start: '2026-09-28' }, withData({ 'events@1': null }));
+    expect(w.find('.pt-na').exists()).toBe(true);
     w.unmount();
   });
   it('lists every report in the text list, so nothing hides behind the cap', async () => {

@@ -8,6 +8,7 @@ import PtSortTh from './PtSortTh.vue';
 import { useSort } from './sort';
 
 const ROWS = [{ t: 'B', v: 2 }, { t: 'a', v: null }, { t: 'C', v: 10 }, { t: 'A', v: 2 }];
+const DATED = [{ d: '2026-03-01' }, { d: '2026-09-15' }, { d: '2026-06-30' }];
 const Table = defineComponent(() => {
   const s = useSort(() => ROWS, { t: (r) => r.t, v: (r) => r.v });
   return () => h('table', [h('thead', h('tr', [h(PtSortTh, { label: 'Name', state: s.state('t'), onSort: () => s.toggle('t') }),
@@ -28,14 +29,19 @@ describe('sortable tables', () => {
     expect(order(w)).toEqual(['B', 'A', 'C', 'a']);             // ascending, missing still last
     await value!.trigger('click');
     expect(order(w)).toEqual(['B', 'a', 'C', 'A']);
-    expect(w.findAll('th')[1]!.attributes('aria-sort')).toBe('none');
+    expect(w.findAll('th')[1]!.attributes('aria-sort')).toBeUndefined();   // aria-sort only on the sorted column
     await name!.trigger('click');
-    expect(order(w)).toEqual(['A', 'B', 'C', 'a']);             // code-unit order: the same on every browser
+    expect(order(w)).toEqual(['a', 'A', 'B', 'C']);             // case-insensitive, ties in the original order
     w.unmount();
+  });
+  it('dates sort newest first on the first click', async () => {
+    const s = useSort(() => DATED, { d: (r) => r.d });
+    s.toggle('d');
+    expect(s.sorted.value.map((r) => r.d)).toEqual(['2026-09-15', '2026-06-30', '2026-03-01']);
   });
   it('the server renders the original order with plain sortable headers (hydration-safe), and a sort is a beacon interaction', async () => {
     const html = await renderToString(createSSRApp(Table));
-    expect(html).toContain('<th aria-sort="none"><button type="button" class="pt-sort">Name<span class="pt-sort-i" aria-hidden="true">↕</span></button></th>');
+    expect(html).toContain('<th><button type="button" class="pt-sort">Name<span class="pt-sort-i" aria-hidden="true">↕</span></button></th>');
     const seen: string[] = [];
     document.addEventListener('pt-interact', (e) => seen.push((e as CustomEvent<{ action: string }>).detail.action));
     const w = mount(Table, { attachTo: document.body });

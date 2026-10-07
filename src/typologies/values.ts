@@ -21,3 +21,6 @@ export const METRIC_GROUPS = {
 } as const;
 export const METRIC_KEYS = [...METRIC_GROUPS.snapshot, ...METRIC_GROUPS.technicals] as const;
 export type MetricKey = (typeof METRIC_KEYS)[number];
+
+/** The market-wide calendar's window around the latest session's month (events@1 universe scopes; the calendar's arrows stop there). */
+export const CALENDAR_MONTHS = { back: 1, ahead: 3 } as const;

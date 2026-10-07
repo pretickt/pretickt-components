@@ -74,7 +74,7 @@ So **labels that name a parameter** (a month, a range) come from the data on scr
 |---|---|---|
 | `pt.metric` | `{ticker, metrics: MetricKey[] (≤32)}` | `MetricItem[]` (Badge shape). Keys: `pe pe_vs_sector pe_vs_own pt_upside consensus market_cap fcf_yield insider_net earnings_in news off_high off_ath range_52w trend trend_ma ma_detail ma_cross sector_trend rsi14 support resistance bollinger macd atr_pct volume_ratio` |
 | `pt.priceSeries` | `{tickers ≤8, range 1m…5y, interval '1d', rebase}` | `[{ticker, points[{t,o,h,l,c,v}]}]` (adjusted) |
-| `pt.events` | `{scope: {by:'ticker',ticker,range,ahead} \| {by:'universe',month}, kinds: earnings,dividend,split,analyst,macro}` | `{asOf, items[]}` — `macro` items have **no ticker** (`meta.label` Fed/FOMC/CPI/PCE/Jobs/GDP) |
+| `pt.events` | `{scope: {by:'ticker',ticker,range,ahead} \| {by:'universe',month} \| {by:'dates',from,to ≤14 days}, kinds: earnings,dividend,split,analyst,macro}` (universe scopes: months within `CALENDAR_MONTHS` of the latest session; NYSE holidays come as `macro` items labelled "Closed") | `{asOf, items[]}` — `macro` items have **no ticker** (`meta.label` Fed/FOMC/CPI/PCE/Jobs/GDP) |
 | `pt.analysts` | `{ticker, window 1y\|2y}` | `{asOf, price, summary{low,mean,median,high,n}, consensus, history[], targets[], accuracy[]}` |
 | `pt.fundamentals` | `{ticker, periods ≤40}` | `{asOf, periods[{period,fiscal,revenue,eps,fcf,grossMargin,operatingMargin,netMargin,pe,shares}]}` oldest first |
 | `pt.insider` | `{ticker, days 30–730}` | `{asOf, items[{date,filingDate,name,title,type buy\|sell\|other,shares,price,value}]}` |
@@ -101,6 +101,10 @@ typology is a platform change (schema here + resolver in the private platform + 
   `src` = a payload's `logo` — `company@1`, `events@1`, `screen@1` carry it —, `size`; no `src` → initials, no request). **Every link to `/stocks/<t>/` opens the
   company card on hover** (the runtime does it, desktop only): link companies with `stockHref` / `PtCompany`, nothing else to do; a
   `data-tip` on such a link becomes the card's footer instead of a text tooltip.
+- **Sortable tables**: `useSort(() => rows, { key: (row) => value })` + `<PtSortTh label :state="sort.state(k)" @sort="sort.toggle(k)" />`
+  in the header, rows from `sort.sorted.value` (numbers high first, dates newest first, text A→Z without case, then reverse, then the
+  original order; missing values last). The server renders the original order.
+- **Page sections**: `.pt-section-head` + `.pt-section-more` (a preview's title and the link to its full page).
 - **Primitives** (`@pretickt/components/ds`): `PtToggles` (`v-model` + `options: [value,label][]` + `label`), `PtBadge` (`:badge` = a
   `metric@1` item or any Badge you build, inside `<ul class="pt-badges">`; `size="mini"` for dense rows), `PtIcon` (`name`: calendar target trend-up trend-down
   alert peak), `PtChart` (zoomable chart frame: `w h plotW plotH id label`, `v-model:view`; slots `defs`, `axes`, default = the plot
@@ -150,7 +154,8 @@ tolerated; the leading comment has the question, `@version` and `@evidence`. The
 `pt-company-card` (the company at a glance — logo, price over 60 sessions, 52-week range, consensus, PT, tags with "Show all";
 `size` wide = page header, compact = the hover card) · `pt-metric` (badge strip of the catalogue) · `pt-price-events` (price line + E/D/S/A markers grouped per day, range toggles, zoom &
 pan) · `pt-price-target` (beta's pt-chart: clustered target dots, gradient segments, hover panel of the analysts, zoom & pan) ·
-`pt-calendar` (month grid + macro dates + full list, previous/next month; `kind` earnings|dividend) · `pt-why-today` (answer-first
+`pt-calendar` (month grid + macro dates + full list, previous/next month; `kind` earnings|dividend; `view: 'week'` + `start` = five
+sessions for the home page; "+N more" opens the whole day) · `pt-why-today` (answer-first
 sentence + market/sector/stock bars + news spike) · `pt-screen` (ranked table with list-specific column and sparklines; `list` or
 `peersOf`) · `pt-financials` (quarterly revenue/FCF bars + margins table) · `pt-news` (headlines with AI sentiment dots, nofollow
 links) · `pt-insiders` (buy/sell totals + Form 4 table).
