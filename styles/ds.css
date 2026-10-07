@@ -229,10 +229,9 @@
   .pt-cal-macro { @apply mt-0.5 rounded bg-warn/20 px-1 text-3xs font-semibold uppercase; }
   .pt-cal-more { @apply mt-0.5 cursor-pointer border-0 bg-transparent p-0 text-3xs font-semibold text-ink-soft hover:text-primary; }
   .pt-cal-week { @apply grid-cols-5; }
-  .pt-cal-day { @apply relative; }
+  .pt-cal { @apply relative; }
   /* "+N more": the whole day over its cell */
-  .pt-cal-pop { @apply absolute top-0 left-0 z-30 max-h-80 w-56 overflow-auto rounded-control border border-border bg-surface-raised p-2 shadow-lg outline-none; }
-  .pt-cal-pop-end { @apply right-0 left-auto; }
+  .pt-cal-pop { @apply absolute z-30 max-h-80 w-56 overflow-auto rounded-control border border-border bg-surface-raised p-2 text-xs shadow-lg outline-none; }
   .pt-cal-pop-head { @apply mb-1 flex items-baseline gap-1 text-xs uppercase text-ink-soft; }
   .pt-cal-pop-head b { @apply text-lg text-ink; }
   .pt-cal-pop-x { @apply ml-auto cursor-pointer border-0 bg-transparent px-1 text-base leading-none text-ink-soft hover:text-ink; }

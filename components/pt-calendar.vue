@@ -15,6 +15,8 @@ const push = <K, V>(m: Map<K, V[]>, k: K, v: V) => { const list = m.get(k); if (
 
 export const addDays = (d: string, n: number): string => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 const weekday = (d: string) => new Date(`${d}T00:00:00Z`).getUTCDay();
+/** 0 = Sunday … 6 = Saturday. */
+export const weekdayOf = weekday;
 
 /** The Monday of the week a reader looks forward to: the week of the first weekday after the latest session `asOf`. */
 export function comingWeek(asOf: string): string {
@@ -76,6 +78,7 @@ import { amount, date, num, stockHref, tip } from '@pretickt/components/format';
 type Kind = 'earnings' | 'dividend';
 /** `month`: the month grid with every report listed below it; `week`: the coming week's five sessions (compact, the home page). */
 const props = withDefaults(defineProps<{ month: string; kind?: Kind; view?: 'month' | 'week' }>(), { kind: 'earnings', view: 'month' });
+const view = computed(() => props.view);
 const pt = usePt();
 const CAP = 4;
 const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -111,10 +114,22 @@ async function goWeek(delta: number) {
 }
 const week = computed(() => (weekStart.value ? buildWeek(weekStart.value, weekItems.value, events.value?.asOf ?? '') : []));
 
-// "+N more": the whole day over its cell (as Google Calendar); ×, Escape or a click outside close it
+// "+N more": the whole day over its cell (as Google Calendar), outside the grid so nothing clips it; ×, Escape or a click outside close it
+const POP_W = 224;
 const openDay = ref<string | null>(null);
+const popAt = ref({ left: 0, top: 0 });
 let popEl: HTMLElement | null = null;
 const popRef = (el: unknown) => { popEl = (el as HTMLElement | null) ?? null; };
+const openCell = computed(() => (view.value === 'week' ? week.value : cal.value.weeks.flat()).find((c) => c.date === openDay.value) ?? null);
+function more(d: string, e: Event) {
+  const cell = (e.currentTarget as HTMLElement).closest('.pt-cal-day');
+  const box = cell?.closest('.pt-cal');
+  if (cell && box) {
+    const c = cell.getBoundingClientRect(), b = box.getBoundingClientRect();
+    popAt.value = { left: Math.max(0, Math.min(c.left - b.left, b.width - POP_W)), top: c.top - b.top };
+  }
+  openDay.value = d;
+}
 watch(openDay, async (d) => { if (d) { await nextTick(); popEl?.focus(); } });
 
 const time = (e: EventItem) => (e.kind === 'earnings' && e.meta.time ? e.meta.time.toUpperCase() : '');
@@ -154,20 +169,20 @@ const listed = computed(() => cal.value.weeks.flat().filter((c) => c.inMonth && 
     <div class="pt-cal-grid" :class="{ 'pt-cal-week': view === 'week' }">
       <template v-if="view === 'week'"><div v-for="(c, i) in week" :key="`d${c.date}`" class="pt-cal-dow">{{ DOW[i] }} {{ c.day }}</div></template>
       <template v-else><div v-for="d in DOW" :key="d" class="pt-cal-dow">{{ d }}</div></template>
-      <div v-for="(c, n) in view === 'week' ? week : cal.weeks.flat()" :key="c.date" :class="['pt-cal-day', { 'pt-cal-out': !c.inMonth, 'pt-cal-asof': c.isAsOf }]">
+      <div v-for="c in view === 'week' ? week : cal.weeks.flat()" :key="c.date" :class="['pt-cal-day', { 'pt-cal-out': !c.inMonth, 'pt-cal-asof': c.isAsOf }]">
         <div v-if="view !== 'week'">{{ c.day }}</div>
         <div v-for="(e, i) in c.macro" :key="`m${i}`" class="pt-cal-macro" :data-tip="macroTip(e)">{{ e.meta.label }}</div>
         <a v-for="e in c.items.slice(0, CAP)" :key="`${e.kind}${e.ticker}`" class="pt-cal-ev" :href="stockHref(e.ticker)" :data-tip="chipTip(e)"><span class="pt-cal-who"><PtLogo :ticker="e.ticker" :src="e.logo" :size="14" />{{ e.ticker }}</span><span class="pt-cal-time">{{ tag(e) }}</span></a>
-        <button v-if="c.items.length > CAP" type="button" class="pt-cal-more" @click="openDay = c.date">+{{ c.items.length - CAP }} more</button>
-        <div v-if="openDay === c.date" :ref="popRef" class="pt-cal-pop" :class="{ 'pt-cal-pop-end': n % (view === 'week' ? 5 : 7) >= (view === 'week' ? 3 : 4) }"
-          role="dialog" :aria-label="`Events on ${date(c.date)}`" tabindex="-1" @keydown.esc="openDay = null">
-          <div class="pt-cal-pop-head"><span>{{ DOW[n % (view === 'week' ? 5 : 7)] }}</span> <b>{{ c.day }}</b><button type="button" class="pt-cal-pop-x" aria-label="Close" @click="openDay = null">×</button></div>
-          <div v-for="(e, i) in c.macro" :key="`pm${i}`" class="pt-cal-macro" :data-tip="macroTip(e)">{{ e.meta.label }}</div>
-          <a v-for="e in c.items" :key="`p${e.kind}${e.ticker}`" class="pt-cal-ev" :href="stockHref(e.ticker)" :data-tip="chipTip(e)"><span class="pt-cal-who"><PtLogo :ticker="e.ticker" :src="e.logo" :size="14" />{{ e.ticker }}</span><span class="pt-cal-time">{{ tag(e) }}</span></a>
-        </div>
+        <button v-if="c.items.length > CAP" type="button" class="pt-cal-more" @click="more(c.date, $event)">+{{ c.items.length - CAP }} more</button>
       </div>
     </div>
-    <div v-if="openDay" class="pt-cal-backdrop" @click="openDay = null"></div>
+    <div v-if="openCell" class="pt-cal-backdrop" @click="openDay = null"></div>
+    <div v-if="openCell" :ref="popRef" class="pt-cal-pop" :style="{ left: `${popAt.left}px`, top: `${popAt.top}px` }" role="dialog"
+      :aria-label="`Events on ${date(openCell.date)}`" tabindex="-1" @keydown.esc="openDay = null">
+      <div class="pt-cal-pop-head"><span>{{ DOW[(weekdayOf(openCell.date) + 6) % 7] }}</span> <b>{{ openCell.day }}</b><button type="button" class="pt-cal-pop-x" aria-label="Close" @click="openDay = null">×</button></div>
+      <div v-for="(e, i) in openCell.macro" :key="`pm${i}`" class="pt-cal-macro" :data-tip="macroTip(e)">{{ e.meta.label }}</div>
+      <a v-for="e in openCell.items" :key="`p${e.kind}${e.ticker}`" class="pt-cal-ev" :href="stockHref(e.ticker)" :data-tip="chipTip(e)"><span class="pt-cal-who"><PtLogo :ticker="e.ticker" :src="e.logo" :size="14" />{{ e.ticker }}</span><span class="pt-cal-time">{{ tag(e) }}</span></a>
+    </div>
     <template v-if="view === 'week'"></template>
     <ol v-else-if="listed.length" class="pt-cal-list">
       <li v-for="c in listed" :key="c.date">
