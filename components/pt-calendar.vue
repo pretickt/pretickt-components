@@ -88,6 +88,7 @@ const month = ref(props.month);
 const events = ref(await load(month.value));
 const loading = ref(false);
 async function go(m: string) {
+  close();
   loading.value = true;
   const next = await load(m);
   month.value = m;           // the month on screen changes with its data, never before
@@ -105,6 +106,7 @@ async function weekOf(start: string): Promise<EventItem[]> {
 const weekStart = ref(props.view === 'week' && events.value ? comingWeek(events.value.asOf) : '');
 const weekItems = ref(weekStart.value ? await weekOf(weekStart.value) : []);
 async function goWeek(delta: number) {
+  close();
   loading.value = true;
   const start = addDays(weekStart.value, 7 * delta);
   const items = await weekOf(start);
@@ -118,11 +120,18 @@ const week = computed(() => (weekStart.value ? buildWeek(weekStart.value, weekIt
 const POP_W = 224;
 const openDay = ref<string | null>(null);
 const popAt = ref({ left: 0, top: 0 });
-let popEl: HTMLElement | null = null;
+let popEl: HTMLElement | null = null, opener: HTMLElement | null = null;
 const popRef = (el: unknown) => { popEl = (el as HTMLElement | null) ?? null; };
+/** Closes the day box and gives the focus back to the "+N more" that opened it. */
+function close() {
+  if (!openDay.value) return;
+  openDay.value = null;
+  opener?.focus();
+}
 const openCell = computed(() => (view.value === 'week' ? week.value : cal.value.weeks.flat()).find((c) => c.date === openDay.value) ?? null);
 function more(d: string, e: Event) {
-  const cell = (e.currentTarget as HTMLElement).closest('.pt-cal-day');
+  opener = e.currentTarget as HTMLElement;
+  const cell = opener.closest('.pt-cal-day');
   const box = cell?.closest('.pt-cal');
   if (cell && box) {
     const c = cell.getBoundingClientRect(), b = box.getBoundingClientRect();
@@ -176,14 +185,16 @@ const listed = computed(() => cal.value.weeks.flat().filter((c) => c.inMonth && 
         <button v-if="c.items.length > CAP" type="button" class="pt-cal-more" @click="more(c.date, $event)">+{{ c.items.length - CAP }} more</button>
       </div>
     </div>
-    <div v-if="openCell" class="pt-cal-backdrop" @click="openDay = null"></div>
+    <div v-if="openCell" class="pt-cal-backdrop" @click="close"></div>
     <div v-if="openCell" :ref="popRef" class="pt-cal-pop" :style="{ left: `${popAt.left}px`, top: `${popAt.top}px` }" role="dialog"
-      :aria-label="`Events on ${date(openCell.date)}`" tabindex="-1" @keydown.esc="openDay = null">
-      <div class="pt-cal-pop-head"><span>{{ DOW[(weekdayOf(openCell.date) + 6) % 7] }}</span> <b>{{ openCell.day }}</b><button type="button" class="pt-cal-pop-x" aria-label="Close" @click="openDay = null">×</button></div>
+      :aria-label="`Events on ${date(openCell.date)}`" tabindex="-1" @keydown.esc="close">
+      <div class="pt-cal-pop-head"><span>{{ DOW[(weekdayOf(openCell.date) + 6) % 7] }}</span> <b>{{ openCell.day }}</b><button type="button" class="pt-cal-pop-x" aria-label="Close" @click="close">×</button></div>
       <div v-for="(e, i) in openCell.macro" :key="`pm${i}`" class="pt-cal-macro" :data-tip="macroTip(e)">{{ e.meta.label }}</div>
       <a v-for="e in openCell.items" :key="`p${e.kind}${e.ticker}`" class="pt-cal-ev" :href="stockHref(e.ticker)" :data-tip="chipTip(e)"><span class="pt-cal-who"><PtLogo :ticker="e.ticker" :src="e.logo" :size="14" />{{ e.ticker }}</span><span class="pt-cal-time">{{ tag(e) }}</span></a>
     </div>
-    <template v-if="view === 'week'"></template>
+    <template v-if="view === 'week'">
+      <p v-if="!weekItems.length" class="pt-lede">No {{ kind === 'dividend' ? 'ex-dividend dates' : 'earnings reports' }} scheduled this week in the tracked universe yet.</p>
+    </template>
     <ol v-else-if="listed.length" class="pt-cal-list">
       <li v-for="c in listed" :key="c.date">
         <span class="pt-cal-list-day">{{ date(c.date) }}</span>

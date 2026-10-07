@@ -56,7 +56,7 @@
   /* states */
   .pt-na { @apply rounded-control border border-dashed border-border px-3 py-4 text-center text-sm text-ink-soft; }
   .pt-icon { @apply inline-block h-3.5 w-3.5 shrink-0 fill-none stroke-current; stroke-width: 1.5; }
-  .pt-tip { @apply pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-full rounded-md bg-ink px-2 py-1 text-xs text-surface shadow-lg; }
+  .pt-tip { @apply pointer-events-none absolute z-40 -translate-x-1/2 -translate-y-full rounded-md bg-ink px-2 py-1 text-xs text-surface shadow-lg; }
   .pt-tip b { @apply font-semibold; }
   .pt-busy { @apply opacity-60 transition-opacity; }
   /* Islands anchor their tooltip. Never put position on [class^='pt-']: it would override .pt-tip's absolute. */

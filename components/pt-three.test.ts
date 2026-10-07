@@ -40,6 +40,16 @@ describe('sortable tables (insiders, financials)', () => {
     expect(v).toEqual([...v].sort((a, b) => b - a));
     w.unmount();
   });
+  it('insiders: a buy and a sell by one insider on one day are two rows, sorted any way', async () => {
+    const same = { date: '2026-09-01', filingDate: '2026-09-02', name: 'Jane Doe', title: 'CFO', shares: 100, price: 10, value: 1000 };
+    const items = [{ ...same, type: 'buy' }, { ...same, type: 'sell' }, { ...same, name: 'John Roe', type: 'buy' }];
+    const w = await mountIsland(PtInsiders, { ticker: 'NVDA', days: 365 }, withData({ 'insider@1': { asOf: '2026-09-30', items } }));
+    for (const h of ['Value', 'Type', 'Insider', 'Insider', 'Insider']) {
+      await w.findAll('thead th button').find((b) => b.text().startsWith(h))!.trigger('click');
+      expect(w.findAll('tbody tr'), h).toHaveLength(3);
+    }
+    w.unmount();
+  });
   it('financials: quarters by revenue, high to low', async () => {
     const w = await mountIsland(PtFinancials, { ticker: 'NVDA', periods: 8 });
     await w.findAll('thead th button').find((b) => b.text().startsWith('Revenue'))!.trigger('click');

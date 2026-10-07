@@ -96,6 +96,27 @@ describe('pt-calendar', () => {
     expect(w.find('.pt-cal-pop').exists()).toBe(false);
     w.unmount();
   });
+  it('closing the day box gives the focus back to its "+N more"; changing month closes it', async () => {
+    const many = Array.from({ length: 7 }, (_, i) => ({ ...companies[0]!, date: '2026-10-15', ticker: `T${i}`, name: `Co ${i}` }));
+    const w = await mountIsland(PtCalendar, { month: '2026-10' }, withData({ 'events@1': { asOf: '2026-10-02', items: many } }));
+    const more = () => w.find('button.pt-cal-more');
+    await more().trigger('click');
+    await w.find('button.pt-cal-pop-x').trigger('click');
+    expect(document.activeElement).toBe(more().element);
+    await more().trigger('click');
+    await w.find('.pt-cal-pop').trigger('keydown', { key: 'Escape' });
+    expect(document.activeElement).toBe(more().element);
+    await more().trigger('click');
+    await w.findAll('.pt-cal-nav button')[1]!.trigger('click');
+    await flushPromises();
+    expect(w.find('.pt-cal-pop').exists()).toBe(false);
+    w.unmount();
+  });
+  it('a week with nothing scheduled says so', async () => {
+    const w = await mountIsland(PtCalendar, { month: '2026-09', kind: 'dividend', view: 'week' }, withData({ 'events@1': { asOf: '2026-09-30', items: [] } }));
+    expect(w.text()).toContain('No ex-dividend dates scheduled this week in the tracked universe yet.');
+    w.unmount();
+  });
   it('week view: the five sessions of the coming week (from the latest session), across a month end, with week arrows', async () => {
     const asked: unknown[] = [];
     const resolve = async (t: string, p: unknown) => { asked.push(p); return demo()(t, p); };

@@ -33,7 +33,7 @@ const summary = computed(() => {
       <table class="pt-table">
         <thead><tr><PtSortTh v-for="[k, l] in COLS" :key="k" :label="l" :state="sort.state(k)" @sort="sort.toggle(k)" /></tr></thead>
         <tbody>
-          <tr v-for="i in sort.sorted.value" :key="`${i.date}${i.name}${i.shares}${i.value}`" :class="['pt-ins-row', `pt-ins-${i.type}`]">
+          <tr v-for="i in sort.sorted.value" :key="`${i.date}|${i.name}|${i.type}`" :class="['pt-ins-row', `pt-ins-${i.type}`]">
             <td>{{ date(i.date) }}</td>
             <td>{{ i.name }}<div v-if="i.title" class="pt-meta">{{ i.title }}</div></td>
             <td><span class="pt-ins-type">{{ LABEL[i.type] ?? 'Other' }}</span></td>
