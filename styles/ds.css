@@ -42,6 +42,9 @@
   .pt-h1 { @apply text-2xl font-semibold tracking-tight; }
   .pt-lede { @apply mt-1 text-sm text-ink-soft; }
   .pt-section { @apply mt-8; }
+  /* a preview section (the home): its title and the link to the full page on one line */
+  .pt-section-head { @apply flex items-baseline justify-between gap-3; }
+  .pt-section-more { @apply shrink-0 text-xs font-semibold text-primary no-underline hover:underline; }
   .pt-section-title { @apply mb-3 text-sm font-semibold uppercase tracking-wide text-ink-soft; }
   .pt-subnav { @apply mt-3 flex flex-wrap gap-1 border-b border-border pb-2 text-sm; }
   .pt-subnav a { @apply rounded-md px-2 py-1 text-ink-soft no-underline hover:bg-surface-raised hover:text-ink; }
