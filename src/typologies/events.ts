@@ -11,7 +11,9 @@ export const EventsParams = z.object({
     /** The whole universe for one calendar month (calendar pages). */
     z.object({ by: z.literal('universe'), month: Month }),
     /** The whole universe between two dates, at most 14 days apart (a week on the home page). Added in 1.1. */
-    z.object({ by: z.literal('dates'), from: IsoDate, to: IsoDate }).check(z.refine((s) => s.from <= s.to && s.to <= addDays(s.from, 13), 'from ≤ to, at most 14 days')),
+    // strict calendar dates (no 2026-11-31 rolling into December), refused before the span check can read them
+    z.object({ by: z.literal('dates'), from: z.iso.date({ abort: true }), to: z.iso.date({ abort: true }) })
+      .check(z.refine((s) => s.from <= s.to && s.to <= addDays(s.from, 13), 'from ≤ to, at most 14 days')),
   ]),
   kinds: z.array(z.enum(EVENT_KINDS)).check(z.minLength(1)),
 });
@@ -43,6 +45,7 @@ export const eventsSamples: z.input<typeof EventsParams>[] = [
   { scope: { by: 'ticker', ticker: 'BRK.B', range: '1y', ahead: 90 }, kinds: ['earnings', 'dividend', 'split', 'analyst'] },
   { scope: { by: 'universe', month: '2026-10' }, kinds: ['earnings'] },
   { scope: { by: 'universe', month: '2026-10' }, kinds: ['earnings', 'macro'] },
+  { scope: { by: 'dates', from: '2026-10-05', to: '2026-10-09' }, kinds: ['earnings', 'macro'] },
 ];
 
 /** Kinds this build has never seen — one shaped like a company event, one like a market-wide date (no ticker). */

@@ -1,7 +1,7 @@
 <!--
   Which companies report earnings (or go ex-dividend) this month — or in the coming week — and which market-wide dates (Fed, CPI,
   jobs) fall around them?
-  @version 2.2.0
+  @version 2.3.0
   @evidence DataForSEO: "earnings calendar" ~153k searches/month, SERP without AI overview (reports/Funzioni pretickt da tenere e aggiungere.md)
   @evidence DataForSEO: "dividend calendar" in launch/data/08c-serp-dividend-calendar.json
   @evidence beta: events-calendar month grid (pretickt-frontend/src/app/home/events-calendar.ts); stockanalysis.com earnings calendar
@@ -208,7 +208,7 @@ const listed = computed(() => cal.value.weeks.flat().filter((c) => c.inMonth && 
       <a v-for="e in openCell.items" :key="`p${e.kind}${e.ticker}`" class="pt-cal-ev" :href="stockHref(e.ticker)" :data-tip="chipTip(e)"><span class="pt-cal-who"><PtLogo :ticker="e.ticker" :src="e.logo" :size="14" />{{ e.ticker }}</span><span class="pt-cal-time">{{ tag(e) }}</span></a>
     </div>
     <template v-if="view === 'week'">
-      <p v-if="!weekItems.length" class="pt-lede">No {{ kind === 'dividend' ? 'ex-dividend dates' : 'earnings reports' }} scheduled this week in the tracked universe yet.</p>
+      <p v-if="!weekItems.some(isCompany)" class="pt-lede">No {{ kind === 'dividend' ? 'ex-dividend dates' : 'earnings reports' }} scheduled in the week of {{ date(weekStart) }} in the tracked universe yet.</p>
     </template>
     <ol v-else-if="listed.length" class="pt-cal-list">
       <li v-for="c in listed" :key="c.date">

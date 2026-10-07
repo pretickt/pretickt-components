@@ -39,6 +39,17 @@ describe('sortable tables', () => {
     s.toggle('d');
     expect(s.sorted.value.map((r) => r.d)).toEqual(['2026-09-15', '2026-06-30', '2026-03-01']);
   });
+  it('a first click always changes something: rows already in the first order start reversed', async () => {
+    const newest = [{ d: '2026-09-15' }, { d: '2026-06-30' }, { d: '2026-03-01' }];
+    const s = useSort(() => newest, { d: (r) => r.d });
+    s.toggle('d');
+    expect(s.state('d')).toBe('asc');
+    expect(s.sorted.value.map((r) => r.d)).toEqual(['2026-03-01', '2026-06-30', '2026-09-15']);
+    s.toggle('d');
+    expect(s.sorted.value.map((r) => r.d)).toEqual(['2026-09-15', '2026-06-30', '2026-03-01']);
+    s.toggle('d');
+    expect(s.state('d')).toBeNull();
+  });
   it('the server renders the original order with plain sortable headers (hydration-safe), and a sort is a beacon interaction', async () => {
     const html = await renderToString(createSSRApp(Table));
     expect(html).toContain('<th><button type="button" class="pt-sort">Name<span class="pt-sort-i" aria-hidden="true">↕</span></button></th>');

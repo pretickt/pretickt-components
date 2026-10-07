@@ -7,6 +7,10 @@ describe('events@1, a span of dates (a week of the home page)', () => {
     expect(EventsParams.safeParse({ scope: { by: 'dates', from: '2026-10-02', to: '2026-09-28' }, kinds: ['earnings'] }).success).toBe(false);
     expect(EventsParams.safeParse({ scope: { by: 'dates', from: '2026-10-01', to: '2026-10-20' }, kinds: ['earnings'] }).success).toBe(false);
   });
+  it('refuses dates that do not exist, without throwing (no rollover into the next month)', () => {
+    for (const [from, to] of [['2026-11-30', '2026-11-31'], ['2026-02-27', '2026-02-30'], ['2026-10-32', '2026-10-33'], ['2026-13-01', '2026-13-02'], ['0', '1']])
+      expect(() => expect(EventsParams.safeParse({ scope: { by: 'dates', from, to }, kinds: ['earnings'] }).success, `${from}..${to}`).toBe(false)).not.toThrow();
+  });
   it('the demo answers the days asked, across a month end', () => {
     const d = eventsDemo(EventsParams.parse({ scope: { by: 'dates', from: '2026-09-28', to: '2026-10-02' }, kinds: ['earnings', 'macro'] }));
     expect(d.items.length).toBeGreaterThan(0);

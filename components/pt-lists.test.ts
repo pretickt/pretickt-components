@@ -112,9 +112,10 @@ describe('pt-calendar', () => {
     expect(w.find('.pt-cal-pop').exists()).toBe(false);
     w.unmount();
   });
-  it('a week with nothing scheduled says so', async () => {
-    const w = await mountIsland(PtCalendar, { month: '2026-09', kind: 'dividend', view: 'week', start: '2026-09-28' }, withData({ 'events@1': { asOf: '2026-09-30', items: [] } }));
-    expect(w.text()).toContain('No ex-dividend dates scheduled this week in the tracked universe yet.');
+  it('a week with no company scheduled says so, even with a market-wide date in it', async () => {
+    const closed = { date: '2026-09-28', kind: 'macro', meta: { label: 'Closed', event: 'Labor Day', impact: null } };
+    const w = await mountIsland(PtCalendar, { month: '2026-09', kind: 'dividend', view: 'week', start: '2026-09-28' }, withData({ 'events@1': { asOf: '2026-09-30', items: [closed] } }));
+    expect(w.text()).toContain('No ex-dividend dates scheduled in the week of Sep 28, 2026 in the tracked universe yet.');
     w.unmount();
   });
   it('week view: the five sessions of the week it is given, one call for the week (across a month end), week arrows', async () => {
