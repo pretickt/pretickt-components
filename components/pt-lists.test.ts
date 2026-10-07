@@ -77,6 +77,40 @@ describe('pt-calendar', () => {
     expect(out.match(/class="pt-cal-ev"/g)).toHaveLength(4);
     expect(out).toContain('+3 more');
   });
+  it('"+N more" opens the whole day over its cell, as Google Calendar does; ×, Escape or a click outside close it', async () => {
+    const many = Array.from({ length: 7 }, (_, i) => ({ ...companies[0]!, date: '2026-10-15', ticker: `T${i}`, name: `Co ${i}` }));
+    const w = await mountIsland(PtCalendar, { month: '2026-10' }, withData({ 'events@1': { asOf: '2026-10-02', items: many } }));
+    expect(w.find('.pt-cal-pop').exists()).toBe(false);
+    await w.find('button.pt-cal-more').trigger('click');
+    const pop = w.find('.pt-cal-pop');
+    expect(pop.attributes('role')).toBe('dialog');
+    expect(pop.find('.pt-cal-pop-head').text()).toMatch(/Thu\s*15/);
+    expect(pop.findAll('.pt-cal-ev')).toHaveLength(7);              // every company of the day
+    await pop.find('button.pt-cal-pop-x').trigger('click');
+    expect(w.find('.pt-cal-pop').exists()).toBe(false);
+    await w.find('button.pt-cal-more').trigger('click');
+    await w.find('.pt-cal-pop').trigger('keydown', { key: 'Escape' });
+    expect(w.find('.pt-cal-pop').exists()).toBe(false);
+    await w.find('button.pt-cal-more').trigger('click');
+    await w.find('.pt-cal-backdrop').trigger('click');
+    expect(w.find('.pt-cal-pop').exists()).toBe(false);
+    w.unmount();
+  });
+  it('week view: the five sessions of the coming week (from the latest session), across a month end, with week arrows', async () => {
+    const asked: unknown[] = [];
+    const resolve = async (t: string, p: unknown) => { asked.push(p); return demo()(t, p); };
+    const w = await mountIsland(PtCalendar, { month: '2026-09', view: 'week' }, resolve);
+    // the demo's latest session is Wed 2026-09-30: the coming week is Mon Sep 28 – Fri Oct 2, half in each month
+    expect(w.findAll('.pt-cal-day')).toHaveLength(5);
+    expect(w.find('.pt-section-title').text()).toBe('Week of Sep 28, 2026');
+    expect(w.findAll('.pt-cal-dow').map((d) => d.text())).toEqual(['Mon 28', 'Tue 29', 'Wed 30', 'Thu 1', 'Fri 2']);
+    expect(asked.map((p) => (p as { scope: { month: string } }).scope.month)).toEqual(['2026-09', '2026-10']);
+    expect(w.find('.pt-cal-list').exists()).toBe(false);             // compact: no month list
+    await w.findAll('.pt-cal-nav button')[1]!.trigger('click');
+    await flushPromises();
+    expect(w.find('.pt-section-title').text()).toBe('Week of Oct 5, 2026');
+    w.unmount();
+  });
   it('lists every report in the text list, so nothing hides behind the cap', async () => {
     const out = await html(events);
     for (const e of companies) expect(out).toContain(`/stocks/${e.ticker.toLowerCase()}/`);

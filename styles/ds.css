@@ -224,7 +224,16 @@
   .pt-cal-ev { @apply mt-0.5 flex items-center justify-between gap-1 rounded bg-surface px-1 font-mono; }
   .pt-cal-time { @apply text-4xs uppercase text-ink-soft; }
   .pt-cal-macro { @apply mt-0.5 rounded bg-warn/20 px-1 text-3xs font-semibold uppercase; }
-  .pt-cal-more { @apply mt-0.5 text-3xs text-ink-soft; }
+  .pt-cal-more { @apply mt-0.5 cursor-pointer border-0 bg-transparent p-0 text-3xs font-semibold text-ink-soft hover:text-primary; }
+  .pt-cal-week { @apply grid-cols-5; }
+  .pt-cal-day { @apply relative; }
+  /* "+N more": the whole day over its cell */
+  .pt-cal-pop { @apply absolute top-0 left-0 z-30 max-h-80 w-56 overflow-auto rounded-control border border-border bg-surface-raised p-2 shadow-lg outline-none; }
+  .pt-cal-pop-end { @apply right-0 left-auto; }
+  .pt-cal-pop-head { @apply mb-1 flex items-baseline gap-1 text-xs uppercase text-ink-soft; }
+  .pt-cal-pop-head b { @apply text-lg text-ink; }
+  .pt-cal-pop-x { @apply ml-auto cursor-pointer border-0 bg-transparent px-1 text-base leading-none text-ink-soft hover:text-ink; }
+  .pt-cal-backdrop { @apply fixed inset-0 z-20; }
   .pt-cal-list { @apply mt-4 space-y-1 pl-0 text-sm; list-style: none; }
   .pt-cal-list a { @apply text-primary hover:underline; }
   .pt-cal-list-day { @apply mr-2 font-semibold; }
