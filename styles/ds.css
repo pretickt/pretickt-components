@@ -17,6 +17,8 @@
   --color-primary: oklch(0.556 0.127 240);
   --color-primary-hover: oklch(0.499 0.113 239);
   --color-primary-ink: oklch(0.99 0 0);
+  /* "TICK" in the wordmark: the logo cyan, a step darker so it holds on white (a logo, not body text) */
+  --color-brand: oklch(0.639 0.141 237.6);
   --color-pos: oklch(0.6 0.15 150);
   --color-neg: oklch(0.58 0.2 25);
   --color-danger: var(--color-neg);
@@ -32,7 +34,9 @@
   /* page */
   .pt-page { @apply min-h-screen bg-surface font-sans text-ink antialiased; }
   .pt-header { @apply border-b border-border bg-surface-raised px-4 py-3 sm:px-6; }
-  .pt-brand { @apply inline-flex items-center gap-2 font-sans text-lg font-semibold tracking-tighter text-ink no-underline; }
+  /* the wordmark: PRETICKT in spaced capitals, TICK in the brand cyan (markup: pre<span class="pt-brand-tick">tick</span>t) */
+  .pt-brand { @apply inline-flex items-center gap-2.5 font-sans text-sm font-semibold uppercase tracking-[0.16em] text-ink no-underline; }
+  .pt-brand-tick { @apply text-brand; }
   .pt-brand-mark { @apply h-7 w-7 shrink-0; }
   .pt-main { @apply mx-auto max-w-5xl px-4 py-6 sm:px-6; }
   .pt-h1 { @apply text-2xl font-semibold tracking-tight; }
