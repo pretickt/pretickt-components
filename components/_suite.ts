@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, it } from 'vitest';
-import type { Component } from 'vue';
+import { h, Suspense, type Component } from 'vue';
+import { flushPromises, mount } from '@vue/test-utils';
+import { createPt, PT } from '../src/context/pt';
 import { createChecker, type ComponentMeta } from 'vue-component-meta';
 import { readComponentMeta } from '../src/checks/meta';
 import { sampleProps, type PropInfo } from '../src/checks/props';
@@ -56,3 +58,13 @@ export function standardSuite(file: string, component: Component) {
     });
   }
 }
+
+/** A component mounted in the browser as an island (Suspense + a pt answering from `resolve`), its data loaded. */
+export async function mountIsland(component: Component, props: Record<string, unknown>, resolve = demo()) {
+  const w = mount({ render: () => h(Suspense, null, { default: () => h(component, props) }) },
+    { global: { provide: { [PT as symbol]: createPt({ resolve }) } }, attachTo: document.body });
+  await flushPromises();
+  return w;
+}
+/** The text of one column of a mounted table, top to bottom. */
+export const column = (w: { findAll(s: string): { text(): string }[] }, n: number) => w.findAll(`tbody tr td:nth-child(${n})`).map((c) => c.text());

@@ -7,7 +7,7 @@ import { tone, usd } from '../src/ds/format';
 import { eventsDemo, screenDemo, type EventItem } from '../src/typologies';
 import PtCalendar, { buildMonth, shiftMonth } from './pt-calendar.vue';
 import PtScreen from './pt-screen.vue';
-import { demo, render, standardSuite, withData } from './_suite';
+import { column, demo, mountIsland, render, standardSuite, withData } from './_suite';
 
 describe('pt-screen', () => {
   standardSuite('pt-screen.vue', PtScreen);
@@ -24,6 +24,20 @@ describe('pt-screen', () => {
     const { html } = await render(PtScreen, { list: 'biggest_losers', limit: 3 }, withData({ 'screen@1': data }));
     expect(html).toContain(`<img class="pt-logo" src="/logos/${data.rows[0]!.ticker.toLowerCase()}"`);
     expect(html.match(/pt-logo-initials/g)).toHaveLength(2);
+  });
+  it('sorts by a column header: 1D high to low, then low to high; the rank stays the list\'s own', async () => {
+    const w = await mountIsland(PtScreen, { list: 'biggest_losers', limit: 10 });
+    const before = column(w, 2);
+    await w.findAll('thead th button').find((b) => b.text().startsWith('1D'))!.trigger('click');
+    const pctOf = (s: string) => Number(s.replace('%', '').replace('−', '-'));
+    const down = column(w, 4).map(pctOf);
+    expect(down).toEqual([...down].sort((a, b) => b - a));
+    expect(w.find('th[aria-sort="descending"]').text()).toMatch(/^1D/);
+    const ranks = column(w, 1).map(Number);
+    expect(ranks.map((r) => before[r - 1])).toEqual(column(w, 2)); // each row keeps its rank in the list
+    await w.findAll('thead th button').find((b) => b.text().startsWith('1D'))!.trigger('click');
+    expect(column(w, 4).map(pctOf)).toEqual([...down].reverse());
+    w.unmount();
   });
   it('highlights the subject of a peer list', async () => {
     const data = screenDemo({ scope: { peersOf: 'NVDA' }, limit: 5 });

@@ -10,4 +10,6 @@ export { default as PtIcon } from './PtIcon.vue';
 export { default as PtLogo } from './PtLogo.vue';
 export { default as PtTimeAxis } from './PtTimeAxis.vue';
 export { default as PtToggles } from './PtToggles.vue';
+export { default as PtSortTh } from './PtSortTh.vue';
+export { useSort, type SortState } from './sort';
 export { default as PtYAxis } from './PtYAxis.vue';

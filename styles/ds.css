@@ -97,6 +97,11 @@
   .pt-hovercard { @apply fixed z-50 overflow-auto rounded-control shadow-lg; }
   .pt-hovercard-loading { @apply w-[340px] rounded-control border border-border bg-surface-raised p-3 text-sm text-ink-soft; }
 
+  /* sortable table headers */
+  .pt-sort { @apply inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-inherit hover:text-primary; font: inherit; letter-spacing: inherit; text-transform: inherit; }
+  .pt-sort-i { @apply text-3xs opacity-40; }
+  [aria-sort='ascending'] .pt-sort-i, [aria-sort='descending'] .pt-sort-i { @apply text-primary opacity-100; }
+
   /* badges */
   .pt-badges { @apply m-0 flex list-none flex-wrap gap-2 p-0; }
   .pt-badge { @apply inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-raised px-3 py-1 text-sm; }

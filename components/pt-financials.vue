@@ -1,12 +1,13 @@
 <!--
   Is this company growing, and is the growth turning into cash?
-  @version 2.0.0
+  @version 2.1.0
   @evidence "<ticker> revenue / earnings / free cash flow" long tail (marketing/ per-ticker SEO)
   @evidence beta: growth charts and tables on the company page
 -->
 <script setup lang="ts">
 import { computed } from 'vue';
 import { usePt } from '@pretickt/components/context';
+import { PtSortTh, useSort } from '@pretickt/components/ds';
 import { date, level, num, pct, tip, usd } from '@pretickt/components/format';
 
 const props = withDefaults(defineProps<{ ticker: string; periods?: number }>(), { periods: 8 });
@@ -15,6 +16,13 @@ const W = 600, H = 160, PAD = 14;
 const compact = (v: number | null) => usd(v, { compact: true });
 
 const ps = computed(() => fin?.periods ?? []);
+// the table lists the newest quarter first; its headers sort it
+const sort = useSort(() => [...ps.value].reverse(), {
+  quarter: (p) => p.period, period: (p) => p.period, revenue: (p) => p.revenue, eps: (p) => p.eps, fcf: (p) => p.fcf,
+  gross: (p) => p.grossMargin, operating: (p) => p.operatingMargin, net: (p) => p.netMargin,
+});
+const COLS = [['quarter', 'Quarter'], ['period', 'Period end'], ['revenue', 'Revenue'], ['eps', 'EPS'], ['fcf', 'FCF'], ['gross', 'Gross'],
+  ['operating', 'Operating'], ['net', 'Net']] as const;
 const lede = computed(() => {
   const last = ps.value.at(-1);
   if (!last) return '';
@@ -56,9 +64,9 @@ const chart = computed(() => {
     </svg>
     <div class="pt-table-wrap">
       <table class="pt-table">
-        <thead><tr><th>Quarter</th><th>Period end</th><th>Revenue</th><th>EPS</th><th>FCF</th><th>Gross</th><th>Operating</th><th>Net</th></tr></thead>
+        <thead><tr><PtSortTh v-for="[k, l] in COLS" :key="k" :label="l" :state="sort.state(k)" @sort="sort.toggle(k)" /></tr></thead>
         <tbody>
-          <tr v-for="p in [...ps].reverse()" :key="p.period" class="pt-fin-q">
+          <tr v-for="p in sort.sorted.value" :key="p.period" class="pt-fin-q">
             <td>{{ p.fiscal }}</td><td>{{ date(p.period) }}</td><td class="pt-num">{{ compact(p.revenue) }}</td><td class="pt-num">{{ num(p.eps) }}</td>
             <td class="pt-num">{{ compact(p.fcf) }}</td><td class="pt-num">{{ level(p.grossMargin) }}</td><td class="pt-num">{{ level(p.operatingMargin) }}</td>
             <td class="pt-num">{{ level(p.netMargin) }}</td>

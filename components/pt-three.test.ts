@@ -5,7 +5,7 @@ import { fundamentalsDemo, insiderDemo, metricDemo, type MetricItem } from '../s
 import PtFinancials from './pt-financials.vue';
 import PtInsiders from './pt-insiders.vue';
 import PtMetric from './pt-metric.vue';
-import { render, standardSuite, withData } from './_suite';
+import { column, mountIsland, render, standardSuite, withData } from './_suite';
 
 describe('pt-metric', () => {
   standardSuite('pt-metric.vue', PtMetric);
@@ -28,6 +28,24 @@ describe('pt-metric', () => {
   it('renders every demo metric', async () => {
     const demo = metricDemo({ ticker: 'NVDA', metrics: ['pe', 'pe_vs_sector', 'pt_upside', 'off_high', 'range_52w', 'trend_ma', 'earnings_in'] });
     expect((await html(demo)).match(/class="pt-badge /g)).toHaveLength(7);
+  });
+});
+
+describe('sortable tables (insiders, financials)', () => {
+  const money = (s: string) => { const n = Number(s.replace(/[$,]|[KMBT]$/g, '').replace('−', '-')); return s.endsWith('B') ? n * 1e9 : s.endsWith('M') ? n * 1e6 : s.endsWith('K') ? n * 1e3 : n; };
+  it('insiders: Value high to low', async () => {
+    const w = await mountIsland(PtInsiders, { ticker: 'NVDA', days: 365 });
+    await w.findAll('thead th button').find((b) => b.text().startsWith('Value'))!.trigger('click');
+    const v = column(w, 6).filter((x) => x !== '—').map(money);
+    expect(v).toEqual([...v].sort((a, b) => b - a));
+    w.unmount();
+  });
+  it('financials: quarters by revenue, high to low', async () => {
+    const w = await mountIsland(PtFinancials, { ticker: 'NVDA', periods: 8 });
+    await w.findAll('thead th button').find((b) => b.text().startsWith('Revenue'))!.trigger('click');
+    const v = column(w, 3).filter((x) => x !== '—').map(money);
+    expect(v).toEqual([...v].sort((a, b) => b - a));
+    w.unmount();
   });
 });
 
