@@ -1,7 +1,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import vue from '@vitejs/plugin-vue';
 import { execFileSync } from 'node:child_process';
-import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { build, type Manifest } from 'vite';
@@ -79,6 +79,9 @@ const components = files.map((f) => {
 });
 
 execFileSync('npx', ['@tailwindcss/cli', '-i', 'styles/ds.css', '-o', 'dist/ds.css', '--minify'], { stdio: 'inherit' });
+// the fonts ds.css names (/fonts/…) and the brand marks (logo, favicon): the platform publishes them beside ds.css
+cpSync('styles/fonts', 'dist/fonts', { recursive: true, filter: (f) => !f.endsWith('.txt') });
+cpSync('styles/brand', 'dist/brand', { recursive: true });
 writeFileSync('dist/index.json', JSON.stringify({ runtime: `client/${manifest[runtimeKey]!.file}`, components }, null, 2));
 const gz = [...runtimeFiles].reduce((n, f) => n + gzipSync(readFileSync(`dist/client/${f}`)).length, 0);
 console.log(`built ${components.length} components; every page loads ${runtimeBytes} bytes of runtime (${gz} gzip)`);

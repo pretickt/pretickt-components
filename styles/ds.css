@@ -1,9 +1,13 @@
 /* No source scan: the design system is the classes below; utilities come only from their @apply (no stray global .hidden, .table…). */
 @import "tailwindcss" source(none);
 
+/* Geist + Geist Mono (OFL, styles/fonts), self-hosted: the site's CSP allows fonts only from itself. Names carry the version → cached immutable. */
+@font-face { font-family: 'Geist'; src: url('/fonts/geist-1.7.2.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Geist Mono'; src: url('/fonts/geist-mono-1.7.2.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
+
 @theme {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+  --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
   --color-surface: oklch(0.985 0.004 250);
   --color-surface-raised: oklch(1 0 0);
   --color-border: oklch(0.9 0.006 250);
@@ -27,7 +31,8 @@
   /* page */
   .pt-page { @apply min-h-screen bg-surface font-sans text-ink antialiased; }
   .pt-header { @apply border-b border-border bg-surface-raised px-4 py-3 sm:px-6; }
-  .pt-brand { @apply font-mono text-sm font-semibold tracking-tight text-ink no-underline; }
+  .pt-brand { @apply inline-flex items-center gap-2 font-sans text-lg font-semibold tracking-tighter text-ink no-underline; }
+  .pt-brand-mark { @apply h-7 w-7 shrink-0; }
   .pt-main { @apply mx-auto max-w-5xl px-4 py-6 sm:px-6; }
   .pt-h1 { @apply text-2xl font-semibold tracking-tight; }
   .pt-lede { @apply mt-1 text-sm text-ink-soft; }

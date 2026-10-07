@@ -41,5 +41,8 @@ describe('build', () => {
       expect(server.islandMarkup(`${c.tag}@${c.version}`, props, r.html)).toContain(`data-island="${c.tag}@${c.version}"`);
     }
     expect(readFileSync('dist/ds.css', 'utf8')).toContain('pt-badge');
+    // every font ds.css names is shipped beside it, and the favicon the pages link
+    for (const m of readFileSync('dist/ds.css', 'utf8').matchAll(/url\(['"]?\/fonts\/([^'")]+)/g)) expect(existsSync(`dist/fonts/${m[1]}`), m[1]).toBe(true);
+    expect(existsSync('dist/brand/favicon.svg')).toBe(true);
   }, 300_000);
 });
