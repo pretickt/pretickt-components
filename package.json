@@ -7,7 +7,8 @@
     "test:ng": "ng test --watch=false",
     "typecheck": "vue-tsc --noEmit",
     "build": "tsx scripts/build.ts",
-    "build:site": "ng build"
+    "build:site": "ng build",
+    "check": "tsx scripts/check.ts"
   },
   "keywords": [],
   "author": "",
@@ -46,6 +47,7 @@
     "@angular/build": "^22.2.2",
     "@angular/cli": "^22.2.2",
     "@angular/compiler-cli": "^22.2.2",
+    "@happy-dom/global-registrator": "^20.14.5",
     "@tailwindcss/cli": "^4.3.3",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.6.4",

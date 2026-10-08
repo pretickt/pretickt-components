@@ -1,0 +1,84 @@
+import { describe, expect, it } from 'vitest';
+import { lintComponent } from './lint-ng';
+import { readComponentMeta } from './meta-ng';
+
+const file = (body: string, o: { tag?: string; head?: string } = {}) => `/**
+ * Q?
+ * @version 1.0.0
+ * @evidence e${o.tag ? `\n * @tag ${o.tag}` : ''}
+ */
+${o.head ?? `import { Component, inject, input } from '@angular/core';
+import { Pt } from '@pretickt/components/context';`}
+${body}`;
+const OK = `@Component({
+  selector: 'pt-thing',
+  template: \`<p class="pt-lede">{{ news.value()?.items?.length }}</p>\`,
+  styles: \`@reference "@pretickt/components/ds.css"; .x { @apply text-ink; }\`,
+})
+export class PtThing {
+  private readonly pt = inject(Pt);
+  readonly ticker = input.required<string>();
+  readonly limit = input(20);
+  readonly window = input<'1d' | '5d'>('1d');
+  readonly list = input<string>();
+  readonly metrics = input(['pe', 'rsi14']);
+  readonly odd = input({ a: 1, b: [true, null] });
+  protected readonly news = this.pt.news(() => ({ ticker: this.ticker(), limit: this.limit() }));
+}`;
+
+describe('lintComponent (quality feedback for authors and the generator; the sandbox is the boundary)', () => {
+  it('a component on the contract is clean (a "window" input included)', () => {
+    expect(lintComponent(file(OK), 'pt-thing')).toEqual([]);
+  });
+  it('names the line of every forbidden thing in the code', () => {
+    const out = lintComponent(file(OK.replace('  protected readonly news', `  a = fetch('/x');\n  b = Date.now();\n  c = window.alert(1);\n  d = import('./x');\n  e = new Intl.NumberFormat();\n  protected readonly news`), {
+      head: `import { Component, inject, input } from '@angular/core';\nimport { Pt } from '@pretickt/components/context';\nimport { readFileSync } from 'node:fs';` }), 'pt-thing');
+    expect(out).toEqual([
+      expect.stringMatching(/^8: import "node:fs" is not allowed/),
+      expect.stringMatching(/^22: fetch/),
+      expect.stringMatching(/^23: Date\.now/),
+      expect.stringMatching(/^24: window/),
+      expect.stringMatching(/^25: import\(/),
+      expect.stringMatching(/^26: Intl/),
+    ]);
+  });
+  it('strings and comments are not code: a "window" word in text or a comment is fine', () => {
+    expect(lintComponent(file(OK.replace('readonly limit = input(20);', `readonly limit = input(20); // window.alert in a comment\n  readonly label = 'fetch window document';`)), 'pt-thing')).toEqual([]);
+  });
+  it('refuses what makes the compiler read files or escapes the page: templateUrl, styleUrl(s), import.meta, CSS that loads', () => {
+    const out = lintComponent(file(OK.replace("template: `", "templateUrl: './x.html',\n  styleUrls: ['./x.css'],\n  template: `").replace('@apply text-ink; }', '@apply text-ink; background: url(/etc/hosts); }').replace('  private readonly pt', '  m = import.meta.url;\n  private readonly pt')), 'pt-thing');
+    expect(out).toEqual(expect.arrayContaining([
+      expect.stringMatching(/templateUrl/), expect.stringMatching(/styleUrls/), expect.stringMatching(/url\(/), expect.stringMatching(/import\.meta/)]));
+  });
+  it('one standalone component, its selector the tag; no providers, no encapsulation, inline template only', () => {
+    expect(lintComponent(file(OK), 'pt-other')).toEqual([expect.stringMatching(/selector "pt-thing" .* "pt-other"/)]);
+    expect(lintComponent(file(OK.replace("selector: 'pt-thing',", "selector: 'pt-thing', standalone: false, providers: [], encapsulation: 2,")), 'pt-thing'))
+      .toEqual([expect.stringMatching(/standalone/), expect.stringMatching(/providers/), expect.stringMatching(/encapsulation/)]);
+    expect(lintComponent(file(OK.replace('template: `', 'template: someTemplate + `')), 'pt-thing')).toEqual([expect.stringMatching(/template.*literal/)]);
+    expect(lintComponent(file(`${OK}\n@Component({ selector: 'pt-two', template: '' })\nexport class Two {}`), 'pt-thing')).toEqual([expect.stringMatching(/one component/)]);
+    expect(lintComponent(file('export const x = 1;'), 'pt-thing')).toEqual([expect.stringMatching(/no component/)]);
+  });
+  it('input defaults are literals, without alias or transform (the page fills a missing prop with that default)', () => {
+    const out = lintComponent(file(OK.replace('readonly limit = input(20);', "readonly limit = input(LIMIT);\n  readonly x = input('a', { alias: 'y' });\n  readonly z = input(0, { transform: (v: number) => v });")), 'pt-thing');
+    expect(out).toEqual([expect.stringMatching(/^16: .*limit.*literal/), expect.stringMatching(/^17: .*alias/), expect.stringMatching(/^18: .*transform/)]);
+  });
+  it('never writes HTML: innerHTML / outerHTML bindings in the template, DomSanitizer in the code', () => {
+    const out = lintComponent(file(OK.replace('<p class="pt-lede">', '<p [innerHTML]="x" bind-outerHTML="y" class="pt-lede">'),
+      { head: "import { Component, DomSanitizer, inject, input } from '@angular/core';\nimport { Pt } from '@pretickt/components/context';" }), 'pt-thing');
+    expect(out).toEqual(expect.arrayContaining([expect.stringMatching(/innerHTML/), expect.stringMatching(/outerHTML/), expect.stringMatching(/DomSanitizer/)]));
+  });
+  it('a script element in the template is refused', () => {
+    expect(lintComponent(file(OK.replace('<p class="pt-lede">', '<script>x</script><p class="pt-lede">')), 'pt-thing')).toEqual([expect.stringMatching(/<script/)]);
+  });
+});
+
+describe('readComponentMeta (the leading /** */ block)', () => {
+  it('reads the question, version, evidence and (drafts) the tag', () => {
+    expect(readComponentMeta(file(OK, { tag: 'pt-thing' }))).toEqual({ ok: true, question: 'Q?', version: '1.0.0', major: 1, evidence: ['e'], tag: 'pt-thing' });
+  });
+  it('says what is missing', () => {
+    expect(readComponentMeta(OK)).toEqual({ ok: false, errors: [expect.stringMatching(/must start with/)] });
+    expect(readComponentMeta('/**\n * @version 1\n */\nx')).toEqual({ ok: false, errors: [expect.stringMatching(/question/), expect.stringMatching(/semver/), expect.stringMatching(/evidence/)] });
+    expect(readComponentMeta(file(OK, { tag: 'Thing' }))).toMatchObject({ ok: false, errors: [expect.stringMatching(/@tag/)] });
+  });
+});

@@ -19,11 +19,11 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
   'pt-company-card': { version: '1.1.0', sample: { ticker: 'NVDA' } },
   'pt-financials': { version: '2.2.0', sample: { ticker: 'NVDA' } },
   'pt-insiders': { version: '2.2.0', sample: { ticker: 'NVDA' } },
-  'pt-metric': { version: '2.1.0', sample: { ticker: 'NVDA', metrics: ['pe', 'rsi14'] } },
+  'pt-metric': { version: '2.1.0', sample: { ticker: 'NVDA', metrics: ['pe', 'pe_vs_sector', 'pe_vs_own', 'pt_upside', 'consensus', 'market_cap', 'fcf_yield', 'insider_net', 'earnings_in', 'news'] } },
   'pt-news': { version: '2.1.0', sample: { ticker: 'NVDA' } },
   'pt-price-events': { version: '2.1.0', sample: { ticker: 'NVDA' } },
   'pt-price-target': { version: '2.1.0', sample: { ticker: 'NVDA' } },
-  'pt-screen': { version: '2.3.0', sample: { list: 'biggest_losers' } },
+  'pt-screen': { version: '2.3.0', sample: {} },
   'pt-why-today': { version: '2.1.0', sample: { ticker: 'NVDA' } },
 };
 

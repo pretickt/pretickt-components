@@ -20,7 +20,7 @@
       "@pretickt/components/context": ["./src/context/index.ng.ts"],
       "@pretickt/components/ds": ["./src/ds/index.ng.ts"],
       "@pretickt/components/format": ["./src/ds/format.ts"],
-      "@pretickt/components/typologies": ["./src/typologies/index.ts"],
+      "@pretickt/components/typologies": ["./src/typologies/browser.ts"],
       "@pretickt/components/api": ["./src/api.ts"]
     }
   },
