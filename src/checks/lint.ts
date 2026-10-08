@@ -59,6 +59,7 @@ const FORBIDDEN_META = new Map([
   ['templateUrl', 'templateUrl — the template is inline: the whole component is this file'],
   ['styleUrl', 'styleUrl — styles are inline: the whole component is this file'],
   ['styleUrls', 'styleUrls — styles are inline: the whole component is this file'],
+  ['styles', 'styles — Angular inserts component styles as <style> elements, which the site CSP refuses: use design-system classes, or propose a class for ds.css'],
   ['providers', 'providers — a component gets its data from Pt, provided by the page'],
   ['viewProviders', 'viewProviders — a component gets its data from Pt, provided by the page'],
   ['encapsulation', "encapsulation — a component's styles stay its own"],
@@ -124,7 +125,7 @@ export function signalInput(node: ts.Expression | undefined): { call: ts.CallExp
 
 /**
  * The lint of a component file (`components/pt-*.ts`, or a draft): its imports, the code rules, its one standalone component (the
- * selector is `tag`, template and styles inline, no providers or encapsulation), literal input defaults without alias or transform,
+ * selector is `tag`, template inline, no styles, providers or encapsulation), literal input defaults without alias or transform,
  * the template and CSS rules. Feedback for authors and the generator — the sandbox and the checks contain untrusted code.
  */
 export function lintComponent(source: string, tag: string): string[] {
@@ -173,13 +174,6 @@ export function lintComponent(source: string, tag: string): string[] {
             v.text.split('\n').forEach((text, i) => {
               for (const [re, why] of TEMPLATE_RULES) for (const m of text.matchAll(new RegExp(re.source, 'gi'))) out.push([from + i + 1, `${m[0].trim()} — ${why}`]);
             });
-          }
-        }
-        if (name === 'styles') {
-          const list = ts.isArrayLiteralExpression(v) ? [...v.elements] : [v];
-          for (const s of list) {
-            if (!ts.isNoSubstitutionTemplateLiteral(s) && !ts.isStringLiteral(s)) { at(s, 'styles must be literals'); continue; }
-            for (const line of lintCss(s.text, lineOf(s.getStart(sf)) - 1)) { const [n, ...rest] = line.split(': '); out.push([Number(n), rest.join(': ')]); }
           }
         }
       }

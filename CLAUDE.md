@@ -41,10 +41,6 @@ type Window = '1d' | '5d' | '1m';
         </div>
       </section>
     }`,
-  styles: `
-    /* Only what the design system does not have (see "CSS"). */
-    @reference "@pretickt/components/ds.css";
-    .spike { @apply rounded-control bg-neg/10 px-1.5 text-xs text-neg; }`,
 })
 export class PtWhyToday {
   private readonly pt = inject(Pt);
@@ -65,7 +61,7 @@ export class PtWhyToday {
 - **Inputs are the component's parameters** (pages set them; the checks sample them from their types — use literal unions and
   literal defaults). `input.required<T>()`, `input<T>(literal)` or `input<T>()` (optional, `undefined`); **no alias, no transform,
   no computed default**. Known names the checks can fill: `ticker`, `peersOf`, `month`, `metrics`.
-- Template and styles are **inline** (one file). Pure helpers (geometry, grouping) live in the same file and may be exported for tests.
+- The template is **inline** (one file); no `styles` (see "CSS"). Pure helpers (geometry, grouping) live in the same file and may be exported for tests.
 
 ## Data: `Pt` (`@pretickt/components/context`)
 `private readonly pt = inject(Pt)`, then one method per typology, called **where you declare a field**:
@@ -129,17 +125,16 @@ platform change (schema here + resolver in the private platform + a public-data 
   `new CustomEvent('pt-interact', { bubbles: true, detail: { action } })` from the element.
 
 ## CSS
-Design-system classes first. Custom CSS **only** in `styles` (inline), **only** for what the design system does not have:
-`@reference "@pretickt/components/ds.css";` to use its tokens and `@apply`; tokens only (no raw colours); no global selectors
-(`:global`, `html`, `body`, `:root`, `::ng-deep`), no `!important`. A component's CSS **loads nothing**: no `@import`, no `url()`, no
-other `@reference`, no escapes (`\`); at-rules are `@apply`, `@media`, `@supports`, `@keyframes`, `@container`. Angular scopes the
-styles to the component. If a class would help other components, propose it for `ds.css`.
+**Design-system classes only** — a component has no `styles`: Angular inserts component styles as `<style>` elements, which the
+site's CSP (`style-src 'self'`) refuses, so the lint refuses them. Compose the classes of `ds.css`; dynamic values go in `[style]`
+/ `[class]` bindings (allowed); if a component needs a look the design system does not have, propose a class for `ds.css` (a
+change in this repo, reviewed like any other).
 
 ## Rules (the lint enforces what it can; the platform sandbox contains the rest)
 - **No data access of your own**: no `fetch`, `XMLHttpRequest`, `WebSocket`, storage, cookies, `window`/`document`, no `import()`,
   no `eval`, no `import.meta`, no `DomSanitizer`/`bypassSecurityTrust*`/`Renderer2`/`DOCUMENT` (an `ElementRef` from `viewChild`
   may read sizes and move focus). Only these imports: `@angular/core`, `@pretickt/components/{context,ds,format,typologies,indicators}`.
-  No `templateUrl`, `styleUrl(s)`, `providers`, `viewProviders`, `encapsulation`, `standalone: false`.
+  No `templateUrl`, `styles`, `styleUrl(s)`, `providers`, `viewProviders`, `encapsulation`, `standalone: false`.
 - **Deterministic**: no `Date.now()`, `new Date()` without argument, `Math.random()`, `Intl`, `toLocale*` — "today" is the `asOf`
   the payload carries. Server and browser must render the same HTML (hydration).
 - **Never write HTML**: no `[innerHTML]`/`[outerHTML]`. Angular escapes text and attributes; links from data go through `href(url)`

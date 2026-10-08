@@ -13,7 +13,6 @@ ${body}`;
 const OK = `@Component({
   selector: 'pt-thing',
   template: \`<p class="pt-lede">{{ news.value()?.items?.length }}</p>\`,
-  styles: \`@reference "@pretickt/components/ds.css"; .x { @apply text-ink; }\`,
 })
 export class PtThing {
   private readonly pt = inject(Pt);
@@ -35,20 +34,23 @@ describe('lintComponent (quality feedback for authors and the generator; the san
       head: `import { Component, inject, input } from '@angular/core';\nimport { Pt } from '@pretickt/components/context';\nimport { readFileSync } from 'node:fs';` }), 'pt-thing');
     expect(out).toEqual([
       expect.stringMatching(/^8: import "node:fs" is not allowed/),
-      expect.stringMatching(/^22: fetch/),
-      expect.stringMatching(/^23: Date\.now/),
-      expect.stringMatching(/^24: window/),
-      expect.stringMatching(/^25: import\(/),
-      expect.stringMatching(/^26: Intl/),
+      expect.stringMatching(/^21: fetch/),
+      expect.stringMatching(/^22: Date\.now/),
+      expect.stringMatching(/^23: window/),
+      expect.stringMatching(/^24: import\(/),
+      expect.stringMatching(/^25: Intl/),
     ]);
   });
   it('strings and comments are not code: a "window" word in text or a comment is fine', () => {
     expect(lintComponent(file(OK.replace('readonly limit = input(20);', `readonly limit = input(20); // window.alert in a comment\n  readonly label = 'fetch window document';`)), 'pt-thing')).toEqual([]);
   });
-  it('refuses what makes the compiler read files or escapes the page: templateUrl, styleUrl(s), import.meta, CSS that loads', () => {
-    const out = lintComponent(file(OK.replace("template: `", "templateUrl: './x.html',\n  styleUrls: ['./x.css'],\n  template: `").replace('@apply text-ink; }', '@apply text-ink; background: url(/etc/hosts); }').replace('  private readonly pt', '  m = import.meta.url;\n  private readonly pt')), 'pt-thing');
-    expect(out).toEqual(expect.arrayContaining([
-      expect.stringMatching(/templateUrl/), expect.stringMatching(/styleUrls/), expect.stringMatching(/url\(/), expect.stringMatching(/import\.meta/)]));
+  it('refuses what makes the compiler read files or escapes the page: templateUrl, styleUrl(s), import.meta', () => {
+    const out = lintComponent(file(OK.replace("template: `", "templateUrl: './x.html',\n  styleUrls: ['./x.css'],\n  template: `").replace('  private readonly pt', '  m = import.meta.url;\n  private readonly pt')), 'pt-thing');
+    expect(out).toEqual([expect.stringMatching(/templateUrl/), expect.stringMatching(/styleUrls/), expect.stringMatching(/import\.meta/)]);
+  });
+  it('no component styles: Angular inserts them as <style> elements, which the site CSP refuses — design-system classes only', () => {
+    const out = lintComponent(file(OK.replace("template: `", "styles: `.x { color: red; }`,\n  template: `")), 'pt-thing');
+    expect(out).toEqual([expect.stringMatching(/^10: styles — .*CSP.*ds\.css/)]);
   });
   it('one standalone component, its selector the tag; no providers, no encapsulation, inline template only', () => {
     expect(lintComponent(file(OK), 'pt-other')).toEqual([expect.stringMatching(/selector "pt-thing" .* "pt-other"/)]);
@@ -60,7 +62,7 @@ describe('lintComponent (quality feedback for authors and the generator; the san
   });
   it('input defaults are literals, without alias or transform (the page fills a missing prop with that default)', () => {
     const out = lintComponent(file(OK.replace('readonly limit = input(20);', "readonly limit = input(LIMIT);\n  readonly x = input('a', { alias: 'y' });\n  readonly z = input(0, { transform: (v: number) => v });")), 'pt-thing');
-    expect(out).toEqual([expect.stringMatching(/^16: .*limit.*literal/), expect.stringMatching(/^17: .*alias/), expect.stringMatching(/^18: .*transform/)]);
+    expect(out).toEqual([expect.stringMatching(/^15: .*limit.*literal/), expect.stringMatching(/^16: .*alias/), expect.stringMatching(/^17: .*transform/)]);
   });
   it('never writes HTML: innerHTML / outerHTML bindings in the template, DomSanitizer in the code', () => {
     const out = lintComponent(file(OK.replace('<p class="pt-lede">', '<p [innerHTML]="x" bind-outerHTML="y" class="pt-lede">'),
