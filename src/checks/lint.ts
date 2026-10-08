@@ -1,9 +1,8 @@
 import postcss from 'postcss';
 import ts from 'typescript';
+import { ALLOWED_IMPORTS } from './allowed';
 
-/** The only modules a component may import. */
-export const ALLOWED_IMPORTS = new Set(['@angular/core', '@pretickt/components/context', '@pretickt/components/ds', '@pretickt/components/format',
-  '@pretickt/components/typologies', '@pretickt/components/indicators']);
+export { ALLOWED_IMPORTS };
 
 /** The at-rules a component's CSS may use: nothing that loads a file (the design system comes in through @reference only). */
 const AT_RULES = new Set(['apply', 'media', 'supports', 'keyframes', 'container']);

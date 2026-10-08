@@ -23,6 +23,7 @@
     "./ds": "./src/ds/index.ts",
     "./format": "./src/ds/format.ts",
     "./checks": "./src/checks/index.ts",
+    "./checks/allowed": "./src/checks/allowed.ts",
     "./site": "./src/site/model.ts",
     "./ds.css": "./styles/ds.css"
   },
