@@ -5,7 +5,9 @@ import { PT_STORE, PtStore, validateParams } from '@pretickt/components/context'
 import { checkMarkup } from '../checks/markup';
 import { demoFor, getTypology } from '../typologies';
 import { appConfig } from './app.config';
-import { CALLS_KEY, PT_PAGE, type PageModel } from './model';
+import { CALLS_KEY, PT_PAGE, type PageModel, type RenderOptions, type RenderResult } from './model';
+
+export type { RenderOptions, RenderResult } from './model';
 import { PtPage } from './page';
 import { REGISTRY } from './registry.generated';
 
@@ -13,29 +15,6 @@ import { REGISTRY } from './registry.generated';
 export const CALL_TIMEOUT_MS = 60_000;
 /** The document a check renders into when the caller gives none. */
 export const BARE_DOCUMENT = '<!doctype html><html lang="en"><head><meta charset="utf-8"></head><body><pt-page></pt-page></body></html>';
-
-export interface RenderOptions {
-  /** The page document with a `<pt-page></pt-page>` root (the generator's layout). */
-  document: string;
-  /** Answers one call (the database); a rejection or null means "not available". */
-  resolve: (t: string, params: unknown) => Promise<unknown>;
-  /** Answers shared between the renders of a build step (the seven pages of a company). */
-  cache?: Map<string, Promise<unknown>>;
-  timeoutMs?: number;
-}
-export interface RenderResult {
-  html: string;
-  /** Every call the page made, by need key (the browser replays them). */
-  calls: Record<string, unknown>;
-  /** Need keys answered null (data not available). */
-  failed: string[];
-  /** Per placement (`section/item`): markup the page must not ship (checkMarkup). */
-  markup: Record<string, string[]>;
-  /** Placements that rendered nothing. */
-  empty: string[];
-  /** Placements (`tag@version`) with a call that took longer than the timeout (answered null). */
-  timeouts: string[];
-}
 
 /** The placements Angular renders (in document order): `section/item` ids. Switched-off and unknown ones render static markup. */
 const slots = (m: PageModel) => m.sections.flatMap((s, i) => s.items.flatMap((it, j) => (it.off || !Object.hasOwn(REGISTRY, it.c) ? [] : [`${i}/${j}`])));
