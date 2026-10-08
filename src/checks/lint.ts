@@ -53,6 +53,7 @@ const RULES: [RegExp, string][] = [
 const TEMPLATE_RULES: [RegExp, string][] = [
   [/(?:\[|bind-)(?:attr\.)?(?:inner|outer)HTML\b/i, 'never write HTML: Angular escapes text, links go through href()'],
   [/<\s*(script|style|iframe|object|embed|link|base|meta|form)\b/i, 'no such element in a component (and no <style>: design-system classes)'],
+  [/\bid\s*=\s*["']?(?:ng-state|ng-event-dispatch-contract)\b/i, 'the page owns this id (Angular reads its state and event contract by it)'],
 ];
 const FORBIDDEN_META = new Map([
   ['templateUrl', 'templateUrl — the template is inline: the whole component is this file'],

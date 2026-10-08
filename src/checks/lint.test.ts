@@ -64,6 +64,10 @@ describe('lintComponent (quality feedback for authors and the generator; the san
     const out = lintComponent(file(OK.replace('readonly limit = input(20);', "readonly limit = input(LIMIT);\n  readonly x = input('a', { alias: 'y' });\n  readonly z = input(0, { transform: (v: number) => v });")), 'pt-thing');
     expect(out).toEqual([expect.stringMatching(/^15: .*limit.*literal/), expect.stringMatching(/^16: .*alias/), expect.stringMatching(/^17: .*transform/)]);
   });
+  it('the template may not name the page state or Angular\'s event contract (an id there blanks the whole page app)', () => {
+    const out = lintComponent(file(OK.replace('<p class="pt-lede">', '<p id="ng-state" class="pt-lede">')), 'pt-thing');
+    expect(out).toEqual([expect.stringMatching(/ng-state — the page owns/)]);
+  });
   it('never writes HTML: innerHTML / outerHTML bindings in the template, DomSanitizer in the code', () => {
     const out = lintComponent(file(OK.replace('<p class="pt-lede">', '<p [innerHTML]="x" bind-outerHTML="y" class="pt-lede">'),
       { head: "import { Component, DomSanitizer, inject, input } from '@angular/core';\nimport { Pt } from '@pretickt/components/context';" }), 'pt-thing');

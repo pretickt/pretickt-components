@@ -6,7 +6,9 @@
 const RULES: [RegExp, string][] = [
   [/<\s*(script|style|iframe|frame|object|embed|applet|meta|link|base|form|input|textarea|foreignObject|template|portal)\b/i, 'forbidden element'],
   [/\son[a-z]+\s*=/i, 'event-handler attribute'],
-  [/\sid\s*=\s*["']?pt-data\b/i, 'id reserved for page data'],
+  // Angular reads the page state and its event contract by id, first match in the document: a component's element there would
+  // replace the state of the whole page app
+  [/\sid\s*=\s*["']?(?:ng-state|ng-event-dispatch-contract)(?=["'\s>]|$)/i, 'id reserved for the page (Angular\'s state and event contract)'],
   [/\sdata-(?:pt|island|props)\s*=/i, 'data-island / data-props are reserved for the page'],
   [/\sstyle\s*=\s*["'][^"']*(?:url\s*\(|expression\s*\(|@import)/i, 'style with url()/expression()'],
 ];
