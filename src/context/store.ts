@@ -10,7 +10,7 @@ export const typologyOf = (method: string): TypologyKey | undefined => BY_METHOD
 
 export interface PtStoreOptions {
   /** Answers one call (build: the database; browser: the API). A rejection means the request failed. */
-  resolve: (t: TypologyKey, params: unknown) => Promise<unknown>;
+  resolve: (t: TypologyKey, params: unknown, who?: string) => Promise<unknown>;
   /** Browser: the answers the build recorded for this page, by need key — read without the network. */
   replay?: Record<string, unknown>;
   /** Build: filled with every answered call, by need key (nulls included, so the browser replays "not available" too). */
@@ -46,13 +46,16 @@ export class PtStore {
     return this.settled.has(key) ? { v: this.settled.get(key) } : undefined;
   }
 
-  /** Asks for a call (or joins the same call already asked). Server: a failure is null; browser: a failure is FAILED (not cached). */
-  ask(t: TypologyKey, params: unknown): Promise<unknown> {
+  /**
+   * Asks for a call (or joins the same call already asked). Server: a failure is null; browser: a failure is FAILED (not cached).
+   * `who`: the placement asking (`tag@version`), for the build's reports.
+   */
+  ask(t: TypologyKey, params: unknown, who?: string): Promise<unknown> {
     this.o.validate?.(t, params);
     const key = needKey({ t: t as TypologyId, params });
     let p = this.cache.get(key);
     if (!p) {
-      p = this.o.resolve(t, params).then((v) => v ?? null, () => {
+      p = this.o.resolve(t, params, who).then((v) => v ?? null, () => {
         this.cache.delete(key);
         return this.o.server ? null : FAILED;
       });

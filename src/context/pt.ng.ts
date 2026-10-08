@@ -13,6 +13,8 @@ export type PtPayload<K extends TypologyKey> = z.output<T[K]['payload']>;
 
 /** The page's store: provided by the page app (browser: from the page state), by `renderPage` (build) or by a test. */
 export const PT_STORE = new InjectionToken<PtStore>('PT_STORE');
+/** The placement a `Pt` serves (`tag@version`), provided by the page's slot: the build reports a slow call by it. */
+export const PT_SLOT = new InjectionToken<() => string>('PT_SLOT');
 
 /**
  * One call's answer as signals. `value()`: the payload, `null` when the data is not available, `undefined` only while a call never
@@ -40,6 +42,7 @@ type Methods = { readonly [K in TypologyKey as MethodName<K>]: (params: () => Pt
 export class Pt {
   private readonly store = inject(PT_STORE);
   private readonly tasks = inject(PendingTasks);
+  private readonly slot = inject(PT_SLOT, { optional: true });
   private readonly failures = signal(0);
   readonly failed = computed(() => this.failures() > 0);
 
@@ -76,7 +79,7 @@ export class Pt {
       asked.add(c.key);
       failedKeys.delete(c.key);
       const done = store.server ? this.tasks.add() : null;
-      store.ask(t, c.p).then((v) => {
+      store.ask(t, c.p, this.slot?.()).then((v) => {
         if (v === FAILED) failedKeys.add(c.key);
         if (untracked(current)?.key === c.key) setFailed(v === FAILED);
         tick.update((n) => n + 1);

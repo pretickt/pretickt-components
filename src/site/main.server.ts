@@ -1,11 +1,18 @@
 import { type BootstrapContext, bootstrapApplication } from '@angular/platform-browser';
 import { mergeApplicationConfig } from '@angular/core';
 import { provideServerRendering } from '@angular/platform-server';
+import { PT_STORE, PtStore } from '@pretickt/components/context';
 import { appConfig } from './app.config';
+import { PT_PAGE } from './model';
 import { PtPage } from './page';
 
-const config = mergeApplicationConfig(appConfig, { providers: [provideServerRendering()] });
-const bootstrap = (context: BootstrapContext) => bootstrapApplication(PtPage, config, context);
+// The CLI's server entry: it prerenders an empty page of its own (ignored). Pages are rendered by the generator with renderPage below.
+const bootstrap = (context: BootstrapContext) => bootstrapApplication(PtPage, mergeApplicationConfig(appConfig, { providers: [
+  provideServerRendering(),
+  { provide: PT_PAGE, useValue: { buildId: '', api: '', sections: [] } },
+  { provide: PT_STORE, useValue: new PtStore({ server: true, resolve: async () => null }) },
+] }), context);
 export default bootstrap;
-// the generator renders each page with the Angular this bundle carries (never a second copy)
-export { renderApplication } from '@angular/platform-server';
+export { BARE_DOCUMENT, CALL_TIMEOUT_MS, checkComponent, renderPage, warmUp, type RenderOptions, type RenderResult } from './render';
+export { REGISTRY } from './registry.generated';
+export type { PageModel, PagePlacement, PageSection } from './model';
