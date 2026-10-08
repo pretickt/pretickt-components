@@ -1,0 +1,7 @@
+/* Angular unit tests (ng test, Vitest): the *.spec.ts files. */
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": { "types": ["vitest/globals", "node"] },
+  "files": [],
+  "include": ["src/**/*.spec.ts", "components/**/*.spec.ts"]
+}
