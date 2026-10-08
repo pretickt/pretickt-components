@@ -1,5 +1,5 @@
 import { TYPOLOGY_SCHEMAS, type TypologyKey } from '../typologies/schemas';
-import { methodOf } from './pt';
+import { methodOf } from './store';
 
 /** Build time and checks: params a typology rejects are a component bug — throw with the reasons. */
 export function validateParams(t: TypologyKey, params: unknown): void {
