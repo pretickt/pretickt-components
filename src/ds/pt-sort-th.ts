@@ -1,5 +1,5 @@
 import { Component, computed, ElementRef, inject, input, output } from '@angular/core';
-import type { SortState } from './sort.ng';
+import type { SortState } from './sort';
 
 /** A sortable column header (`<th ptSortTh [state]="…" (sort)="…">Name</th>`): the label as a button that emits `sort`; `state` shows the order (aria-sort on the sorted column only). */
 @Component({

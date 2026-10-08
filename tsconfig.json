@@ -1,28 +1,25 @@
+/* Plain TypeScript (tsc --noEmit, editors, tsx): the whole package. The Angular build has its own (tsconfig.app.json, tsconfig.spec.json). */
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
+    "module": "preserve",
+    "moduleResolution": "bundler",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ],
-    "types": [
-      "node"
-    ],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node", "vitest/globals"],
+    "experimentalDecorators": true,
     "useDefineForClassFields": false,
-    "experimentalDecorators": false,
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "@pretickt/components/context": ["./src/context/index.ts"],
+      "@pretickt/components/ds": ["./src/ds/index.ts"],
+      "@pretickt/components/format": ["./src/ds/format.ts"],
+      "@pretickt/components/typologies": ["./src/typologies/browser.ts"],
+      "@pretickt/components/api": ["./src/api.ts"],
+      "@pretickt/components/indicators": ["./src/indicators/index.ts"]
+    }
   },
-  "include": [
-    "src",
-    "components",
-    "scripts",
-    "src/**/*.vue",
-    "components/**/*.vue"
-  ]
+  "include": ["src", "components", "scripts"]
 }

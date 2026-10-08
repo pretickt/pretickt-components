@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createPt } from '../context/pt';
+import { methodOf, typologyOf } from '../context/store';
 import { TYPOLOGY_IDS } from './ids';
 import { CompanyParams, CompanyPayload, companyDemo, TYPOLOGIES } from './index';
 
@@ -15,6 +15,6 @@ describe('company@1', () => {
   it('is registered: id, samples, and a pt method', () => {
     expect(TYPOLOGY_IDS).toContain('company@1');
     expect(TYPOLOGIES['company@1'].samples.length).toBeGreaterThan(0);
-    expect(typeof createPt({ resolve: async () => null }).company).toBe('function');
+    expect([methodOf('company@1'), typologyOf('company')]).toEqual(['company', 'company@1']);
   });
 });

@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue';
+import { computed, signal, type Signal } from '@angular/core';
 import { cmp } from '../typologies/values';
 
 export type SortState = 'asc' | 'desc' | null;
@@ -9,17 +9,21 @@ const compare = (a: number | string, b: number | string): number =>
 
 /**
  * Client-side sorting of the rows a table already has (no new request): `toggle(key)` cycles the column through its first order
- * (numbers high→low, dates newest first, text A→Z), the reverse, and back to the original order. Missing values always go last; ties
- * keep the original order; text compares without case. The server renders the original order.
+ * (numbers high→low, dates newest first, text A→Z), the reverse, and back to the original order. Missing values always go last;
+ * ties keep the original order; text compares without case. The server renders the original order.
  */
-export function useSort<R>(rows: () => readonly R[], keys: Record<string, (r: R) => Value>) {
-  const by = ref<string | null>(null);
-  const dir = ref<SortState>(null);
+export function useSort<R>(rows: () => readonly R[], keys: Record<string, (r: R) => Value>): {
+  sorted: Signal<readonly R[]>; toggle(key: string): void; state(key: string): SortState;
+} {
+  const by = signal<string | null>(null);
+  const dir = signal<SortState>(null);
+  const started = signal<SortState>(null);
   const sorted = computed(() => {
     const list = rows();
-    const get = by.value ? keys[by.value] : undefined;
-    if (!get || !dir.value) return list;
-    const sign = dir.value === 'asc' ? 1 : -1;
+    const key = by(), d = dir();
+    const get = key ? keys[key] : undefined;
+    if (!get || !d) return list;
+    const sign = d === 'asc' ? 1 : -1;
     return list.map((r, i) => ({ r, i, v: get(r) })).sort((a, b) => {
       const na = a.v == null, nb = b.v == null;
       if (na || nb) return na === nb ? a.i - b.i : na ? 1 : -1;
@@ -36,15 +40,16 @@ export function useSort<R>(rows: () => readonly R[], keys: Record<string, (r: R)
   const opening = (key: string): SortState => {
     const want = first(key), get = keys[key]!;
     const vs = rows().map(get).filter((v) => v != null);
-    const sorted = vs.every((v, i) => !i || compare(vs[i - 1]!, v) * (want === 'asc' ? 1 : -1) <= 0);
-    return vs.length > 1 && sorted ? (want === 'asc' ? 'desc' : 'asc') : want;
+    const inOrder = vs.every((v, i) => !i || compare(vs[i - 1]!, v) * (want === 'asc' ? 1 : -1) <= 0);
+    return vs.length > 1 && inOrder ? (want === 'asc' ? 'desc' : 'asc') : want;
   };
-  const started = ref<SortState>(null);
-  function toggle(key: string) {
-    if (by.value !== key) { by.value = key; dir.value = started.value = opening(key); return; }
-    if (dir.value === started.value) dir.value = started.value === 'asc' ? 'desc' : 'asc';
-    else { by.value = null; dir.value = started.value = null; }
-  }
-  const state = (key: string): SortState => (by.value === key ? dir.value : null);
-  return { sorted, toggle, state };
+  return {
+    sorted,
+    toggle(key: string) {
+      if (by() !== key) { const o = opening(key); by.set(key); dir.set(o); started.set(o); return; }
+      if (dir() === started()) dir.set(started() === 'asc' ? 'desc' : 'asc');
+      else { by.set(null); dir.set(null); started.set(null); }
+    },
+    state: (key: string): SortState => (by() === key ? dir() : null),
+  };
 }

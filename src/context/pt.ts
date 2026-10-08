@@ -1,87 +1,108 @@
-import { inject, type InjectionKey } from 'vue';
+import { assertInInjectionContext, computed, effect, inject, Injectable, InjectionToken, PendingTasks, signal, untracked, type Signal } from '@angular/core';
 import type * as z from 'zod/mini';
-import { needKey } from '../api';
+import { needKey, type TypologyId } from '../api';
 import { TYPOLOGY_IDS } from '../typologies/ids';
 import type { TYPOLOGY_SCHEMAS, TypologyKey } from '../typologies/schemas';
+import { FAILED, methodOf, PtStore } from './store';
 
 type T = typeof TYPOLOGY_SCHEMAS;
 type Camel<S extends string> = S extends `${infer A}-${infer B}` ? `${A}${Capitalize<Camel<B>>}` : S;
 type MethodName<K extends string> = K extends `${infer N}@${number}` ? Camel<N> : never;
-
 export type PtParams<K extends TypologyKey> = z.input<T[K]['params']>;
 export type PtPayload<K extends TypologyKey> = z.output<T[K]['payload']>;
-/** One async method per typology: `pt.moveBreakdown({ ticker, window })` → the payload, or null when the data is not available. */
-export type PtContext = { readonly [K in TypologyKey as MethodName<K>]: (params: PtParams<K>) => Promise<PtPayload<K> | null> };
 
-/** `move-breakdown@1` → `moveBreakdown`. */
-export const methodOf = (id: string): string => id.split('@')[0]!.replace(/-(\w)/g, (_, c: string) => c.toUpperCase());
-const BY_METHOD = new Map(TYPOLOGY_IDS.map((id) => [methodOf(id), id as TypologyKey]));
-/** `moveBreakdown` → `move-breakdown@1`. */
-export const typologyOf = (method: string): TypologyKey | undefined => BY_METHOD.get(method);
-
-export const PT: InjectionKey<PtContext> = Symbol('pt');
-
-/** The data context of the island this component renders in. */
-export function usePt(): PtContext {
-  const pt = inject(PT, null);
-  if (!pt) throw new Error('usePt(): no pt context — components render inside a pretickt island (renderIsland / the island runtime)');
-  return pt;
-}
-
-export interface PtOptions {
-  /** Answers one call (build: the database; browser: the API). A rejection means the data is not available. */
-  resolve: (t: TypologyKey, params: unknown) => Promise<unknown>;
-  /** Browser: the calls the build recorded for this page, by need key — answered without the network. */
-  replay?: Record<string, unknown>;
-  /** Build: filled with every answered call, by need key (nulls included, so the browser replays "not available" too). */
-  record?: Record<string, unknown>;
-  /** Answers by need key, shared between contexts (the islands of a page, the pages of a build step). */
-  cache?: Map<string, Promise<unknown>>;
-  /** Build time and checks: throw on params the typology rejects (validateParams). The browser trusts the API, which validates. */
-  validate?: (t: TypologyKey, params: unknown) => void;
-  /**
-   * Browser: the island's interaction counter (the runtime bumps it on every pointer or key press inside the island). It is what
-   * "latest wins" compares; without it (build, checks) no call is ever dropped.
-   */
-  epoch?: () => number;
-  /**
-   * Browser: hears whether each request was answered or failed. With it, a failed request (429, 5xx, offline) never settles — the
-   * component keeps what it shows — instead of answering null, which means "not available"; without it (build) a failure is null.
-   */
-  status?: (s: 'ok' | 'failed') => void;
-}
-
-const FAILED = Symbol('failed');
-const never = () => new Promise<never>(() => {});
+/** The page's store: provided by the page app (browser: from the page state), by `renderPage` (build) or by a test. */
+export const PT_STORE = new InjectionToken<PtStore>('PT_STORE');
+/** The placement a `Pt` serves (`tag@version`), provided by the page's slot: the build reports a slow call by it. */
+export const PT_SLOT = new InjectionToken<() => string>('PT_SLOT');
 
 /**
- * The platform's implementation of the context. A call's key is its typology and the params exactly as the component passed them
- * (the same component makes the same call on the server and in the browser, so the browser finds the recorded answer); answers are
- * cached per key. Latest wins per method, between interactions: a call made in an earlier interaction than a newer call of the
- * same method never settles (a stale click cannot overwrite a fresh one); calls of one interaction — or of the build, which has
- * none — never supersede each other, however they are nested.
+ * One call's answer as signals. `value()`: the payload, `null` when the data is not available, `undefined` only while a call never
+ * answered before is pending (never on the first render of a hydrated page: the build recorded it). `params()`: the params of the
+ * value shown (captions follow the data on screen, not the control pressed). `failed()`: the browser request for the current
+ * params failed — the last value stays. `retry()`: ask again after a failure.
  */
-export function createPt(o: PtOptions): PtContext {
-  const cache = o.cache ?? new Map<string, Promise<unknown>>();
-  for (const [k, v] of Object.entries(o.replay ?? {})) if (!cache.has(k)) cache.set(k, Promise.resolve(v));
-  const newest = new Map<string, number>();
-
-  const call = (t: TypologyKey) => async (raw: unknown): Promise<unknown> => {
-    o.validate?.(t, raw);
-    const key = needKey({ t, params: raw });
-    const mine = o.epoch?.() ?? 0;
-    newest.set(t, Math.max(newest.get(t) ?? 0, mine));
-    let p = cache.get(key);
-    if (!p) {
-      p = o.resolve(t, raw).then((v) => v ?? null, () => { cache.delete(key); return o.status ? FAILED : null; });
-      cache.set(key, p);
-    }
-    const value = await p;
-    o.status?.(value === FAILED ? 'failed' : 'ok');
-    if (value === FAILED) return never(); // the component keeps what it shows; the runtime says the data could not load
-    if (o.record) o.record[key] = value;
-    if ((newest.get(t) ?? 0) > mine) return never(); // superseded by a newer interaction's call
-    return value;
-  };
-  return Object.freeze(Object.fromEntries(TYPOLOGY_IDS.map((t) => [methodOf(t), call(t)]))) as unknown as PtContext;
+export interface PtResource<V> {
+  value: Signal<V | null | undefined>;
+  loading: Signal<boolean>;
+  failed: Signal<boolean>;
+  params: Signal<unknown>;
+  retry(): void;
 }
+
+type Methods = { readonly [K in TypologyKey as MethodName<K>]: (params: () => PtParams<K> | null) => PtResource<PtPayload<K>> };
+
+/**
+ * The data context of one placement (`PtSlot` provides it; tests provide it with a `PT_STORE`). One method per typology:
+ * `pt.moveBreakdown(() => ({ ticker: this.ticker(), window: this.win() }))`, called where a component declares its fields.
+ * Latest params win; equal calls share one answer (the page cache). `failed()`: some request of this placement failed (the page
+ * shows the `.pt-island-error` notice).
+ */
+@Injectable()
+export class Pt {
+  private readonly store = inject(PT_STORE);
+  private readonly tasks = inject(PendingTasks);
+  private readonly slot = inject(PT_SLOT, { optional: true });
+  private readonly failures = signal(0);
+  readonly failed = computed(() => this.failures() > 0);
+
+  constructor() {
+    for (const t of TYPOLOGY_IDS) (this as unknown as Record<string, unknown>)[methodOf(t)] = (p: () => unknown) => this.resource(t, p);
+  }
+
+  private resource<V>(t: TypologyKey, params: () => unknown): PtResource<V> {
+    assertInInjectionContext(this.resource);
+    const store = this.store;
+    const tick = signal(0);           // bumps when an answer this resource asked for lands
+    const failedKeys = new Set<string>();
+    let shown: { v: V | null; params: unknown } | undefined;
+    let mineFailed = false;
+    const setFailed = (f: boolean) => { if (f !== mineFailed) { mineFailed = f; this.failures.update((n) => n + (f ? 1 : -1)); } };
+
+    const current = computed(() => {
+      const p = params();
+      return p == null ? null : { p, key: needKey({ t: t as TypologyId, params: p }) };
+    });
+    // reading only: the first render (server or hydration) shows what is known, never starts work
+    const state = computed(() => {
+      tick();
+      const c = current();
+      if (!c) return { v: undefined as V | null | undefined, loading: false, failed: false, params: undefined as unknown };
+      const hit = store.peek(c.key);
+      if (hit) { shown = { v: hit.v as V | null, params: c.p }; return { v: shown.v, loading: false, failed: false, params: c.p }; }
+      const failed = failedKeys.has(c.key);
+      return { v: shown?.v, loading: !failed, failed, params: shown?.params };
+    });
+    // asking: after the render, for params whose answer is not known (the build waits for it; the browser fetches it)
+    const asked = new Set<string>();
+    const ask = (c: { p: unknown; key: string }) => {
+      asked.add(c.key);
+      failedKeys.delete(c.key);
+      const done = store.server ? this.tasks.add() : null;
+      let answer: Promise<unknown>;
+      // params the typology rejects throw here (a component bug): the render must not wait for a call that never started
+      try { answer = store.ask(t, c.p, this.slot?.()); } catch (e) { done?.(); throw e; }
+      answer.then((v) => {
+        if (v === FAILED) failedKeys.add(c.key);
+        if (untracked(current)?.key === c.key) setFailed(v === FAILED);
+        tick.update((n) => n + 1);
+      }).finally(() => done?.());
+    };
+    effect(() => {
+      const c = current();
+      if (!c || store.peek(c.key) || asked.has(c.key)) { if (c && store.peek(c.key)) untracked(() => setFailed(false)); return; }
+      untracked(() => ask(c));
+    });
+    return {
+      value: computed(() => state().v),
+      loading: computed(() => state().loading),
+      failed: computed(() => state().failed),
+      params: computed(() => state().params),
+      retry: () => {
+        const c = untracked(current);
+        if (c && failedKeys.has(c.key)) ask(c);
+      },
+    };
+  }
+}
+export interface Pt extends Methods {}

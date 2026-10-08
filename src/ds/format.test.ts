@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { amount, badgeValue, compact, date, href, level, money, month, num, pct, stockHref, tip, tone, usd } from './format';
 
-describe('format (the design system\'s numbers and dates; Vue escapes what it prints, so nothing here escapes)', () => {
+describe('format (the design system\'s numbers and dates; Angular escapes what it prints, so nothing here escapes)', () => {
   it('numbers', () => {
     expect([num(1234.567), pct(0.123), pct(-0.0004), level(0.123), usd(-2e8, { compact: true }), usd(2e8, { compact: true, signed: true }),
       money(12.5), amount(0.2625), amount(0.5), compact(999_999), num(null)])
       .toEqual(['1,234.57', '+12.3%', '0.0%', '12.3%', '-$200M', '+$200M', '$12.50', '$0.2625', '$0.50', '1M', '—']);
   });
-  it('dates come back as text, unescaped (Vue escapes on output)', () => {
+  it('dates come back as text, unescaped (Angular escapes on output)', () => {
     expect([date('2026-09-30'), month('2026-03'), date('<b>'), month('a&b')]).toEqual(['Sep 30, 2026', 'Mar 26', '<b>', 'a&b']);
   });
   it('tone', () => expect([tone(0.01), tone(-0.01), tone(0.0001, 0.0005), tone(null)]).toEqual(['pos', 'neg', 'flat', 'na']));

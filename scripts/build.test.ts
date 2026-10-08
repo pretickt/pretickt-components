@@ -1,5 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { demoFor } from '../src/typologies';
 import { describe, expect, it } from 'vitest';
 import { componentFiles } from './budget';
 
@@ -27,4 +30,19 @@ describe('build', () => {
     execFileSync('git', ['diff', '--exit-code', '--', 'src/site/registry.generated.ts']);
     execFileSync('npx', ['tsx', 'scripts/check.ts'], { stdio: 'inherit' });
   }, 900_000);
+
+  it('the server bundle: a component that throws fails the render; renders sharing a cache resolve each call once', async () => {
+    const index = JSON.parse(readFileSync('dist/index.json', 'utf8')) as { site: { server: string; polyfills: string } };
+    await import(pathToFileURL(resolve('dist', index.site.polyfills)).href);
+    const server = await import(pathToFileURL(resolve('dist', index.site.server)).href) as typeof import('../src/site/main.server');
+    // params the typology rejects are a component bug: the render throws, the check says so
+    expect(await server.checkComponent('pt-metric', [{ ticker: 'NVDA', metrics: ['not-a-metric'] }])).toEqual(expect.arrayContaining([expect.stringMatching(/throws/)]));
+    const asked: string[] = [];
+    const resolveDemo = async (t: string, params: unknown) => { asked.push(`${t}|${JSON.stringify(params)}`); return demoFor({ t, params } as never); };
+    const cache = new Map<string, Promise<unknown>>();
+    const page = { buildId: 'b', api: '', sections: [{ id: 's', items: [{ c: 'pt-company-card', props: { ticker: 'NVDA' } }] }] };
+    await server.renderPage(page, { document: server.BARE_DOCUMENT, resolve: resolveDemo, cache });
+    await server.renderPage(page, { document: server.BARE_DOCUMENT, resolve: resolveDemo, cache });
+    expect(asked).toHaveLength(3); // the second page found the company card's three answers in the cache
+  }, 300_000);
 });

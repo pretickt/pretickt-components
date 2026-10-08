@@ -1,74 +1,84 @@
 # pretickt components — how to write a component (for humans and LLMs)
 
-This repo is public (MIT). It holds the **components** (Vue single-file components), the **design system** (styles, formatting,
-a few primitives), the **typologies** (the data contracts, with deterministic demo data) and the **islands runtime** that renders
-components on the server and hydrates them in the browser. Data comes from closed pretickt APIs you never call yourself.
-Spec: `pretickt/docs/superpowers/specs/2026-10-06-vue-components-design.md`.
+This repo is public (MIT). It holds the **components** (Angular 22 standalone components), the **design system** (styles,
+formatting, primitives), the **typologies** (the data contracts, with deterministic demo data) and the **page app** that renders
+pages at build time and hydrates them in the browser. Data comes from closed pretickt APIs you never call yourself.
+Spec: `pretickt/docs/superpowers/specs/2026-10-08-angular-components-design.md`. Node ≥ 24.15 (Angular CLI 22).
 
 ## The model in one paragraph
-A component is **one Vue file** (`components/pt-<name>.vue`, `<script setup lang="ts">`). It **asks for data where it needs it**:
-`await usePt().<typology>(params)`. The platform renders it at build time (the page ships its HTML and the answers it received)
-and hydrates it in the browser as an **island**: the same calls are answered from the page, new ones (a toggle, a month) go to the
-API. You never declare needs, never fetch, never touch anything outside your template.
+A component is **one TypeScript file** (`components/pt-<name>.ts`): a standalone component with signals, `input()` and the new
+control flow (`@if`, `@for`, `@let`). It **asks for data where it declares its fields**: `pt.<typology>(() => params)` returns a
+signal resource. The generator renders every page at build time with the official Angular compiler's server bundle (the page ships
+its HTML and the answers it received); in the browser each placement hydrates when it scrolls into view (`@defer (hydrate on
+viewport)`, generated for you): the same calls are answered from the page, new ones (a toggle, a month) go to the API. You never
+fetch, never touch anything outside your template.
 
 ## File shape (copy this)
-```vue
-<!--
-  The market question this answers, in one or two lines.
-  @version 1.0.0
-  @evidence where the need comes from (DataForSEO …, beta: …, a thread …) — at least one line, repeatable
--->
-<script setup lang="ts">
-import { ref } from 'vue';
-import { usePt } from '@pretickt/components/context';
-import { date, pct } from '@pretickt/components/format';
+```ts
+/**
+ * The market question this answers, in one or two lines.
+ * @version 1.0.0
+ * @evidence where the need comes from (DataForSEO …, beta: …, a thread …) — at least one line, repeatable
+ */
+import { Component, computed, inject, input, linkedSignal } from '@angular/core';
+import { Pt } from '@pretickt/components/context';
 import { PtToggles } from '@pretickt/components/ds';
+import { date, pct } from '@pretickt/components/format';
 
-const props = withDefaults(defineProps<{ ticker: string; window?: '1d' | '5d' | '1m' }>(), { window: '1d' });
-const pt = usePt();
+type Window = '1d' | '5d' | '1m';
 
-const win = ref(props.window);
-const move = ref(await pt.moveBreakdown({ ticker: props.ticker, window: win.value }));   // payload | null
-const loading = ref(false);
-async function show(w: '1d' | '5d' | '1m') {          // interaction = ordinary Vue: change state, ask again
-  win.value = w;                                       // the toggle shows the choice at once
-  loading.value = true;
-  move.value = await pt.moveBreakdown({ ticker: props.ticker, window: w });
-  loading.value = false;
+@Component({
+  selector: 'pt-why-today',                       // = the file name, = the tag
+  imports: [PtToggles],
+  template: `
+    @let m = move.value();
+    @if (m === null) {<p class="pt-na">Data not available</p>}          <!-- ALWAYS handle null -->
+    @else if (m) {
+      <section [class.pt-busy]="move.loading()">
+        <div class="pt-head">
+          <p class="pt-why-lead">{{ m.name }} {{ pct(m.ret) }} on {{ date(m.asOf) }}</p>
+          <div ptToggles [value]="win()" [options]="WINDOWS" aria-label="Window" (choose)="pick($event)"></div>
+        </div>
+      </section>
+    }`,
+  styles: `
+    /* Only what the design system does not have (see "CSS"). */
+    @reference "@pretickt/components/ds.css";
+    .spike { @apply rounded-control bg-neg/10 px-1.5 text-xs text-neg; }`,
+})
+export class PtWhyToday {
+  private readonly pt = inject(Pt);
+  readonly ticker = input.required<string>();
+  readonly window = input<Window>('1d');                       // a literal default: a page that omits it gets this one
+
+  protected readonly win = linkedSignal(() => this.window());  // the reader's choice, shown at once
+  protected readonly move = this.pt.moveBreakdown(() => ({ ticker: this.ticker(), window: this.win() }));
+  protected readonly WINDOWS = [['1d', '1D'], ['5d', '5D'], ['1m', '1M']] as const;
+  protected readonly pct = pct;
+  protected readonly date = date;
+
+  protected pick(w: Window) { this.win.set(w); this.move.retry(); }   // interaction = set a signal; retry after a failure
 }
-</script>
-
-<template>
-  <p v-if="!move" class="pt-na">Data not available</p>                 <!-- ALWAYS handle null -->
-  <section v-else :class="{ 'pt-busy': loading }">
-    <div class="pt-head">
-      <p class="pt-why-lead">{{ move.name }} {{ pct(move.ret) }} on {{ date(move.asOf) }}</p>
-      <PtToggles :model-value="win" :options="[['1d', '1D'], ['5d', '5D'], ['1m', '1M']]" label="Window" @update:model-value="show" />
-    </div>
-  </section>
-</template>
-
-<style scoped>
-/* Only what the design system does not have (see "CSS"). */
-@reference "@pretickt/components/ds.css";
-.spike { @apply rounded-control bg-neg/10 px-1.5 text-xs text-neg; }
-</style>
 ```
-- The **tag is the file name**; the island id is `tag@version`. Change `@version` on every change to a deployed component.
-- **Props are the component's parameters** (pages set them; the checks sample them from their types — use literal unions and
-  defaults, e.g. `window?: '1d' | '5d' | '1m'`). Known names the checks can fill: `ticker`, `peersOf`, `month`, `metrics`.
-- Pure helpers (geometry, grouping) may live in a second, plain `<script lang="ts">` block and be exported for tests.
+- The **tag is the file name** and the `selector`; the placement id is `tag@version`. Change `@version` on every change to a
+  deployed component. The class name is the tag in PascalCase; the file exports exactly one component.
+- **Inputs are the component's parameters** (pages set them; the checks sample them from their types — use literal unions and
+  literal defaults). `input.required<T>()`, `input<T>(literal)` or `input<T>()` (optional, `undefined`); **no alias, no transform,
+  no computed default**. Known names the checks can fill: `ticker`, `peersOf`, `month`, `metrics`.
+- Template and styles are **inline** (one file). Pure helpers (geometry, grouping) live in the same file and may be exported for tests.
 
-## Data: `usePt()` (`@pretickt/components/context`)
-One async method per typology; params are checked by the types (and by the typology at build time); the answer is the payload or
-**`null`** when it is not available. Call it at the top level of `<script setup>` (awaited) and again in handlers. All the calls
-of one interaction answer, however they are nested (and at build time there are no interactions: every call answers); a call
-superseded by a call of the same method from a **later interaction** (the reader clicked again) never answers — so the pattern
-above cannot show stale data. A request that **fails** in the browser (rate limit, offline) never answers either: the island keeps
-what it shows and the runtime adds the notice "Could not load data — showing the last values"; pressing the toggle again retries.
-So **labels that name a parameter** (a month, a range) come from the data on screen — update them with the data, after the
-`await` (`move.window` above, or a `shown` ref set next to the data) — while the toggle shows the reader's choice at once.
-**Params must be deterministic** (never the clock or randomness): the browser finds the build's answer by the same params.
+## Data: `Pt` (`@pretickt/components/context`)
+`private readonly pt = inject(Pt)`, then one method per typology, called **where you declare a field**:
+`pt.news(() => ({ ticker: this.ticker(), limit: this.limit() }))` → a `PtResource`:
+- `value()`: the payload; **`null`** when it is not available; `undefined` only while a call never answered is pending (never on
+  the first render of a page: the build recorded it) — templates read `@if (v === null) {na} @else if (v) {…}`.
+- `loading()`: a newer call is on its way (show `pt-busy`); the last value stays on screen meanwhile.
+- `params()`: the params of the **value shown** — labels that name a parameter (a month, a range) come from it, while the
+  control shows the reader's choice at once (`linkedSignal` for the choice).
+- `failed()` / `retry()`: in the browser a failed request (rate limit, offline) keeps the last value; the page adds the notice
+  "Could not load data — showing the last values"; `retry()` asks again (call it when the reader presses the control again).
+The params function is reactive: change a signal it reads and the resource asks again; the **latest params win**. Return `null`
+for "no call". **Params must be deterministic** (never the clock or randomness): the browser finds the build's answer by them.
 
 | method | params | payload |
 |---|---|---|
@@ -83,9 +93,10 @@ So **labels that name a parameter** (a month, a range) come from the data on scr
 | `pt.company` | `{ticker}` | `{ticker, name, sector, industry, logo}` — `logo` is a file the site publishes (`/logos/<file>`), or null |
 | `pt.screen` | `{scope: {list: biggest_losers\|biggest_gainers\|52w_low\|52w_high\|undervalued\|insider_buying\|most_active} \| {peersOf}, limit ≤50}` | `{asOf, rows[{ticker,name,sector,logo,close,chg1d,offHigh,pe,ptUpside,marketCap,insiderNet,volumeRatio,spark[20],self}]}` |
 
-Types (`MoveBreakdown`, `News`, `MetricItem`, `EventItem`, `ScreenList`, …) and plain values (`RANGES`, `SENTIMENT_FLAT`, `cmp`)
-come from `@pretickt/components/typologies`. Each typology has a deterministic `demo` the checks and the admin bench use. Adding a
-typology is a platform change (schema here + resolver in the private platform + a public-data test).
+Types (`MoveBreakdown`, `News`, `MetricItem`, `EventItem`, `ScreenList`, …) and plain values (`RANGES`, `SENTIMENT_FLAT`,
+`METRIC_KEYS`, `CALENDAR_MONTHS`, `cmp`) come from `@pretickt/components/typologies` (in components that entry carries no schema:
+zod never reaches a page). Each typology has a deterministic `demo` the checks and the admin bench use. Adding a typology is a
+platform change (schema here + resolver in the private platform + a public-data test).
 
 ## Design system (`@pretickt/components/ds`, `@pretickt/components/format`, `styles/ds.css`)
 - **Classes first** (global `ds.css`, Tailwind 4): `pt-head` (title row with controls), `pt-lede`, `pt-note`, `pt-meta` (small
@@ -96,40 +107,44 @@ typology is a platform change (schema here + resolver in the private platform + 
 - **Format** (deterministic, the same on server and browser — never `Intl`/`toLocale*`): `num(v,digits)`, `pct(fraction →
   "+12.3%")`, `level(fraction → "12.3%")`, `usd(v,{compact,signed,digits})`, `money(v,digits)`, `amount(cash)`, `compact`,
   `date(iso → "Sep 30, 2026")`, `month(ym → "Mar 26")`, `tone(v, flatBand)`, `href(url)` (http(s) or a site path, else `#`),
-  `stockHref(ticker)`, `tip({ Label: value })`, `badgeValue(badge)`, `svgId(s)`.
-- **Companies**: `PtCompany` (`ticker`, `name?`, `logo?`: logo + ticker + name, linked to the company page) and `PtLogo` (`ticker`,
-  `src` = a payload's `logo` — `company@1`, `events@1`, `screen@1` carry it —, `size`; no `src` → initials, no request). **Every link to `/stocks/<t>/` opens the
-  company card on hover** (the runtime does it, desktop only): link companies with `stockHref` / `PtCompany`, nothing else to do; a
-  `data-tip` on such a link becomes the card's footer instead of a text tooltip.
-- **Sortable tables**: `useSort(() => rows, { key: (row) => value })` + `<PtSortTh label :state="sort.state(k)" @sort="sort.toggle(k)" />`
-  in the header, rows from `sort.sorted.value` (numbers high first, dates newest first, text A→Z without case, then reverse, then the
-  original order; missing values last). The server renders the original order.
-- **Page sections**: `.pt-section-head` + `.pt-section-more` (a preview's title and the link to its full page).
-- **Primitives** (`@pretickt/components/ds`): `PtToggles` (`v-model` + `options: [value,label][]` + `label`), `PtBadge` (`:badge` = a
-  `metric@1` item or any Badge you build, inside `<ul class="pt-badges">`; `size="mini"` for dense rows), `PtIcon` (`name`: calendar target trend-up trend-down
-  alert peak), `PtChart` (zoomable chart frame: `w h plotW plotH id label`, `v-model:view`; slots `defs`, `axes`, default = the plot
-  (clipped), `front`, `after`), `PtYAxis` / `PtTimeAxis` (for the `axes` slot). Geometry: `applyXViewport`, `applyYViewport`,
-  `FULL_VIEWPORT`, `closeAt`, `isoDay`, `linePath`, `monthTicks`.
-- **Tooltips without code**: `:data-tip="tip({ Label: value })"` on any element; the island runtime shows it as text.
-- **Zoom & pan** comes with `PtChart`: wheel/drag on the plot = time, on the right strip = price scale, on the bottom strip = time
-  around the grab point, double-click = reset; fit / today » / reset appear only when there is something to undo. Read the view in
-  your geometry (`applyXViewport(min, max, view)`, `applyYViewport(lo, hi, view)`); reset it (`FULL_VIEWPORT`) when new data arrives.
+  `stockHref(ticker)`, `tip({ Label: value })`, `badgeValue(badge)`, `svgId(s)`. Expose what the template uses as class fields
+  (`protected readonly pct = pct`).
+- **Companies**: `<a ptCompany [ticker] [name] [logo]></a>` (logo + ticker + name, linked to the company page) and `<pt-logo [ticker]
+  [src] [size] />` (`src` = a payload's `logo`; none → initials, no request). **Every link to `/stocks/<t>/` opens the company card
+  on hover** (the page does it, desktop only): link companies with `stockHref` / `ptCompany`, nothing else to do; a `data-tip` on
+  such a link becomes the card's footer instead of a text tooltip.
+- **Sortable tables**: `protected readonly sort = useSort(() => rows, { k: (row) => value, … })` and `<th ptSortTh
+  [state]="sort.state('k')" (sort)="sort.toggle('k')">Label</th>` in the header, rows from `sort.sorted()` (numbers high first,
+  dates newest first, text A→Z without case, then reverse, then the original order; missing values last). The server renders the
+  original order.
+- **Primitives**: `<div ptToggles [value] [options]="[[v, label], …]" aria-label="…" (choose)="…">` (emits on every press),
+  `<li [ptBadge]="item" size="mini">` inside `<ul class="pt-badges">`, `<svg [ptIcon]="name">` (calendar target trend-up
+  trend-down alert peak; wrap in `@if (iconPath(name))`), `<div ptChart [w] [h] [plotW] [plotH] [id] [label] [(view)]>` — the
+  zoomable chart frame; put your parts in `<svg:g ptDefs>`, `<svg:g ptAxes>` (with `<svg:g ptYAxis …>` / `<svg:g ptTimeAxis …>`),
+  `<svg:g ptPlot>` (clipped), `<svg:g ptFront>`, and html after the svg in `<ng-container ngProjectAs="[ptAfter]">`. Geometry:
+  `applyXViewport`, `applyYViewport`, `FULL_VIEWPORT`, `closeAt`, `isoDay`, `linePath`, `monthTicks`. Reset the view when new data
+  is on screen: `view = linkedSignal<unknown, Viewport>({ source: () => this.series.params(), computation: () => FULL_VIEWPORT })`.
+- **Tooltips without code**: `[attr.data-tip]="tip({ Label: value })"` on any element; the page shows it as text.
+- **Interactions** are counted by the page (analytics): the primitives dispatch `pt-interact`; for your own controls dispatch
+  `new CustomEvent('pt-interact', { bubbles: true, detail: { action } })` from the element.
 
 ## CSS
-Design-system classes first. Custom CSS **only** in `<style scoped>`, **only** for what the design system does not have:
+Design-system classes first. Custom CSS **only** in `styles` (inline), **only** for what the design system does not have:
 `@reference "@pretickt/components/ds.css";` to use its tokens and `@apply`; tokens only (no raw colours); no global selectors
-(`:global`, `html`, `body`), no `!important`. A component's CSS **loads nothing**: no `@import`, no `url()`, no other
-`@reference`, no escapes (`\`); at-rules are `@apply`, `@media`, `@supports`, `@keyframes`, `@container`. If a class would help
-other components, propose it for `ds.css`.
+(`:global`, `html`, `body`, `:root`, `::ng-deep`), no `!important`. A component's CSS **loads nothing**: no `@import`, no `url()`, no
+other `@reference`, no escapes (`\`); at-rules are `@apply`, `@media`, `@supports`, `@keyframes`, `@container`. Angular scopes the
+styles to the component. If a class would help other components, propose it for `ds.css`.
 
-## Rules (the checks enforce what they can; the platform sandbox contains the rest)
-- **No data access of your own**: no `fetch`, `XMLHttpRequest`, `WebSocket`, storage, cookies, `window`/`document` in setup, no
-  `import()`, no `eval`, no `import.meta`. Only these imports: `vue`, `@pretickt/components/{context,ds,format,typologies,indicators}`.
-  The whole component is its one file: no `src=` on `<script>`, `<template>` or `<style>`.
+## Rules (the lint enforces what it can; the platform sandbox contains the rest)
+- **No data access of your own**: no `fetch`, `XMLHttpRequest`, `WebSocket`, storage, cookies, `window`/`document`, no `import()`,
+  no `eval`, no `import.meta`, no `DomSanitizer`/`bypassSecurityTrust*`/`Renderer2`/`DOCUMENT` (an `ElementRef` from `viewChild`
+  may read sizes and move focus). Only these imports: `@angular/core`, `@pretickt/components/{context,ds,format,typologies,indicators}`.
+  No `templateUrl`, `styleUrl(s)`, `providers`, `viewProviders`, `encapsulation`, `standalone: false`.
 - **Deterministic**: no `Date.now()`, `new Date()` without argument, `Math.random()`, `Intl`, `toLocale*` — "today" is the `asOf`
   the payload carries. Server and browser must render the same HTML (hydration).
-- **Never `v-html`.** Vue escapes text and attributes; links from data go through `href(url)` (external ones get
-  `target="_blank" rel="nofollow noopener noreferrer"`), company pages through `stockHref(ticker)`.
+- **Never write HTML**: no `[innerHTML]`/`[outerHTML]`. Angular escapes text and attributes; links from data go through `href(url)`
+  (external ones get `target="_blank" rel="nofollow noopener noreferrer"`), company pages through `stockHref(ticker)`. No `<script>`,
+  `<style>`, `<iframe>`, `<form>` in a template; no `ld+json` either (structured data is the generator's, in `<head>`).
 - **Null & unknown**: every call can answer `null` → render the `pt-na` state (or a reduced view). Payload lists may contain entries
   you don't know (new metric keys, new event kinds, events **without ticker**): render them generically or skip them, never throw.
 - **Public copy is US English**, templated from data. **No LLM prose** on pages. Never show index symbols (`^…`); "the market" is SPY.
@@ -139,23 +154,30 @@ other components, propose it for `ds.css`.
 structuralTrend applyPrice trend(series, nowMs) buildSectorIndex maCrossEta`, and `barsOf(points)` to turn price-series points into the
 bars they read. Fields named `*Pct` are in percent (2.5 = +2.5%), not fractions: divide by 100 for `pct`.
 
-## Checks (`components/_suite.ts` → `standardSuite(file, component)`)
-For props sampled from the component's prop types (defaults, every literal of a union, known names): demo data renders with safe
-markup and **hydrates without mismatch**; every call answering null renders the not-available state; unknown catalogue entries are
-tolerated; the leading comment has the question, `@version` and `@evidence`. The build refuses a component over 32 KB.
+## Checks
+- `ng test` (Vitest + TestBed): `components/pt-x.spec.ts` with `render(PtX, inputs, withData({ 'news@1': payload }))` from
+  `components/_spec.ts` (renders the way the build does; `{ browser: true }` for after-load behaviour), `basics(PtX, inputs)` (demo
+  data renders, missing data shows `pt-na`), `press(f, el, label)` for interactions, `column(el, n)` for tables.
+- `npm test` = Vitest for the plain TypeScript (typologies, indicators, checks, scripts) + `ng test` for the components.
+- `npm run build`: the lint and the metadata of every component, inputs read by the TypeScript checker, the generated registry
+  (`src/site/registry.generated.ts` — never edit it), `ng build`, budgets (main bundle ≤ 240 KB, a component's own chunk ≤ 32 KB).
+- `npm run check` (after the build): for props sampled from the inputs' types, demo data renders with safe markup, missing data
+  renders `pt-na`, unknown catalogue entries are tolerated; concurrent page renders are whole; each page **hydrates keeping every
+  element of the server HTML** (development build: Angular validates every node; production build: as shipped) without one data
+  request.
 
 ## Workflow
-1. Write `components/pt-x.test.ts` first (`// @vitest-environment happy-dom`, `standardSuite('pt-x.vue', PtX)` + what is specific —
-   render with `render(PtX, props, withData({ 'news@1': payload }))`). 2. Write `components/pt-x.vue`. 3. `npm test` and
-   `npm run typecheck` (vue-tsc). 4. `npm run build` → `dist/` (server bundle, client modules, `ds.css`, `index.json`). 5. Commit on
-   `develop`; `main` = release. Pages that place a component are defined in the platform repo (`plant/src/generate/pages.ts`).
+1. Write `components/pt-x.spec.ts` first. 2. Write `components/pt-x.ts`. 3. `npm test`. 4. `npm run build` → `dist/`
+(`site/browser`, `site/server`, `ds.css`, `index.json`) and `npm run check`. 5. Commit on `develop`; `main` = release. Pages that
+place a component are defined in the platform repo (`plant/src/generate/pages.ts`); the build makes every component placeable
+(registry).
 
 ## Existing components (`dist/index.json`)
 `pt-company-card` (the company at a glance — logo, price over 60 sessions, 52-week range, consensus, PT, tags with "Show all";
-`size` wide = page header, compact = the hover card) · `pt-metric` (badge strip of the catalogue) · `pt-price-events` (price line + E/D/S/A markers grouped per day, range toggles, zoom &
-pan) · `pt-price-target` (beta's pt-chart: clustered target dots, gradient segments, hover panel of the analysts, zoom & pan) ·
-`pt-calendar` (month grid + macro dates + full list, previous/next month; `kind` earnings|dividend; `view: 'week'` + `start` = five
-sessions for the home page; "+N more" opens the whole day) · `pt-why-today` (answer-first
-sentence + market/sector/stock bars + news spike) · `pt-screen` (ranked table with list-specific column and sparklines; `list` or
-`peersOf`) · `pt-financials` (quarterly revenue/FCF bars + margins table) · `pt-news` (headlines with AI sentiment dots, nofollow
-links) · `pt-insiders` (buy/sell totals + Form 4 table).
+`size` wide = page header, compact = the hover card) · `pt-metric` (badge strip of the catalogue) · `pt-price-events` (price line +
+E/D/S/A markers grouped per day, range toggles, zoom & pan) · `pt-price-target` (beta's pt-chart: clustered target dots, gradient
+segments, hover panel of the analysts, zoom & pan) · `pt-calendar` (month grid + macro dates + full list, previous/next month; `kind`
+earnings|dividend; `view: 'week'` + `start` = five sessions for the home page; "+N more" opens the whole day) · `pt-why-today`
+(answer-first sentence + market/sector/stock bars + news spike) · `pt-screen` (ranked table with list-specific column and sparklines;
+`list` or `peersOf`) · `pt-financials` (quarterly revenue/FCF bars + margins table) · `pt-news` (headlines with AI sentiment dots,
+nofollow links) · `pt-insiders` (buy/sell totals + Form 4 table).

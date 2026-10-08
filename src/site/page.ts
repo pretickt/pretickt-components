@@ -1,6 +1,6 @@
 import { afterNextRender, ApplicationRef, Component, inject, PLATFORM_ID, TransferState } from '@angular/core';
 import { isPlatformServer } from '@angular/common';
-import { sendBeacon, startBeacon } from '../islands/beacon';
+import { sendBeacon, startBeacon } from './beacon';
 import { attachCards, companyOf } from './cards';
 import { PAGE_KEY, PT_PAGE } from './model';
 import { PtSlot, REGISTRY } from './registry.generated';

@@ -15,6 +15,22 @@ async function page(model: PageModel) {
 }
 
 describe('PtPage', () => {
+  it('a browser request that fails flags its placement with the error notice; the last values stay', async () => {
+    const replay = { [`move-breakdown@1|{"ticker":"NVDA","window":"1d"}`]: demoFor({ t: 'move-breakdown@1', params: { ticker: 'NVDA', window: '1d' } } as never) };
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [{ provide: PT_PAGE, useValue: { buildId: 'b', api: '', sections: [{ id: 's', items: [{ c: 'pt-why-today', props: { ticker: 'NVDA' } }] }] } },
+      { provide: PT_STORE, useValue: new PtStore({ server: false, replay, resolve: async () => { throw new Error('429'); } }) }] });
+    const f = TestBed.createComponent(PtPage);
+    f.detectChanges();
+    for (let i = 0; i < 3; i++) { await new Promise((r) => setTimeout(r, 10)); await f.whenStable(); f.detectChanges(); }
+    const el = f.nativeElement as HTMLElement;
+    const lead = el.querySelector('.pt-why-lead')!.textContent;
+    [...el.querySelectorAll('.pt-toggles button')].find((b) => b.textContent === '5D')!.dispatchEvent(new Event('click'));
+    for (let i = 0; i < 3; i++) { await new Promise((r) => setTimeout(r, 10)); f.detectChanges(); }
+    expect(el.querySelector('[data-island]')!.classList).toContain('pt-island-error');
+    expect(el.querySelector('.pt-why-lead')!.textContent).toBe(lead);
+  });
+
   it('renders the sections: heading, the "see all" link named for screen readers, one island per placement', async () => {
     const el = await page({ buildId: 'b', api: '', sections: [
       { id: 'card', items: [{ c: 'pt-company-card', props: { ticker: 'NVDA' } }] },

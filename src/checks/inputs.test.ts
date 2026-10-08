@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { COMPONENTS_ROOT, componentsProgram, readInputs } from './inputs';
-import { sampleProps } from './props-ng';
+import { sampleProps } from './props';
 
 const file = (tag: string) => join(COMPONENTS_ROOT, 'components', `${tag}.ts`);
 const program = componentsProgram(['pt-why-today', 'pt-screen', 'pt-calendar', 'pt-company-card', 'pt-metric'].map(file));

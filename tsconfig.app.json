@@ -17,8 +17,8 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["node"],
     "paths": {
-      "@pretickt/components/context": ["./src/context/index.ng.ts"],
-      "@pretickt/components/ds": ["./src/ds/index.ng.ts"],
+      "@pretickt/components/context": ["./src/context/index.ts"],
+      "@pretickt/components/ds": ["./src/ds/index.ts"],
       "@pretickt/components/format": ["./src/ds/format.ts"],
       "@pretickt/components/typologies": ["./src/typologies/browser.ts"],
       "@pretickt/components/api": ["./src/api.ts"]

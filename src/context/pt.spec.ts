@@ -1,7 +1,7 @@
-import { Component, inject, input, signal } from '@angular/core';
+import { Component, ErrorHandler, inject, input, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { needKey } from '../api';
-import { Pt, PT_STORE, PtStore, type PtStoreOptions } from './index.ng';
+import { Pt, PT_STORE, PtStore, type PtStoreOptions } from './index';
 
 type Move = { asOf: string; ticker: string; window: string };
 const move = (window: string): Move => ({ asOf: '2026-09-30', ticker: 'NVDA', window });
@@ -111,6 +111,18 @@ describe('Pt resources', () => {
     d.calls[0]!.settle(move('5d')); // the older answer lands last: cached, not shown
     await flush();
     expect(text()).toBe('1m|false|false|1m');
+  });
+
+  it('server: a call whose params the typology rejects never holds the render; the error reaches the error handler', async () => {
+    const errors: unknown[] = [];
+    const store = new PtStore({ server: true, resolve: async () => null, validate: () => { throw new Error('params rejected'); } });
+    TestBed.configureTestingModule({ rethrowApplicationErrors: false, providers: [{ provide: PT_STORE, useValue: store }, { provide: ErrorHandler, useValue: { handleError: (e: unknown) => errors.push(e) } }] });
+    const f = TestBed.createComponent(Host);
+    let thrown: unknown;
+    try { f.detectChanges(); } catch (e) { thrown = e; }
+    const stable = await Promise.race([f.whenStable().then(() => true), new Promise((r) => setTimeout(() => r(false), 500))]);
+    expect(stable).toBe(true);
+    expect(String(thrown ?? errors[0])).toContain('params rejected');
   });
 
   it('server: params a typology rejects throw (a component bug)', () => {

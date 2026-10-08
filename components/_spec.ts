@@ -1,7 +1,7 @@
 import type { ComponentFixture } from '@angular/core/testing';
 import { TestBed } from '@angular/core/testing';
 import type { Type } from '@angular/core';
-import { Pt, PT_STORE, PtStore, validateParams } from '../src/context/index.ng';
+import { Pt, PT_STORE, PtStore, validateParams } from '../src/context';
 import { demoFor, getTypology } from '../src/typologies';
 
 /** Every call answered with the typology's demo; `variant` adds the catalogue entries a newer API may send. */

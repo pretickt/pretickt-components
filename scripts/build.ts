@@ -3,9 +3,9 @@ import { cpSync, existsSync, readdirSync, readFileSync, rmSync, writeFileSync } 
 import { resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { componentsProgram, readInputs } from '../src/checks/inputs';
-import { lintComponent } from '../src/checks/lint-ng';
-import { readComponentMeta } from '../src/checks/meta-ng';
-import { sampleProps } from '../src/checks/props-ng';
+import { lintComponent } from '../src/checks/lint';
+import { readComponentMeta } from '../src/checks/meta';
+import { sampleProps } from '../src/checks/props';
 import { componentFiles, overBudget } from './budget';
 import { registrySource } from './registry';
 

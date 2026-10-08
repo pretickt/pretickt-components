@@ -1,12 +1,13 @@
 # pretickt components
 
-Vue single-file components that answer one market question each, rendered on the server at build time and hydrated in the
-browser as islands. Data comes from closed pretickt APIs through `usePt()`; this repository holds the components, the design
-system (`styles/ds.css`, formatting, a few primitives), the typologies (data contracts with deterministic demo data), the indicators
-and the islands runtime. How to write a component: [CLAUDE.md](CLAUDE.md).
+Angular standalone components that answer one market question each, rendered at build time by the official Angular compiler's
+server bundle and hydrated in the browser when they scroll into view. Data comes from closed pretickt APIs through `Pt`; this
+repository holds the components, the design system (`styles/ds.css`, formatting, primitives), the typologies (data contracts with
+deterministic demo data), the indicators and the page app. How to write a component: [CLAUDE.md](CLAUDE.md).
 
 ```sh
-npm test            # components, design system, runtime, checks
-npm run typecheck   # vue-tsc
-npm run build       # dist/: client modules (/c/), server bundle, ds.css, index.json
+npm test            # Vitest (typologies, indicators, checks, scripts) + ng test (components, design system, page app)
+npm run typecheck   # tsc
+npm run build       # dist/: site/browser (/c/), site/server, ds.css, index.json
+npm run check       # server checks, concurrent renders, hydration
 ```

@@ -1,7 +1,7 @@
 import { Component, signal, type Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { Badge } from './format';
-import { PtBadge, PtCompany, PtLogo, PtSortTh, PtToggles, useSort } from './index.ng';
+import { PtBadge, PtCompany, PtLogo, PtSortTh, PtToggles, useSort } from './index';
 
 const badge: Badge = { key: 'pe', label: 'P/E', value: 21.5, text: null, unit: 'x', delta: null, tone: 'pos', range: null, icon: 'target', hint: 'Price over earnings', asOf: '2026-10-02' };
 const render = <C>(c: Type<C>) => {

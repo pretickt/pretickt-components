@@ -1,6 +1,6 @@
 /**
  * How numbers, dates and links look on pretickt — part of the design system, the same in every component. Deterministic (no Intl,
- * no clock): the build and the browser produce the same text, so hydration never mismatches. Nothing here escapes: Vue escapes
+ * no clock): the build and the browser produce the same text, so hydration never mismatches. Nothing here escapes: Angular escapes
  * what a template prints (text and attributes).
  */
 import type { MetricItem, TONES } from '../typologies';

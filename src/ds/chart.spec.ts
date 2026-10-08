@@ -1,7 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { FULL_VIEWPORT, type Viewport } from './viewport';
-import { PtChart, PtTimeAxis, PtYAxis } from './index.ng';
+import { PtChart, PtTimeAxis, PtYAxis } from './index';
 
 /** A chart that prints its view, so the test reads what the frame did. */
 @Component({

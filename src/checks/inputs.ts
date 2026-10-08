@@ -1,6 +1,6 @@
 import { dirname, join } from 'node:path';
 import ts from 'typescript';
-import { literalValue, signalInput } from './lint-ng';
+import { literalValue, signalInput } from './lint';
 
 /** One input of a component, as the build, the catalogue and the checks read it. `default` is absent when there is none. */
 export interface InputInfo { name: string; required: boolean; type: string; literals: (string | number)[]; default?: unknown }
@@ -13,7 +13,7 @@ export function componentsCompilerOptions(componentsRoot: string): ts.CompilerOp
     target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.Preserve, moduleResolution: ts.ModuleResolutionKind.Bundler, strict: true,
     skipLibCheck: true, noEmit: true, experimentalDecorators: true, lib: ['lib.es2022.d.ts', 'lib.dom.d.ts'], types: [],
     paths: {
-      '@pretickt/components/context': src('src/context/index.ng.ts'), '@pretickt/components/ds': src('src/ds/index.ng.ts'),
+      '@pretickt/components/context': src('src/context/index.ts'), '@pretickt/components/ds': src('src/ds/index.ts'),
       '@pretickt/components/format': src('src/ds/format.ts'), '@pretickt/components/typologies': src('src/typologies/browser.ts'),
       '@pretickt/components/indicators': src('src/indicators/index.ts'), '@pretickt/components/api': src('src/api.ts'),
     },
