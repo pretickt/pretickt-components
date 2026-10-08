@@ -15,7 +15,7 @@ beforeEach(() => { interactions.length = 0; });
 
 @Component({
   imports: [PtToggles],
-  template: `<div ptToggles [value]="v()" [options]="opts" label="Window" (choose)="seen.push($event); v.set($event)"></div>`,
+  template: `<div ptToggles [value]="v()" [options]="opts" aria-label="Window" (choose)="seen.push($event); v.set($event)"></div>`,
 })
 class TogglesHost { v = signal<'1d' | '5d'>('1d'); opts = [['1d', '1D'], ['5d', '5D']] as const; seen: string[] = []; }
 
@@ -24,6 +24,7 @@ describe('PtToggles', () => {
     const { f, el } = render(TogglesHost);
     const group = el.querySelector('div')!;
     expect(group.className).toBe('pt-toggles');
+    expect(group.hasAttribute('label')).toBe(false);
     expect(group.getAttribute('role')).toBe('group');
     expect(group.getAttribute('aria-label')).toBe('Window');
     const buttons = () => [...el.querySelectorAll('button')].map((b) => `${b.textContent}:${b.getAttribute('aria-pressed')}`);
@@ -107,8 +108,8 @@ const ROWS = [{ t: 'B', v: 2 }, { t: 'a', v: null }, { t: 'C', v: 10 }, { t: 'A'
 @Component({
   imports: [PtSortTh],
   template: `<table><thead><tr>
-      <th ptSortTh label="Name" [state]="s.state('t')" (sort)="s.toggle('t')"></th>
-      <th ptSortTh label="Value" [state]="s.state('v')" (sort)="s.toggle('v')"></th>
+      <th ptSortTh [state]="s.state('t')" (sort)="s.toggle('t')">Name</th>
+      <th ptSortTh [state]="s.state('v')" (sort)="s.toggle('v')">Value</th>
     </tr></thead>
     <tbody>@for (r of s.sorted(); track r.t) {<tr><td>{{ r.t }}</td><td>{{ r.v }}</td></tr>}</tbody></table>`,
 })
