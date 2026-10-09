@@ -20,7 +20,7 @@ const COLS = {
 };
 const EXTRA: Record<ScreenList | 'peers', (keyof typeof COLS)[]> = {
   biggest_losers: ['offHigh'], biggest_gainers: ['offHigh'], '52w_low': ['offHigh'], '52w_high': ['offHigh'],
-  undervalued: ['ptUpside'], insider_buying: ['insiderNet'], most_active: ['volumeRatio'], peers: ['offHigh', 'ptUpside'],
+  undervalued: ['ptUpside'], insider_buying: ['insiderNet'], most_active: ['volumeRatio'], largest: ['offHigh'], peers: ['offHigh', 'ptUpside'],
 };
 function spark(v: number[]) {
   if (v.length < 2) return null;

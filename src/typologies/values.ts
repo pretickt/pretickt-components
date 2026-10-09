@@ -24,3 +24,8 @@ export type MetricKey = (typeof METRIC_KEYS)[number];
 
 /** The market-wide calendar's window around the latest session's month (events@1 universe scopes; the calendar's arrows stop there). */
 export const CALENDAR_MONTHS = { back: 1, ahead: 3 } as const;
+
+/** The provider's (FMP) sectors of the universe: sector pages, `screen@1` list scopes, the header's menu. */
+export const SECTORS = ['Technology', 'Industrials', 'Financial Services', 'Healthcare', 'Consumer Cyclical', 'Consumer Defensive', 'Utilities',
+  'Real Estate', 'Basic Materials', 'Energy', 'Communication Services'] as const;
+export type Sector = (typeof SECTORS)[number];
