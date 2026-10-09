@@ -147,6 +147,9 @@
   .pt-mk-analyst { @apply fill-ink-soft; }
   .pt-mk-other { @apply fill-border; }
   .pt-mk-future { fill-opacity: 0.35; @apply stroke-primary; }
+  /* "Show 20 more" under a table */
+  .pt-more { @apply mt-3 flex justify-center; }
+  .pt-more-btn { @apply rounded-control border border-border bg-surface-raised px-4 py-1.5 text-sm text-ink hover:border-primary hover:text-primary; }
   .pt-toggles { @apply mb-2 flex gap-1; }
   .pt-toggles button { @apply rounded-md px-2 py-0.5 text-xs text-ink-soft hover:bg-surface; }
   .pt-toggles button[aria-pressed='true'] { @apply bg-primary text-primary-ink; }

@@ -1,7 +1,7 @@
 import { Component, signal, type Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { Badge } from './format';
-import { PtBadge, PtCompany, PtLogo, PtSortTh, PtToggles, useSort } from './index';
+import { PtBadge, PtCompany, PtLogo, PtMore, PtSortTh, PtToggles, useSort } from './index';
 
 const badge: Badge = { key: 'pe', label: 'P/E', value: 21.5, text: null, unit: 'x', delta: null, tone: 'pos', range: null, icon: 'target', hint: 'Price over earnings', asOf: '2026-10-02' };
 const render = <C>(c: Type<C>) => {
@@ -143,5 +143,26 @@ describe('sortable tables', () => {
     const t = TestBed.runInInjectionContext(() => useSort(() => [{ d: '2026-03-01' }, { d: '2026-09-15' }, { d: '2026-06-30' }], { d: (r) => r.d }));
     t.toggle('d');
     expect(t.sorted().map((r) => r.d)).toEqual(['2026-09-15', '2026-06-30', '2026-03-01']);
+  });
+});
+
+@Component({
+  imports: [PtMore],
+  template: `<pt-more (more)="presses = presses + 1" /><pt-more [step]="5" />`,
+})
+class MoreHost { presses = 0; }
+
+describe('PtMore', () => {
+  it('a centered "Show 20 more" button under a table: each press emits once and is a "more" interaction', () => {
+    const { f, el } = render(MoreHost);
+    const [twenty, five] = [...el.querySelectorAll('pt-more')];
+    expect(twenty!.className).toBe('pt-more');
+    const b = twenty!.querySelector('button')!;
+    expect([b.getAttribute('type'), b.className, b.textContent]).toEqual(['button', 'pt-more-btn', 'Show 20 more']);
+    expect(five!.querySelector('button')!.textContent).toBe('Show 5 more');
+    b.click(); b.click();
+    f.detectChanges();
+    expect(f.componentInstance.presses).toBe(2);
+    expect(interactions).toEqual(['more', 'more']);
   });
 });
