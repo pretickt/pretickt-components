@@ -8,7 +8,8 @@ export const sendBeacon: Send = (url, body) => {
 
 /**
  * First-party analytics: one page view, then each component + action once per page view. Components (and the design-system
- * primitives) dispatch `pt-interact` with `{ action }`; the component is the island it happened in. No cookies, no identifiers.
+ * primitives) dispatch `pt-interact` with `{ action }`; the component is the island it happened in (or a `data-beacon` part of the
+ * page shell). No cookies, no identifiers.
  */
 export function startBeacon(doc: Document, api: string, send: Send) {
   const p = doc.location?.pathname ?? '/';
@@ -18,7 +19,9 @@ export function startBeacon(doc: Document, api: string, send: Send) {
   const seen = new Set<string>();
   doc.addEventListener('pt-interact', (e) => {
     const action = (e as CustomEvent<{ action?: string }>).detail?.action;
-    const component = (e.target as Element | null)?.closest?.('[data-island]')?.getAttribute('data-island');
+    // a placement (data-island), or a part of the page shell that counts itself (data-beacon: the header's search)
+    const at = (e.target as Element | null)?.closest?.('[data-island], [data-beacon]');
+    const component = at?.getAttribute('data-island') ?? at?.getAttribute('data-beacon');
     const k = `${component}|${action}`;
     if (!component || !action || seen.has(k)) return;
     seen.add(k);

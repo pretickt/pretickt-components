@@ -33,7 +33,28 @@
 @layer components {
   /* page */
   .pt-page { @apply min-h-screen bg-surface font-sans text-ink antialiased; }
-  .pt-header { @apply border-b border-border bg-surface-raised px-4 py-3 sm:px-6; }
+  /* the fixed header: brand, sector menu, company search (under tooltips and hover cards: z-40, z-50) */
+  .pt-header { @apply sticky top-0 z-30 border-b border-border bg-surface-raised px-4 py-2.5 sm:px-6; }
+  .pt-header-in { @apply mx-auto flex max-w-5xl items-center gap-3; }
+  .pt-brand-word { @apply hidden sm:inline; }
+  .pt-menu { @apply relative; }
+  .pt-menu > summary { @apply cursor-pointer list-none rounded-md px-2 py-1 text-sm text-ink-soft select-none hover:bg-surface hover:text-ink; }
+  .pt-menu > summary::-webkit-details-marker { display: none; }
+  .pt-menu > summary::after { content: ' ▾'; }
+  .pt-menu[open] > summary { @apply bg-surface text-ink; }
+  .pt-menu ul { @apply absolute left-0 top-full z-40 m-0 mt-1 grid w-max list-none grid-cols-1 gap-0.5 rounded-control border border-border bg-surface-raised p-2 text-sm shadow-lg sm:grid-cols-2; }
+  .pt-menu a { @apply block rounded-md px-2 py-1 text-ink no-underline hover:bg-surface hover:text-primary; }
+  .pt-search { @apply relative ml-auto w-full max-w-xs; }
+  .pt-search input { @apply w-full rounded-control border border-border bg-surface px-3 py-1.5 text-sm text-ink outline-none focus:border-primary; }
+  .pt-search-list { @apply absolute right-0 top-full z-40 mt-1 w-full min-w-64 overflow-hidden rounded-control border border-border bg-surface-raised py-1 shadow-lg; }
+  .pt-search-opt { @apply flex items-baseline gap-2 px-3 py-1.5 text-sm text-ink no-underline hover:bg-surface; }
+  .pt-search-opt[aria-selected='true'] { @apply bg-surface text-primary; }
+  .pt-search-opt span { @apply truncate text-ink-soft; }
+  .pt-sr { @apply sr-only; }
+  /* breadcrumbs above the h1 */
+  .pt-crumbs ol { @apply m-0 mb-2 flex list-none flex-wrap gap-1 p-0 text-xs text-ink-soft; }
+  .pt-crumbs li + li::before { content: '›'; @apply mr-1; }
+  .pt-crumbs a { @apply text-ink-soft no-underline hover:text-primary; }
   /* the wordmark: PRETICKT in spaced capitals, TICK in the brand cyan (markup: pre<span class="pt-brand-tick">tick</span>t) */
   .pt-brand { @apply inline-flex items-center gap-2.5 font-sans text-sm font-semibold uppercase tracking-[0.16em] text-ink no-underline; }
   .pt-brand-tick { @apply text-brand; }
@@ -41,7 +62,8 @@
   .pt-main { @apply mx-auto max-w-5xl px-4 py-6 sm:px-6; }
   .pt-h1 { @apply text-2xl font-semibold tracking-tight; }
   .pt-lede { @apply mt-1 text-sm text-ink-soft; }
-  .pt-section { @apply mt-8; }
+  /* scroll-margin: an anchored section (#financials) lands below the fixed header */
+  .pt-section { @apply mt-8 scroll-mt-20; }
   /* a preview section (the home): its title and the link to the full page on one line */
   .pt-section-head { @apply flex items-baseline justify-between gap-3; }
   .pt-section-more { @apply shrink-0 text-xs font-semibold text-primary no-underline hover:underline; }
