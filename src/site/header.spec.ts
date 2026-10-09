@@ -98,6 +98,18 @@ describe('attachHeader', () => {
     expect(doc.querySelector('#pt-q-list')!.hasAttribute('hidden')).toBe(true);
     expect(menu.open).toBe(false);
   });
+  it('a closed list keeps nothing: after Escape, ↓ selects nothing and Enter is the plain form\'s (no hidden result opens)', async () => {
+    const input = setup();
+    input.dispatchEvent(new FocusEvent('focus'));
+    await type(input, 'appl');
+    key(input, 'Escape');
+    key(input, 'ArrowDown');
+    expect(input.hasAttribute('aria-activedescendant')).toBe(false);
+    const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    input.dispatchEvent(enter);
+    expect(enter.defaultPrevented).toBe(false);
+    expect(went).toEqual([]);
+  });
   it('no results for a blank query; when the index cannot load, the box stays a plain form (Enter submits to /stocks/)', async () => {
     const input = setup();
     input.dispatchEvent(new FocusEvent('focus'));

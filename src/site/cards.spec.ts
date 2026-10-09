@@ -94,6 +94,13 @@ describe('company cards on hover', () => {
     await wait(60);
     expect(panel()).toBeNull();
   });
+  it('the header\'s search results are company links too, but open no card (it would cover the list)', async () => {
+    page();
+    document.body.insertAdjacentHTML('afterbegin', '<header class="pt-header"><div class="pt-search-list"><a id="opt" role="option" href="/stocks/msft/">MSFT</a></div></header>');
+    over('opt');
+    await wait(60);
+    expect(panel()).toBeNull();
+  });
   it('each opening counts as a hover on the card in the beacon', async () => {
     const sent: string[] = [];
     page({ sent });

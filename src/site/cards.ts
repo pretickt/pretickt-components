@@ -66,6 +66,7 @@ export function attachCards(doc: Document, appRef: ApplicationRef, o: CardOption
 
   const linkOf = (t: EventTarget | null): Element | null => {
     const a = (t as Element | null)?.closest?.('a[href]') ?? null;
+    if (a?.closest('.pt-header')) return null; // the header's search results: a card would cover the list
     const ticker = companyOf(a);
     return ticker && ticker !== subject ? a : null;
   };

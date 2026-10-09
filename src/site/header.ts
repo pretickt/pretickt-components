@@ -59,6 +59,8 @@ export function attachHeader(doc: Document, o: HeaderOptions): void {
   const load = () => (loading ??= (o.fetch ?? ((u: string) => fetch(u)))(`/search.json?v=${encodeURIComponent(o.buildId)}`)
     .then((r) => r.json() as Promise<{ rows: Company[] }>).then((j) => { index = j.rows; }).catch(() => { index = null; }));
   function close() {
+    shown = []; // nothing hidden can be opened: Enter is the plain form's again
+    list!.replaceChildren();
     list!.hidden = true;
     input!.setAttribute('aria-expanded', 'false');
     input!.removeAttribute('aria-activedescendant');
