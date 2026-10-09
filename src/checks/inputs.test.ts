@@ -13,8 +13,9 @@ describe('readInputs (the TypeScript checker on the component file)', () => {
       { name: 'window', required: false, type: "Window", literals: ['1d', '5d', '1m'], default: '1d' },
     ] });
     const screen = readInputs(program, file('pt-screen')).inputs;
-    expect(screen.map((i) => [i.name, i.required, i.default])).toEqual([['list', false, undefined], ['peersOf', false, undefined], ['limit', false, 25]]);
-    expect(screen[0]!.literals).toContain('biggest_losers');
+    expect(screen.map((i) => [i.name, i.required, i.default])).toEqual([['list', false, undefined], ['peersOf', false, undefined], ['limit', false, 25], ['sector', false, undefined]]);
+    expect(screen[0]!.literals).toContain('largest');
+    expect(screen[3]!.literals).toContain('Financial Services');
     expect(readInputs(program, file('pt-company-card')).inputs.find((i) => i.name === 'extra')).toMatchObject({ required: false, default: null });
   });
   it('samples: required inputs by known name, one variant per other literal', () => {

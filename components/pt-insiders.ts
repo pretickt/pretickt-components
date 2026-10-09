@@ -1,12 +1,12 @@
 /**
  * Are the people running this company buying or selling its stock?
- * @version 2.2.0
+ * @version 2.3.0
  * @evidence "<ticker> insider trading" long tail (marketing/ per-ticker SEO)
  * @evidence beta: insider net flow badge and Form 4 list
  */
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, computed, inject, input, linkedSignal } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
-import { PtSortTh, useSort } from '@pretickt/components/ds';
+import { MORE_STEP, PtMore, PtSortTh, useSort } from '@pretickt/components/ds';
 import { date, money, num, usd } from '@pretickt/components/format';
 
 const LABEL: Record<string, string> = { buy: 'Buy', sell: 'Sell', other: 'Other' };
@@ -15,7 +15,7 @@ const compact = (v: number | null) => usd(v, { compact: true });
 
 @Component({
   selector: 'pt-insiders',
-  imports: [PtSortTh],
+  imports: [PtMore, PtSortTh],
   template: `
     @let ins = insider.value();
     @if (ins === null) {<p class="pt-na">Data not available</p>}
@@ -27,7 +27,7 @@ const compact = (v: number | null) => usd(v, { compact: true });
           <table class="pt-table">
             <thead><tr>@for (c of COLS; track c[0]) {<th ptSortTh [state]="sort.state(c[0])" (sort)="sort.toggle(c[0])">{{ c[1] }}</th>}</tr></thead>
             <tbody>
-              @for (i of sort.sorted(); track i) {
+              @for (i of rows(); track i) {
                 <tr [class]="'pt-ins-row pt-ins-' + i.type">
                   <td>{{ date(i.date) }}</td>
                   <td>{{ i.name }}@if (i.title) {<div class="pt-meta">{{ i.title }}</div>}</td>
@@ -40,6 +40,7 @@ const compact = (v: number | null) => usd(v, { compact: true });
             </tbody>
           </table>
         </div>
+        @if (hasMore()) {<pt-more (more)="shown.set(shown() + MORE_STEP)" />}
         <p class="pt-note">Source: SEC Form 4 filings. "Other" covers awards, option exercises and gifts.</p>
       </section>
     }`,
@@ -51,6 +52,11 @@ export class PtInsiders {
   protected readonly insider = this.pt.insider(() => ({ ticker: this.ticker(), days: this.days() }));
   protected readonly sort = useSort(() => this.insider.value()?.items ?? [], {
     date: (i) => i.date, name: (i) => i.name, type: (i) => i.type, shares: (i) => i.shares, price: (i) => i.price, value: (i) => i.value });
+  /** The first rows of the sorted set; "Show 20 more" reveals the next ones (back to 20 when new data comes). */
+  protected readonly shown = linkedSignal({ source: () => this.insider.value(), computation: () => MORE_STEP });
+  protected readonly rows = computed(() => this.sort.sorted().slice(0, this.shown()));
+  protected readonly hasMore = computed(() => this.sort.sorted().length > this.shown());
+  protected readonly MORE_STEP = MORE_STEP;
   protected readonly COLS = COLS;
   protected readonly LABEL = LABEL;
   protected readonly date = date;

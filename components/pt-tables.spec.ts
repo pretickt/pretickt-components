@@ -65,6 +65,25 @@ describe('pt-insiders', () => {
   });
 });
 
+describe('pt-insiders: "Show 20 more"', () => {
+  const trades = (n: number) => ({ asOf: '2026-10-02', items: Array.from({ length: n }, (_, i) => ({ date: `2026-0${1 + (i % 9)}-1${i % 10}`, filingDate: null,
+    name: `Insider ${i}`, title: null, type: 'buy' as const, shares: 10, price: 10, value: 1000 + i })) });
+  it('shows 20 trades, then 20 more per press, sorted over all of them', async () => {
+    const r = await render(PtInsiders, { ticker: 'NVDA', days: 365 }, withData({ 'insider@1': trades(45) }));
+    expect(r.el.querySelectorAll('tr.pt-ins-row')).toHaveLength(20);
+    await press(r.f, r.el, 'Value↕');
+    expect(column(r.el, 6)[0]).toBe('$1.04K'); // the largest of the 45, not of the 20 shown
+    await press(r.f, r.el, 'Show 20 more');
+    expect(r.el.querySelectorAll('tr.pt-ins-row')).toHaveLength(40);
+    await press(r.f, r.el, 'Show 20 more');
+    expect(r.el.querySelectorAll('tr.pt-ins-row')).toHaveLength(45);
+    expect(r.el.querySelector('pt-more')).toBeNull();
+  });
+  it('no button for 20 trades or fewer', async () => {
+    expect((await render(PtInsiders, { ticker: 'NVDA', days: 365 }, withData({ 'insider@1': trades(20) }))).el.querySelector('pt-more')).toBeNull();
+  });
+});
+
 describe('pt-financials', () => {
   basics(PtFinancials, { ticker: 'NVDA', periods: 8 });
   const f = fundamentalsDemo({ ticker: 'NVDA', periods: 8 });
@@ -80,6 +99,16 @@ describe('pt-financials', () => {
     expect(await html(f)).toContain(`Revenue ${pct(f.periods.at(-1)!.revenue! / f.periods.at(-5)!.revenue! - 1)} year over year`);
   });
   it('renders not-available without quarters', async () => expect(await html({ asOf: '2026-10-02', periods: [] })).toContain('pt-na'));
+  it('lists 20 quarters, newest first, then the rest on "Show 20 more"; no button at 20 or fewer', async () => {
+    const long = fundamentalsDemo({ ticker: 'NVDA', periods: 24 });
+    const r = await render(PtFinancials, { ticker: 'NVDA', periods: 24 }, withData({ 'fundamentals@1': long }));
+    expect(r.el.querySelectorAll('tr.pt-fin-q')).toHaveLength(20);
+    expect(column(r.el, 1)[0]).toBe(long.periods.at(-1)!.fiscal);
+    await press(r.f, r.el, 'Show 20 more');
+    expect(r.el.querySelectorAll('tr.pt-fin-q')).toHaveLength(24);
+    expect(r.el.querySelector('pt-more')).toBeNull();
+    expect((await render(PtFinancials, { ticker: 'NVDA' }, withData({ 'fundamentals@1': f }))).el.querySelector('pt-more')).toBeNull();
+  });
   it('without periods asks for 8 quarters (the default); sorts by revenue', async () => {
     const asked: unknown[] = [];
     const r = await render(PtFinancials, { ticker: 'NVDA' }, async (t, p) => { asked.push(p); return withData({})(t, p); });

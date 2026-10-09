@@ -1,13 +1,11 @@
 import * as z from 'zod/mini';
 import { DEMO_ASOF, DEMO_COMPANIES, intParam, IsoDate, Num as n, prng, round, Ticker } from './common';
-import { SECTORS } from './values';
+import { SCREEN_MAX, SECTORS } from './values';
 
 /** Ranked lists of companies (market movers, 52-week extremes, undervalued, insider buying, the largest) and peer groups. */
 export const SCREEN_LISTS = ['biggest_losers', 'biggest_gainers', '52w_low', '52w_high', 'undervalued', 'insider_buying', 'most_active', 'largest'] as const;
 export type ScreenList = (typeof SCREEN_LISTS)[number];
 
-/** Up to every company of the universe (518 today): "Show 20 more" grows a list to its end. */
-export const SCREEN_MAX = 600;
 export const ScreenParams = z.object({
   // a list may keep to one sector (sector pages); peers already share their subject's sector
   scope: z.union([z.strictObject({ list: z.enum(SCREEN_LISTS), sector: z.optional(z.enum(SECTORS)) }), z.strictObject({ peersOf: Ticker })]),

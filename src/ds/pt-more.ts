@@ -5,6 +5,9 @@ import { Component, ElementRef, inject, input, output } from '@angular/core';
  * (rows it already has, or a bigger call) and leaves the button out when there is nothing more.
  * `@if (hasMore()) {<pt-more (more)="more()" />}`
  */
+/** How many rows a press adds. */
+export const MORE_STEP = 20;
+
 @Component({
   selector: 'pt-more',
   host: { class: 'pt-more' },
@@ -12,7 +15,7 @@ import { Component, ElementRef, inject, input, output } from '@angular/core';
 })
 export class PtMore {
   private readonly el = inject<ElementRef<HTMLElement>>(ElementRef);
-  readonly step = input(20);
+  readonly step = input(MORE_STEP);
   readonly more = output<void>();
 
   protected press() {

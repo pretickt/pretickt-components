@@ -1,14 +1,14 @@
 /**
  * Which companies are on this list today (biggest movers, 52-week extremes, undervalued, insider buying, peers)?
- * @version 2.3.0
+ * @version 2.4.0
  * @evidence DataForSEO: "biggest stock losers today", "52 week low stocks", "undervalued stocks" (launch/data/08c-serp-undervalued-stocks.json)
  * @evidence stockanalysis.com / finviz market-mover tables; beta: peers table on the company page
  */
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, computed, inject, input, linkedSignal } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
-import { PtLogo, PtSortTh, useSort } from '@pretickt/components/ds';
+import { MORE_STEP, PtLogo, PtMore, PtSortTh, useSort } from '@pretickt/components/ds';
 import { date, money, num, pct, stockHref, tone, usd } from '@pretickt/components/format';
-import type { ScreenList, ScreenRow } from '@pretickt/components/typologies';
+import { SCREEN_MAX, type ScreenList, type ScreenRow, type Sector } from '@pretickt/components/typologies';
 
 type Cell = { text: string; tone?: string };
 const signed = (v: number | null, text = pct(v)): Cell => ({ text, tone: `pt-t-${tone(v)}` });
@@ -33,7 +33,7 @@ type Row = { r: ScreenRow; rank: number; chg: Cell; extra: Cell[]; spark: Return
 /** A market list (`list`) or the peers of one company (`peersOf`). */
 @Component({
   selector: 'pt-screen',
-  imports: [PtLogo, PtSortTh],
+  imports: [PtLogo, PtMore, PtSortTh],
   template: `
     @let s = screen.value();
     @if (s === null) {<p class="pt-na">Data not available</p>}
@@ -66,6 +66,7 @@ type Row = { r: ScreenRow; rank: number; chg: Cell; extra: Cell[]; spark: Return
             }
           </tbody>
         </table>
+        @if (hasMore()) {<pt-more (more)="more()" />}
         <p class="pt-note">Data as of {{ date(s.asOf) }} close.</p>
       </div>
     }`,
@@ -75,12 +76,23 @@ export class PtScreen {
   readonly list = input<ScreenList>();
   readonly peersOf = input<string>();
   readonly limit = input(25);
+  /** A list may keep to one sector (the sector pages). */
+  readonly sector = input<Sector>();
 
   private readonly kind = computed<ScreenList | 'peers'>(() => (this.peersOf() ? 'peers' : this.list() ?? 'biggest_losers'));
+  /** "Show 20 more" asks the list again with 20 more rows; the shown rows stay until the answer comes. */
+  protected readonly shown = linkedSignal(() => this.limit());
   protected readonly screen = this.pt.screen(() => {
     const k = this.kind();
-    return { scope: k === 'peers' ? { peersOf: this.peersOf()! } : { list: k }, limit: this.limit() };
+    const sector = this.sector();
+    return { scope: k === 'peers' ? { peersOf: this.peersOf()! } : { list: k, ...(sector ? { sector } : {}) }, limit: this.shown() };
   });
+  /** More may exist while the last answer filled what it was asked for, up to the whole universe. */
+  protected readonly hasMore = computed(() => {
+    const asked = (this.screen.params() as { limit?: number } | undefined)?.limit ?? 0;
+    return (this.screen.value()?.rows.length ?? 0) >= asked && asked > 0 && asked < SCREEN_MAX;
+  });
+  protected more() { this.shown.update((n) => Math.min(n + MORE_STEP, SCREEN_MAX)); }
   protected readonly extra = computed(() => EXTRA[this.kind()].map((k) => COLS[k]));
   private readonly rows = computed<Row[]>(() => (this.screen.value()?.rows ?? []).map((r, i) => ({
     r, rank: i + 1, chg: signed(r.chg1d), extra: this.extra().map((c) => c.cell(r)), spark: spark(r.spark) })));

@@ -1,12 +1,12 @@
 /**
  * Is this company growing, and is the growth turning into cash?
- * @version 2.2.0
+ * @version 2.3.0
  * @evidence "<ticker> revenue / earnings / free cash flow" long tail (marketing/ per-ticker SEO)
  * @evidence beta: growth charts and tables on the company page
  */
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, computed, inject, input, linkedSignal } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
-import { PtSortTh, useSort } from '@pretickt/components/ds';
+import { MORE_STEP, PtMore, PtSortTh, useSort } from '@pretickt/components/ds';
 import { date, level, num, pct, tip, usd } from '@pretickt/components/format';
 
 const W = 600, H = 160, PAD = 14;
@@ -16,7 +16,7 @@ const COLS = [['quarter', 'Quarter'], ['period', 'Period end'], ['revenue', 'Rev
 
 @Component({
   selector: 'pt-financials',
-  imports: [PtSortTh],
+  imports: [PtMore, PtSortTh],
   template: `
     @let f = fin.value();
     @if (f === null || (f && !ps().length)) {<p class="pt-na">Financial statements not available</p>}
@@ -36,7 +36,7 @@ const COLS = [['quarter', 'Quarter'], ['period', 'Period end'], ['revenue', 'Rev
           <table class="pt-table">
             <thead><tr>@for (c of COLS; track c[0]) {<th ptSortTh [state]="sort.state(c[0])" (sort)="sort.toggle(c[0])">{{ c[1] }}</th>}</tr></thead>
             <tbody>
-              @for (p of sort.sorted(); track p.period) {
+              @for (p of rows(); track p.period) {
                 <tr class="pt-fin-q">
                   <td>{{ p.fiscal }}</td><td>{{ date(p.period) }}</td><td class="pt-num">{{ compact(p.revenue) }}</td><td class="pt-num">{{ num(p.eps) }}</td>
                   <td class="pt-num">{{ compact(p.fcf) }}</td><td class="pt-num">{{ level(p.grossMargin) }}</td><td class="pt-num">{{ level(p.operatingMargin) }}</td>
@@ -46,6 +46,7 @@ const COLS = [['quarter', 'Quarter'], ['period', 'Period end'], ['revenue', 'Rev
             </tbody>
           </table>
         </div>
+        @if (hasMore()) {<pt-more (more)="shown.set(shown() + MORE_STEP)" />}
       </section>
     }`,
 })
@@ -60,6 +61,11 @@ export class PtFinancials {
     quarter: (p) => p.period, period: (p) => p.period, revenue: (p) => p.revenue, eps: (p) => p.eps, fcf: (p) => p.fcf,
     gross: (p) => p.grossMargin, operating: (p) => p.operatingMargin, net: (p) => p.netMargin,
   });
+  /** The newest 20 quarters of the sorted set; "Show 20 more" reveals the next ones. */
+  protected readonly shown = linkedSignal({ source: () => this.fin.value(), computation: () => MORE_STEP });
+  protected readonly rows = computed(() => this.sort.sorted().slice(0, this.shown()));
+  protected readonly hasMore = computed(() => this.sort.sorted().length > this.shown());
+  protected readonly MORE_STEP = MORE_STEP;
   protected readonly W = W;
   protected readonly H = H;
   protected readonly COLS = COLS;

@@ -8,7 +8,7 @@ export { PtChart } from './pt-chart';
 export { PtCompany } from './pt-company';
 export { iconPath, PtIcon } from './pt-icon';
 export { PtLogo } from './pt-logo';
-export { PtMore } from './pt-more';
+export { MORE_STEP, PtMore } from './pt-more';
 export { PtSortTh } from './pt-sort-th';
 export { PtTimeAxis } from './pt-time-axis';
 export { PtToggles } from './pt-toggles';

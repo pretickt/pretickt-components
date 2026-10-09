@@ -17,13 +17,13 @@ import { PtWhyToday } from '../../components/pt-why-today';
 export const REGISTRY: Record<string, { version: string; sample: Record<string, unknown> }> = {
   'pt-calendar': { version: '2.4.0', sample: { month: '2026-09' } },
   'pt-company-card': { version: '1.1.0', sample: { ticker: 'NVDA' } },
-  'pt-financials': { version: '2.2.0', sample: { ticker: 'NVDA' } },
-  'pt-insiders': { version: '2.2.0', sample: { ticker: 'NVDA' } },
+  'pt-financials': { version: '2.3.0', sample: { ticker: 'NVDA' } },
+  'pt-insiders': { version: '2.3.0', sample: { ticker: 'NVDA' } },
   'pt-metric': { version: '2.1.0', sample: { ticker: 'NVDA', metrics: ['pe', 'pe_vs_sector', 'pe_vs_own', 'pt_upside', 'consensus', 'market_cap', 'fcf_yield', 'insider_net', 'earnings_in', 'news'] } },
   'pt-news': { version: '2.1.0', sample: { ticker: 'NVDA' } },
   'pt-price-events': { version: '2.1.0', sample: { ticker: 'NVDA' } },
   'pt-price-target': { version: '2.1.0', sample: { ticker: 'NVDA' } },
-  'pt-screen': { version: '2.3.0', sample: {} },
+  'pt-screen': { version: '2.4.0', sample: {} },
   'pt-why-today': { version: '2.1.0', sample: { ticker: 'NVDA' } },
 };
 
@@ -43,7 +43,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
       @case ('pt-news') { @defer (hydrate on viewport) {<pt-news [ticker]="$any(p()).ticker" [limit]="$any(p()).limit ?? 20" />} }
       @case ('pt-price-events') { @defer (hydrate on viewport) {<pt-price-events [ticker]="$any(p()).ticker" [range]="$any(p()).range ?? '1y'" />} }
       @case ('pt-price-target') { @defer (hydrate on viewport) {<pt-price-target [ticker]="$any(p()).ticker" />} }
-      @case ('pt-screen') { @defer (hydrate on viewport) {<pt-screen [list]="$any(p()).list" [peersOf]="$any(p()).peersOf" [limit]="$any(p()).limit ?? 25" />} }
+      @case ('pt-screen') { @defer (hydrate on viewport) {<pt-screen [list]="$any(p()).list" [peersOf]="$any(p()).peersOf" [limit]="$any(p()).limit ?? 25" [sector]="$any(p()).sector" />} }
       @case ('pt-why-today') { @defer (hydrate on viewport) {<pt-why-today [ticker]="$any(p()).ticker" [window]="$any(p()).window ?? '1d'" />} }
     }`,
 })

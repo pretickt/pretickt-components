@@ -3,6 +3,7 @@ import { PT_STORE, PtStore } from '@pretickt/components/context';
 import { demoFor } from '../typologies';
 import { PT_PAGE, type PageModel } from './model';
 import { PtPage } from './page';
+import { REGISTRY } from './registry.generated';
 
 async function page(model: PageModel) {
   TestBed.resetTestingModule();
@@ -42,7 +43,7 @@ describe('PtPage', () => {
     const more = el.querySelector('#fin a.pt-section-more')!;
     expect([more.getAttribute('href'), more.getAttribute('aria-label'), more.textContent]).toEqual(['/x/', 'See all: Financials', 'See all →']);
     expect([...el.querySelectorAll('[data-island]')].map((d) => `${d.className}|${d.getAttribute('data-island')}`))
-      .toEqual(['pt-island|pt-company-card@1.1.0', 'pt-island|pt-financials@2.2.0']);
+      .toEqual([`pt-island|pt-company-card@${REGISTRY['pt-company-card']!.version}`, `pt-island|pt-financials@${REGISTRY['pt-financials']!.version}`]);
   });
   it('a placement switched off by the build, or a tag it does not know, is a static "not available"', async () => {
     const el = await page({ buildId: 'b', api: '', sections: [{ id: 's', items: [{ c: 'pt-news', props: { ticker: 'NVDA' }, off: true }, { c: 'pt-unknown', props: {} }] }] });
