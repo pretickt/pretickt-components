@@ -89,6 +89,13 @@ for "no call". **Params must be deterministic** (never the clock or randomness):
 | `pt.company` | `{ticker}` | `{ticker, name, sector, industry, logo}` — `logo` is a file the site publishes (`/logos/<file>`), or null |
 | `pt.screen` | `{scope: {list: biggest_losers\|biggest_gainers\|52w_low\|52w_high\|undervalued\|insider_buying\|most_active\|largest, sector?: one of SECTORS} \| {peersOf}, limit ≤ SCREEN_MAX (600)}` | `{asOf, rows[{ticker,name,sector,logo,close,chg1d,offHigh,pe,ptUpside,marketCap,insiderNet,volumeRatio,spark[20],self}]}` |
 
+**The reader's picks** (`PtPicks`, same entry): a component that asks the reader to call an open outcome ("Beat" / "Miss")
+remembers the answer with `private readonly picks = inject(PtPicks)`: `picks.of(() => key)` → the pick (`string | null`),
+`picks.set(key, value)` (null clears), `picks.ready()` — true only in a browser whose page stores picks, after the first render.
+Render the pick buttons inside `@if (picks.ready())`, so the server HTML and hydration never depend on a pick. Picks live in this
+browser only (the page's store, never sent anywhere); keys ≤ 200 characters, values ≤ 40; name a key by what is being called
+(`ep:earnings:NVDA:2026-11-19`). Count a pick like any control: dispatch `pt-interact` from the button.
+
 Types (`MoveBreakdown`, `News`, `MetricItem`, `EventItem`, `ScreenList`, …) and plain values (`RANGES`, `SENTIMENT_FLAT`,
 `METRIC_KEYS`, `CALENDAR_MONTHS`, `cmp`) come from `@pretickt/components/typologies` (in components that entry carries no schema:
 zod never reaches a page). Each typology has a deterministic `demo` the checks and the admin bench use. Adding a typology is a

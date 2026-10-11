@@ -1,4 +1,5 @@
-/** The data context of components (Angular): `inject(Pt)`, one signal resource per call. */
+/** The data context of components (Angular): `inject(Pt)`, one signal resource per call; `inject(PtPicks)`, the reader's calls. */
 export { Pt, PT_SLOT, PT_STORE, type PtPayload, type PtParams, type PtResource } from './pt';
+export { PT_PICKS, PtPicks, type PickStore } from './picks';
 export { FAILED, methodOf, PtStore, typologyOf, type PtStoreOptions } from './store';
 export { validateParams } from './validate';
