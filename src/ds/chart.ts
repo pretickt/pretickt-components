@@ -7,6 +7,12 @@ const r1 = (n: number) => Math.round(n * 10) / 10;
 /** Whole UTC days since the epoch of an ISO date (a time part is ignored): the x unit of time charts. */
 export const isoDay = (iso: string): number => Math.floor(Date.parse(`${iso.slice(0, 10)}T00:00:00Z`) / DAY_MS);
 
+/** Room after the last day of a time chart, as a share of its span: a future event or a 12-month target never sits on the price axis. */
+export const TIME_PAD = 0.06;
+/** A time chart's natural x domain [from, to] (epoch days) with TIME_PAD of its span after `to` — at least `minDays`; zoom applies on top. */
+export const padTime = (from: number, to: number, minDays = 3): { min: number; max: number } =>
+  ({ min: from, max: to + Math.max(minDays, (to - from) * TIME_PAD) });
+
 /** The last close at or before `iso`; the first close when `iso` is before the series. */
 export function closeAt(points: readonly { t: string; c: number }[], iso: string): number {
   let c = points[0]?.c ?? NaN;

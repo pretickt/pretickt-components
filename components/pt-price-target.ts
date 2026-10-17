@@ -1,12 +1,12 @@
 /**
  * Where do analysts think this stock is going, and how spread out are they?
- * @version 2.1.0
+ * @version 2.2.0
  * @evidence DataForSEO: "{ticker} price target" ~103k searches/month, "{ticker} stock forecast" ~151k (launch/data, public-site spec §4)
  * @evidence beta: pt-chart (pretickt-frontend/src/app/companies/pt-chart.ts) — geometry, clustering, hover animations and zoom/pan ported 1:1
  */
 import { Component, computed, inject, input, linkedSignal, signal } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
-import { applyXViewport, applyYViewport, closeAt, FULL_VIEWPORT, isoDay, linePath, monthTicks, PtChart, PtTimeAxis, PtYAxis, type Viewport } from '@pretickt/components/ds';
+import { applyXViewport, applyYViewport, closeAt, FULL_VIEWPORT, isoDay, linePath, monthTicks, padTime, PtChart, PtTimeAxis, PtYAxis, type Viewport } from '@pretickt/components/ds';
 import { date, money, pct, svgId } from '@pretickt/components/format';
 import { cmp, type Analysts, type PriceBar } from '@pretickt/components/typologies';
 
@@ -78,8 +78,9 @@ export function buildPtChart(points: PriceBar[], targets: Target[], asOf: string
   // The user's lens on top of the natural ranges (beta: same viewport object as the event map).
   ({ lo: yLo, hi: yHi } = applyYViewport(yLo - pad, yHi + pad, viewport));
   const today = isoDay(asOf);
-  const { min: xMin, max: xMax } = applyXViewport(Math.min(isoDay(points[0]!.t), ...items.map((t) => t.start)),
-    Math.max(isoDay(points.at(-1)!.t), today, ...items.map((t) => t.end)), viewport);
+  // the time pad after the furthest 12-month target: its dot and its % label stand clear of the price axis
+  const span = padTime(Math.min(isoDay(points[0]!.t), ...items.map((t) => t.start)), Math.max(isoDay(points.at(-1)!.t), today, ...items.map((t) => t.end)));
+  const { min: xMin, max: xMax } = applyXViewport(span.min, span.max, viewport);
   const sx = (day: number) => ML + ((day - xMin) / (xMax - xMin || 1)) * (W - ML - MR);
   const sy = (v: number) => H - MB - ((v - yLo) / (yHi - yLo || 1)) * (H - MT - MB);
 

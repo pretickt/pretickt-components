@@ -51,6 +51,22 @@
   .pt-search-opt[aria-selected='true'] { @apply bg-surface text-primary; }
   .pt-search-opt span { @apply truncate text-ink-soft; }
   .pt-sr { @apply sr-only; }
+  /* the company strip (page app, src/site/cobar.ts): in the header row once a company page's card has scrolled under the header,
+     fading in and out; what its width cannot hold gives way — the name and the market cap first, then the target */
+  .pt-cobar { @apply invisible flex min-w-0 flex-1 items-center justify-center gap-2 overflow-hidden text-sm opacity-0; container-type: inline-size;
+    transition: opacity 200ms ease, visibility 0s linear 200ms; }
+  .pt-cobar-on .pt-cobar { @apply visible opacity-100; transition: opacity 200ms ease; }
+  .pt-cobar .pt-logo { @apply h-6 w-6 text-[0.55rem]; }
+  .pt-cobar-name { @apply min-w-0 truncate font-semibold text-ink; }
+  .pt-cobar-tk { @apply shrink-0 font-semibold text-ink; }
+  .pt-cobar-cap { @apply shrink-0 text-xs text-ink-soft; }
+  .pt-cobar-close { @apply shrink-0 font-mono font-semibold text-ink; }
+  .pt-cobar-pt { @apply shrink-0 rounded-full border px-2 py-0.5 font-mono text-xs; }
+  @container (width < 30rem) { .pt-cobar-name, .pt-cobar-cap { display: none; } }
+  @container (width < 18rem) { .pt-cobar-pt { display: none; } }
+  /* phones: a row of its own under the header row (absolute, so the page under it does not move) */
+  @media (width < 40rem) { .pt-cobar { @apply absolute inset-x-0 top-full justify-start border-b border-border bg-surface-raised px-4 py-1.5; } }
+  @media (prefers-reduced-motion: reduce) { .pt-cobar, .pt-cobar-on .pt-cobar { transition: none; } }
   /* breadcrumbs above the h1 */
   .pt-crumbs ol { @apply m-0 mb-2 flex list-none flex-wrap gap-1 p-0 text-xs text-ink-soft; }
   .pt-crumbs li + li::before { content: '›'; @apply mr-1; }

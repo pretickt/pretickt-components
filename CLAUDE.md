@@ -128,7 +128,9 @@ platform change (schema here + resolver in the private platform + a public-data 
   trend-down alert peak; wrap in `@if (iconPath(name))`), `<div ptChart [w] [h] [plotW] [plotH] [id] [label] [(view)]>` — the
   zoomable chart frame; put your parts in `<svg:g ptDefs>`, `<svg:g ptAxes>` (with `<svg:g ptYAxis …>` / `<svg:g ptTimeAxis …>`),
   `<svg:g ptPlot>` (clipped), `<svg:g ptFront>`, and html after the svg in `<ng-container ngProjectAs="[ptAfter]">`. Geometry:
-  `applyXViewport`, `applyYViewport`, `FULL_VIEWPORT`, `closeAt`, `isoDay`, `linePath`, `monthTicks`. Reset the view when new data
+  `applyXViewport`, `applyYViewport`, `FULL_VIEWPORT`, `closeAt`, `isoDay`, `linePath`, `monthTicks`, `padTime` (a time chart's
+  natural x domain plus `TIME_PAD` = 6% of its span after the last day, so future events and 12-month targets stand clear of the
+  price axis; apply the viewport on top). Reset the view when new data
   is on screen: `view = linkedSignal<unknown, Viewport>({ source: () => this.series.params(), computation: () => FULL_VIEWPORT })`.
 - **Tooltips without code**: `[attr.data-tip]="tip({ Label: value })"` on any element; the page shows it as text.
 - **Interactions** are counted by the page (analytics): the primitives dispatch `pt-interact`; for your own controls dispatch
@@ -179,7 +181,9 @@ place a component are defined in the platform repo (`plant/src/generate/pages.ts
 
 ## Existing components (`dist/index.json`)
 `pt-company-card` (the company at a glance — logo, price over 60 sessions, 52-week range, consensus, PT, tags with "Show all";
-`size` wide = page header, compact = the hover card) · `pt-metric` (badge strip of the catalogue) · `pt-price-events` (price line +
+`size` wide = page header, compact = the hover card; once the wide card has scrolled under the header, the page app shows the
+company in the header — `src/site/cobar.ts` copies the text of `.pt-card-name`, `.pt-card-who .pt-meta`, `.pt-card-close` and
+`.pt-card-pt`, so keep those classes) · `pt-metric` (badge strip of the catalogue) · `pt-price-events` (price line +
 E/D/S/A markers grouped per day, range toggles, zoom & pan) · `pt-price-target` (beta's pt-chart: clustered target dots, gradient
 segments, hover panel of the analysts, zoom & pan) · `pt-answer` (the page's question answered first, in a sentence or two, from the data the page already asks for; `topic` forecast |
 price-target | peers | financials | insiders with `ticker`, list with `list` and optional `sector`, earnings | dividends with `month`) ·

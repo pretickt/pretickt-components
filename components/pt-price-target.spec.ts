@@ -34,9 +34,15 @@ describe('buildPtChart (ported from beta pt-chart.geometry)', () => {
     expect(c.clusters[0]!.pctLabel).toBe('+25%');
     expect(c.startDots).toHaveLength(1);
   });
-  it('puts the % label left of a dot that sits against the price axis', () => {
-    const near = buildPtChart(pts, [tg({ date: '2026-01-05', target: 150 })], '2026-01-05', 120)!;
-    expect(near.clusters[0]!.labelLeft).toBe(true);
+  it('leaves room on the right: the furthest target dot keeps its % label on its right, clear of the price axis', () => {
+    const c = buildPtChart(pts, [tg({ date: '2026-01-05', target: 150 })], '2026-01-05', 120)!;
+    const dot = c.clusters[0]!;
+    expect(dot.labelLeft).toBe(false);
+    expect(dot.x + dot.r + 30).toBeLessThanOrEqual(c.w - 46);
+  });
+  it('puts the % label left of a dot that sits against the price axis (zoomed so the dot is at the edge)', () => {
+    const one = [tg({ date: '2026-01-05', target: 150 })];
+    expect(buildPtChart(pts, one, '2026-01-05', 120, { start: 0, end: 0.95, yScale: 1, yShift: 0 })!.clusters[0]!.labelLeft).toBe(true);
     const far = buildPtChart(pts, [tg({ date: '2025-06-02', target: 150 }), tg({ firm: 'Z', date: '2026-01-05', target: 60 })], '2026-01-05', 120)!;
     expect(far.clusters.find((c) => c.members[0]!.date === '2025-06-02')!.labelLeft).toBe(false);
   });

@@ -1,6 +1,6 @@
 import { date } from '../src/ds/format';
-import { eventsDemo, priceSeriesDemo, type EventItem } from '../src/typologies';
-import { isEvent, layout, PtPriceEvents } from './pt-price-events';
+import { addDays, eventsDemo, priceSeriesDemo, type EventItem } from '../src/typologies';
+import { isEvent, layout, PLOT_W, PtPriceEvents } from './pt-price-events';
 import { basics, press, render, withData } from './_spec';
 
 const series = priceSeriesDemo({ tickers: ['NVDA'], range: '1y', interval: '1d', rebase: false });
@@ -88,6 +88,15 @@ describe('pt-price-events', () => {
     expect(await html(series, events)).toMatch(/Last close \$[\d,]+\.\d\d/);
   });
   it('renders not-available without points', async () => expect(await html([{ ticker: 'NVDA', points: [] }], events)).toContain('pt-na'));
+  it('leaves room on the right: the furthest future marker and the last close stand clear of the price axis', () => {
+    const pts = series[0]!.points;
+    const ahead: EventItem = { date: addDays(pts.at(-1)!.t, 40), ticker: 'NVDA', name: 'NVIDIA', logo: null, mcap: null, kind: 'earnings',
+      meta: { time: 'amc', epsEst: 1, epsActual: null, revEst: null, revActual: null } };
+    const g = layout(pts, [ahead])!;
+    expect(g.markers[0]!.cx).toBeLessThan(PLOT_W - 30); // 6% of the span after the event: ~38 px of a 668 px plot
+    const lastX = (path: string) => Number(/L([\d.]+) [\d.]+$/.exec(path)![1]);
+    expect(lastX(layout(pts, [])!.path)).toBeLessThan(PLOT_W - 30);
+  });
   it('stacks same-day markers instead of overlapping them', () => {
     const e = events.items.find((x) => x.kind !== 'analyst' && x.date <= series[0]!.points.at(-1)!.t && x.date >= series[0]!.points[0]!.t)!;
     const twin: EventItem = { ...e, kind: 'analyst', meta: { firm: 'X', action: 'upgrade', from: null, to: 'Buy' } } as EventItem;

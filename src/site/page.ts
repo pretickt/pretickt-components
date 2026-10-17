@@ -2,6 +2,7 @@ import { afterNextRender, ApplicationRef, Component, inject, PLATFORM_ID, Transf
 import { isPlatformServer } from '@angular/common';
 import { sendBeacon, startBeacon } from './beacon';
 import { attachCards, companyOf } from './cards';
+import { attachCompanyBar } from './cobar';
 import { attachHeader } from './header';
 import { PAGE_KEY, PT_PAGE } from './model';
 import { PtSlot, REGISTRY } from './registry.generated';
@@ -43,6 +44,7 @@ export class PtPage {
       const doc = document;
       startBeacon(doc, this.model.api, sendBeacon);
       attachHeader(doc, { buildId: this.model.buildId });
+      attachCompanyBar(doc); // company pages: the company in the header once its card has scrolled away
       const card = REGISTRY[CARD];
       const cards = card ? attachCards(doc, appRef, {
         id: `${CARD}@${card.version}`, subject: this.model.subject,

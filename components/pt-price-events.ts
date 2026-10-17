@@ -1,12 +1,12 @@
 /**
  * What happened to this stock's price, and which earnings, dividends, splits and analyst moves happened along the way?
- * @version 2.1.0
+ * @version 2.2.0
  * @evidence beta: the price chart with event markers on the company page
  * @evidence DataForSEO: "<ticker> earnings date", "<ticker> dividend" families (launch/data)
  */
 import { Component, computed, inject, input, linkedSignal } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
-import { applyXViewport, applyYViewport, closeAt, FULL_VIEWPORT, isoDay, linePath, monthTicks, PtChart, PtTimeAxis, PtToggles, PtYAxis, type Viewport } from '@pretickt/components/ds';
+import { applyXViewport, applyYViewport, closeAt, FULL_VIEWPORT, isoDay, linePath, monthTicks, padTime, PtChart, PtTimeAxis, PtToggles, PtYAxis, type Viewport } from '@pretickt/components/ds';
 import { amount, date, money, num, pct, tip } from '@pretickt/components/format';
 import { RANGES, type EventItem, type PriceBar, type RangeValue } from '@pretickt/components/typologies';
 
@@ -20,13 +20,17 @@ export interface Marker { kind: string; date: string; items: EventItem[]; cx: nu
 /** A rating reiteration is not an event; it would bury the chart in dots. */
 export const isEvent = (e: EventItem) => !(e.kind === 'analyst' && e.meta.action === 'maintain');
 
-/** Pure chart geometry: calendar-day x scale (so future events have room), close-price y scale, seen through `viewport`. */
+/**
+ * Pure chart geometry: calendar-day x scale up to the last event (so future events have room) plus the time pad (so the last one
+ * stands clear of the price axis), close-price y scale, seen through `viewport`.
+ */
 export function layout(points: PriceBar[], items: EventItem[], viewport: Viewport = FULL_VIEWPORT) {
   if (!points.length) return null;
   const first = points[0]!.t, last = points.at(-1)!.t;
   const shown = items.filter((e) => e.date >= first && isEvent(e));
   const end = shown.reduce((m, e) => (e.date > m ? e.date : m), last);
-  const { min: d0, max: d1 } = applyXViewport(isoDay(first), Math.max(isoDay(first) + 1, isoDay(end)), viewport);
+  const span = padTime(isoDay(first), Math.max(isoDay(first) + 1, isoDay(end)));
+  const { min: d0, max: d1 } = applyXViewport(span.min, span.max, viewport);
   const x = (day: number) => L + ((day - d0) / (d1 - d0 || 1)) * (PLOT_W - L);
   let lo = Infinity, hi = -Infinity;
   for (const p of points) { lo = Math.min(lo, p.c); hi = Math.max(hi, p.c); }
