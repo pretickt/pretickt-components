@@ -52,7 +52,7 @@
   .pt-search-opt span { @apply truncate text-ink-soft; }
   .pt-sr { @apply sr-only; }
   /* the company strip (page app, src/site/cobar.ts): in the header row once a company page's card has scrolled under the header,
-     fading in and out; what its width cannot hold gives way — the name and the market cap first, then the target */
+     fading in and out; what its width cannot hold gives way — the market cap, then the name, then the target */
   .pt-cobar { @apply invisible flex min-w-0 flex-1 items-center justify-center gap-2 overflow-hidden text-sm opacity-0; container-type: inline-size;
     transition: opacity 200ms ease, visibility 0s linear 200ms; }
   .pt-cobar-on .pt-cobar { @apply visible opacity-100; transition: opacity 200ms ease; }
@@ -62,10 +62,12 @@
   .pt-cobar-cap { @apply shrink-0 text-xs text-ink-soft; }
   .pt-cobar-close { @apply shrink-0 font-mono font-semibold text-ink; }
   .pt-cobar-pt { @apply shrink-0 rounded-full border px-2 py-0.5 font-mono text-xs; }
-  @container (width < 30rem) { .pt-cobar-name, .pt-cobar-cap { display: none; } }
-  @container (width < 18rem) { .pt-cobar-pt { display: none; } }
-  /* phones: a row of its own under the header row (absolute, so the page under it does not move) */
-  @media (width < 40rem) { .pt-cobar { @apply absolute inset-x-0 top-full justify-start border-b border-border bg-surface-raised px-4 py-1.5; } }
+  @container (width < 30rem) { .pt-cobar-cap { display: none; } }
+  @container (width < 24rem) { .pt-cobar-name { display: none; } }
+  @container (width < 16rem) { .pt-cobar-pt { display: none; } }
+  /* below a laptop's width the header row has no room for it: a row of its own under the header row (absolute, so the page under
+     it does not move; .pt-section's scroll margin clears both rows) */
+  @media (width < 64rem) { .pt-cobar { @apply absolute inset-x-0 top-full justify-start border-b border-border bg-surface-raised px-4 py-1.5 sm:px-6; } }
   @media (prefers-reduced-motion: reduce) { .pt-cobar, .pt-cobar-on .pt-cobar { transition: none; } }
   /* breadcrumbs above the h1 */
   .pt-crumbs ol { @apply m-0 mb-2 flex list-none flex-wrap gap-1 p-0 text-xs text-ink-soft; }
@@ -79,7 +81,7 @@
   .pt-h1 { @apply text-2xl font-semibold tracking-tight; }
   .pt-lede { @apply mt-1 text-sm text-ink-soft; }
   /* scroll-margin: an anchored section (#financials) lands below the fixed header */
-  .pt-section { @apply mt-8 scroll-mt-20; }
+  .pt-section { @apply mt-8 scroll-mt-24; }
   /* a preview section (the home): its title and the link to the full page on one line */
   .pt-section-head { @apply flex items-baseline justify-between gap-3; }
   .pt-section-more { @apply shrink-0 text-xs font-semibold text-primary no-underline hover:underline; }
