@@ -332,6 +332,39 @@
   .pt-key-rev::before { @apply bg-primary; }
   .pt-key-fcf::before { @apply bg-pos; }
 
+  /* ongoing moves (pt-movers): beta's tornado — per company the 90 days (widest, lightest), the 30 days and this week (narrow, solid),
+     each in the tone of its own move; the legend repeats the three shades; phones see the middle half of the chart at double size */
+  .pt-mv-ctl { @apply flex shrink-0 items-center gap-2; }
+  .pt-mv-market { @apply rounded-full border px-2 py-0.5 font-mono text-2xs font-semibold whitespace-nowrap; }
+  .pt-mv-market-bullish { @apply border-pos/40 bg-pos/5 text-pos; }
+  .pt-mv-market-bearish { @apply border-neg/40 bg-neg/5 text-neg; }
+  .pt-mv-market-sideways { @apply border-border bg-surface text-ink-soft; }
+  .pt-mv-frame { @apply mt-2 overflow-hidden; }
+  .pt-mv-svg { @apply block h-auto w-full; }
+  .pt-mv-zero { @apply stroke-border; }
+  .pt-mv-bar-pos { @apply fill-pos; }
+  .pt-mv-bar-neg { @apply fill-neg; }
+  .pt-mv-m { fill-opacity: 0.35; }
+  .pt-mv-q { fill-opacity: 0.18; }
+  .pt-mv-co { @apply cursor-pointer outline-none; }
+  .pt-mv-co:is(:hover, :focus-visible) .pt-mv-w { @apply stroke-ink; stroke-width: 1; }
+  .pt-mv-tk { @apply fill-primary font-sans font-semibold; font-size: 7px; }
+  .pt-mv-lab { @apply font-mono; font-size: 8px; }
+  .pt-mv-lab-pos { @apply fill-pos; }
+  .pt-mv-lab-neg { @apply fill-neg; }
+  .pt-mv-cap { @apply fill-ink-soft; }
+  .pt-mv-alert { @apply fill-warn; }
+  .pt-mv-alert-mark { @apply fill-white font-sans font-bold; font-size: 7px; }
+  .pt-mv-legend { @apply items-center; }
+  .pt-mv-key { @apply inline-flex items-center gap-1; }
+  .pt-mv-sw { @apply inline-block h-2.5 w-2.5 rounded-sm; }
+  .pt-mv-sw-pos { @apply bg-pos; }
+  .pt-mv-sw-neg { @apply bg-neg; }
+  .pt-mv-sw-m { opacity: 0.35; }
+  .pt-mv-sw-q { opacity: 0.18; }
+  .pt-mv-warn { @apply text-warn not-italic; }
+  @media (width < 40rem) { .pt-mv-svg { width: 200%; max-width: none; margin-left: -50%; } }
+
   /* insiders */
   .pt-ins-type { @apply rounded px-1.5 py-0.5 text-xs font-semibold; }
   .pt-ins-buy .pt-ins-type { @apply bg-pos/15 text-pos; }

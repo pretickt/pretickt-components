@@ -88,6 +88,7 @@ for "no call". **Params must be deterministic** (never the clock or randomness):
 | `pt.moveBreakdown` | `{ticker, window 1d\|5d\|1m}` | `{asOf, ticker, name, sectorName, window, from, ret, marketRet, sectorRet, market, sector, specific, driver, news{today,avg30,spike,top[]}}` — `market+sector+specific = ret` |
 | `pt.company` | `{ticker}` | `{ticker, name, sector, industry, logo}` — `logo` is a file the site publishes (`/logos/<file>`), or null |
 | `pt.screen` | `{scope: {list: biggest_losers\|biggest_gainers\|52w_low\|52w_high\|undervalued\|insider_buying\|most_active\|largest, sector?: one of SECTORS} \| {peersOf}, limit ≤ SCREEN_MAX (600)}` | `{asOf, rows[{ticker,name,sector,logo,close,chg1d,offHigh,pe,ptUpside,marketCap,insiderNet,volumeRatio,spark[20],self}]}` |
+| `pt.ongoingMoves` | `{sort: cap\|move}` (default cap) | `{asOf, threshold, market: bullish\|bearish\|sideways\|null, rows[{ticker,name,logo,marketCap,kind rally\|drawdown,since,days,move,close,week,month,quarter,industry{median,peers[{ticker,move}]}\|null}]}` — the moves above 4% still running (beta's zigzag), this week's losers then gainers, each most important first, ≤ MOVES_PER_SIDE (14) a side |
 
 **The reader's picks** (`PtPicks`, same entry): a component that asks the reader to call an open outcome ("Beat" / "Miss")
 remembers the answer with `private readonly picks = inject(PtPicks)`: `picks.of(() => key)` → the pick (`string | null`),
@@ -191,4 +192,7 @@ price-target | peers | financials | insiders with `ticker`, list with `list` and
 earnings|dividend; `view: 'week'` + `start` = five sessions for the home page; "+N more" opens the whole day) · `pt-why-today`
 (answer-first sentence + market/sector/stock bars + news spike) · `pt-screen` (ranked table with list-specific column and sparklines;
 `list` or `peersOf`, optional `sector`; grows by 20 up to every company) · `pt-financials` (quarterly revenue/FCF bars + margins table) · `pt-news` (headlines with AI sentiment dots,
-nofollow links) · `pt-insiders` (buy/sell totals + Form 4 table).
+nofollow links) · `pt-insiders` (buy/sell totals + Form 4 table) · `pt-movers` (beta's "Ongoing moves" tornado for the home: this
+week's losers left, gainers right, the largest — or with the toggle the biggest moves — in the middle; week / 30 / 90 days in three
+shades with a legend, ⚠ when the industry moves too, the market chip; each bar links its company with its numbers as tooltip rows;
+phones see the middle half at double size).

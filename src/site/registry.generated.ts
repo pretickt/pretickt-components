@@ -8,6 +8,7 @@ import { PtCompanyCard } from '../../components/pt-company-card';
 import { PtFinancials } from '../../components/pt-financials';
 import { PtInsiders } from '../../components/pt-insiders';
 import { PtMetric } from '../../components/pt-metric';
+import { PtMovers } from '../../components/pt-movers';
 import { PtNews } from '../../components/pt-news';
 import { PtPriceEvents } from '../../components/pt-price-events';
 import { PtPriceTarget } from '../../components/pt-price-target';
@@ -22,6 +23,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
   'pt-financials': { version: '2.3.0', sample: { ticker: 'NVDA' } },
   'pt-insiders': { version: '2.3.0', sample: { ticker: 'NVDA' } },
   'pt-metric': { version: '2.1.0', sample: { ticker: 'NVDA', metrics: ['pe', 'pe_vs_sector', 'pe_vs_own', 'pt_upside', 'consensus', 'market_cap', 'fcf_yield', 'insider_net', 'earnings_in', 'news'] } },
+  'pt-movers': { version: '1.0.0', sample: {} },
   'pt-news': { version: '2.1.0', sample: { ticker: 'NVDA' } },
   'pt-price-events': { version: '2.2.0', sample: { ticker: 'NVDA' } },
   'pt-price-target': { version: '2.2.0', sample: { ticker: 'NVDA' } },
@@ -32,7 +34,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
 /** One placement: the island wrapper (`tag@version` for the beacon, the error notice) and its component, hydrated when it scrolls into view. */
 @Component({
   selector: 'div[ptSlot]',
-  imports: [PtAnswer, PtCalendar, PtCompanyCard, PtFinancials, PtInsiders, PtMetric, PtNews, PtPriceEvents, PtPriceTarget, PtScreen, PtWhyToday],
+  imports: [PtAnswer, PtCalendar, PtCompanyCard, PtFinancials, PtInsiders, PtMetric, PtMovers, PtNews, PtPriceEvents, PtPriceTarget, PtScreen, PtWhyToday],
   providers: [Pt, { provide: PT_SLOT, useFactory: () => { const injector = inject(Injector); return () => injector.get(PtSlot).id(); } }],
   host: { class: 'pt-island', '[attr.data-island]': 'id()', '[class.pt-island-error]': 'pt.failed()' },
   template: `
@@ -43,6 +45,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
       @case ('pt-financials') { @defer (hydrate on viewport) {<pt-financials [ticker]="$any(p()).ticker" [periods]="$any(p()).periods ?? 8" />} }
       @case ('pt-insiders') { @defer (hydrate on viewport) {<pt-insiders [ticker]="$any(p()).ticker" [days]="$any(p()).days ?? 365" />} }
       @case ('pt-metric') { @defer (hydrate on viewport) {<pt-metric [ticker]="$any(p()).ticker" [metrics]="$any(p()).metrics" />} }
+      @case ('pt-movers') { @defer (hydrate on viewport) {<pt-movers [sort]="$any(p()).sort ?? 'cap'" />} }
       @case ('pt-news') { @defer (hydrate on viewport) {<pt-news [ticker]="$any(p()).ticker" [limit]="$any(p()).limit ?? 20" />} }
       @case ('pt-price-events') { @defer (hydrate on viewport) {<pt-price-events [ticker]="$any(p()).ticker" [range]="$any(p()).range ?? '1y'" />} }
       @case ('pt-price-target') { @defer (hydrate on viewport) {<pt-price-target [ticker]="$any(p()).ticker" />} }
