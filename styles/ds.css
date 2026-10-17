@@ -334,6 +334,8 @@
 
   /* ongoing moves (pt-movers): beta's tornado — per company the 90 days (widest, lightest), the 30 days and this week (narrow, solid),
      each in the tone of its own move; the legend repeats the three shades; phones see the middle half of the chart at double size */
+  .pt-mv > .pt-head { @apply flex-wrap; }
+  .pt-mv > .pt-head > .pt-lede { @apply mt-0; flex: 1 1 20rem; }   /* narrow screens: the rule on its own line, the controls under it */
   .pt-mv-ctl { @apply flex shrink-0 items-center gap-2; }
   .pt-mv-market { @apply rounded-full border px-2 py-0.5 font-mono text-2xs font-semibold whitespace-nowrap; }
   .pt-mv-market-bullish { @apply border-pos/40 bg-pos/5 text-pos; }
