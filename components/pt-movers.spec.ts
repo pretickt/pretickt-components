@@ -31,6 +31,18 @@ describe('buildMovers (beta\'s tornado)', () => {
     expect(m!.w).toBeGreaterThan(w!.w);
     expect(w!.rx).toBe(2);
   });
+  it('the losers/gainers boundary is the centre whatever the balance: the top loser and the top gainer flank it at the same distance', () => {
+    const g = buildMovers([row('L1', -0.05), row('L2', -0.04), row('L3', -0.03), row('G1', 0.02)])!;
+    const x = Object.fromEntries(g.bars.map((b) => [b.ticker, b.x]));
+    expect(g.bars.every((b) => (b.up ? b.x > 400 : b.x < 400))).toBe(true);
+    expect(400 - x.L1!).toBeCloseTo(x.G1! - 400, 1);
+    const balanced = buildMovers(Array.from({ length: 28 }, (_, i) => row(`T${String(i).padStart(2, '0')}`, i < 14 ? -0.01 - i / 100 : 0.01 + i / 100)))!;
+    expect(balanced.bars.map((b) => b.x)).toEqual(Array.from({ length: 28 }, (_, i) => Math.round(((800 / 29) * (i + 1)) * 10) / 10)); // beta's slots
+  });
+  it('a phone crops to the middle half only when a side has more than 7 companies', () => {
+    expect(buildMovers(Array.from({ length: 8 }, (_, i) => row(`L${i}`, -0.01 - i / 100)))!.crop).toBe(true);
+    expect(buildMovers([...Array.from({ length: 7 }, (_, i) => row(`L${i}`, -0.01 - i / 100)), row('G1', 0.02)])!.crop).toBe(false);
+  });
   it('draws what a row has: no 90-day backdrop without a quarter, one side alone, nothing for an empty or weekless list', () => {
     expect(buildMovers([row('A', 0.03, { quarter: null })])!.bars[0]!.rects.map((r) => r.cls.split(' ')[0])).toEqual(['pt-mv-m', 'pt-mv-w']);
     expect(buildMovers([row('A', -0.03), row('B', -0.01)])!.bars).toHaveLength(2);

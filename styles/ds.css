@@ -365,7 +365,7 @@
   .pt-mv-sw-m { opacity: 0.35; }
   .pt-mv-sw-q { opacity: 0.18; }
   .pt-mv-warn { @apply text-warn not-italic; }
-  @media (width < 40rem) { .pt-mv-svg { width: 200%; max-width: none; margin-left: -50%; } }
+  @media (width < 40rem) { .pt-mv-crop .pt-mv-svg { width: 200%; max-width: none; margin-left: -50%; } }
 
   /* insiders */
   .pt-ins-type { @apply rounded px-1.5 py-0.5 text-xs font-semibold; }

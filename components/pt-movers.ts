@@ -28,7 +28,11 @@ export interface MoverBar {
   /** The tooltip rows (the hover card's footer) and the spoken label. */
   tip: string; label: string;
 }
-export interface MoversChart { w: number; h: number; zeroY: number; bars: MoverBar[] }
+export interface MoversChart {
+  w: number; h: number; zeroY: number; bars: MoverBar[];
+  /** More than 7 companies on a side: a phone shows the middle half, at double size (the 7 most important of each side). */
+  crop: boolean;
+}
 
 /** This week's move for a label: one decimal under 10%, whole percent above (beta). */
 export function pctShort(f: number): string {
@@ -51,14 +55,20 @@ const tipOf = (r: OngoingMoveRow): string => tip({
 
 /**
  * Beta's tornado: this week's losers on the left, gainers on the right, the rows' order (most important first) placed next to the
- * centre and fading outwards. One scale for the three windows; per company the 90 days (widest, lightest), the 30 days and the
+ * centre and fading outwards. The boundary is always the centre — both sides share one slot width, set by the longer side — so a
+ * lopsided week (a crash: 14 losers, 2 gainers) keeps its most important companies in the middle, where a phone's crop looks; with
+ * 14 a side the slots are beta's. One scale for the three windows; per company the 90 days (widest, lightest), the 30 days and the
  * week (narrow, solid) from the shared baseline; the logo on the bar-free side, under it the week's % and the market cap.
  */
 export function buildMovers(rows: readonly OngoingMoveRow[]): MoversChart | null {
   const drawn = rows.filter((r) => r.week != null);
-  const ordered = [...drawn.filter((r) => r.week! < 0).reverse(), ...drawn.filter((r) => r.week! >= 0)];
-  if (!ordered.length) return null;
-  const slot = W / (ordered.length + 1), barW = Math.min(14, slot * 0.5);
+  const losers = drawn.filter((r) => r.week! < 0), gainers = drawn.filter((r) => r.week! >= 0);
+  const side = Math.max(losers.length, gainers.length);
+  if (!side) return null;
+  const slot = W / (2 * side + 1), barW = Math.min(14, slot * 0.5);
+  // k = 0 is the most important of its side, next to the centre
+  const placed = [...losers.map((r, k) => ({ r, x: W / 2 - slot * (k + 0.5) })).reverse(), ...gainers.map((r, k) => ({ r, x: W / 2 + slot * (k + 0.5) }))];
+  const ordered = placed.map((p) => p.r);
   const maxAbs = Math.max(0.01, ...ordered.flatMap((r) => [r.week, r.month, r.quarter].filter((v): v is number => v != null).map(Math.abs)));
   const sy = (v: number) => ZERO - (v / maxAbs) * (ZERO - TOP);
   const rect = (cls: string, v: number | null, x: number, half: number, rx: number | null): MoverRect[] => {
@@ -66,8 +76,8 @@ export function buildMovers(rows: readonly OngoingMoveRow[]): MoversChart | null
     const y = sy(v);
     return [{ cls: `${cls} pt-mv-bar-${v >= 0 ? 'pos' : 'neg'}`, x: r1(x - half), y: r1(v >= 0 ? y : ZERO), w: r1(half * 2), h: r1(Math.abs(ZERO - y) || 0.5), rx }];
   };
-  const bars = ordered.map((r, i): MoverBar => {
-    const w = r.week!, up = w >= 0, x = r1(slot * (i + 1));
+  const bars = placed.map(({ r, x: at }): MoverBar => {
+    const w = r.week!, up = w >= 0, x = r1(at);
     const logoY = up ? ZERO + 4 : ZERO - 18, labelY1 = up ? ZERO + 28 : ZERO - 24, labelY2 = up ? ZERO + 37 : ZERO - 33;
     const alertY = up ? labelY2 + 4 : labelY2 - 16;
     return {
@@ -79,7 +89,7 @@ export function buildMovers(rows: readonly OngoingMoveRow[]): MoversChart | null
       tip: tipOf(r), label: `${r.name}, ${pct(w)} this week`,
     };
   });
-  return { w: W, h: H, zeroY: ZERO, bars };
+  return { w: W, h: H, zeroY: ZERO, bars, crop: side > 7 };
 }
 
 const ARROWS: Record<MarketTrend, string> = { bullish: '▲', bearish: '▼', sideways: '→' };
@@ -101,7 +111,7 @@ const MARKET_HINTS: Record<MarketTrend, string> = { bullish: 'higher highs and h
           </div>
         </div>
         @if (g(); as g) {
-          <div class="pt-mv-frame">
+          <div class="pt-mv-frame" [class.pt-mv-crop]="g.crop">
             <svg class="pt-mv-svg" [attr.viewBox]="'0 0 ' + g.w + ' ' + g.h" role="group" aria-label="Ongoing moves: this week's losers on the left, gainers on the right">
               <line class="pt-mv-zero" x1="0" [attr.x2]="g.w" [attr.y1]="g.zeroY" [attr.y2]="g.zeroY" />
               @for (b of g.bars; track b.ticker) {
