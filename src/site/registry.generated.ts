@@ -2,6 +2,7 @@
 // (`@defer (hydrate on viewport)`) and lazy chunk; a prop the page does not give gets the component's own (literal) default.
 import { Component, computed, inject, Injector, input } from '@angular/core';
 import { Pt, PT_SLOT } from '@pretickt/components/context';
+import { PtAnswer } from '../../components/pt-answer';
 import { PtCalendar } from '../../components/pt-calendar';
 import { PtCompanyCard } from '../../components/pt-company-card';
 import { PtFinancials } from '../../components/pt-financials';
@@ -15,6 +16,7 @@ import { PtWhyToday } from '../../components/pt-why-today';
 
 /** Every component: its version, and props it can render with (the build renders each once before any page, see warmUp). */
 export const REGISTRY: Record<string, { version: string; sample: Record<string, unknown> }> = {
+  'pt-answer': { version: '1.0.0', sample: {} },
   'pt-calendar': { version: '2.4.0', sample: { month: '2026-09' } },
   'pt-company-card': { version: '1.1.0', sample: { ticker: 'NVDA' } },
   'pt-financials': { version: '2.3.0', sample: { ticker: 'NVDA' } },
@@ -30,11 +32,12 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
 /** One placement: the island wrapper (`tag@version` for the beacon, the error notice) and its component, hydrated when it scrolls into view. */
 @Component({
   selector: 'div[ptSlot]',
-  imports: [PtCalendar, PtCompanyCard, PtFinancials, PtInsiders, PtMetric, PtNews, PtPriceEvents, PtPriceTarget, PtScreen, PtWhyToday],
+  imports: [PtAnswer, PtCalendar, PtCompanyCard, PtFinancials, PtInsiders, PtMetric, PtNews, PtPriceEvents, PtPriceTarget, PtScreen, PtWhyToday],
   providers: [Pt, { provide: PT_SLOT, useFactory: () => { const injector = inject(Injector); return () => injector.get(PtSlot).id(); } }],
   host: { class: 'pt-island', '[attr.data-island]': 'id()', '[class.pt-island-error]': 'pt.failed()' },
   template: `
     @switch (c()) {
+      @case ('pt-answer') { @defer (hydrate on viewport) {<pt-answer [topic]="$any(p()).topic ?? 'forecast'" [ticker]="$any(p()).ticker" [list]="$any(p()).list ?? 'biggest_losers'" [sector]="$any(p()).sector" [month]="$any(p()).month" />} }
       @case ('pt-calendar') { @defer (hydrate on viewport) {<pt-calendar [month]="$any(p()).month" [kind]="$any(p()).kind ?? 'earnings'" [view]="$any(p()).view ?? 'month'" [start]="$any(p()).start" />} }
       @case ('pt-company-card') { @defer (hydrate on viewport) {<pt-company-card [ticker]="$any(p()).ticker" [size]="$any(p()).size ?? 'wide'" [extra]="$any(p()).extra ?? null" />} }
       @case ('pt-financials') { @defer (hydrate on viewport) {<pt-financials [ticker]="$any(p()).ticker" [periods]="$any(p()).periods ?? 8" />} }

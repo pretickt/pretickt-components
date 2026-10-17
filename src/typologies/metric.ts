@@ -72,8 +72,6 @@ export type MetricParams = z.output<typeof MetricParams>;
 export type MetricItem = z.infer<typeof MetricItem>;
 export type MetricPayload = z.infer<typeof MetricPayload>;
 
-/** The window of the insider_net metric (open-market buys minus sales), in calendar days: the badge, the nightly and the screen list. */
-export const INSIDER_WINDOW_DAYS = 90;
 
 export const METRIC_LABELS: Record<MetricKey, { label: string; unit: MetricItem['unit']; hint: string }> = {
   pe: { label: 'P/E', unit: 'x', hint: 'Price divided by trailing twelve-month earnings per share.' },

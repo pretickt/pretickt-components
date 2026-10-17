@@ -32,3 +32,6 @@ export type Sector = (typeof SECTORS)[number];
 
 /** The most rows a list (`screen@1`) answers: the whole universe (518 today), so "Show 20 more" can reach every company. */
 export const SCREEN_MAX = 600;
+
+/** The window of the insider_net metric (open-market buys minus sales), in calendar days: the badge, the nightly and the screen list. */
+export const INSIDER_WINDOW_DAYS = 90;
