@@ -103,7 +103,7 @@ platform change (schema here + resolver in the private platform + a public-data 
 
 ## Design system (`@pretickt/components/ds`, `@pretickt/components/format`, `styles/ds.css`)
 - **Classes first** (global `ds.css`, Tailwind 4): `pt-head` (title row with controls), `pt-lede`, `pt-note`, `pt-meta` (small
-  secondary text), `pt-na` (the not-available box — only for that), `pt-busy` (loading), `pt-table-wrap/pt-table/pt-num`,
+  secondary text), `pt-answer` (a page's answer sentence), `pt-prose` (static text: paragraphs and lists), `pt-na` (the not-available box — only for that), `pt-busy` (loading), `pt-table-wrap/pt-table/pt-num`,
   `pt-badges/pt-badge`, `pt-t-pos/neg/flat/na` (signed text), `pt-dot-pos/neg/flat/na`, `pt-news/pt-news-item`, `pt-spark`,
   `pt-chart/pt-chart-svg/pt-line/pt-grid/pt-axis`, `pt-legend/pt-key`. Tones are always `pos/neg/flat/na`. Tokens (colours,
   radius) are CSS variables: `--color-pos`, `--color-neg`, `--color-ink`, `--color-ink-soft`, `--color-surface`, `--color-primary`…
@@ -181,7 +181,9 @@ place a component are defined in the platform repo (`plant/src/generate/pages.ts
 `pt-company-card` (the company at a glance — logo, price over 60 sessions, 52-week range, consensus, PT, tags with "Show all";
 `size` wide = page header, compact = the hover card) · `pt-metric` (badge strip of the catalogue) · `pt-price-events` (price line +
 E/D/S/A markers grouped per day, range toggles, zoom & pan) · `pt-price-target` (beta's pt-chart: clustered target dots, gradient
-segments, hover panel of the analysts, zoom & pan) · `pt-calendar` (month grid + macro dates + full list, previous/next month; `kind`
+segments, hover panel of the analysts, zoom & pan) · `pt-answer` (the page's question answered first, in a sentence or two, from the data the page already asks for; `topic` forecast |
+price-target | peers | financials | insiders with `ticker`, list with `list` and optional `sector`, earnings | dividends with `month`) ·
+`pt-calendar` (month grid + macro dates + full list, previous/next month; `kind`
 earnings|dividend; `view: 'week'` + `start` = five sessions for the home page; "+N more" opens the whole day) · `pt-why-today`
 (answer-first sentence + market/sector/stock bars + news spike) · `pt-screen` (ranked table with list-specific column and sparklines;
 `list` or `peersOf`, optional `sector`; grows by 20 up to every company) · `pt-financials` (quarterly revenue/FCF bars + margins table) · `pt-news` (headlines with AI sentiment dots,
