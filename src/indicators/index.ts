@@ -10,3 +10,4 @@ export * from './trend-structure';
 export * from './trend';
 export { buildSectorIndex } from './sector';
 export * from './cross';
+export { zigzag, type SwingEpisode } from './zigzag';
