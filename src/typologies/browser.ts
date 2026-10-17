@@ -12,5 +12,6 @@ export type * from './insider';
 export type * from './metric';
 export type * from './move-breakdown';
 export type * from './news';
+export type * from './ongoing-moves';
 export type * from './price-series';
 export type * from './screen';

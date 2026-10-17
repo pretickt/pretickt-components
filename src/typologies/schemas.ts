@@ -8,6 +8,7 @@ import { InsiderParams, InsiderPayload } from './insider';
 import { MetricParams, MetricPayload } from './metric';
 import { MoveBreakdownParams, MoveBreakdownPayload } from './move-breakdown';
 import { NewsParams, NewsPayload } from './news';
+import { OngoingMovesParams, OngoingMovesPayload } from './ongoing-moves';
 import { PriceSeriesParams, PriceSeriesPayload } from './price-series';
 import { ScreenParams, ScreenPayload } from './screen';
 
@@ -36,6 +37,7 @@ export const TYPOLOGY_SCHEMAS = /* @__PURE__ */ withIds({
   'move-breakdown@1': { params: MoveBreakdownParams, payload: MoveBreakdownPayload },
   'screen@1': { params: ScreenParams, payload: ScreenPayload },
   'company@1': { params: CompanyParams, payload: CompanyPayload },
+  'ongoing-moves@1': { params: OngoingMovesParams, payload: OngoingMovesPayload },
 });
 export type TypologyKey = keyof typeof TYPOLOGY_SCHEMAS;
 

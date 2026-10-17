@@ -35,3 +35,14 @@ export const SCREEN_MAX = 600;
 
 /** The window of the insider_net metric (open-market buys minus sales), in calendar days: the badge, the nightly and the screen list. */
 export const INSIDER_WINDOW_DAYS = 90;
+
+/** Ongoing moves (`ongoing-moves@1`, the home's chart): the order of each side — market cap, or the size of this week's move. */
+export const MOVE_SORTS = ['cap', 'move'] as const;
+export type MoveSort = (typeof MOVE_SORTS)[number];
+/** At most this many companies a side (this week's losers, this week's gainers). */
+export const MOVES_PER_SIDE = 14;
+/** A move counts while it is larger than this and has not reversed by as much (beta's 4% zigzag), as a fraction. */
+export const MOVES_THRESHOLD = 0.04;
+/** The market's structural trend (SPY), as the stocks' "Trend" badge reads it. */
+export const MARKET_TRENDS = ['bullish', 'bearish', 'sideways'] as const;
+export type MarketTrend = (typeof MARKET_TRENDS)[number];
