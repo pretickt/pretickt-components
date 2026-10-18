@@ -88,6 +88,7 @@ for "no call". **Params must be deterministic** (never the clock or randomness):
 | `pt.moveBreakdown` | `{ticker, window 1d\|5d\|1m}` | `{asOf, ticker, name, sectorName, window, from, ret, marketRet, sectorRet, market, sector, specific, driver, news{today,avg30,spike,top[]}}` — `market+sector+specific = ret` |
 | `pt.company` | `{ticker}` | `{ticker, name, sector, industry, logo}` — `logo` is a file the site publishes (`/logos/<file>`), or null |
 | `pt.screen` | `{scope: {list: biggest_losers\|biggest_gainers\|52w_low\|52w_high\|undervalued\|insider_buying\|most_active\|largest, sector?: one of SECTORS} \| {peersOf}, limit ≤ SCREEN_MAX (600)}` | `{asOf, rows[{ticker,name,sector,logo,close,chg1d,offHigh,pe,ptUpside,marketCap,insiderNet,volumeRatio,spark[20],self}]}` |
+| `pt.feed` | `{scope: {by:'ticker',ticker} \| {by:'sector',sector: one of SECTORS} \| {by:'market'}}` | `{asOf, items[{date,group technical\|fundamental\|news\|market,kind,ticker\|null,name,logo,label,sub,text,impact,impactKind day\|since\|expected\|typical\|null,session,href}]}` — the events of the last `FEED_DAYS.back` (120) days and the next `FEED_DAYS.ahead` (60), at most `FEED_MAX` (40) by relevance, in date order; `kind` is open (`FEED_KINDS` today), `ticker` null = the market's own (macro, SPY); `text` is the sentence (tooltip, indexed), `href` a site path |
 | `pt.ongoingMoves` | `{sort: cap\|move}` (default cap) | `{asOf, threshold, market: bullish\|bearish\|sideways\|null, rows[{ticker,name,logo,marketCap,kind rally\|drawdown,since,days,move,close,week,month,quarter,industry{median,peers[{ticker,move}]}\|null}]}` — the moves above 4% still running (beta's zigzag), this week's losers then gainers, each most important first, ≤ MOVES_PER_SIDE (14) a side |
 
 **The reader's picks** (`PtPicks`, same entry): a component that asks the reader to call an open outcome ("Beat" / "Miss")
@@ -110,7 +111,7 @@ platform change (schema here + resolver in the private platform + a public-data 
   radius) are CSS variables: `--color-pos`, `--color-neg`, `--color-ink`, `--color-ink-soft`, `--color-surface`, `--color-primary`…
 - **Format** (deterministic, the same on server and browser — never `Intl`/`toLocale*`): `num(v,digits)`, `pct(fraction →
   "+12.3%")`, `level(fraction → "12.3%")`, `usd(v,{compact,signed,digits})`, `money(v,digits)`, `amount(cash)`, `compact`,
-  `date(iso → "Sep 30, 2026")`, `month(ym → "Mar 26")`, `tone(v, flatBand)`, `href(url)` (http(s) or a site path, else `#`),
+  `date(iso → "Sep 30, 2026")`, `month(ym → "Mar 26")`, `dayMonth(iso → "Oct 30")`, `tone(v, flatBand)`, `href(url)` (http(s) or a site path, else `#`),
   `stockHref(ticker)`, `tip({ Label: value })`, `badgeValue(badge)`, `svgId(s)`. Expose what the template uses as class fields
   (`protected readonly pct = pct`).
 - **Companies**: `<a ptCompany [ticker] [name] [logo]></a>` (logo + ticker + name, linked to the company page) and `<pt-logo [ticker]
@@ -126,7 +127,8 @@ platform change (schema here + resolver in the private platform + a public-data 
   rows `sort.sorted().slice(0, shown())` (sort the whole set, then cut). Rows the API has: grow the call's `limit` (pt-screen).
 - **Primitives**: `<div ptToggles [value] [options]="[[v, label], …]" aria-label="…" (choose)="…">` (emits on every press),
   `<li [ptBadge]="item" size="mini">` inside `<ul class="pt-badges">`, `<svg [ptIcon]="name">` (calendar target trend-up
-  trend-down alert peak; wrap in `@if (iconPath(name))`), `<div ptChart [w] [h] [plotW] [plotH] [id] [label] [(view)]>` — the
+  trend-down alert peak valley earnings dividend split upgrade downgrade insider bolt news cross gauge bank dot; wrap in
+  `@if (iconPath(name))` unless the name is one of these), `<div ptChart [w] [h] [plotW] [plotH] [id] [label] [(view)]>` — the
   zoomable chart frame; put your parts in `<svg:g ptDefs>`, `<svg:g ptAxes>` (with `<svg:g ptYAxis …>` / `<svg:g ptTimeAxis …>`),
   `<svg:g ptPlot>` (clipped), `<svg:g ptFront>`, and html after the svg in `<ng-container ngProjectAs="[ptAfter]">`. Geometry:
   `applyXViewport`, `applyYViewport`, `FULL_VIEWPORT`, `closeAt`, `isoDay`, `linePath`, `monthTicks`, `padTime` (a time chart's
@@ -195,4 +197,6 @@ earnings|dividend; `view: 'week'` + `start` = five sessions for the home page; "
 nofollow links) · `pt-insiders` (buy/sell totals + Form 4 table) · `pt-movers` (beta's "Ongoing moves" tornado for the home: this
 week's losers left, gainers right, the largest — or with the toggle the biggest moves — in the middle; week / 30 / 90 days in three
 shades with a legend, ⚠ when the industry moves too, the market chip; each bar links its company with its numbers as tooltip rows;
-phones see the middle half at double size).
+phones see the middle half at double size) · `pt-feed` (the feed: small event cards on a strip that scrolls sideways and opens on
+today — technical, fundamental, news and the market's own, each with the move it came with, dashed when still to come; a click opens
+the page that explains it, the sentence is the tooltip and the indexed text; `ticker`, or `sector`, or neither for the market).

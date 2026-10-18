@@ -9,7 +9,7 @@ describe('build budget', () => {
   });
   it('the components to build are the pt-*.ts files, never their specs or the spec helpers', () => {
     const files = componentFiles(readdirSync('components'));
-    expect(files.length).toBe(12);
+    expect(files.length).toBe(13);
     expect(files.every((f) => /^pt-[a-z0-9-]+\.ts$/.test(f))).toBe(true);
   });
 });

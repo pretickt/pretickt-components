@@ -23,6 +23,8 @@
   --color-neg: oklch(0.58 0.2 25);
   --color-danger: var(--color-neg);
   --color-warn: oklch(0.75 0.15 75);
+  /* the feed's fundamental events (earnings, dividends, analysts, insiders): a violet apart from the price tones */
+  --color-fund: oklch(0.52 0.16 295);
   --radius-control: 0.625rem;
   /* chart and table micro-type */
   --text-2xs: 11px;
@@ -103,7 +105,7 @@
   /* states */
   .pt-na { @apply rounded-control border border-dashed border-border px-3 py-4 text-center text-sm text-ink-soft; }
   .pt-icon { @apply inline-block h-3.5 w-3.5 shrink-0 fill-none stroke-current; stroke-width: 1.5; }
-  .pt-tip { @apply pointer-events-none absolute z-40 -translate-x-1/2 -translate-y-full rounded-md bg-ink px-2 py-1 text-xs text-surface shadow-lg; }
+  .pt-tip { @apply pointer-events-none absolute z-40 max-w-xs -translate-x-1/2 -translate-y-full rounded-md bg-ink px-2 py-1 text-xs text-surface shadow-lg; }
   .pt-tip b { @apply font-semibold; }
   .pt-busy { @apply opacity-60 transition-opacity; }
   /* Islands anchor their tooltip. Never put position on [class^='pt-']: it would override .pt-tip's absolute. */
@@ -366,6 +368,54 @@
   .pt-mv-sw-q { opacity: 0.18; }
   .pt-mv-warn { @apply text-warn not-italic; }
   @media (width < 40rem) { .pt-mv-crop .pt-mv-svg { width: 200%; max-width: none; margin-left: -50%; } }
+
+  /* the feed (pt-feed): small event cards on a strip that scrolls sideways, opening on today; the top edge says the group, dashed
+     cards are still to come; the arrows are for a mouse (touch screens swipe) */
+  .pt-feed-strip { @apply relative m-0 mt-1 flex list-none gap-2 overflow-x-auto p-0 pb-2; scroll-behavior: smooth; scroll-snap-type: x proximity;
+    scrollbar-width: thin; overscroll-behavior-x: contain; }
+  .pt-feed-item { @apply shrink-0; scroll-snap-align: start; }
+  .pt-feed-card { @apply block h-26 w-32 rounded-control border border-border bg-surface-raised p-2 text-ink no-underline outline-none;
+    border-top-width: 3px; transition: box-shadow 120ms, transform 120ms; }
+  .pt-feed-face { @apply flex h-full flex-col gap-0.5; }
+  .pt-feed-card:is(:hover, :focus-visible) { @apply -translate-y-0.5 shadow-md; }
+  .pt-feed-card:focus-visible { @apply ring-2 ring-primary/40; }
+  .pt-feed-future .pt-feed-card { @apply border-dashed bg-surface; }
+  .pt-feed-technical { border-top-color: var(--color-primary); }
+  .pt-feed-fundamental { border-top-color: var(--color-fund); }
+  .pt-feed-news { border-top-color: var(--color-warn); }
+  .pt-feed-market { border-top-color: var(--color-ink); }
+  .pt-feed-top { @apply flex h-5 items-center justify-between gap-1; }
+  .pt-feed-glyph { @apply inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-surface text-ink-soft; }
+  .pt-feed-glyph .pt-icon { @apply h-3 w-3; }
+  .pt-feed-technical .pt-feed-glyph { @apply bg-primary/10 text-primary; }
+  .pt-feed-fundamental .pt-feed-glyph { @apply bg-fund/10 text-fund; }
+  .pt-feed-news .pt-feed-glyph { @apply bg-warn/15 text-ink; }
+  .pt-feed-market .pt-feed-glyph { @apply bg-ink/10 text-ink; }
+  .pt-feed-co { @apply inline-flex min-w-0 items-center gap-1 font-mono text-3xs font-semibold text-ink-soft; }
+  .pt-feed-co .pt-logo { @apply h-4 w-4 text-[0.45rem]; }
+  .pt-feed-label { @apply mt-1 truncate text-xs font-semibold leading-tight; }
+  .pt-feed-sub { @apply truncate text-3xs leading-tight text-ink-soft; }
+  .pt-feed-foot { @apply mt-auto flex items-center justify-between gap-1; }
+  .pt-feed-date { @apply font-mono text-3xs text-ink-soft; }
+  .pt-feed-pill { @apply whitespace-nowrap rounded-full px-1.5 py-px font-mono text-3xs font-semibold; }
+  .pt-feed-pill-pos { @apply bg-pos/10 text-pos; }
+  .pt-feed-pill-neg { @apply bg-neg/10 text-neg; }
+  .pt-feed-pill-flat { @apply bg-surface text-ink-soft; }
+  .pt-feed-pill-est { @apply border border-dashed border-ink-soft/50 text-ink-soft; }
+  .pt-feed-since { @apply font-sans font-normal; }
+  .pt-feed-today { @apply flex shrink-0 flex-col items-center gap-1 px-1 text-3xs font-semibold uppercase tracking-wide text-primary; scroll-snap-align: center; }
+  .pt-feed-today::before, .pt-feed-today::after { content: ''; @apply w-px flex-1 bg-primary/50; }
+  .pt-feed-today time { @apply font-mono font-normal normal-case tracking-normal; }
+  .pt-feed-nav { @apply flex shrink-0 gap-1; }
+  .pt-feed-nav button { @apply h-7 w-7 cursor-pointer rounded-full border border-border bg-surface-raised text-sm leading-none text-ink-soft hover:border-primary hover:text-primary; }
+  @media (hover: none) { .pt-feed-nav { display: none; } }
+  .pt-feed-key { @apply inline-flex items-center gap-1; }
+  .pt-feed-key::before { content: ''; @apply inline-block h-2 w-2 rounded-full; }
+  .pt-feed-key-technical::before { @apply bg-primary; }
+  .pt-feed-key-fundamental::before { @apply bg-fund; }
+  .pt-feed-key-news::before { @apply bg-warn; }
+  .pt-feed-key-market::before { @apply bg-ink; }
+  @media (prefers-reduced-motion: reduce) { .pt-feed-strip { scroll-behavior: auto; } .pt-feed-card { transition: none; } .pt-feed-card:is(:hover, :focus-visible) { @apply translate-y-0; } }
 
   /* insiders */
   .pt-ins-type { @apply rounded px-1.5 py-0.5 text-xs font-semibold; }
