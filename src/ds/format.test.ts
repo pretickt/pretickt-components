@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { amount, badgeValue, cash, compact, currencyName, date, href, level, money, month, num, pct, stockHref, tip, tone, usd } from './format';
+import { amount, badgeValue, cash, compact, currencyName, date, dayMonth, href, level, money, month, num, pct, stockHref, tip, tone, usd } from './format';
 
 describe('format (the design system\'s numbers and dates; Angular escapes what it prints, so nothing here escapes)', () => {
   it('numbers', () => {
@@ -10,6 +10,7 @@ describe('format (the design system\'s numbers and dates; Angular escapes what i
   });
   it('dates come back as text, unescaped (Angular escapes on output)', () => {
     expect([date('2026-09-30'), month('2026-03'), date('<b>'), month('a&b')]).toEqual(['Sep 30, 2026', 'Mar 26', '<b>', 'a&b']);
+    expect([dayMonth('2026-10-30'), dayMonth('2027-01-02'), dayMonth('junk')]).toEqual(['Oct 30', 'Jan 2', 'junk']);
   });
   it('tone', () => expect([tone(0.01), tone(-0.01), tone(0.0001, 0.0005), tone(null)]).toEqual(['pos', 'neg', 'flat', 'na']));
   it('href keeps http(s) and site paths as they are, anything else becomes #', () => {

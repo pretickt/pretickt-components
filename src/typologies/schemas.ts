@@ -3,6 +3,7 @@ import type * as z from 'zod/mini';
 import { AnalystsParams, AnalystsPayload } from './analysts';
 import { CompanyParams, CompanyPayload } from './company';
 import { EventsParams, EventsPayload } from './events';
+import { FeedParams, FeedPayload } from './feed';
 import { FundamentalsParams, FundamentalsPayload } from './fundamentals';
 import { InsiderParams, InsiderPayload } from './insider';
 import { MetricParams, MetricPayload } from './metric';
@@ -38,6 +39,7 @@ export const TYPOLOGY_SCHEMAS = /* @__PURE__ */ withIds({
   'screen@1': { params: ScreenParams, payload: ScreenPayload },
   'company@1': { params: CompanyParams, payload: CompanyPayload },
   'ongoing-moves@1': { params: OngoingMovesParams, payload: OngoingMovesPayload },
+  'feed@1': { params: FeedParams, payload: FeedPayload },
 });
 export type TypologyKey = keyof typeof TYPOLOGY_SCHEMAS;
 

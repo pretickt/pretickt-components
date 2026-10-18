@@ -2,6 +2,7 @@ import type * as z from 'zod/mini';
 import { analystsDemo, analystsSamples } from './analysts';
 import { companyDemo, companySamples } from './company';
 import { eventsDemo, eventsSamples, eventsUnknownVariant } from './events';
+import { feedDemo, feedSamples, feedUnknownVariant } from './feed';
 import { fundamentalsDemo, fundamentalsSamples } from './fundamentals';
 import { insiderDemo, insiderSamples } from './insider';
 import { metricDemo, metricSamples, metricUnknownVariant } from './metric';
@@ -35,6 +36,7 @@ const EXTRAS: { [K in TypologyKey]: Extras<S[K]['params'], S[K]['payload']> } = 
   'screen@1': { demo: screenDemo, samples: screenSamples },
   'company@1': { demo: companyDemo, samples: companySamples },
   'ongoing-moves@1': { demo: ongoingMovesDemo, samples: ongoingMovesSamples },
+  'feed@1': { demo: feedDemo, samples: feedSamples, unknownVariant: feedUnknownVariant },
 };
 
 function withExtras(): { [K in TypologyKey]: S[K] & Extras<S[K]['params'], S[K]['payload']> } {
@@ -68,4 +70,5 @@ export * from './news';
 export * from './move-breakdown';
 export * from './screen';
 export * from './ongoing-moves';
+export * from './feed';
 export * from './values';

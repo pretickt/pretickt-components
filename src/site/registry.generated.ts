@@ -5,6 +5,7 @@ import { Pt, PT_SLOT } from '@pretickt/components/context';
 import { PtAnswer } from '../../components/pt-answer';
 import { PtCalendar } from '../../components/pt-calendar';
 import { PtCompanyCard } from '../../components/pt-company-card';
+import { PtFeed } from '../../components/pt-feed';
 import { PtFinancials } from '../../components/pt-financials';
 import { PtInsiders } from '../../components/pt-insiders';
 import { PtMetric } from '../../components/pt-metric';
@@ -20,6 +21,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
   'pt-answer': { version: '1.1.0', sample: {} },
   'pt-calendar': { version: '2.4.0', sample: { month: '2026-09' } },
   'pt-company-card': { version: '1.1.0', sample: { ticker: 'NVDA' } },
+  'pt-feed': { version: '1.0.0', sample: {} },
   'pt-financials': { version: '2.4.0', sample: { ticker: 'NVDA' } },
   'pt-insiders': { version: '2.3.0', sample: { ticker: 'NVDA' } },
   'pt-metric': { version: '2.1.0', sample: { ticker: 'NVDA', metrics: ['pe', 'pe_vs_sector', 'pe_vs_own', 'pt_upside', 'consensus', 'market_cap', 'fcf_yield', 'insider_net', 'earnings_in', 'news'] } },
@@ -34,7 +36,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
 /** One placement: the island wrapper (`tag@version` for the beacon, the error notice) and its component, hydrated when it scrolls into view. */
 @Component({
   selector: 'div[ptSlot]',
-  imports: [PtAnswer, PtCalendar, PtCompanyCard, PtFinancials, PtInsiders, PtMetric, PtMovers, PtNews, PtPriceEvents, PtPriceTarget, PtScreen, PtWhyToday],
+  imports: [PtAnswer, PtCalendar, PtCompanyCard, PtFeed, PtFinancials, PtInsiders, PtMetric, PtMovers, PtNews, PtPriceEvents, PtPriceTarget, PtScreen, PtWhyToday],
   providers: [Pt, { provide: PT_SLOT, useFactory: () => { const injector = inject(Injector); return () => injector.get(PtSlot).id(); } }],
   host: { class: 'pt-island', '[attr.data-island]': 'id()', '[class.pt-island-error]': 'pt.failed()' },
   template: `
@@ -42,6 +44,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
       @case ('pt-answer') { @defer (hydrate on viewport) {<pt-answer [topic]="$any(p()).topic ?? 'forecast'" [ticker]="$any(p()).ticker" [list]="$any(p()).list ?? 'biggest_losers'" [sector]="$any(p()).sector" [month]="$any(p()).month" />} }
       @case ('pt-calendar') { @defer (hydrate on viewport) {<pt-calendar [month]="$any(p()).month" [kind]="$any(p()).kind ?? 'earnings'" [view]="$any(p()).view ?? 'month'" [start]="$any(p()).start" />} }
       @case ('pt-company-card') { @defer (hydrate on viewport) {<pt-company-card [ticker]="$any(p()).ticker" [size]="$any(p()).size ?? 'wide'" [extra]="$any(p()).extra ?? null" />} }
+      @case ('pt-feed') { @defer (hydrate on viewport) {<pt-feed [ticker]="$any(p()).ticker" [sector]="$any(p()).sector" />} }
       @case ('pt-financials') { @defer (hydrate on viewport) {<pt-financials [ticker]="$any(p()).ticker" [periods]="$any(p()).periods ?? 8" />} }
       @case ('pt-insiders') { @defer (hydrate on viewport) {<pt-insiders [ticker]="$any(p()).ticker" [days]="$any(p()).days ?? 365" />} }
       @case ('pt-metric') { @defer (hydrate on viewport) {<pt-metric [ticker]="$any(p()).ticker" [metrics]="$any(p()).metrics" />} }

@@ -47,7 +47,7 @@ const RULES: [RegExp, string][] = [
   [/postMessage\b/, 'no messaging'],
   [/\bimport\s*\.\s*meta\b/, 'no import.meta: the compiler would read files for it'],
   [/\b(?:innerHTML|outerHTML|insertAdjacentHTML)\b/, 'never write HTML: Angular escapes text, links go through href()'],
-  [/\b(?:DomSanitizer|bypassSecurityTrust\w*|Renderer2|DOCUMENT)\b/, 'no DOM access of your own: the template and the design system do it (an ElementRef from viewChild may read and focus)'],
+  [/\b(?:DomSanitizer|bypassSecurityTrust\w*|Renderer2|DOCUMENT)\b/, 'no DOM access of your own: the template and the design system do it (an ElementRef from viewChild may read sizes, focus and scroll its own element)'],
 ];
 /** Template (the inline literal), line by line. */
 const TEMPLATE_RULES: [RegExp, string][] = [

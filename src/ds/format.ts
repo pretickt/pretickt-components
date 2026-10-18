@@ -95,6 +95,12 @@ export function date(iso: string): string {
   return `${MONTHS[(m ?? 1) - 1]} ${d}, ${y}`;
 }
 
+/** "2026-10-30" → "Oct 30": a day on a strip whose year the context gives (the feed's cards). */
+export function dayMonth(iso: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(String(iso))) return String(iso ?? '');
+  return `${MONTHS[Number(iso.slice(5, 7)) - 1]} ${Number(iso.slice(8, 10))}`;
+}
+
 export function tone(v: number | null | undefined, flatBand = 0): Tone {
   if (!finite(v)) return 'na';
   if (Math.abs(v) <= flatBand) return 'flat';
