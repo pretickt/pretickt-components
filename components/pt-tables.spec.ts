@@ -99,6 +99,17 @@ describe('pt-financials', () => {
     expect(await html(f)).toContain(`Revenue ${pct(f.periods.at(-1)!.revenue! / f.periods.at(-5)!.revenue! - 1)} year over year`);
   });
   it('renders not-available without quarters', async () => expect(await html({ asOf: '2026-10-02', periods: [] })).toContain('pt-na'));
+  it('a company reporting in another currency: amounts in its symbol, and the currency named', async () => {
+    const out = await html({ ...f, currency: 'CNY' });
+    expect(out).toContain('Figures in Chinese Yuan (CNY), as reported');
+    expect(out).toContain(`CN¥${f.periods.at(-1)!.revenue! >= 1e9 ? '' : ''}`);
+    expect(out).not.toMatch(/\$\d/);
+  });
+  it('a company reporting half-years compares with two reports back for its growth over a year', async () => {
+    const h = { ...f, periodsPerYear: 2 };
+    expect(await html(h)).toContain(`Revenue ${pct(f.periods.at(-1)!.revenue! / f.periods.at(-3)!.revenue! - 1)} year over year`);
+    expect(await html(h)).toContain('>Half<');
+  });
   it('lists 20 quarters, newest first, then the rest on "Show 20 more"; no button at 20 or fewer', async () => {
     const long = fundamentalsDemo({ ticker: 'NVDA', periods: 24 });
     const r = await render(PtFinancials, { ticker: 'NVDA', periods: 24 }, withData({ 'fundamentals@1': long }));

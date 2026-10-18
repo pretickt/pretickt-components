@@ -1,16 +1,15 @@
 /**
  * Is this company growing, and is the growth turning into cash?
- * @version 2.3.0
+ * @version 2.4.0
  * @evidence "<ticker> revenue / earnings / free cash flow" long tail (marketing/ per-ticker SEO)
  * @evidence beta: growth charts and tables on the company page
  */
 import { Component, computed, inject, input, linkedSignal } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
 import { MORE_STEP, PtMore, PtSortTh, useSort } from '@pretickt/components/ds';
-import { date, level, num, pct, tip, usd } from '@pretickt/components/format';
+import { cash, currencyName, date, level, num, pct, tip } from '@pretickt/components/format';
 
 const W = 600, H = 160, PAD = 14;
-const compact = (v: number | null) => usd(v, { compact: true });
 const COLS = [['quarter', 'Quarter'], ['period', 'Period end'], ['revenue', 'Revenue'], ['eps', 'EPS'], ['fcf', 'FCF'], ['gross', 'Gross'],
   ['operating', 'Operating'], ['net', 'Net']] as const;
 
@@ -24,7 +23,9 @@ const COLS = [['quarter', 'Quarter'], ['period', 'Period end'], ['revenue', 'Rev
       <section class="pt-fin">
         @if (lede()) {<p class="pt-lede">{{ lede() }}</p>}
         <div class="pt-legend"><span class="pt-key pt-key-rev">Revenue</span><span class="pt-key pt-key-fcf">Free cash flow</span></div>
-        <svg class="pt-chart-svg pt-fin-chart" [attr.viewBox]="'0 0 ' + W + ' ' + (H + 16)" role="img" aria-label="Quarterly revenue and free cash flow">
+        @if (note()) {<p class="pt-meta">{{ note() }}</p>}
+        <svg class="pt-chart-svg pt-fin-chart" [attr.viewBox]="'0 0 ' + W + ' ' + (H + 16)" role="img"
+          [attr.aria-label]="(per() === 2 ? 'Half-yearly' : 'Quarterly') + ' revenue and free cash flow'">
           <line class="pt-grid" x1="0" [attr.x2]="W" [attr.y1]="chart().zero" [attr.y2]="chart().zero" />
           @for (q of chart().quarters; track q.fiscal) {
             @if (q.rev; as b) {<rect class="pt-fin-rev" [attr.x]="b.x" [attr.y]="b.y" [attr.width]="b.w" [attr.height]="b.h" [attr.data-tip]="q.tip" />}
@@ -34,12 +35,12 @@ const COLS = [['quarter', 'Quarter'], ['period', 'Period end'], ['revenue', 'Rev
         </svg>
         <div class="pt-table-wrap">
           <table class="pt-table">
-            <thead><tr>@for (c of COLS; track c[0]) {<th ptSortTh [state]="sort.state(c[0])" (sort)="sort.toggle(c[0])">{{ c[1] }}</th>}</tr></thead>
+            <thead><tr>@for (c of cols(); track c[0]) {<th ptSortTh [state]="sort.state(c[0])" (sort)="sort.toggle(c[0])">{{ c[1] }}</th>}</tr></thead>
             <tbody>
               @for (p of rows(); track p.period) {
                 <tr class="pt-fin-q">
-                  <td>{{ p.fiscal }}</td><td>{{ date(p.period) }}</td><td class="pt-num">{{ compact(p.revenue) }}</td><td class="pt-num">{{ num(p.eps) }}</td>
-                  <td class="pt-num">{{ compact(p.fcf) }}</td><td class="pt-num">{{ level(p.grossMargin) }}</td><td class="pt-num">{{ level(p.operatingMargin) }}</td>
+                  <td>{{ p.fiscal }}</td><td>{{ date(p.period) }}</td><td class="pt-num">{{ amount(p.revenue) }}</td><td class="pt-num">{{ num(p.eps) }}</td>
+                  <td class="pt-num">{{ amount(p.fcf) }}</td><td class="pt-num">{{ level(p.grossMargin) }}</td><td class="pt-num">{{ level(p.operatingMargin) }}</td>
                   <td class="pt-num">{{ level(p.netMargin) }}</td>
                 </tr>
               }
@@ -56,6 +57,12 @@ export class PtFinancials {
   readonly periods = input(8);
   protected readonly fin = this.pt.fundamentals(() => ({ ticker: this.ticker(), periods: this.periods() }));
   protected readonly ps = computed(() => this.fin.value()?.periods ?? []);
+  /** The currency the company reports in (absent = dollars) and its reports a year (4, or 2 for half-years). */
+  protected readonly cur = computed(() => this.fin.value()?.currency);
+  protected readonly per = computed(() => this.fin.value()?.periodsPerYear ?? 4);
+  protected readonly note = computed(() => { const c = this.cur(); return c && c !== 'USD' ? `Figures in ${currencyName(c)} (${c}), as reported.` : ''; });
+  protected readonly cols = computed(() => COLS.map(([k, label]) => [k, k === 'quarter' && this.per() === 2 ? 'Half' : label] as const));
+  protected readonly amount = (v: number | null) => cash(v, this.cur(), { compact: true });
   // the table lists the newest quarter first; its headers sort it
   protected readonly sort = useSort(() => [...this.ps()].reverse(), {
     quarter: (p) => p.period, period: (p) => p.period, revenue: (p) => p.revenue, eps: (p) => p.eps, fcf: (p) => p.fcf,
@@ -68,15 +75,13 @@ export class PtFinancials {
   protected readonly MORE_STEP = MORE_STEP;
   protected readonly W = W;
   protected readonly H = H;
-  protected readonly COLS = COLS;
   protected readonly date = date;
   protected readonly num = num;
   protected readonly level = level;
-  protected readonly compact = compact;
   protected readonly lede = computed(() => {
     const list = this.ps(), last = list.at(-1);
     if (!last) return '';
-    const yearAgo = list.length >= 5 ? list.at(-5)! : null;
+    const per = this.per(), yearAgo = list.length > per ? list.at(-1 - per)! : null;
     const facts: string[] = [];
     if (yearAgo?.revenue && last.revenue != null && yearAgo.revenue > 0) facts.push(`Revenue ${pct(last.revenue / yearAgo.revenue - 1)} year over year`);
     if (last.revenue && last.fcf != null) facts.push(`free cash flow ${level(last.fcf / last.revenue)} of revenue`);
@@ -94,7 +99,7 @@ export class PtFinancials {
     return { zero: y(0).toFixed(1), quarters: list.map((p, i) => {
       const x = i * slot + slot / 2;
       return { fiscal: p.fiscal, x: x.toFixed(1), rev: bar(p.revenue, x - bw - 1), fcf: bar(p.fcf, x + 1),
-        tip: tip({ [p.fiscal]: date(p.period), Revenue: compact(p.revenue), 'Free cash flow': compact(p.fcf) }) };
+        tip: tip({ [p.fiscal]: date(p.period), Revenue: this.amount(p.revenue), 'Free cash flow': this.amount(p.fcf) }) };
     }) };
   });
 }

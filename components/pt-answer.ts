@@ -1,13 +1,13 @@
 /**
  * The page's question answered first, in a sentence or two, from the data the page shows below it: a stock's analyst forecast and
  * price target, its peers, its latest quarter, its insiders; who leads a market list; a calendar month at a glance.
- * @version 1.0.0
+ * @version 1.1.0
  * @evidence DataForSEO: "<ticker> stock forecast" 151k/month, "<ticker> price target" 103k/month, "earnings calendar" 153k/month, list queries (launch/data/08c-serp-*.json)
  * @evidence SEO measurement 2026-10-09: list and company subpages of ~80–200 words; the answer belongs in the first lines, with its numbers
  */
 import { Component, computed, inject, input } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
-import { amount, date, level, money, num, pct, usd } from '@pretickt/components/format';
+import { amount, cash, date, level, money, num, pct, usd } from '@pretickt/components/format';
 import { INSIDER_WINDOW_DAYS, type EventItem, type ScreenList, type ScreenRow, type Sector } from '@pretickt/components/typologies';
 
 type Topic = 'forecast' | 'price-target' | 'peers' | 'financials' | 'insiders' | 'list' | 'earnings' | 'dividends';
@@ -145,12 +145,13 @@ export class PtAnswer {
     if (f === null) return null;
     const q = f.periods.at(-1);
     if (!q) return `No quarterly results are available for ${t}.`;
-    const ago = f.periods.length >= 5 ? f.periods.at(-5)! : null;
+    const per = f.periodsPerYear ?? 4, cur = f.currency, span = per === 2 ? 'half-year' : 'quarter';
+    const ago = f.periods.length > per ? f.periods.at(-1 - per)! : null;
     const yoy = finite(q.revenue) && finite(ago?.revenue) && ago.revenue > 0 ? `, ${growth(q.revenue / ago.revenue - 1)} from a year earlier` : '';
     const lead = finite(q.revenue)
-      ? `${t} reported revenue of ${usd(q.revenue, { compact: true })} for the quarter ended ${date(q.period)} (${q.fiscal})${yoy}.`
-      : `${t}’s latest reported quarter ended ${date(q.period)} (${q.fiscal}).`;
-    const parts = [finite(q.eps) ? `diluted EPS of ${money(q.eps)}` : '', finite(q.fcf) ? `free cash flow of ${usd(q.fcf, { compact: true })}` : '',
+      ? `${t} reported revenue of ${cash(q.revenue, cur, { compact: true })} for the ${span} ended ${date(q.period)} (${q.fiscal})${yoy}.`
+      : `${t}’s latest reported ${span} ended ${date(q.period)} (${q.fiscal}).`;
+    const parts = [finite(q.eps) ? `diluted EPS of ${cash(q.eps, cur, { digits: 2 })}` : '', finite(q.fcf) ? `free cash flow of ${cash(q.fcf, cur, { compact: true })}` : '',
       finite(q.netMargin) ? `a net margin of ${level(q.netMargin)}` : ''].filter(Boolean);
     return parts.length ? `${lead} It posted ${and(parts)}.` : lead;
   }

@@ -41,6 +41,31 @@ export function usd(v: number | null | undefined, o: { compact?: boolean; signed
   return `${sign}$${s}`;
 }
 
+const symbols = new Map<string, string>();
+/** The sign printed before an amount in `code` ("€", "CN¥", "CHF "): Intl's symbol, with a space after a letter. */
+function symbolOf(code: string): string {
+  let s = symbols.get(code);
+  if (s === undefined) {
+    try {
+      s = new Intl.NumberFormat('en-US', { style: 'currency', currency: code }).formatToParts(1).find((p) => p.type === 'currency')?.value ?? `${code} `;
+    } catch { s = `${code} `; }
+    if (/[A-Za-z]$/.test(s)) s += ' ';
+    symbols.set(code, s);
+  }
+  return s;
+}
+
+/** An amount in the currency a company reports in (ISO code; none = dollars), formatted as `usd` formats dollars: "CN¥112.36B", "-€250M". */
+export function cash(v: number | null | undefined, currency: string | null | undefined, o: { compact?: boolean; signed?: boolean; digits?: number } = {}): string {
+  const s = usd(v, o);
+  return !currency || currency === 'USD' || s === '—' ? s : s.replace('$', symbolOf(currency));
+}
+
+/** A currency's English name: "EUR" → "Euro". */
+export function currencyName(code: string): string {
+  try { return new Intl.DisplayNames(['en'], { type: 'currency' }).of(code) ?? code; } catch { return code; }
+}
+
 export function money(v: number | null | undefined, digits = 2): string {
   return usd(v, { digits });
 }
