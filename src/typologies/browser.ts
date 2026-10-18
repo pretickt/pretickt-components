@@ -7,6 +7,7 @@ export type * from './analysts';
 export type * from './common';
 export type * from './company';
 export type * from './events';
+export type * from './feed';
 export type * from './fundamentals';
 export type * from './insider';
 export type * from './metric';

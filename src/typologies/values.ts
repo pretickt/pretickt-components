@@ -46,3 +46,24 @@ export const MOVES_THRESHOLD = 0.04;
 /** The market's structural trend (SPY), as the stocks' "Trend" badge reads it. */
 export const MARKET_TRENDS = ['bullish', 'bearish', 'sideways'] as const;
 export type MarketTrend = (typeof MARKET_TRENDS)[number];
+
+/**
+ * The feed (`feed@1`): event cards around the latest session — technical (moves, highs and lows, crosses, RSI), fundamental (earnings,
+ * dividends, splits, analyst actions, insiders), news days, and the market's own (macro releases, SPY's signals).
+ */
+export const FEED_GROUPS = ['technical', 'fundamental', 'news', 'market'] as const;
+export type FeedGroup = (typeof FEED_GROUPS)[number];
+/**
+ * What a card's number is: the move of the session it hit (`day`), the move from that session to the last close (`since`), a signed
+ * estimate for a coming event (`expected`: a dividend's drop) or the usual size of the move such an event comes with (`typical`, ±).
+ */
+export const FEED_IMPACTS = ['day', 'since', 'expected', 'typical'] as const;
+export type FeedImpact = (typeof FEED_IMPACTS)[number];
+/** The kinds the platform sends today; a payload may carry others (render them generically). */
+export const FEED_KINDS = ['earnings', 'dividend', 'split', 'upgrade', 'downgrade', 'insider-buy', 'insider-sell', 'big-move', 'news', 'high-52w',
+  'low-52w', 'golden-cross', 'death-cross', 'cross-ahead', 'overbought', 'oversold', 'macro'] as const;
+export type FeedKind = (typeof FEED_KINDS)[number];
+/** At most this many cards a feed (the most relevant, shown in date order). */
+export const FEED_MAX = 40;
+/** The window around the latest session, in calendar days. */
+export const FEED_DAYS = { back: 120, ahead: 60 } as const;
