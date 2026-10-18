@@ -1,5 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { amount, badgeValue, compact, date, href, level, money, month, num, pct, stockHref, tip, tone, usd } from './format';
+import { amount, badgeValue, cash, compact, currencyName, date, href, level, money, month, num, pct, stockHref, tip, tone, usd } from './format';
 
 describe('format (the design system\'s numbers and dates; Angular escapes what it prints, so nothing here escapes)', () => {
   it('numbers', () => {
@@ -18,4 +19,21 @@ describe('format (the design system\'s numbers and dates; Angular escapes what i
   });
   it('tip is the JSON a data-tip attribute carries', () => expect(JSON.parse(tip({ Sentiment: 'positive', N: 3 }))).toEqual({ Sentiment: 'positive', N: 3 }));
   it('badgeValue', () => expect([badgeValue({ text: null, value: 21.5, unit: 'x' }), badgeValue({ text: 'Strong buy', value: null, unit: '' })]).toEqual(['21.5x', 'Strong buy']));
+});
+
+describe('amounts in the currency a company reports in', () => {
+  it('uses its symbol where dollars use $, and dollars when the currency is unknown', () => {
+    expect([cash(112.36e9, 'CNY', { compact: true }), cash(-2.5e8, 'EUR', { compact: true }), cash(12.93, 'EUR', { digits: 2 }), cash(1e9, 'CHF', { compact: true }),
+      cash(46.8e9, 'USD', { compact: true }), cash(46.8e9, undefined, { compact: true }), cash(null, 'EUR')])
+      .toEqual(['CN¥112B', '-€250M', '€12.93', 'CHF 1B', '$46.8B', '$46.8B', '—']);
+  });
+  it('names the currency in words', () => {
+    expect([currencyName('EUR'), currencyName('CNY'), currencyName('XYZ')]).toEqual(['Euro', 'Chinese Yuan', 'XYZ']);
+  });
+  it('a currency it does not know prints its code', () => {
+    expect(cash(2e9, 'XYZ', { compact: true })).toBe('XYZ 2B');
+  });
+  it('stays deterministic: no Intl, no toLocale (the build and the browser must print the same text)', () => {
+    expect(readFileSync(new URL('./format.ts', import.meta.url), 'utf8')).not.toMatch(/\bIntl\.|toLocale/);
+  });
 });

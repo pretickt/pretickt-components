@@ -54,6 +54,15 @@ describe('pt-answer', () => {
       'NVDA reported revenue of $46.8B for the quarter ended Jul 26, 2026 (Q2 FY27), up 56.0% from a year earlier. It posted diluted EPS of $1.05, ' +
       'free cash flow of $13.45B and a net margin of 56.5%.');
   });
+  it('financials of a company reporting half-years in euros: its currency, the half-year, growth over two reports', async () => {
+    const h = (period: string, fiscal: string, revenue: number) => ({ period, fiscal, revenue, eps: 2.17, fcf: 1.1e9, grossMargin: 0.36, operatingMargin: 0.14,
+      netMargin: 0.09, pe: 22, shares: 4.46e8 });
+    const f: Fundamentals = { asOf: ASOF, currency: 'EUR', periodsPerYear: 2, periods: [h('2025-06-27', 'H1 FY2025', 10.27e9), h('2025-12-31', 'H2 FY2025', 10.63e9),
+      h('2026-06-30', 'H1 FY2026', 10.72e9)] };
+    expect(await text({ topic: 'financials', ticker: 'CCEP' }, { 'fundamentals@1': f })).toBe(
+      'CCEP reported revenue of €10.72B for the half-year ended Jun 30, 2026 (H1 FY2026), up 4.4% from a year earlier. It posted diluted EPS of €2.17, ' +
+      'free cash flow of €1.1B and a net margin of 9.0%.');
+  });
   it('insiders: purchases and sales over the year, then the latest trade', async () => {
     const i = (date: string, name: string, title: string | null, type: 'buy' | 'sell' | 'other', shares: number, price: number) =>
       ({ date, filingDate: date, name, title, type, shares, price, value: shares * price });

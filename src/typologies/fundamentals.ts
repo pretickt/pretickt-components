@@ -1,10 +1,14 @@
 import * as z from 'zod/mini';
 import { addDays, DEMO_ASOF, intParam, IsoDate, Num as n, prng, round, Ticker } from './common';
 
-/** Quarterly fundamentals, oldest first: raw material for derived badges (growth, margins, valuation history). */
+/** Reported fundamentals (quarters, or half-years), oldest first: raw material for derived badges (growth, margins, valuation history). */
 export const FundamentalsParams = z.object({ ticker: Ticker, periods: intParam(1, 40, 12) });
 export const FundamentalsPayload = z.object({
   asOf: IsoDate,
+  /** The currency revenue, EPS and free cash flow are reported in (ISO 4217); absent = US dollars. P/E is always on dollars. */
+  currency: z.optional(z.string().check(z.regex(/^[A-Z]{3}$/))),
+  /** Reports a year: 4 (quarters, when absent) or 2 (half-years). */
+  periodsPerYear: z.optional(z.int().check(z.minimum(1), z.maximum(12))),
   periods: z.array(z.object({
     period: IsoDate, // fiscal period end
     fiscal: z.string(), // e.g. "Q2 FY27"
