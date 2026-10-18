@@ -1,3 +1,4 @@
+import { ApplicationRef } from '@angular/core';
 import { feedUnknownVariant, type Feed, type FeedItem } from '../src/typologies';
 import { feedCards, pill, PtFeed, sparkGeom } from './pt-feed';
 import { basics, demo, render, withData } from './_spec';
@@ -133,6 +134,31 @@ describe('pt-feed', () => {
     expect(cards[0]!.querySelector('.pt-feed-face svg.pt-feed-spark path.pt-feed-spark-line')).not.toBeNull();
     expect(cards[0]!.querySelector('circle.pt-feed-spark-dot')).not.toBeNull();
     expect(cards[1]!.querySelector('svg.pt-feed-spark')).toBeNull();
+  });
+  it('the strip is a list (VoiceOver drops the semantics of an unstyled list without the role)', async () => {
+    const r = await view(feed([item('2026-10-01')]));
+    expect(r.el.querySelector('.pt-feed-strip')!.getAttribute('role')).toBe('list');
+  });
+  it('in the browser the strip opens on today — unless the reader already moved it before the page woke up', async () => {
+    const scrolled: unknown[] = [];
+    const proto = HTMLElement.prototype as unknown as { scrollTo?: unknown };
+    const had = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollTo');
+    const left = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollLeft');
+    proto.scrollTo = function (o: unknown) { scrolled.push(o); };
+    try {
+      // the render hooks run on the application's tick
+      const open = async () => { const r = await render(PtFeed, { ticker: 'AAPL' }, withData({ 'feed@1': feed([item('2026-10-01'), item('2026-10-30')]) }), { browser: true });
+        r.f.componentRef.injector.get(ApplicationRef).tick(); };
+      await open();
+      expect(scrolled).toHaveLength(1);
+      scrolled.length = 0;
+      Object.defineProperty(Element.prototype, 'scrollLeft', { configurable: true, get: () => 120, set: () => undefined });
+      await open();
+      expect(scrolled).toHaveLength(0);
+    } finally {
+      if (had) Object.defineProperty(HTMLElement.prototype, 'scrollTo', had); else delete proto.scrollTo;
+      if (left) Object.defineProperty(Element.prototype, 'scrollLeft', left);
+    }
   });
   it('a quiet window says so in one line; no strip', async () => {
     const r = await view(feed([]));

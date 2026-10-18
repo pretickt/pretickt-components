@@ -148,7 +148,7 @@ change in this repo, reviewed like any other).
 ## Rules (the lint enforces what it can; the platform sandbox contains the rest)
 - **No data access of your own**: no `fetch`, `XMLHttpRequest`, `WebSocket`, storage, cookies, `window`/`document`, no `import()`,
   no `eval`, no `import.meta`, no `DomSanitizer`/`bypassSecurityTrust*`/`Renderer2`/`DOCUMENT` (an `ElementRef` from `viewChild`
-  may read sizes and move focus). Only these imports: `@angular/core`, `@pretickt/components/{context,ds,format,typologies,indicators}`.
+  may read sizes, move focus and scroll an element the component owns — pt-feed opens its strip on today in an `afterRenderEffect`). Only these imports: `@angular/core`, `@pretickt/components/{context,ds,format,typologies,indicators}`.
   No `templateUrl`, `styles`, `styleUrl(s)`, `providers`, `viewProviders`, `encapsulation`, `standalone: false`.
 - **Deterministic**: no `Date.now()`, `new Date()` without argument, `Math.random()`, `Intl`, `toLocale*` — "today" is the `asOf`
   the payload carries. Server and browser must render the same HTML (hydration).

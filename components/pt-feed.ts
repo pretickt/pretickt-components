@@ -6,7 +6,7 @@
  *   testuale utile per seo … chiamiamolo proprio feed. vale per le company e per la home e per i settori"
  * @evidence Romeo, 2026-10-18: "per ogni card voglio una componente visuale che chiarisce meglio" (each card's price chart around its event)
  */
-import { afterNextRender, Component, computed, type ElementRef, inject, input, viewChild } from '@angular/core';
+import { afterRenderEffect, Component, computed, type ElementRef, inject, input, viewChild } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
 import { PtIcon, PtLogo } from '@pretickt/components/ds';
 import { date, dayMonth, href, level, pct, tip } from '@pretickt/components/format';
@@ -108,7 +108,7 @@ export function feedCards(items: readonly FeedItem[], asOf: string, own: boolean
               <button type="button" aria-label="Later events" (click)="page(1, $event)">›</button>
             </div>
           </div>
-          <ol class="pt-feed-strip" #strip tabindex="0" [attr.aria-label]="label()">
+          <ol class="pt-feed-strip" #strip role="list" tabindex="0" [attr.aria-label]="label()">
             @for (c of v.cards; track c.key; let i = $index) {
               @if (i === v.todayAt) {<li class="pt-feed-today" #today>Today <time [attr.datetime]="d.asOf">{{ dayMonth(d.asOf) }}</time></li>}
               <li class="pt-feed-item" [class.pt-feed-future]="c.future">
@@ -169,11 +169,16 @@ export class PtFeed {
   private readonly strip = viewChild<ElementRef<HTMLElement>>('strip');
   private readonly today = viewChild<ElementRef<HTMLElement>>('today');
 
+  private opened = false;
+
   constructor() {
-    // in the browser, once drawn: the strip opens on today (the marker in the middle), whatever the screen's width
-    afterNextRender(() => {
+    // in the browser, the first time the strip is drawn: it opens on today (the marker in the middle), whatever the screen's width —
+    // unless the reader already moved it (a swipe before the page woke up)
+    afterRenderEffect(() => {
       const s = this.strip()?.nativeElement, t = this.today()?.nativeElement;
-      if (s && t) s.scrollTo?.({ left: Math.max(0, t.offsetLeft + t.offsetWidth / 2 - s.clientWidth / 2), behavior: 'instant' });
+      if (this.opened || !s || !t) return;
+      this.opened = true;
+      if (s.scrollLeft === 0) s.scrollTo?.({ left: Math.max(0, t.offsetLeft + t.offsetWidth / 2 - s.clientWidth / 2), behavior: 'instant' });
     });
   }
 
