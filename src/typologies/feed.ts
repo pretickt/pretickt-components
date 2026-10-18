@@ -59,7 +59,7 @@ function companyItems(t: string, shift = 0): FeedItem[] {
   const specs: Spec[] = [
     [-101, 'fundamental', 'split', 'Split', '4-for-1', null, null, `${h}#price`, `${n} split its stock 4-for-1 on %d.`],
     [-70, 'fundamental', 'earnings', 'Beat', 'EPS $1.05', 0.032, 'day', `${h}financials/`, `${n} reported EPS of $1.05 against $0.98 expected on %d; the stock moved +3.2% the next session.`],
-    [-45, 'technical', 'big-move', 'Big move', '4× usual', -0.061, 'day', `${h}#price`, `${n} fell 6.1% on %d, about 4 times its usual daily move.`],
+    [-45, 'technical', 'big-move', 'Big drop', '4× usual', -0.061, 'day', `${h}#price`, `${n} fell 6.1% on %d, about 4 times its usual daily move.`],
     [-30, 'news', 'news', 'In the news', '12 stories', -0.018, 'day', `${h}news/`, `${n} had 12 stories on %d, 4 times its usual; the stock moved -1.8% that session.`],
     [-20, 'fundamental', 'upgrade', 'Upgrade', 'UBS', 0.012, 'day', `${h}price-target/`, `UBS upgraded ${n} to Buy on %d; the stock moved +1.2% that session.`],
     [-15, 'technical', 'golden-cross', 'Golden cross', 'MA50 > MA200', 0.043, 'since', `${h}#technicals`, `${n}'s 50-day average crossed above its 200-day average on %d; the stock is +4.3% since.`],
@@ -82,7 +82,7 @@ function marketItems(): FeedItem[] {
       session: impactKind === 'day' || impactKind === 'since' ? date : null, href };
   };
   return [
-    m(-40, 'big-move', 'Market drop', '4× usual', -0.021, 'day', '/#moves', 'The market (SPY) fell 2.1% on %d, about 4 times its usual daily move.'),
+    m(-40, 'big-move', 'Market down', '4× usual', -0.021, 'day', '/#moves', 'The market (SPY) fell 2.1% on %d, about 4 times its usual daily move.'),
     m(-16, 'macro', 'CPI', 'Inflation', -0.012, 'day', '/earnings-calendar/', 'CPI (Inflation Rate YoY) came out on %d; the market (SPY) moved -1.2% that session.'),
     m(-3, 'high-52w', '52-week high', 'SPY', 0.006, 'since', '/#moves', 'The market (SPY) closed at a 52-week high on %d; it is +0.6% since.'),
     m(28, 'macro', 'Fed', 'Rate decision', 0.011, 'typical', '/earnings-calendar/', 'The Fed (Fed Interest Rate Decision) is due on %d; on its last releases the market (SPY) moved 1.1% on average that session.'),
