@@ -41,30 +41,24 @@ export function usd(v: number | null | undefined, o: { compact?: boolean; signed
   return `${sign}$${s}`;
 }
 
-const symbols = new Map<string, string>();
-/** The sign printed before an amount in `code` ("€", "CN¥", "CHF "): Intl's symbol, with a space after a letter. */
-function symbolOf(code: string): string {
-  let s = symbols.get(code);
-  if (s === undefined) {
-    try {
-      s = new Intl.NumberFormat('en-US', { style: 'currency', currency: code }).formatToParts(1).find((p) => p.type === 'currency')?.value ?? `${code} `;
-    } catch { s = `${code} `; }
-    if (/[A-Za-z]$/.test(s)) s += ' ';
-    symbols.set(code, s);
-  }
-  return s;
-}
+/** Currencies a listed company may report in: the sign before an amount (a space after letters) and the English name. A fixed table, not
+ *  Intl: the server and the browser must print the same text. Unknown codes print as "XYZ 1B" and are named by their code. */
+const CURRENCIES: Record<string, [sign: string, name: string]> = {
+  USD: ['$', 'US Dollar'], EUR: ['€', 'Euro'], CNY: ['CN¥', 'Chinese Yuan'], GBP: ['£', 'British Pound'], JPY: ['¥', 'Japanese Yen'],
+  CHF: ['CHF ', 'Swiss Franc'], CAD: ['CA$', 'Canadian Dollar'], AUD: ['A$', 'Australian Dollar'], HKD: ['HK$', 'Hong Kong Dollar'],
+  TWD: ['NT$', 'New Taiwan Dollar'], KRW: ['₩', 'South Korean Won'], INR: ['₹', 'Indian Rupee'], BRL: ['R$', 'Brazilian Real'],
+  MXN: ['MX$', 'Mexican Peso'], DKK: ['DKK ', 'Danish Krone'], SEK: ['SEK ', 'Swedish Krona'], NOK: ['NOK ', 'Norwegian Krone'],
+  ILS: ['₪', 'Israeli New Shekel'], SGD: ['SGD ', 'Singapore Dollar'], ZAR: ['ZAR ', 'South African Rand'],
+};
 
-/** An amount in the currency a company reports in (ISO code; none = dollars), formatted as `usd` formats dollars: "CN¥112.36B", "-€250M". */
+/** An amount in the currency a company reports in (ISO code; none = dollars), formatted as `usd` formats dollars: "CN¥112B", "-€250M". */
 export function cash(v: number | null | undefined, currency: string | null | undefined, o: { compact?: boolean; signed?: boolean; digits?: number } = {}): string {
   const s = usd(v, o);
-  return !currency || currency === 'USD' || s === '—' ? s : s.replace('$', symbolOf(currency));
+  return !currency || currency === 'USD' || s === '—' ? s : s.replace('$', CURRENCIES[currency]?.[0] ?? `${currency} `);
 }
 
-/** A currency's English name: "EUR" → "Euro". */
-export function currencyName(code: string): string {
-  try { return new Intl.DisplayNames(['en'], { type: 'currency' }).of(code) ?? code; } catch { return code; }
-}
+/** A currency's English name: "EUR" → "Euro" (its code when unknown). */
+export const currencyName = (code: string): string => CURRENCIES[code]?.[1] ?? code;
 
 export function money(v: number | null | undefined, digits = 2): string {
   return usd(v, { digits });

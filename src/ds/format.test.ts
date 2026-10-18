@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { amount, badgeValue, cash, compact, currencyName, date, href, level, money, month, num, pct, stockHref, tip, tone, usd } from './format';
 
@@ -27,6 +28,12 @@ describe('amounts in the currency a company reports in', () => {
       .toEqual(['CN¥112B', '-€250M', '€12.93', 'CHF 1B', '$46.8B', '$46.8B', '—']);
   });
   it('names the currency in words', () => {
-    expect([currencyName('EUR'), currencyName('CNY')]).toEqual(['Euro', 'Chinese Yuan']);
+    expect([currencyName('EUR'), currencyName('CNY'), currencyName('XYZ')]).toEqual(['Euro', 'Chinese Yuan', 'XYZ']);
+  });
+  it('a currency it does not know prints its code', () => {
+    expect(cash(2e9, 'XYZ', { compact: true })).toBe('XYZ 2B');
+  });
+  it('stays deterministic: no Intl, no toLocale (the build and the browser must print the same text)', () => {
+    expect(readFileSync(new URL('./format.ts', import.meta.url), 'utf8')).not.toMatch(/\bIntl\.|toLocale/);
   });
 });

@@ -1,4 +1,4 @@
-import { pct } from '../src/ds/format';
+import { cash, pct } from '../src/ds/format';
 import { fundamentalsDemo, insiderDemo, type MetricItem } from '../src/typologies';
 import { PtFinancials } from './pt-financials';
 import { PtInsiders } from './pt-insiders';
@@ -102,7 +102,8 @@ describe('pt-financials', () => {
   it('a company reporting in another currency: amounts in its symbol, and the currency named', async () => {
     const out = await html({ ...f, currency: 'CNY' });
     expect(out).toContain('Figures in Chinese Yuan (CNY), as reported');
-    expect(out).toContain(`CN¥${f.periods.at(-1)!.revenue! >= 1e9 ? '' : ''}`);
+    expect(out).toContain(cash(f.periods.at(-1)!.revenue, 'CNY', { compact: true }));
+    expect(cash(f.periods.at(-1)!.revenue, 'CNY', { compact: true })).toMatch(/^CN¥/);
     expect(out).not.toMatch(/\$\d/);
   });
   it('a company reporting half-years compares with two reports back for its growth over a year', async () => {
