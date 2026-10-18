@@ -204,9 +204,41 @@
   .pt-toggles button[aria-pressed='true'] { @apply bg-primary text-primary-ink; }
 
   /* price target */
-  .pt-pt-summary { @apply mb-3 grid grid-cols-2 gap-2 sm:grid-cols-5; }
-  .pt-pt-stat { @apply rounded-control border border-border bg-surface px-3 py-2 text-sm; }
-  .pt-pt-stat b { @apply block font-mono text-base; }
+  /* the targets upright against today's price (pt-price-target, buildLadder): a rail from the lowest target to the highest, green above
+     today and red below, deeper toward its ends; each firm's target a dot beside it; today a dashed line ending in a dark pill; the
+     labels on the right kept apart and joined to their place by a lead; the average's distance (the upside) in a pill */
+  .pt-tg { @apply relative mb-3 h-60 w-full max-w-md select-none; }
+  .pt-tg-lines { @apply pointer-events-none absolute inset-0 h-full w-full overflow-visible; }
+  .pt-tg-lead { fill: none; stroke: var(--color-border); stroke-width: 1; vector-effect: non-scaling-stroke; }
+  .pt-tg-lead-pos { stroke: var(--color-pos); stroke-opacity: 0.5; }
+  .pt-tg-lead-neg { stroke: var(--color-neg); stroke-opacity: 0.5; }
+  .pt-tg-lead-now { stroke: var(--color-ink); stroke-width: 1.5; stroke-dasharray: 4 3; }
+  .pt-tg-rail { @apply absolute inset-y-0 left-[30%] w-[3%] min-w-2; }
+  .pt-tg-zone { @apply absolute inset-x-0; }
+  .pt-tg-zone:first-child { @apply rounded-t-full; }
+  .pt-tg-zone:last-child { @apply rounded-b-full; }
+  .pt-tg-zone-pos { @apply bg-linear-to-b from-pos to-pos/25; }
+  .pt-tg-zone-neg { @apply bg-linear-to-b from-neg/25 to-neg; }
+  .pt-tg-zone-flat { @apply bg-ink-soft/30; }
+  .pt-tg-dot { @apply absolute h-[7px] w-[7px] -translate-x-1/2 -translate-y-1/2 cursor-default rounded-full ring-2 ring-surface-raised transition-transform; }
+  .pt-tg-dot:hover { @apply scale-150; }
+  .pt-tg-dot-pos { @apply bg-pos; }
+  .pt-tg-dot-neg { @apply bg-neg; }
+  .pt-tg-dot-flat { @apply bg-ink-soft; }
+  .pt-tg-mark { @apply absolute left-[37%] flex -translate-y-1/2 items-center gap-1.5 whitespace-nowrap pl-1.5 text-xs leading-none; }
+  .pt-tg-name { @apply w-12 shrink-0 text-3xs font-semibold uppercase tracking-wide text-ink-soft; }
+  .pt-tg-price { @apply font-mono font-semibold text-ink; }
+  .pt-tg-pct { @apply font-mono text-2xs font-semibold; }
+  .pt-tg-pos .pt-tg-pct { @apply text-pos; }
+  .pt-tg-neg .pt-tg-pct { @apply text-neg; }
+  .pt-tg-flat .pt-tg-pct { @apply text-ink-soft; }
+  .pt-tg-mean .pt-tg-price { @apply text-sm; }
+  .pt-tg-mean .pt-tg-pct { @apply rounded-full px-2 py-1 text-xs; }
+  .pt-tg-mean.pt-tg-pos .pt-tg-pct { @apply bg-pos/12; }
+  .pt-tg-mean.pt-tg-neg .pt-tg-pct { @apply bg-neg/12; }
+  .pt-tg-now { @apply rounded-full bg-ink py-1 pr-2.5 shadow-sm; }
+  .pt-tg-now .pt-tg-name { @apply w-auto text-surface-raised/70; }
+  .pt-tg-now .pt-tg-price { @apply text-surface-raised; }
   /* zoom & pan (any svg[data-zoom]) — ported from beta: grab strips on the price (right) and time (bottom) axes, lit while
      hovered, and the fit / today / reset cluster that grows as the view moves */
   svg[data-zoom] { touch-action: pan-y; cursor: crosshair; }

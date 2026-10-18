@@ -1,6 +1,6 @@
 import { money, pct } from '../src/ds/format';
 import { analystsDemo, priceSeriesDemo } from '../src/typologies';
-import { buildPtChart, PtPriceTarget } from './pt-price-target';
+import { buildLadder, buildPtChart, LADDER_GAP, PtPriceTarget } from './pt-price-target';
 import { basics, render, settle, withData } from './_spec';
 
 const analysts = analystsDemo({ ticker: 'NVDA', window: '1y' });
@@ -66,14 +66,66 @@ describe('buildPtChart (ported from beta pt-chart.geometry)', () => {
   });
 });
 
+describe('buildLadder (the targets against today\'s price, upright)', () => {
+  const meta = { low: 547.25, mean: 792.86, median: 817.14, high: 1026.3 };
+  const firms = [tg({ firm: 'A', target: 1026.3 }), tg({ firm: 'B', target: 820 }), tg({ firm: 'C', target: 815 }), tg({ firm: 'D', target: 812 }),
+    tg({ firm: 'E', target: 650 }), tg({ firm: 'F', target: 547.25 }), tg({ firm: 'G', target: 0 })];
+  const L = buildLadder(meta, 709.33, firms)!;
+  it('reads top to bottom: high, median, average, today, low — each with its price and its distance from today', () => {
+    expect(L.marks.map((m) => [m.key, m.price, m.pct])).toEqual([['high', '$1,026.30', '+44.7%'], ['median', '$817.14', '+15.2%'], ['mean', '$792.86', '+11.8%'],
+      ['now', '$709.33', null], ['low', '$547.25', '-22.8%']]);
+    expect(L.marks.map((m) => m.tone)).toEqual(['pos', 'pos', 'pos', 'now', 'neg']);
+    expect(L.marks[0]!.y).toBeLessThan(L.marks[4]!.y);
+    expect(L.marks.every((m, i, a) => i === 0 || m.y >= a[i - 1]!.y)).toBe(true);
+  });
+  it('keeps the labels apart (close values: median and average) and joins each to its true place on the rail', () => {
+    const ys = L.marks.map((m) => m.labelY);
+    for (let i = 1; i < ys.length; i++) expect(ys[i]! - ys[i - 1]!).toBeGreaterThanOrEqual(LADDER_GAP - 1e-9);
+    expect(Math.min(...ys)).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...ys)).toBeLessThanOrEqual(100);
+    for (const m of L.marks) expect(m.lead).toMatch(new RegExp(`^M[\\d.]+ ${m.y} .*L[\\d.]+ ${m.labelY}$`));
+  });
+  it('the rail is green above today\'s price and red below; the dots are the firms\' targets, coloured by side, never on top of each other', () => {
+    expect(L.zones.map((z) => z.tone)).toEqual(['pos', 'neg']);
+    expect(L.zones[0]!.top + L.zones[0]!.height).toBeCloseTo(L.marks[3]!.y, 6);
+    expect(L.dots).toHaveLength(6);                                   // a target of 0 is no target
+    expect(L.dots.map((d) => d.tone)).toEqual(['pos', 'pos', 'pos', 'pos', 'neg', 'neg']);
+    for (const d of L.dots) for (const e of L.dots) if (d !== e && d.x === e.x) expect(Math.abs(d.y - e.y)).toBeGreaterThanOrEqual(2.5);
+    expect(JSON.parse(L.dots[0]!.tip)).toEqual({ A: '$1,026 · 2025-09-02' });
+  });
+  it('one dot a firm — its latest target, the one the summary counts — never an older one outside the range', () => {
+    const L2 = buildLadder(meta, 709.33, [tg({ firm: 'A', date: '2026-01-05', target: 1200 }), tg({ firm: 'A', date: '2026-06-01', target: 900 }),
+      tg({ firm: 'B', date: '2026-02-01', target: 700 })])!;
+    expect(L2.dots.map((d) => JSON.parse(d.tip))).toEqual([{ A: '$900 · 2026-06-01' }, { B: '$700 · 2026-02-01' }]);
+  });
+  it('today above every target: the whole rail is downside; without a price, no today and no distances', () => {
+    const above = buildLadder(meta, 1100, firms)!;
+    expect(above.zones.map((z) => z.tone)).toEqual(['neg']);
+    expect(above.marks[0]!.key).toBe('now');
+    const none = buildLadder(meta, null, firms)!;
+    expect(none.marks.map((m) => m.key)).toEqual(['high', 'median', 'mean', 'low']);
+    expect(none.marks.every((m) => m.pct === null)).toBe(true);
+    expect(none.zones.map((z) => z.tone)).toEqual(['flat']);
+  });
+  it('one target (low = high): finite places, no division by zero', () => {
+    const one = buildLadder({ low: 100, mean: 100, median: 100, high: 100 }, 100, [tg({ target: 100 })])!;
+    expect(one.marks.every((m) => Number.isFinite(m.y) && Number.isFinite(m.labelY))).toBe(true);
+  });
+});
+
 describe('pt-price-target', () => {
   basics(PtPriceTarget, p);
 
-  it('shows low, average, median, high and upside against the last close', async () => {
-    const out = (await view()).html();
-    for (const label of ['Low', 'Average', 'Median', 'High', 'Upside']) expect(out).toContain(`>${label}<`);
-    expect(out).toContain(money(analysts.summary!.mean));
-    expect(out).toContain(pct(analysts.summary!.mean / analysts.price! - 1));
+  it('shows low, average, median, high and today upright, each with its distance from the last close; the average\'s is the upside', async () => {
+    const { el } = await view();
+    const g = el.querySelector('.pt-tg')!;
+    const s = analysts.summary!, byValue = ([['High', s.high], ['Median', s.median], ['Average', s.mean], ['Now', analysts.price!], ['Low', s.low]] as const)
+      .map((x, i) => ({ name: x[0], v: x[1], i })).sort((a, b) => b.v - a.v || a.i - b.i).map((x) => x.name);
+    expect([...g.querySelectorAll('.pt-tg-name')].map((n) => n.textContent!.trim())).toEqual(byValue);  // top to bottom by value
+    expect(g.textContent).toContain(money(analysts.summary!.mean));
+    expect(g.querySelector('.pt-tg-mean .pt-tg-pct')!.textContent!.trim()).toBe(pct(analysts.summary!.mean / analysts.price! - 1));
+    expect(el.querySelector('.pt-pt-stat')).toBeNull();
+    expect(g.querySelectorAll('.pt-tg-dot').length).toBe(new Set(analysts.targets.filter((t) => t.target > 0).map((t) => t.firm)).size); // a dot a firm
   });
   it('draws one dot, orbit and member panel per target cluster and one segment (+ hit path + gradient) per start→end pair', async () => {
     const c = buildPtChart(series[0]!.points, analysts.targets, analysts.asOf, analysts.price!)!;
@@ -119,8 +171,8 @@ describe('pt-price-target', () => {
   it('explains missing coverage, keeps the stats without prices', async () => {
     expect((await view({ ...analysts, summary: null, targets: [], consensus: null, history: [] })).html()).toContain('No analyst targets in the last 12 months');
     const noPrices = (await view(analysts, null)).html();
-    expect(noPrices).toContain('>Average<');
-    expect(noPrices).not.toContain('<svg');
+    expect(noPrices).toContain('>Average<');                          // the ladder stays (today = the answer's last close)
+    expect(noPrices).not.toContain('pt-chart-svg');                    // the chart over time needs the series
   });
   it('hovering a dot shows the analysts behind it, leaving hides them (beta hover)', async () => {
     const r = await view();

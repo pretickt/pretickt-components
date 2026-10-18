@@ -1,13 +1,14 @@
 /**
  * Where do analysts think this stock is going, and how spread out are they?
- * @version 2.2.0
+ * @version 2.3.0
  * @evidence DataForSEO: "{ticker} price target" ~103k searches/month, "{ticker} stock forecast" ~151k (launch/data, public-site spec §4)
  * @evidence beta: pt-chart (pretickt-frontend/src/app/companies/pt-chart.ts) — geometry, clustering, hover animations and zoom/pan ported 1:1
+ * @evidence Romeo, 2026-10-18: "nel price target il low high upside … farlo con una visuale verticale col prezzo attuale e percentuale, ma visuale … a good design"
  */
 import { Component, computed, inject, input, linkedSignal, signal } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
 import { applyXViewport, applyYViewport, closeAt, FULL_VIEWPORT, isoDay, linePath, monthTicks, padTime, PtChart, PtTimeAxis, PtYAxis, type Viewport } from '@pretickt/components/ds';
-import { date, money, pct, svgId } from '@pretickt/components/format';
+import { date, money, pct, svgId, tip } from '@pretickt/components/format';
 import { cmp, type Analysts, type PriceBar } from '@pretickt/components/typologies';
 
 type Target = Analysts['targets'][number];
@@ -114,6 +115,75 @@ export function buildPtChart(points: PriceBar[], targets: Target[], asOf: string
 
 const tone = (up: boolean) => (up ? 'pt-pos' : 'pt-neg');
 
+// The ladder: the summary upright, in % of its box. Top and bottom margins, the rail (30–33%), where the labels start, the dots' columns.
+const PAD = 8, RAIL_L = 30, RAIL_R = 33, LABEL_X = 37, DOT_H = 2.6;
+/** Labels' vertical centres stay this far apart (% of the box): close values (an average beside the median) never overlap. */
+export const LADDER_GAP = 9;
+const DOT_COLS = [27, 23.5, 20, 16.5, 13, 9.5, 6, 2.5];
+const FLAT_PCT = 0.0005;
+type Tone = 'pos' | 'neg' | 'flat';
+export interface LadderMark {
+  key: 'high' | 'median' | 'mean' | 'now' | 'low'; name: string; value: number; price: string; pct: string | null; tone: Tone | 'now';
+  /** Its true place (% from the top) and its label's, kept apart; the lead joins the rail (or, for today, the box's left) to the label. */
+  y: number; labelY: number; lead: string;
+}
+export interface Ladder {
+  marks: LadderMark[];
+  /** The rail from the highest target to the lowest: upside above today's price, downside below (one tone without a price). */
+  zones: { top: number; height: number; tone: Tone }[];
+  dots: { x: number; y: number; tone: Tone; tip: string }[];
+}
+const NAMES = { high: 'High', median: 'Median', mean: 'Average', now: 'Now', low: 'Low' } as const;
+const ORDER = ['high', 'median', 'mean', 'now', 'low'] as const;
+
+/** Centres at least `gap` apart, inside [lo, hi], each as close to its wish as the others allow (down, then up from the bottom). */
+function spread(wish: number[], gap: number, lo: number, hi: number): number[] {
+  const out = [...wish];
+  for (let i = 1; i < out.length; i++) out[i] = Math.max(out[i]!, out[i - 1]! + gap);
+  if (out.length && out.at(-1)! > hi) { out[out.length - 1] = hi; for (let i = out.length - 2; i >= 0; i--) out[i] = Math.min(out[i]!, out[i + 1]! - gap); }
+  if (out.length && out[0]! < lo) { out[0] = lo; for (let i = 1; i < out.length; i++) out[i] = Math.max(out[i]!, out[i - 1]! + gap); }
+  return out;
+}
+
+/**
+ * The summary upright: a rail from the lowest to the highest target — green above today's price, red below —, each firm's target a dot
+ * beside it (in columns, so none hides another), today's price a line across, and on the right low, average, median, high and today,
+ * each with its distance from today's price (the average's is the upside). One scale holds the targets and today's price.
+ */
+export function buildLadder(s: { low: number; mean: number; median: number; high: number }, price: number | null, targets: readonly Target[]): Ladder | null {
+  const vals = [s.low, s.high, ...(price != null && price > 0 ? [price] : [])];
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  if (!(hi > lo)) { lo = lo * 0.95; hi = hi * 1.05; }
+  if (!(hi > lo)) return null;
+  const y = (v: number) => f(PAD + ((hi - v) / (hi - lo)) * (100 - 2 * PAD));
+  const now = price != null && price > 0 ? price : null;
+  const toneOf = (v: number): Tone => (now == null ? 'flat' : v / now - 1 > FLAT_PCT ? 'pos' : v / now - 1 < -FLAT_PCT ? 'neg' : 'flat');
+  const raw = ORDER.filter((k) => k !== 'now' || now != null).map((key) => {
+    const value = key === 'now' ? now! : s[key];
+    return { key, value, name: NAMES[key], price: money(value), pct: key === 'now' || now == null ? null : pct(value / now - 1), tone: key === 'now' ? 'now' as const : toneOf(value), y: y(value) };
+  }).sort((a, b) => a.y - b.y || ORDER.indexOf(a.key) - ORDER.indexOf(b.key));
+  const labels = spread(raw.map((m) => m.y), LADDER_GAP, 5, 95).map(f);
+  const marks = raw.map((m, i): LadderMark => ({ ...m, labelY: labels[i]!,
+    lead: `M${m.key === 'now' ? 2 : RAIL_R} ${m.y} L${LABEL_X - 2} ${m.y} L${LABEL_X} ${labels[i]}` }));
+  const top = y(s.high), bottom = y(s.low), at = now == null ? null : y(now);
+  const zones = at == null ? [{ top, height: f(bottom - top), tone: 'flat' as Tone }]
+    : at <= top ? [{ top, height: f(bottom - top), tone: 'neg' as Tone }]
+    : at >= bottom ? [{ top, height: f(bottom - top), tone: 'pos' as Tone }]
+    : [{ top, height: f(at - top), tone: 'pos' as Tone }, { top: at, height: f(bottom - at), tone: 'neg' as Tone }];
+  // one dot a firm: its latest target (the one the summary counts; the list holds the year's history), highest first, each in the
+  // column nearest the rail that no dot of a close value holds
+  const latest = new Map<string, Target>();
+  for (const t of targets) { const cur = latest.get(t.firm); if (t.target > 0 && (!cur || t.date >= cur.date)) latest.set(t.firm, t); }
+  const placed: { x: number; y: number }[] = [];
+  const dots = [...latest.values()].sort((a, b) => b.target - a.target || cmp(a.firm, b.firm)).map((t) => {
+    const ty = y(t.target);
+    const x = DOT_COLS.find((c) => !placed.some((p) => p.x === c && Math.abs(p.y - ty) < DOT_H)) ?? DOT_COLS.at(-1)!;
+    placed.push({ x, y: ty });
+    return { x, y: ty, tone: toneOf(t.target), tip: tip({ [t.firm]: `${money(t.target, 0)} · ${t.date}` }) };
+  });
+  return { marks, zones, dots };
+}
+
 @Component({
   selector: 'pt-price-target',
   imports: [PtChart, PtYAxis, PtTimeAxis],
@@ -123,9 +193,22 @@ const tone = (up: boolean) => (up ? 'pt-pos' : 'pt-neg');
     @else if (a && (!a.summary || !a.targets.length)) {<p class="pt-na">No analyst targets in the last 12 months</p>}
     @else if (a && a.summary && series.value() !== undefined) {
       <figure class="pt-chart pt-pt">
-        <div class="pt-pt-summary">
-          @for (s of stats(); track s[0]) {<div class="pt-pt-stat"><span>{{ s[0] }}</span><b>{{ s[1] }}</b></div>}
-        </div>
+        @if (ladder(); as L) {
+          <div class="pt-tg">
+            <svg class="pt-tg-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              @for (m of L.marks; track m.key) {<path [attr.class]="'pt-tg-lead pt-tg-lead-' + m.tone" [attr.d]="m.lead" />}
+            </svg>
+            <div class="pt-tg-rail" aria-hidden="true">
+              @for (z of L.zones; track z.tone) {<span [class]="'pt-tg-zone pt-tg-zone-' + z.tone" [style.top.%]="z.top" [style.height.%]="z.height"></span>}
+            </div>
+            @for (d of L.dots; track $index) {<i [class]="'pt-tg-dot pt-tg-dot-' + d.tone" [style.left.%]="d.x" [style.top.%]="d.y" [attr.data-tip]="d.tip"></i>}
+            @for (m of L.marks; track m.key) {
+              <div [class]="'pt-tg-mark pt-tg-' + m.key + ' pt-tg-' + m.tone" [style.top.%]="m.labelY">
+                <span class="pt-tg-name">{{ m.name }}</span><span class="pt-tg-price">{{ m.price }}</span>@if (m.pct) {<span class="pt-tg-pct">{{ m.pct }}</span>}
+              </div>
+            }
+          </div>
+        }
         <p class="pt-lede">{{ a.summary.n }} firm{{ a.summary.n === 1 ? '' : 's' }} with a target in the last 12 months · last close {{ money(a.price) }} · as of {{ date(a.asOf) }}</p>
         @if (c(); as c) {
           <div ptChart [w]="c.w" [h]="c.h" [plotW]="c.w - MR" [plotH]="c.h - MB" [id]="id()" [label]="'Analyst price targets over time'" [(view)]="view">
@@ -206,10 +289,10 @@ export class PtPriceTarget {
     const a = this.analysts.value(), s = this.series.value();
     return a && s ? buildPtChart(this.pts(), a.targets, a.asOf, a.price ?? this.pts().at(-1)?.c ?? 0, this.view()) : null;
   });
-  protected readonly stats = computed(() => {
+  /** The summary upright against today's price (the last close; the series' when the answer has none). */
+  protected readonly ladder = computed(() => {
     const a = this.analysts.value();
-    return a?.summary ? [['Low', money(a.summary.low)], ['Average', money(a.summary.mean)], ['Median', money(a.summary.median)],
-      ['High', money(a.summary.high)], ['Upside', pct(a.price ? a.summary.mean / a.price - 1 : null)]] as const : [];
+    return a?.summary ? buildLadder(a.summary, a.price ?? this.pts().at(-1)?.c ?? null, a.targets) : null;
   });
   protected readonly consensus = computed(() => {
     const k = this.analysts.value()?.consensus;
