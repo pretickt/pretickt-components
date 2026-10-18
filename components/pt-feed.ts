@@ -4,6 +4,7 @@
  * @evidence Romeo, 2026-10-18: "un componente timeline che mostra per piccole card eventi sia tecnici che fondamentali che news
  *   rilevanti, nel passato e nel futuro, ferma oggi, con la percentuale di prezzo impattata … una tooltip su desktop mostra la versione
  *   testuale utile per seo … chiamiamolo proprio feed. vale per le company e per la home e per i settori"
+ * @evidence Romeo, 2026-10-18: "per ogni card voglio una componente visuale che chiarisce meglio" (each card's price chart around its event)
  */
 import { afterNextRender, Component, computed, type ElementRef, inject, input, viewChild } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
@@ -20,10 +21,46 @@ const GLYPHS: Record<string, string> = {
 const GROUP_LABELS: Record<string, string> = { technical: 'Technical', fundamental: 'Fundamental', news: 'News', market: 'Market' };
 /** A move smaller than this (a twentieth of a percent) reads as flat. */
 const FLAT = 0.0005;
+/** The card's chart: a 100 × 24 box (stretched to the card's width), 2 units of margin; a coming event sits at x = 90, after the closes (0–80). */
+const SW = 100, SH = 24, PAD = 2, PAST_W = 80, EVENT_X = 90, BAND_W = 8;
+const r1 = (n: number) => Math.round(n * 10) / 10;
 
 export interface FeedPill { text: string; since: boolean; cls: string }
+export interface FeedSparkGeom {
+  /** Every close; `hot` the part the event explains (its session's jump, or the move since), in the event's tone. */
+  line: string; hot: string | null; tone: 'pos' | 'neg' | 'flat';
+  dot: { x: number; y: number } | null;
+  /** The event's x (a dashed rule), and for a coming event the band of its usual (±) or expected move. */
+  at: number | null; band: { x: number; y: number; w: number; h: number } | null;
+}
+
+/**
+ * A card's chart from its closes: the line; a past event's session marked with a dot, its jump (a session's move) or the line from it
+ * to the last close (a move since) drawn in its tone; a coming event as a dashed rule after the last close with the band of the move it
+ * usually comes with (± typical) or its expected drop. One scale holds the closes and the band.
+ */
+export function sparkGeom(i: FeedItem): FeedSparkGeom | null {
+  const s = i.spark;
+  if (!s || s.closes.length < 2) return null;
+  const { closes, at } = s, n = closes.length, coming = at >= n, last = closes[n - 1]!;
+  const v = i.impact;
+  const ends = !coming || v == null || !i.impactKind ? [] : i.impactKind === 'typical' ? [last * (1 - Math.abs(v)), last * (1 + Math.abs(v))] : [last, last * (1 + v)];
+  const lo = Math.min(...closes, ...ends), hi = Math.max(...closes, ...ends), span = hi - lo || 1;
+  const x = (k: number) => r1((k / (n - 1)) * (coming ? PAST_W : SW));
+  const y = (c: number) => r1(SH - PAD - ((c - lo) / span) * (SH - 2 * PAD));
+  const pts = closes.map((c, k) => `${x(k)},${y(c)}`);
+  const line = `M${pts.join('L')}`;
+  const tone = v == null || Math.abs(v) < FLAT ? 'flat' : v > 0 ? 'pos' : 'neg';
+  if (coming) {
+    const band = ends.length ? { x: EVENT_X - BAND_W / 2, y: y(Math.max(...ends)), w: BAND_W, h: Math.max(1, r1(y(Math.min(...ends)) - y(Math.max(...ends)))) } : null;
+    return { line, hot: null, tone: i.impactKind === 'expected' ? tone : 'flat', dot: null, at: EVENT_X, band };
+  }
+  const hot = i.impactKind === 'since' ? (at < n - 1 ? `M${pts.slice(at).join('L')}` : null) : at >= 1 ? `M${pts[at - 1]}L${pts[at]}` : null;
+  return { line, hot, tone, dot: { x: x(at), y: y(closes[at]!) }, at: x(at), band: null };
+}
+
 export interface FeedCard {
-  key: string; future: boolean; group: string; glyph: string; label: string; sub: string | null; day: string; pill: FeedPill | null;
+  key: string; future: boolean; group: string; glyph: string; label: string; sub: string | null; day: string; pill: FeedPill | null; spark: FeedSparkGeom | null;
   href: string; tip: string; text: string;
   /** The company chip off a company's own feed ({ticker, logo}), "market" for the market's own items, null on the company's feed. */
   co: { ticker: string; logo: string | null } | 'market' | null;
@@ -46,7 +83,7 @@ export function pill(i: FeedItem): FeedPill | null {
 export function feedCards(items: readonly FeedItem[], asOf: string, own: boolean): { cards: FeedCard[]; todayAt: number } {
   const cards = items.map((i, k): FeedCard => ({
     key: `${i.date}|${i.kind}|${i.ticker ?? ''}|${k}`, future: i.date > asOf, group: i.group, glyph: (Object.hasOwn(GLYPHS, i.kind) && GLYPHS[i.kind]) || 'dot',
-    label: i.label, sub: i.sub, day: dayMonth(i.date), pill: pill(i), href: href(i.href),
+    label: i.label, sub: i.sub, day: dayMonth(i.date), pill: pill(i), spark: sparkGeom(i), href: href(i.href),
     tip: tip({ [`${!own && i.ticker ? `${i.ticker} · ` : ''}${i.label} · ${date(i.date)}`]: i.text }), text: i.text,
     co: i.ticker == null ? 'market' : own ? null : { ticker: i.ticker, logo: i.logo },
   }));
@@ -84,6 +121,15 @@ export function feedCards(items: readonly FeedItem[], asOf: string, own: boolean
                     </span>
                     <span class="pt-feed-label">{{ c.label }}</span>
                     @if (c.sub) {<span class="pt-feed-sub">{{ c.sub }}</span>}
+                    @if (c.spark; as g) {
+                      <svg class="pt-feed-spark" viewBox="0 0 100 24" preserveAspectRatio="none">
+                        @if (g.at !== null) {<line class="pt-feed-spark-at" [attr.x1]="g.at" [attr.x2]="g.at" y1="0" y2="24" />}
+                        @if (g.band; as b) {<rect class="pt-feed-spark-band" [attr.x]="b.x" [attr.y]="b.y" [attr.width]="b.w" [attr.height]="b.h" />}
+                        <path class="pt-feed-spark-line" [attr.d]="g.line" />
+                        @if (g.hot) {<path [attr.class]="'pt-feed-spark-hot pt-feed-spark-' + g.tone" [attr.d]="g.hot" />}
+                        @if (g.dot; as p) {<circle [attr.class]="'pt-feed-spark-dot pt-feed-spark-' + g.tone" [attr.cx]="p.x" [attr.cy]="p.y" r="1.8" />}
+                      </svg>
+                    }
                     <span class="pt-feed-foot">
                       <span class="pt-feed-date">{{ c.day }}</span>
                       @if (c.pill; as p) {<span [class]="p.cls">{{ p.text }}@if (p.since) {<span class="pt-feed-since"> since</span>}</span>}

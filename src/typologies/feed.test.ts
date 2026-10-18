@@ -7,7 +7,7 @@ import { addDays } from './common';
 const demo = (scope: unknown) => demoFor({ t: 'feed@1', params: { scope } }) as Feed;
 const item = (o: Partial<FeedItem> = {}): FeedItem => ({
   date: '2026-09-29', group: 'technical', kind: 'big-move', ticker: 'AAPL', name: 'Apple', logo: null, label: 'Big move', sub: '3× usual',
-  text: 'Apple rose 4.0% on Sep 29, 2026.', impact: 0.04, impactKind: 'day', session: '2026-09-29', href: '/stocks/aapl/#price', ...o,
+  text: 'Apple rose 4.0% on Sep 29, 2026.', impact: 0.04, impactKind: 'day', session: '2026-09-29', href: '/stocks/aapl/#price', spark: null, ...o,
 });
 
 describe('feed@1', () => {
@@ -46,6 +46,21 @@ describe('feed@1', () => {
     for (const bad of [{ href: 'https://evil.example/' }, { href: '//evil.example/' }, { href: '/\\evil' }, { kind: 'big move' }, { impactKind: 'week' }])
       expect(FeedPayload.safeParse({ ...ok, items: [item(bad as Partial<FeedItem>)] }).success).toBe(false);
     expect(getTypology('feed@1')!.params.safeParse({ scope: { by: 'sector', sector: 'Crypto' } }).success).toBe(false);
+  });
+  it('each card carries its chart: closes around a past event with the event\'s place, the last closes before a coming one (place = after the end)', () => {
+    const d = demo({ by: 'ticker', ticker: 'AAPL' });
+    for (const i of d.items) {
+      expect(i.spark, i.kind).not.toBeNull();
+      const { closes, at } = i.spark!;
+      expect(closes.length).toBeGreaterThanOrEqual(2);
+      expect(closes.length).toBeLessThanOrEqual(40);
+      if (i.date > d.asOf) expect(at).toBe(closes.length); else expect(at).toBeLessThan(closes.length);
+    }
+    const ok = { asOf: '2026-09-30', items: [item({ spark: { closes: [1, 2, 3], at: 3 } })] };
+    expect(FeedPayload.safeParse(ok).success).toBe(true);
+    for (const spark of [{ closes: [1, 2, 3], at: 4 }, { closes: [1], at: 0 }, { closes: Array(41).fill(1), at: 0 }, { closes: [1, 2], at: -1 }])
+      expect(FeedPayload.safeParse({ ...ok, items: [item({ spark })] }).success, JSON.stringify(spark).slice(0, 40)).toBe(false);
+    expect(FeedPayload.safeParse({ ...ok, items: [item({ spark: null })] }).success).toBe(true);
   });
   it('a newer API may send kinds and groups this build has never seen', () => {
     const d = demo({ by: 'ticker', ticker: 'AAPL' });

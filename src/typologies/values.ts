@@ -67,3 +67,5 @@ export type FeedKind = (typeof FEED_KINDS)[number];
 export const FEED_MAX = 40;
 /** The window around the latest session, in calendar days. */
 export const FEED_DAYS = { back: 120, ahead: 60 } as const;
+/** A card's chart: at most this many closes (around a past event, or the last ones before a coming event). */
+export const FEED_SPARK_MAX = 40;

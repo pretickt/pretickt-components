@@ -1,11 +1,11 @@
 import { feedUnknownVariant, type Feed, type FeedItem } from '../src/typologies';
-import { feedCards, pill, PtFeed } from './pt-feed';
+import { feedCards, pill, PtFeed, sparkGeom } from './pt-feed';
 import { basics, demo, render, withData } from './_spec';
 
 const ASOF = '2026-10-16';
 const item = (date: string, o: Partial<FeedItem> = {}): FeedItem => ({
   date, group: 'technical', kind: 'big-move', ticker: 'AAPL', name: 'Apple', logo: null, label: 'Big move', sub: '3× usual',
-  text: `Apple moved on ${date}.`, impact: 0.032, impactKind: 'day', session: date, href: '/stocks/aapl/#price', ...o,
+  text: `Apple moved on ${date}.`, impact: 0.032, impactKind: 'day', session: date, href: '/stocks/aapl/#price', spark: null, ...o,
 });
 const feed = (items: FeedItem[]): Feed => ({ asOf: ASOF, items });
 const view = (d: unknown, inputs: Record<string, unknown> = { ticker: 'AAPL' }) => render(PtFeed, inputs, withData({ 'feed@1': d }));
@@ -42,6 +42,43 @@ describe('pill', () => {
     expect(pill(item('2026-11-01', { impact: -0.004, impactKind: 'expected' }))).toEqual({ text: '-0.4%', since: false, cls: 'pt-feed-pill pt-feed-pill-est' });
     expect(pill(item('2026-11-01', { impact: null, impactKind: null }))).toBeNull();
     expect(pill(item('2026-11-01', { impact: 0.01, impactKind: null }))).toBeNull();
+  });
+});
+
+describe('sparkGeom (the card\'s chart)', () => {
+  const closes = [100, 101, 100, 106, 105, 107];
+  const pathPoints = (d: string) => d.slice(1).split('L').map((p) => p.split(',').map(Number));
+  it('a session\'s move: the line, that session\'s jump drawn in its tone, a dot on the event', () => {
+    const g = sparkGeom(item('2026-10-01', { impact: 0.06, impactKind: 'day', spark: { closes, at: 3 } }))!;
+    expect(pathPoints(g.line)).toHaveLength(6);
+    expect(pathPoints(g.hot!)).toEqual(pathPoints(g.line).slice(2, 4));
+    expect(g.tone).toBe('pos');
+    expect(g.dot).toEqual({ x: pathPoints(g.line)[3]![0], y: pathPoints(g.line)[3]![1] });
+    expect(g.band).toBeNull();
+    // the highest close at the top margin, the lowest at the bottom one
+    expect(Math.min(...pathPoints(g.line).map((p) => p[1]!))).toBe(2);
+    expect(Math.max(...pathPoints(g.line).map((p) => p[1]!))).toBe(22);
+  });
+  it('a move since: from the event to the last close in its tone', () => {
+    const g = sparkGeom(item('2026-10-01', { impact: -0.05, impactKind: 'since', spark: { closes, at: 1 } }))!;
+    expect(pathPoints(g.hot!)).toEqual(pathPoints(g.line).slice(1));
+    expect(g.tone).toBe('neg');
+  });
+  it('a coming event: the last closes on the left, a dashed ± band of the usual move at the event, after the end', () => {
+    const g = sparkGeom(item('2026-11-01', { impact: 0.05, impactKind: 'typical', session: null, spark: { closes, at: 6 } }))!;
+    expect(pathPoints(g.line).at(-1)![0]).toBe(80);
+    expect(g.at).toBe(90);
+    expect(g.dot).toBeNull();
+    expect(g.hot).toBeNull();
+    expect(g.band).toMatchObject({ x: 86, w: 8 });
+    expect(g.band!.y).toBe(2);                                      // last × 1.05 is the chart's top
+    const lastY = pathPoints(g.line).at(-1)![1]!;
+    expect(g.band!.y + g.band!.h / 2).toBeCloseTo(lastY, 0);        // ± around the last close
+    const none = sparkGeom(item('2026-11-01', { impact: null, impactKind: null, session: null, spark: { closes, at: 6 } }))!;
+    expect([none.band, none.at]).toEqual([null, 90]);
+  });
+  it('no chart without closes', () => {
+    expect(sparkGeom(item('2026-10-01'))).toBeNull();
   });
 });
 
@@ -90,6 +127,13 @@ describe('pt-feed', () => {
     expect(own.el.querySelector('.pt-feed-co')).toBeNull();
   });
 
+  it('a card with closes draws its chart inside the hidden face; one without draws none', async () => {
+    const r = await view(feed([item('2026-10-01', { spark: { closes: [1, 2, 3], at: 1 } }), item('2026-10-02')]));
+    const cards = [...r.el.querySelectorAll('a.pt-feed-card')];
+    expect(cards[0]!.querySelector('.pt-feed-face svg.pt-feed-spark path.pt-feed-spark-line')).not.toBeNull();
+    expect(cards[0]!.querySelector('circle.pt-feed-spark-dot')).not.toBeNull();
+    expect(cards[1]!.querySelector('svg.pt-feed-spark')).toBeNull();
+  });
   it('a quiet window says so in one line; no strip', async () => {
     const r = await view(feed([]));
     expect(r.el.querySelector('.pt-feed-strip')).toBeNull();

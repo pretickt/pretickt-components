@@ -1,6 +1,6 @@
 import * as z from 'zod/mini';
-import { addDays, DEMO_ASOF, DEMO_COMPANIES, demoName, IsoDate, Num, Ticker } from './common';
-import { FEED_GROUPS, FEED_IMPACTS, FEED_MAX, SECTORS, type FeedGroup, type FeedImpact } from './values';
+import { addDays, DEMO_ASOF, DEMO_COMPANIES, demoName, IsoDate, Num, prng, round, Ticker } from './common';
+import { FEED_GROUPS, FEED_IMPACTS, FEED_MAX, FEED_SPARK_MAX, SECTORS, type FeedGroup, type FeedImpact } from './values';
 
 /** A path on this site (lowercase, an optional #section): cards link only inside the site. */
 const SitePath = z.string().check(z.regex(/^\/(?![/\\])[a-z0-9/#._-]*$/));
@@ -17,6 +17,12 @@ export const FeedParams = z.object({
     z.object({ by: z.literal('market') }),
   ]),
 });
+/**
+ * A card's chart: adjusted closes (the company's, or SPY's for the market's own) around a past event — `at` is the event's session —
+ * or the last closes before a coming one (`at` = closes.length: the event lies after the end).
+ */
+export const FeedSpark = z.object({ closes: z.array(z.number()).check(z.minLength(2), z.maxLength(FEED_SPARK_MAX)), at: z.int().check(z.minimum(0)) })
+  .check(z.refine((s) => s.at <= s.closes.length, 'at is a close, or just after the last'));
 export const FeedItem = z.object({
   date: IsoDate,
   group: z.enum(FEED_GROUPS),
@@ -31,10 +37,12 @@ export const FeedItem = z.object({
   /** The session the impact is measured on (`day`: its move; `since`: from its close); null for coming events. */
   session: z.nullable(IsoDate),
   href: SitePath,
+  spark: z.nullable(FeedSpark),
 });
 export const FeedPayload = z.object({ asOf: IsoDate, items: z.array(FeedItem).check(z.maxLength(FEED_MAX)) });
 export type FeedParams = z.output<typeof FeedParams>;
 export type FeedItem = z.infer<typeof FeedItem>;
+export type FeedSpark = z.infer<typeof FeedSpark>;
 export type Feed = z.infer<typeof FeedPayload>;
 
 export const feedSamples: z.input<typeof FeedParams>[] = [
@@ -44,7 +52,7 @@ export const feedSamples: z.input<typeof FeedParams>[] = [
 /** A kind this build has never seen, shaped like one of the market's own items. */
 export function feedUnknownVariant(p: Feed): unknown {
   return { ...p, items: [...p.items, { date: p.asOf, group: 'market', kind: 'brand-new', ticker: null, name: null, logo: null, label: 'Something new',
-    sub: null, text: 'Something new happened.', impact: null, impactKind: null, session: null, href: '/' }] };
+    sub: null, text: 'Something new happened.', impact: null, impactKind: null, session: null, href: '/', spark: null }] };
 }
 
 const nameOf = (t: string) => DEMO_COMPANIES.find(([k]) => k === t)?.[1].replace(/,? (Inc\.|Corporation|Company)$/, '') ?? demoName(t);
@@ -52,6 +60,16 @@ const hub = (t: string) => `/stocks/${t.toLowerCase()}/`;
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const long = (iso: string) => `${MONTHS[Number(iso.slice(5, 7)) - 1]} ${Number(iso.slice(8, 10))}, ${iso.slice(0, 4)}`;
 type Spec = [days: number, group: FeedGroup, kind: string, label: string, sub: string | null, impact: number | null, impactKind: FeedImpact | null, href: string, text: string];
+
+/** A believable chart for a demo card: a walk with the event's move in it (its session's jump, or the drift since), or before a coming event. */
+function demoSpark(seed: string, impact: number | null, kind: FeedImpact | null, coming: boolean): FeedSpark {
+  const r = prng(seed);
+  const walk = (n: number, from: number, drift = 0) => { const out = [from]; for (let k = 1; k < n; k++) out.push(round(out[k - 1]! * (1 + drift + (r() - 0.5) * 0.016), 2)); return out; };
+  if (coming) return { closes: walk(20, 100), at: 20 };
+  if (kind === 'since') { const pre = walk(5, 100), after = walk(14, pre[4]!, (impact ?? 0) / 13); return { closes: [...pre, ...after.slice(1)], at: 4 }; }
+  const before = walk(11, 100), jump = round(before[10]! * (1 + (impact ?? 0)), 2);
+  return { closes: [...before, ...walk(10, jump)], at: 11 };
+}
 
 /** One company's demo events: every group but the market's, each impact kind and a card without one, on both sides of the session. */
 function companyItems(t: string, shift = 0): FeedItem[] {
@@ -71,7 +89,8 @@ function companyItems(t: string, shift = 0): FeedItem[] {
   return specs.map(([days, group, kind, label, sub, impact, impactKind, href, text]): FeedItem => {
     const date = addDays(DEMO_ASOF, days + shift);
     const session = impactKind === 'day' || impactKind === 'since' ? (kind === 'earnings' ? addDays(date, 1) : date) : null;
-    return { date, group, kind, ticker: t, name: n, logo: null, label, sub, text: text.replace('%d', long(date)), impact, impactKind, session, href };
+    return { date, group, kind, ticker: t, name: n, logo: null, label, sub, text: text.replace('%d', long(date)), impact, impactKind, session, href,
+      spark: demoSpark(`${t}:${kind}:${days}`, impact, impactKind, days + shift > 0) };
   });
 }
 
@@ -79,7 +98,7 @@ function marketItems(): FeedItem[] {
   const m = (days: number, kind: string, label: string, sub: string | null, impact: number | null, impactKind: FeedImpact | null, href: string, text: string): FeedItem => {
     const date = addDays(DEMO_ASOF, days);
     return { date, group: 'market', kind, ticker: null, name: null, logo: null, label, sub, text: text.replace('%d', long(date)), impact, impactKind,
-      session: impactKind === 'day' || impactKind === 'since' ? date : null, href };
+      session: impactKind === 'day' || impactKind === 'since' ? date : null, href, spark: demoSpark(`market:${kind}:${days}`, impact, impactKind, days > 0) };
   };
   return [
     m(-40, 'big-move', 'Market down', '4× usual', -0.021, 'day', '/#moves', 'The market (SPY) fell 2.1% on %d, about 4 times its usual daily move.'),

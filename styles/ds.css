@@ -374,7 +374,7 @@
   .pt-feed-strip { @apply relative m-0 mt-1 flex list-none gap-2 overflow-x-auto p-0 pb-2; scroll-behavior: smooth; scroll-snap-type: x proximity;
     scrollbar-width: thin; overscroll-behavior-x: contain; }
   .pt-feed-item { @apply shrink-0; scroll-snap-align: start; }
-  .pt-feed-card { @apply block h-26 w-32 rounded-control border border-border bg-surface-raised p-2 text-ink no-underline outline-none;
+  .pt-feed-card { @apply block h-32 w-32 rounded-control border border-border bg-surface-raised p-2 text-ink no-underline outline-none;
     border-top-width: 3px; transition: box-shadow 120ms, transform 120ms; }
   .pt-feed-face { @apply flex h-full flex-col gap-0.5; }
   .pt-feed-card:is(:hover, :focus-visible) { @apply -translate-y-0.5 shadow-md; }
@@ -396,6 +396,21 @@
   .pt-feed-label { @apply mt-1 truncate text-xs font-semibold leading-tight; }
   .pt-feed-sub { @apply truncate text-3xs leading-tight text-ink-soft; }
   .pt-feed-foot { @apply mt-auto flex items-center justify-between gap-1; }
+  /* the card's chart (sparkGeom): the closes, the event's part in its tone, a dot on it; a coming event's band of its usual move */
+  .pt-feed-spark { @apply mt-auto block h-7 w-full overflow-visible; }
+  .pt-feed-spark ~ .pt-feed-foot { @apply mt-1; }
+  .pt-feed-spark-line { fill: none; stroke: var(--color-ink-soft); stroke-opacity: 0.6; stroke-width: 1.25; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .pt-feed-spark-hot { fill: none; stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  .pt-feed-spark-hot.pt-feed-spark-pos { stroke: var(--color-pos); }
+  .pt-feed-spark-hot.pt-feed-spark-neg { stroke: var(--color-neg); }
+  .pt-feed-spark-hot.pt-feed-spark-flat { stroke: var(--color-ink); }
+  .pt-feed-spark-dot { stroke: var(--color-surface-raised); stroke-width: 1; vector-effect: non-scaling-stroke; }
+  .pt-feed-spark-dot.pt-feed-spark-pos { fill: var(--color-pos); }
+  .pt-feed-spark-dot.pt-feed-spark-neg { fill: var(--color-neg); }
+  .pt-feed-spark-dot.pt-feed-spark-flat { fill: var(--color-ink); }
+  .pt-feed-spark-at { stroke: var(--color-ink-soft); stroke-opacity: 0.35; stroke-width: 1; stroke-dasharray: 2 2; vector-effect: non-scaling-stroke; }
+  .pt-feed-spark-band { fill: var(--color-primary); fill-opacity: 0.14; stroke: var(--color-primary); stroke-opacity: 0.6; stroke-width: 1; stroke-dasharray: 2 1.5;
+    vector-effect: non-scaling-stroke; }
   .pt-feed-date { @apply font-mono text-3xs text-ink-soft; }
   .pt-feed-pill { @apply whitespace-nowrap rounded-full px-1.5 py-px font-mono text-3xs font-semibold; }
   .pt-feed-pill-pos { @apply bg-pos/10 text-pos; }
