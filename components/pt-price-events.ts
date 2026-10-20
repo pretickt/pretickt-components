@@ -68,7 +68,8 @@ function tipFor(e: EventItem): string {
     case 'earnings': {
       const m = e.meta;
       const surprise = m.epsActual != null && m.epsEst ? (m.epsActual - m.epsEst) / Math.abs(m.epsEst) : null;
-      return tip({ Earnings: date(e.date), Time: m.time ? m.time.toUpperCase() : null, 'EPS est.': m.epsEst == null ? null : num(m.epsEst),
+      return tip({ Earnings: date(e.date), Time: m.time ? m.time.toUpperCase() : null,
+        Status: m.confirmed == null ? null : m.confirmed ? 'Confirmed by the company' : 'Estimated date', 'EPS est.': m.epsEst == null ? null : num(m.epsEst),
         'EPS actual': m.epsActual == null ? null : num(m.epsActual), Surprise: surprise == null ? null : pct(surprise) });
     }
     case 'dividend':
