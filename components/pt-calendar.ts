@@ -1,7 +1,7 @@
 /**
  * Which companies report earnings (or go ex-dividend) this month — or in the coming week — and which market-wide dates (Fed, CPI,
  * jobs) fall around them?
- * @version 2.4.0
+ * @version 2.5.0
  * @evidence DataForSEO: "earnings calendar" ~153k searches/month, SERP without AI overview (reports/Funzioni pretickt da tenere e aggiungere.md)
  * @evidence DataForSEO: "dividend calendar" in launch/data/08c-serp-dividend-calendar.json
  * @evidence beta: events-calendar month grid (pretickt-frontend/src/app/home/events-calendar.ts); stockanalysis.com earnings calendar
@@ -77,11 +77,13 @@ type Kind = 'earnings' | 'dividend';
 const CAP = 4;
 const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const time = (e: EventItem) => (e.kind === 'earnings' && e.meta.time ? e.meta.time.toUpperCase() : '');
-/** Short per-event suffix: report time for earnings, cash amount for dividends. */
-const tag = (e: EventItem) => (e.kind === 'dividend' ? amount(e.meta.amount) : time(e));
+/** The provider's own flag: true = the company set the date, false = still an estimate, absent = not known (older data). */
+const status = (e: EventItem) => (e.kind !== 'earnings' || e.meta.confirmed == null ? null : e.meta.confirmed ? 'Confirmed by the company' : 'Estimated date');
+/** Short per-event suffix: report time for earnings (a leading ~ when the date is still an estimate), cash amount for dividends. */
+const tag = (e: EventItem) => (e.kind === 'dividend' ? amount(e.meta.amount) : `${e.kind === 'earnings' && e.meta.confirmed === false ? '~' : ''}${time(e)}`);
 const macroTip = (e: Macro) => tip({ [e.meta.label]: e.meta.event, Date: date(e.date), Impact: e.meta.impact });
 const chipTip = (e: Company) => tip({
-  [e.ticker]: e.name, Date: date(e.date), Time: time(e) || null,
+  [e.ticker]: e.name, Date: date(e.date), Time: time(e) || null, Status: status(e),
   'EPS est.': e.kind === 'earnings' && e.meta.epsEst != null ? num(e.meta.epsEst) : null,
   ...(e.kind === 'dividend' ? { Dividend: amount(e.meta.amount), 'Pay date': e.meta.payDate ? date(e.meta.payDate) : null } : {}),
 });

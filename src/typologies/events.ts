@@ -21,7 +21,7 @@ export const EventsParams = z.object({
 const Common = { date: IsoDate, ticker: Ticker, name: z.string(), logo: z.nullable(z.string()), mcap: Num };
 export const EventItem = z.discriminatedUnion('kind', [
   z.object({ ...Common, kind: z.literal('earnings'), meta: z.object({
-    time: z.nullable(z.enum(['bmo', 'amc'])), epsEst: Num, epsActual: Num, revEst: Num, revActual: Num }) }),
+    time: z.nullable(z.enum(['bmo', 'amc'])), confirmed: z.optional(z.nullable(z.boolean())), epsEst: Num, epsActual: Num, revEst: Num, revActual: Num }) }),
   z.object({ ...Common, kind: z.literal('dividend'), meta: z.object({ amount: z.number(), payDate: z.nullable(IsoDate) }) }),
   z.object({ ...Common, kind: z.literal('split'), meta: z.object({ numerator: z.number(), denominator: z.number() }) }),
   z.object({ ...Common, kind: z.literal('analyst'), meta: z.object({
@@ -66,7 +66,7 @@ export function eventsDemo(p: EventsParams): Events {
     for (let d = addDays(to, -Math.floor(r() * 80)); d >= from; d = addDays(d, -91)) {
       const future = d > DEMO_ASOF;
       const est = round(1 + r() * 3);
-      if (want.has('earnings')) items.push({ ...co, date: d, kind: 'earnings', meta: { time: r() > 0.5 ? 'amc' : 'bmo', epsEst: est,
+      if (want.has('earnings')) items.push({ ...co, date: d, kind: 'earnings', meta: { time: r() > 0.5 ? 'amc' : 'bmo', confirmed: future ? r() > 0.4 : true, epsEst: est,
         epsActual: future ? null : round(est * (0.9 + r() * 0.25)), revEst: round(1e9 + r() * 5e10, 0), revActual: null } });
       const ex = addDays(d, -20);
       if (want.has('dividend') && ex >= from) items.push({ ...co, date: ex, kind: 'dividend', meta: { amount: round(0.1 + r()), payDate: addDays(ex, 14) } });
@@ -89,7 +89,7 @@ export function eventsDemo(p: EventsParams): Events {
       const [ticker, name] = DEMO_COMPANIES[i % DEMO_COMPANIES.length]!;
       const day = String(1 + Math.floor(r() * 28)).padStart(2, '0');
       if (want.has('earnings')) items.push({ date: `${p.scope.month}-${day}`, ticker, name, logo: null, mcap: round(1e10 + r() * 3e12, 0), kind: 'earnings',
-        meta: { time: r() > 0.5 ? 'amc' : 'bmo', epsEst: round(1 + r() * 3), epsActual: null, revEst: null, revActual: null } });
+        meta: { time: r() > 0.5 ? 'amc' : 'bmo', confirmed: r() > 0.4, epsEst: round(1 + r() * 3), epsActual: null, revEst: null, revActual: null } });
     }
   }
   if (want.has('macro')) {

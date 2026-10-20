@@ -94,6 +94,20 @@ describe('pt-calendar', () => {
     expect(out).toContain('Fed');
     expect(out).not.toContain('/stocks//');
   });
+  it('marks an estimated earnings date with ~ and says so in the tip; a confirmed one is plain', async () => {
+    const base = { date: '2026-10-15', ticker: 'NVDA', name: 'NVIDIA', logo: null, mcap: 5e12, kind: 'earnings' as const };
+    const d = { asOf: '2026-10-02', items: [
+      { ...base, meta: { time: 'amc' as const, confirmed: false, epsEst: 1.3, epsActual: null, revEst: null, revActual: null } },
+      { ...base, ticker: 'AAPL', name: 'Apple', meta: { time: 'amc' as const, confirmed: true, epsEst: 2, epsActual: null, revEst: null, revActual: null } },
+      { ...base, ticker: 'KO', name: 'Coca-Cola', meta: { time: 'bmo' as const, epsEst: 1, epsActual: null, revEst: null, revActual: null } }] };
+    const out = await html(d);
+    expect(out).toContain('~AMC');
+    expect(out).toContain('Estimated date');
+    expect(out).toContain('Confirmed by the company');
+    expect(out.match(/~AMC/g)!.length).toBe(1);
+    expect(out).toContain('BMO');
+    expect(out).not.toContain('~BMO');
+  });
   it('shows a dividend calendar with amounts when asked', async () => {
     const d = { asOf: '2026-10-02', items: [{ date: '2026-10-15', ticker: 'KO', name: 'Coca-Cola', logo: null, mcap: 3e11, kind: 'dividend' as const, meta: { amount: 0.51, payDate: '2026-10-30' } }] };
     expect(await html(d, 'dividend')).toContain('$0.51');
