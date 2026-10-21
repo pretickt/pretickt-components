@@ -104,7 +104,10 @@ describe('pt-calendar', () => {
     expect(out).toContain('~AMC');
     expect(out).toContain('Estimated date');
     expect(out).toContain('Confirmed by the company');
-    expect(out.match(/~AMC/g)!.length).toBe(1);
+    // a month shows each report twice, as a chip in the grid and as a line of the text list: only NVDA's two carry the ~
+    expect(out.match(/~AMC/g)!.length).toBe(2);
+    expect(out).toContain('NVIDIA (NVDA) ~AMC');
+    expect(out).toContain('Apple (AAPL) AMC');
     expect(out).toContain('BMO');
     expect(out).not.toContain('~BMO');
   });
