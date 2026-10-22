@@ -58,6 +58,25 @@ for (const c of index.components) {
     }
   }
 }
+// a company page while the market is open: the card hydrates at once and loads today's file, "why it moved" hydrates once the file
+// is in (every sign flipped against the demo, so a server class left beside today's shows)
+{
+  const t = 'NVDA', m = demoFor({ t: 'move-breakdown@1', params: { ticker: t, window: '1d' } } as never) as { market: number; sector: number; specific: number; ret: number };
+  const flip = (v: number) => (v >= 0 ? -1 : 1) * Math.max(Math.abs(v), 0.01);
+  const liveFile = join(tmp, 'live.json');
+  writeFileSync(liveFile, JSON.stringify({ v: 1, session: '2026-10-01', prev: '2026-09-30', asOf: '2026-10-01T15:30:00Z', delayMin: 15, closed: false,
+    q: { [t]: { p: 100, pc: 101, r: flip(m.ret), m: flip(m.market), s: flip(m.sector), x: flip(m.specific) } }, news: {}, earnings: {} }));
+  const r = await server.renderPage({ buildId: 'check', api: '', live: 'https://storage.example/live/v1.json', sections: [
+    { id: 'card', items: [{ c: 'pt-company-card', props: { ticker: t } }] }, { id: 'why', items: [{ c: 'pt-why-today', props: { ticker: t } }] }] },
+  { document: server.BARE_DOCUMENT, resolve: demo });
+  const file = join(tmp, 'live.html');
+  writeFileSync(file, r.html);
+  for (const [build, main] of Object.entries(mains)) {
+    const out = execFileSync(process.execPath, [resolve('scripts/hydrate-case.mjs'), file, main, liveFile], { encoding: 'utf8', env: process.env });
+    problems.push(...(JSON.parse(out.trim().split('\n').at(-1)!) as { problems: string[] }).problems.map((p) => `company page with today's file (${build}): ${p}`));
+  }
+  n++;
+}
 rmSync(tmp, { recursive: true, force: true });
 say(`hydration: ${n} pages`);
 if (problems.length) { for (const p of problems) say(`✗ ${p}`); process.exit(1); }
