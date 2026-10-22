@@ -98,6 +98,13 @@ Render the pick buttons inside `@if (picks.ready())`, so the server HTML and hyd
 browser only (the page's store, never sent anywhere); keys ≤ 200 characters, values ≤ 40; name a key by what is being called
 (`ep:earnings:NVDA:2026-11-19`). Count a pick like any control: dispatch `pt-interact` from the button.
 
+**Today's prices** (`PtLive`, same entry; since 2026-10-22): while the market is open the platform uploads an intraday file every 5
+minutes (prices of bars over for at least 15 minutes, the market / sector / specific split, news since the last close, results just
+reported). `private readonly live = inject(PtLive)`; `live.after(() => asOf)` → the `LiveDay` when its session is newer than `asOf`
+(the date your payload stops at), else null — null on the server, in the checks and until the file has loaded, so show the live parts
+inside `@if` and never let the server HTML depend on them. Say the delay wherever a live price shows ("15-min delayed"). Only the page
+app reads the file (`src/site/live.ts`, the page model's `live` address); a component never fetches.
+
 Types (`MoveBreakdown`, `News`, `MetricItem`, `EventItem`, `ScreenList`, …) and plain values (`RANGES`, `SENTIMENT_FLAT`,
 `METRIC_KEYS`, `CALENDAR_MONTHS`, `cmp`) come from `@pretickt/components/typologies` (in components that entry carries no schema:
 zod never reaches a page). Each typology has a deterministic `demo` the checks and the admin bench use. Adding a typology is a
