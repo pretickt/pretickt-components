@@ -20,7 +20,7 @@ import { PtWhyToday } from '../../components/pt-why-today';
 export const REGISTRY: Record<string, { version: string; sample: Record<string, unknown> }> = {
   'pt-answer': { version: '1.1.0', sample: {} },
   'pt-calendar': { version: '2.5.0', sample: { month: '2026-09' } },
-  'pt-company-card': { version: '1.1.0', sample: { ticker: 'NVDA' } },
+  'pt-company-card': { version: '1.2.0', sample: { ticker: 'NVDA' } },
   'pt-feed': { version: '1.0.0', sample: {} },
   'pt-financials': { version: '2.4.0', sample: { ticker: 'NVDA' } },
   'pt-insiders': { version: '2.3.0', sample: { ticker: 'NVDA' } },
@@ -30,7 +30,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
   'pt-price-events': { version: '2.2.0', sample: { ticker: 'NVDA' } },
   'pt-price-target': { version: '2.3.0', sample: { ticker: 'NVDA' } },
   'pt-screen': { version: '2.4.0', sample: {} },
-  'pt-why-today': { version: '2.1.0', sample: { ticker: 'NVDA' } },
+  'pt-why-today': { version: '2.2.0', sample: { ticker: 'NVDA' } },
 };
 
 /** One placement: the island wrapper (`tag@version` for the beacon, the error notice) and its component, hydrated when it scrolls into view. */
