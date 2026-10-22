@@ -65,6 +65,13 @@ export function attachCompanyBar(doc: Document, o: CompanyBarOptions = {}): HTML
   if (!header || !row || !card) return null;
   const bar = build(doc, card);
   row.insertBefore(bar, row.querySelector('form.pt-search'));
-  (o.observe ?? observePast)(card, header.getBoundingClientRect().height, (on) => header.classList.toggle(ON, on));
+  (o.observe ?? observePast)(card, header.getBoundingClientRect().height, (on) => {
+    // the card's price and its distance to the target change after the strip was built (today's delayed price arrives later)
+    if (on) for (const [mine, theirs] of [['.pt-cobar-close', '.pt-card-close'], ['.pt-cobar-pt', '.pt-card-pt']]) {
+      const e = bar.querySelector(mine!), t = textOf(card, theirs!);
+      if (e && t) e.textContent = t;
+    }
+    header.classList.toggle(ON, on);
+  });
   return bar;
 }

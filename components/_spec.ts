@@ -1,7 +1,7 @@
 import type { ComponentFixture } from '@angular/core/testing';
 import { TestBed } from '@angular/core/testing';
-import type { Type } from '@angular/core';
-import { Pt, PT_STORE, PtStore, validateParams } from '../src/context';
+import type { Provider, Type } from '@angular/core';
+import { Pt, PT_LIVE, PT_STORE, PtStore, validateParams, type LiveDay, type LiveSource } from '../src/context';
 import { demoFor, getTypology } from '../src/typologies';
 
 /** Every call answered with the typology's demo; `variant` adds the catalogue entries a newer API may send. */
@@ -26,18 +26,24 @@ export async function settle(f: ComponentFixture<unknown>) {
  * A component rendered the way the build renders it: a `Pt` whose calls `resolve` answers (validated params, the render waits for
  * every call), or — `browser: true` — the way a page behaves after load (failed requests are failures, nothing waits).
  */
-export async function render<C>(component: Type<C>, inputs: Record<string, unknown>, resolve: (t: string, p: unknown) => Promise<unknown> = demo(), o: { browser?: boolean } = {}) {
+export async function render<C>(component: Type<C>, inputs: Record<string, unknown>, resolve: (t: string, p: unknown) => Promise<unknown> = demo(),
+  o: { browser?: boolean; providers?: Provider[] } = {}) {
   let calls = 0;
   const record: Record<string, unknown> = {};
   const store = new PtStore({ server: !o.browser, resolve: (t, p) => { calls++; return resolve(t, p); }, validate: validateParams, record });
   TestBed.resetTestingModule();
-  TestBed.configureTestingModule({ providers: [{ provide: PT_STORE, useValue: store }, Pt] });
+  TestBed.configureTestingModule({ providers: [{ provide: PT_STORE, useValue: store }, Pt, ...(o.providers ?? [])] });
   const f = TestBed.createComponent(component);
   for (const [k, v] of Object.entries(inputs)) f.componentRef.setInput(k, v);
   if (o.browser) { f.detectChanges(); for (let i = 0; i < 10; i++) await Promise.resolve(); f.detectChanges(); } else await settle(f);
   const el = f.nativeElement as HTMLElement;
   return { f, el, html: () => clean(el.innerHTML), text: () => el.textContent ?? '', record, calls: () => calls };
 }
+
+/** Today's intraday file as the page app gives it (PtLive), for `render(…, { browser: true, providers: liveDay(…) })`. */
+export const liveDay = (d: Partial<LiveDay> = {}): Provider[] => [{ provide: PT_LIVE, useValue: { load: async () => ({
+  session: '2026-10-01', prev: '2026-09-30', asOf: '2026-10-01T15:30:00.000Z', time: '11:30 AM ET', delayMin: 15, closed: false,
+  q: {}, news: {}, earnings: {}, ...d }) } satisfies LiveSource }];
 
 /** Clicks the button with this text inside `el` and lets the component settle. */
 export async function press(f: ComponentFixture<unknown>, el: Element, label: string) {

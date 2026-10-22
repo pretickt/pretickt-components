@@ -1,10 +1,11 @@
 /**
- * How does this company look at a glance: price over the last 60 sessions, 52-week range, analysts, and its key numbers?
- * @version 1.1.0
+ * How does this company look at a glance: price over the last 60 sessions (today's, 15 minutes late, while the market is open),
+ * 52-week range, analysts, and its key numbers?
+ * @version 1.2.0
  * @evidence beta: the company page header and the hover mini-card (CompanyHoverCard), asked back by Romeo on 2026-10-06
  */
 import { Component, computed, inject, input, signal } from '@angular/core';
-import { Pt } from '@pretickt/components/context';
+import { Pt, PtLive } from '@pretickt/components/context';
 import { PtBadge, PtLogo } from '@pretickt/components/ds';
 import { date, money, pct, tone, usd } from '@pretickt/components/format';
 import { METRIC_KEYS, type MetricKey } from '@pretickt/components/typologies';
@@ -33,10 +34,15 @@ const SPARK_W = 120, SPARK_H = 32;
         </div>
         @if (close() != null) {
           <div class="pt-card-price">
-            <span class="pt-card-close">{{ money(close()) }}</span>
+            <span class="pt-card-close">{{ money(price()) }}</span>
             @if (spark(); as s) {<svg class="pt-card-spark" [attr.viewBox]="'0 0 ' + SPARK_W + ' ' + SPARK_H" aria-hidden="true"><polyline [attr.points]="s" /></svg>}
-            @if (change() != null) {<span [class]="'pt-t-' + tone(change())">{{ pct(change()) }}</span>}
-            @if (asOf(); as d) {<span class="pt-meta pt-card-asof">last {{ SESSIONS }} sessions · close {{ date(d) }}</span>}
+            @if (now(); as q) {
+              <span [class]="'pt-t-' + tone(q.r)">{{ pct(q.r) }}</span>
+              <span class="pt-meta pt-card-asof">{{ nowLabel() }}</span>
+            } @else {
+              @if (change() != null) {<span [class]="'pt-t-' + tone(change())">{{ pct(change()) }}</span>}
+              @if (asOf(); as d) {<span class="pt-meta pt-card-asof">last {{ SESSIONS }} sessions · close {{ date(d) }}</span>}
+            }
           </div>
         }
         @if (range()?.range; as r) {
@@ -50,7 +56,7 @@ const SPARK_W = 120, SPARK_H = 32;
         @if (consensus() || target() != null) {
           <div class="pt-card-analysts">
             @if (consensus()?.text; as text) {<span [class]="'pt-t-' + consensus()!.tone">{{ text }} · {{ consensus()!.value }} analysts</span>}
-            @if (target() != null && upside() != null) {<span [class]="'pt-card-pt pt-tone-' + tone(upside())">PT {{ money(target()) }} {{ pct(upside()) }}</span>}
+            @if (target() != null && upsideNow() != null) {<span [class]="'pt-card-pt pt-tone-' + tone(upsideNow())">PT {{ money(target()) }} {{ pct(upsideNow()) }}</span>}
           </div>
         }
         @if (main().length) {<ul class="pt-badges pt-card-tags">@for (m of main(); track m.key) {<li [ptBadge]="m" size="mini"></li>}</ul>}
@@ -64,6 +70,7 @@ const SPARK_W = 120, SPARK_H = 32;
 })
 export class PtCompanyCard {
   private readonly pt = inject(Pt);
+  private readonly live = inject(PtLive);
   readonly ticker = input.required<string>();
   readonly size = input<'wide' | 'compact'>('wide');
   /** The link's tooltip rows (hover card): its footer. */
@@ -93,6 +100,14 @@ export class PtCompanyCard {
   protected readonly close = computed(() => this.points().at(-1)?.c ?? this.range()?.value ?? null);
   protected readonly asOf = computed(() => this.points().at(-1)?.t ?? null);
   protected readonly change = computed(() => { const p = this.points(); return p.length > 1 ? p.at(-1)!.c / p[0]!.c - 1 : null; });
+  /** Today, once the delayed prices have loaded and while the build's data is the previous session's: the price and its change since that close. */
+  private readonly today = this.live.after(() => this.asOf());
+  protected readonly now = computed(() => this.today()?.q[this.ticker()] ?? null);
+  protected readonly price = computed(() => this.now()?.p ?? this.close());
+  protected readonly nowLabel = computed(() => {
+    const d = this.today();
+    return !d ? '' : d.closed ? `today · close ${date(d.session)}, preliminary` : `today · ${d.time}, ${d.delayMin}-min delayed`;
+  });
   protected readonly spark = computed(() => {
     const p = this.points();
     if (p.length < 2) return null;
@@ -103,10 +118,12 @@ export class PtCompanyCard {
   protected readonly consensus = computed(() => this.byKey().get('consensus'));
   protected readonly upside = computed(() => this.byKey().get('pt_upside')?.value);
   protected readonly target = computed(() => { const c = this.close(), u = this.upside(); return c != null && u != null ? c * (1 + u) : null; });
+  /** The target against the price shown (today's, when there is one). */
+  protected readonly upsideNow = computed(() => { const t = this.target(), p = this.price(); return t != null && p ? t / p - 1 : this.upside() ?? null; });
   protected readonly rangeAt = computed(() => {
-    const r = this.range();
-    return r?.range && r.value != null && r.range.hi > r.range.lo
-      ? `${Math.min(100, Math.max(0, ((r.value - r.range.lo) / (r.range.hi - r.range.lo)) * 100)).toFixed(1)}%` : null;
+    const r = this.range(), v = this.now()?.p ?? r?.value;
+    return r?.range && v != null && r.range.hi > r.range.lo
+      ? `${Math.min(100, Math.max(0, ((v - r.range.lo) / (r.range.hi - r.range.lo)) * 100)).toFixed(1)}%` : null;
   });
   protected readonly main = computed(() => CARD_KEYS.flatMap((k) => this.byKey().get(k) ?? []));
   // everything else the payload holds — keys added to the catalogue later included — behind "Show all"

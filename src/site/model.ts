@@ -4,8 +4,11 @@ import { InjectionToken, makeStateKey } from '@angular/core';
 export interface PagePlacement { c: string; props: Record<string, unknown>; off?: boolean }
 /** A section: its title (none on the company card's), the link to its full page, its placements. */
 export interface PageSection { id: string; title?: string; more?: { href: string; label: string }; items: PagePlacement[] }
-/** What the generator gives a page app: its sections, the build, the API origin ('' = same origin) and, on a company's pages, that company. */
-export interface PageModel { buildId: string; api: string; subject?: string; sections: PageSection[] }
+/**
+ * What the generator gives a page app: its sections, the build, the API origin ('' = same origin), on a company's pages that company,
+ * and the address of the intraday file (none: no live prices).
+ */
+export interface PageModel { buildId: string; api: string; subject?: string; live?: string; sections: PageSection[] }
 
 export interface RenderOptions {
   /** The page document with a `<pt-page></pt-page>` root (the generator's layout). */
