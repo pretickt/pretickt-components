@@ -115,6 +115,12 @@ describe('metric catalogue, one source', () => {
     const { INSIDER_WINDOW_DAYS } = await import('./index');
     expect(METRIC_LABELS.insider_net.hint).toContain(`last ${INSIDER_WINDOW_DAYS} days`);
   });
+  it('the 52-week and all-time highs say what the nightly reads: traded intraday highs and lows, not closes', () => {
+    for (const k of ['off_high', 'off_ath', 'range_52w'] as const) {
+      expect(METRIC_LABELS[k].hint, k).toMatch(/intraday/);
+      expect(METRIC_LABELS[k].hint, k).not.toMatch(/(highest|lowest|high|low|adjusted) close/);
+    }
+  });
   it('the catalogue is its two groups, in page order', async () => {
     const { METRIC_GROUPS } = await import('./index');
     expect([...METRIC_GROUPS.snapshot, ...METRIC_GROUPS.technicals]).toEqual([...METRIC_KEYS]);
