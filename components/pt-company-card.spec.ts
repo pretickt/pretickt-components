@@ -1,7 +1,7 @@
 import { money, pct, usd } from '../src/ds/format';
 import { metricDemo, METRIC_KEYS, priceSeriesDemo } from '../src/typologies';
 import { CARD_KEYS, PtCompanyCard } from './pt-company-card';
-import { basics, render, settle, withData } from './_spec';
+import { basics, demo, liveDay, render, settle, withData } from './_spec';
 
 const metrics = metricDemo({ ticker: 'NVDA', metrics: [...METRIC_KEYS] });
 const series = priceSeriesDemo({ tickers: ['NVDA'], range: '3m', interval: '1d', rebase: false });
@@ -60,5 +60,23 @@ describe('pt-company-card', () => {
     expect(r.f.componentInstance.ready()).toEqual({ settled: true, available: true });
     const none = await render(PtCompanyCard, { ticker: 'NVDA' }, async () => null);
     expect(none.f.componentInstance.ready()).toEqual({ settled: true, available: false });
+  });
+
+  it('while the market is open: today\'s price, 15 minutes late, its change since the last close, and the target against it', async () => {
+    const r = await render(PtCompanyCard, { ticker: 'NVDA' }, demo(), { browser: true, providers: liveDay({ q: { NVDA: { p: 100, pc: 110, r: -0.0909, m: 0, s: 0, x: -0.0909 } } }) });
+    const out = r.html();
+    expect(out).toContain('<span class="pt-card-close">$100.00</span>');
+    expect(out).toContain(pct(-0.0909));
+    expect(out).toContain('today · 11:30 AM ET, 15-min delayed');
+    expect(out).not.toContain('last 60 sessions');
+    const target = close * (1 + item('pt_upside').value!);
+    expect(out).toContain(`PT ${money(target)} ${pct(target / 100 - 1)}`);
+  });
+  it('after the close, the session\'s last delayed price; a file no newer than its data, or without the company, changes nothing', async () => {
+    const q = { NVDA: { p: 100, pc: 110, r: -0.0909, m: 0, s: 0, x: -0.0909 } };
+    const at = async (d: Parameters<typeof liveDay>[0]) => (await render(PtCompanyCard, { ticker: 'NVDA' }, demo(), { browser: true, providers: liveDay(d) })).html();
+    expect(await at({ q, closed: true })).toContain('today · close Oct 1, 2026, preliminary');
+    expect(await at({ q, session: '2026-09-30' })).toContain('last 60 sessions');
+    expect(await at({ q: {} })).toContain('last 60 sessions');
   });
 });

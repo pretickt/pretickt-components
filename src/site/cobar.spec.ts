@@ -90,4 +90,13 @@ describe('pastOf (the default watcher\'s rule)', () => {
     expect(pastOf(at(false, 40, null), 56)).toBe(true);
     expect(pastOf(at(false, 80, null), 56)).toBe(false);
   });
+  it('shows the card\'s price as it is when the strip appears (today\'s delayed price lands after the first render)', async () => {
+    const { doc, card } = await companyPage();
+    const { w, observe } = watcher();
+    const bar = attachCompanyBar(doc, { observe })!;
+    doc.querySelector('pt-page .pt-card-close')!.textContent = '$1.00';
+    w.past(true);
+    expect(text(bar.querySelector('.pt-cobar-close'))).toBe('$1.00');
+    expect(card).toBeTruthy();
+  });
 });
