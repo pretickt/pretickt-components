@@ -28,8 +28,10 @@ export const PT_LIVE = new InjectionToken<LiveSource>('PT_LIVE');
 
 /**
  * Today's prices, 15 minutes late, on pages whose data stops at the previous close: `live.after(() => asOf)` is the day when its
- * session is newer than `asOf` (the build's last session), else null. It stays null on the server, in the checks and until the file
- * has loaded after the first render, so the server HTML and hydration never depend on it: show the live parts inside `@if`.
+ * session is newer than `asOf` (the build's last session), else null. Call it from a field initializer: it stays null on the server,
+ * in the checks, until the file has loaded and until the calling component has rendered once in the browser — an island that
+ * hydrates after the file arrived first takes over the server's markup as it is, then changes it (a binding that first meets live
+ * values while hydrating adds its classes and styles to the server's instead of replacing them).
  */
 @Injectable({ providedIn: 'root' })
 export class PtLive {
@@ -42,9 +44,11 @@ export class PtLive {
   }
 
   after(asOf: () => string | null | undefined): Signal<LiveDay | null> {
+    const rendered = signal(false);
+    afterNextRender(() => rendered.set(true));
     return computed(() => {
       const d = this.day(), a = asOf();
-      return d && a && d.session > a ? d : null;
+      return rendered() && d && a && d.session > a ? d : null;
     });
   }
 }
