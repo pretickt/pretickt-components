@@ -1,6 +1,6 @@
 import { money, pct } from '../src/ds/format';
 import { analystsDemo, priceSeriesDemo } from '../src/typologies';
-import { buildLadder, buildPtChart, LADDER_GAP, PtPriceTarget } from './pt-price-target';
+import { buildConsensusHistory, buildPtChart, consensusText, LEVEL_GAP, PtPriceTarget } from './pt-price-target';
 import { basics, render, settle, withData } from './_spec';
 
 const analysts = analystsDemo({ ticker: 'NVDA', window: '1y' });
@@ -50,82 +50,88 @@ describe('buildPtChart (ported from beta pt-chart.geometry)', () => {
     const c = buildPtChart(pts, [tg({ firm: 'A', date: '2025-09-02' }), tg({ firm: 'B', date: '2025-09-20' })], '2026-01-05', 120)!;
     expect(c.clusters[0]!.members.map((m) => m.firm)).toEqual(['B', 'A']);
   });
-  it('today is the as-of date, never the clock: a later as-of moves the today line right', () => {
-    expect(buildPtChart(pts, [tg({})], '2026-01-05', 120)!.todayX).toBeGreaterThan(buildPtChart(pts, [tg({})], '2025-12-01', 120)!.todayX);
+  it('marks the last close and the high, average and low targets: a dashed line and a price on the axis each, in the tone of its side', () => {
+    const c = buildPtChart(pts, [tg({ firm: 'A', target: 150 }), tg({ firm: 'B', target: 80 })], '2026-01-05', 120, undefined, { low: 80, mean: 115, high: 150 })!;
+    expect(c.levels.map((l) => [l.key, l.tone])).toEqual([['high', 'pos'], ['now', 'now'], ['mean', 'neg'], ['low', 'neg']]); // top to bottom
+    expect(c.levels.map((l) => l.label)).toEqual(['$150', '$120', '$115', '$80.00']);                                     // the axis' own format
+    expect(c.levels.map((l) => l.name)).toEqual(['HIGH', 'TODAY', 'AVERAGE', 'LOW']);                                     // small, under each price
+    expect(c.levels.every((l) => l.y > 0 && l.y < c.h)).toBe(true);
+    expect(c.levels.find((l) => l.key === 'mean')!.tip).toBe(`Average target ${money(115)} · ${pct(115 / 120 - 1)} from the last close`);
+    expect(c).not.toHaveProperty('todayX');                                                                             // no today line any more
+    expect(c).not.toHaveProperty('yTicks');                                                                             // the levels are the axis
+  });
+  it('keeps the level labels apart (an average next to the last close) while each line stays at its price', () => {
+    const c = buildPtChart(pts, [tg({ firm: 'A', target: 150 }), tg({ firm: 'B', target: 80 })], '2026-01-05', 120, undefined, { low: 80, mean: 120.5, high: 150 })!;
+    const now = c.levels.find((l) => l.key === 'now')!, mean = c.levels.find((l) => l.key === 'mean')!;
+    expect(Math.abs(now.y - mean.y)).toBeLessThan(LEVEL_GAP);
+    expect(Math.abs(now.labelY - mean.labelY)).toBeGreaterThanOrEqual(LEVEL_GAP - 1e-9);
+    expect(mean.tone).toBe('pos');
+  });
+  it('a level outside the visible prices draws neither line nor label; without a summary only the last close', () => {
+    const two = [tg({ firm: 'A', target: 150 }), tg({ firm: 'B', target: 80 })], s = { low: 80, mean: 115, high: 150 };
+    const zoomed = buildPtChart(pts, two, '2026-01-05', 120, { start: 0, end: 1, yScale: 0.25, yShift: 0 }, s)!;  // a quarter of the prices: 105–125
+    expect(zoomed.levels.map((l) => l.key)).toEqual(['now', 'mean']);
+    expect(buildPtChart(pts, two, '2026-01-05', 120)!.levels.map((l) => l.key)).toEqual(['now']);
   });
   it('a viewport narrows time, stretches price, and the identity viewport changes nothing', () => {
     const two = [tg({ firm: 'A', target: 150 }), tg({ firm: 'B', target: 130 })];
     const full = buildPtChart(pts, two, '2026-01-05', 120)!;
     const zoomed = buildPtChart(pts, two, '2026-01-05', 120, { start: 0.5, end: 1, yScale: 1, yShift: 0 })!;
     expect(zoomed.xTicks[0]!.label).not.toBe(full.xTicks[0]!.label);
-    expect(zoomed.todayX).toBeLessThan(full.todayX);
+    expect(zoomed.levels.map((l) => l.y)).toEqual(full.levels.map((l) => l.y));                                         // time zoom: prices stay put
     const tall = buildPtChart(pts, two, '2026-01-05', 120, { start: 0, end: 1, yScale: 2, yShift: 0 })!;
-    expect(tall.todayX).toBeCloseTo(full.todayX, 6);
-    expect(tall.yTicks.map((t) => t.v)).not.toEqual(full.yTicks.map((t) => t.v));
+    expect(tall.xTicks).toEqual(full.xTicks);
+    expect(tall.levels.map((l) => l.y)).not.toEqual(full.levels.map((l) => l.y));
     expect(buildPtChart(pts, two, '2026-01-05', 120, { start: 0, end: 1, yScale: 1, yShift: 0 })!.pricePath).toBe(full.pricePath);
   });
 });
 
-describe('buildLadder (the targets against today\'s price, upright)', () => {
-  const meta = { low: 547.25, mean: 792.86, median: 817.14, high: 1026.3 };
-  const firms = [tg({ firm: 'A', target: 1026.3 }), tg({ firm: 'B', target: 820 }), tg({ firm: 'C', target: 815 }), tg({ firm: 'D', target: 812 }),
-    tg({ firm: 'E', target: 650 }), tg({ firm: 'F', target: 547.25 }), tg({ firm: 'G', target: 0 })];
-  const L = buildLadder(meta, 709.33, firms)!;
-  it('reads top to bottom: high, median, average, today, low — each with its price and its distance from today', () => {
-    expect(L.marks.map((m) => [m.key, m.price, m.pct])).toEqual([['high', '$1,026.30', '+44.7%'], ['median', '$817.14', '+15.2%'], ['mean', '$792.86', '+11.8%'],
-      ['now', '$709.33', null], ['low', '$547.25', '-22.8%']]);
-    expect(L.marks.map((m) => m.tone)).toEqual(['pos', 'pos', 'pos', 'now', 'neg']);
-    expect(L.marks[0]!.y).toBeLessThan(L.marks[4]!.y);
-    expect(L.marks.every((m, i, a) => i === 0 || m.y >= a[i - 1]!.y)).toBe(true);
+describe('buildConsensusHistory (beta\'s stacked monthly ratings, half as tall, on the target chart\'s time axis)', () => {
+  const h = (period: string, strongBuy: number, buy: number, hold = 0, sell = 0, strongSell = 0) => ({ period, strongBuy, buy, hold, sell, strongSell });
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const periodOf = (label: string) => { const [m, y] = label.split(' ') as [string, string]; return `20${y}-${String(MON.indexOf(m) + 1).padStart(2, '0')}-01`; };
+  it('stacks strong sell up to strong buy (strong buy on top), oldest month first, each month where the chart puts it', () => {
+    const c = buildPtChart(pts, [tg({})], '2026-01-05', 120)!;
+    const ticks = c.xTicks.slice(1, 3); // the first tick may start mid-month (clamped to the chart's start)
+    const k = buildConsensusHistory([h(periodOf(ticks[1]!.label), 12, 18, 4, 1), h(periodOf(ticks[0]!.label), 8, 22, 6)], c.x)!;
+    expect(k.layers.map((l) => l.band)).toEqual(['strongSell', 'sell', 'hold', 'buy', 'strongBuy']);
+    expect(k.months.map((m) => m.x)).toEqual(ticks.map((t) => t.x));
+    expect(k.maxTotal).toBe(36);
+    expect([k.w, k.h]).toEqual([c.w, 84]);                                                                    // half of beta's 180
+    expect(JSON.parse(k.months[1]!.tip)).toEqual({ [ticks[1]!.label]: '35 analysts', 'Strong buy': 12, Buy: 18, Hold: 4, Sell: 1, 'Strong sell': 0 });
   });
-  it('keeps the labels apart (close values: median and average) and joins each to its true place on the rail', () => {
-    const ys = L.marks.map((m) => m.labelY);
-    for (let i = 1; i < ys.length; i++) expect(ys[i]! - ys[i - 1]!).toBeGreaterThanOrEqual(LADDER_GAP - 1e-9);
-    expect(Math.min(...ys)).toBeGreaterThanOrEqual(0);
-    expect(Math.max(...ys)).toBeLessThanOrEqual(100);
-    for (const m of L.marks) expect(m.lead).toMatch(new RegExp(`^M[\\d.]+ ${m.y} .*L[\\d.]+ ${m.labelY}$`));
+  it('follows the chart\'s zoom: a narrower time window moves the months', () => {
+    const two = [h('2025-09-01', 10, 20), h('2025-12-01', 11, 19)];
+    const full = buildConsensusHistory(two, buildPtChart(pts, [tg({})], '2026-01-05', 120)!.x)!;
+    const zoomed = buildConsensusHistory(two, buildPtChart(pts, [tg({})], '2026-01-05', 120, { start: 0.5, end: 1, yScale: 1, yShift: 0 })!.x)!;
+    expect(zoomed.months.map((m) => m.x)).not.toEqual(full.months.map((m) => m.x));
   });
-  it('the rail is green above today\'s price and red below; the dots are the firms\' targets, coloured by side, never on top of each other', () => {
-    expect(L.zones.map((z) => z.tone)).toEqual(['pos', 'neg']);
-    expect(L.zones[0]!.top + L.zones[0]!.height).toBeCloseTo(L.marks[3]!.y, 6);
-    expect(L.dots).toHaveLength(6);                                   // a target of 0 is no target
-    expect(L.dots.map((d) => d.tone)).toEqual(['pos', 'pos', 'pos', 'pos', 'neg', 'neg']);
-    for (const d of L.dots) for (const e of L.dots) if (d !== e && d.x === e.x) expect(Math.abs(d.y - e.y)).toBeGreaterThanOrEqual(2.5);
-    expect(JSON.parse(L.dots[0]!.tip)).toEqual({ A: '$1,026 · 2025-09-02' });
+  it('says the consensus in a sentence for search engines: the latest month\'s split, then the share of buys a year earlier', () => {
+    const year = [h('2025-10-01', 10, 40, 8, 2), h('2026-04-01', 12, 44, 5, 1), h('2026-10-01', 10, 49, 2, 1)];
+    expect(consensusText(year)).toBe('62 analysts in October 2026: 59 rate it a buy or strong buy (95%), 2 a hold and 1 a sell or strong sell. A year earlier, 83% rated it a buy or strong buy.');
+    expect(consensusText([h('2026-10-01', 13, 44, 5)])).toBe('62 analysts in October 2026: 57 rate it a buy or strong buy (92%) and 5 a hold.');
+    expect(consensusText([h('2026-10-01', 0, 1)])).toBe('1 analyst in October 2026: 1 rates it a buy or strong buy (100%).');
+    expect(consensusText([h('2026-10-01', 0, 0)])).toBeNull();
+    expect(consensusText([])).toBeNull();
   });
-  it('one dot a firm — its latest target, the one the summary counts — never an older one outside the range', () => {
-    const L2 = buildLadder(meta, 709.33, [tg({ firm: 'A', date: '2026-01-05', target: 1200 }), tg({ firm: 'A', date: '2026-06-01', target: 900 }),
-      tg({ firm: 'B', date: '2026-02-01', target: 700 })])!;
-    expect(L2.dots.map((d) => JSON.parse(d.tip))).toEqual([{ A: '$900 · 2026-06-01' }, { B: '$700 · 2026-02-01' }]);
-  });
-  it('today above every target: the whole rail is downside; without a price, no today and no distances', () => {
-    const above = buildLadder(meta, 1100, firms)!;
-    expect(above.zones.map((z) => z.tone)).toEqual(['neg']);
-    expect(above.marks[0]!.key).toBe('now');
-    const none = buildLadder(meta, null, firms)!;
-    expect(none.marks.map((m) => m.key)).toEqual(['high', 'median', 'mean', 'low']);
-    expect(none.marks.every((m) => m.pct === null)).toBe(true);
-    expect(none.zones.map((z) => z.tone)).toEqual(['flat']);
-  });
-  it('one target (low = high): finite places, no division by zero', () => {
-    const one = buildLadder({ low: 100, mean: 100, median: 100, high: 100 }, 100, [tg({ target: 100 })])!;
-    expect(one.marks.every((m) => Number.isFinite(m.y) && Number.isFinite(m.labelY))).toBe(true);
+  it('one month, or no analysts at all: no chart', () => {
+    const x = buildPtChart(pts, [tg({})], '2026-01-05', 120)!.x;
+    expect(buildConsensusHistory([h('2025-09-01', 10, 20)], x)).toBeNull();
+    expect(buildConsensusHistory([h('2025-09-01', 0, 0), h('2025-10-01', 0, 0)], x)).toBeNull();
   });
 });
 
 describe('pt-price-target', () => {
   basics(PtPriceTarget, p);
 
-  it('shows low, average, median, high and today upright, each with its distance from the last close; the average\'s is the upside', async () => {
+  it('reads top to bottom: the targets in a sentence, the legend, the target chart, the consensus by month, its counts and its sentence', async () => {
     const { el } = await view();
-    const g = el.querySelector('.pt-tg')!;
-    const s = analysts.summary!, byValue = ([['High', s.high], ['Median', s.median], ['Average', s.mean], ['Now', analysts.price!], ['Low', s.low]] as const)
-      .map((x, i) => ({ name: x[0], v: x[1], i })).sort((a, b) => b.v - a.v || a.i - b.i).map((x) => x.name);
-    expect([...g.querySelectorAll('.pt-tg-name')].map((n) => n.textContent!.trim())).toEqual(byValue);  // top to bottom by value
-    expect(g.textContent).toContain(money(analysts.summary!.mean));
-    expect(g.querySelector('.pt-tg-mean .pt-tg-pct')!.textContent!.trim()).toBe(pct(analysts.summary!.mean / analysts.price! - 1));
-    expect(el.querySelector('.pt-pt-stat')).toBeNull();
-    expect(g.querySelectorAll('.pt-tg-dot').length).toBe(new Set(analysts.targets.filter((t) => t.target > 0).map((t) => t.firm)).size); // a dot a firm
+    const ledes = [...el.querySelectorAll('figure .pt-lede')];
+    expect(ledes[0]!.textContent).toContain(`${analysts.summary!.n} firms with a target in the last 12 months · last close ${money(analysts.price!)}`);
+    expect(ledes.at(-1)!.textContent).toBe(consensusText(analysts.history));                                     // the text search engines read
+    const order = [ledes[0]!, el.querySelector('.pt-legend')!, el.querySelector('svg.pt-chart-svg')!, el.querySelector('svg.pt-cons')!, el.querySelector('.pt-cons-keys')!, ledes.at(-1)!];
+    for (let i = 1; i < order.length; i++) expect(order[i - 1]!.compareDocumentPosition(order[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(el.querySelector('.pt-tg')).toBeNull();                                                            // no upright summary
   });
   it('draws one dot, orbit and member panel per target cluster and one segment (+ hit path + gradient) per start→end pair', async () => {
     const c = buildPtChart(series[0]!.points, analysts.targets, analysts.asOf, analysts.price!)!;
@@ -157,9 +163,30 @@ describe('pt-price-target', () => {
     expect(ticks[0]![2]).toBe('start');
     expect(ticks.every((m) => Number(m[1]) <= 754)).toBe(true);
   });
-  it('renders the consensus bar with counts as text', async () => {
-    const out = (await view()).html();
-    expect(out).toContain('pt-consensus');
+  it('no today line: the last close and the high, average and low targets are dashed lines with their prices on the axis', async () => {
+    const { el } = await view();
+    expect(el.querySelector('.pt-today')).toBeNull();
+    const lines = [...el.querySelectorAll('line.pt-lvl')], labels = [...el.querySelectorAll('text.pt-lvl-t')];
+    expect(lines.map((l) => l.getAttribute('class'))).toEqual(labels.map((t) => t.getAttribute('class')!.replaceAll('pt-lvl-t', 'pt-lvl')));
+    expect(lines.length).toBe(4);
+    expect(el.querySelector('text.pt-lvl-t-now')!.textContent!.trim()).toBe(lines.length ? money(analysts.price!, analysts.price! >= 100 ? 0 : 2) : '');
+    expect(el.querySelector('rect.pt-lvl-pill')).not.toBeNull();                                                        // today's price in a dark pill, as upright
+    expect([...el.querySelectorAll('text.pt-lvl-n')].map((n) => n.textContent!.trim()).sort()).toEqual(['AVERAGE', 'HIGH', 'LOW', 'TODAY']); // what each price is
+    expect(el.querySelector('svg.pt-chart-svg line.pt-grid')).toBeNull();                                               // no unnamed grid lines on the target chart
+  });
+  it('under the chart, the consensus by month: five stacked bands on the chart\'s time axis, a tooltip a month, the counts as its key', async () => {
+    const { el } = await view();
+    const svg = el.querySelector('svg.pt-cons')!;
+    expect([...svg.querySelectorAll('path.pt-cons-band')].map((p) => p.getAttribute('class')))
+      .toEqual(['strongSell', 'sell', 'hold', 'buy', 'strongBuy'].map((b) => `pt-cons-band pt-cons-${b}`));
+    expect(svg.querySelectorAll('rect.pt-cons-hit[data-tip]').length).toBe(analysts.history.length);
+    expect(svg.getAttribute('viewBox')).toBe('0 0 800 84');
+    expect(el.querySelector('.pt-cons-keys')!.textContent).toContain(`Strong buy ${analysts.consensus!.strongBuy}`);
+    expect(el.querySelector('.pt-consensus')).toBeNull();                                                     // the one-line bar only without the chart
+  });
+  it('without prices the consensus keeps its one-line bar and its counts', async () => {
+    const out = (await view(analysts, null)).html();
+    expect(out).toContain('class="pt-consensus"');
     expect(out).toContain(`Strong buy ${analysts.consensus!.strongBuy}`);
   });
   it('is zoomable: grab strips on the svg, no view controls at the full view', async () => {
@@ -171,8 +198,7 @@ describe('pt-price-target', () => {
   it('explains missing coverage, keeps the stats without prices', async () => {
     expect((await view({ ...analysts, summary: null, targets: [], consensus: null, history: [] })).html()).toContain('No analyst targets in the last 12 months');
     const noPrices = (await view(analysts, null)).html();
-    expect(noPrices).toContain('>Average<');                          // the ladder stays (today = the answer's last close)
-    expect(noPrices).not.toContain('pt-chart-svg');                    // the chart over time needs the series
+    expect(noPrices).not.toContain('pt-chart-svg');                    // the chart over time needs the series; the consensus stays (next test)
   });
   it('hovering a dot shows the analysts behind it, leaving hides them (beta hover)', async () => {
     const r = await view();

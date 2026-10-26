@@ -115,7 +115,10 @@
   .pt-island-error .pt-busy { @apply opacity-100; }
 
   /* companies: logo, ticker, name */
-  .pt-logo { @apply inline-block shrink-0 rounded-md bg-surface-raised object-contain align-middle; }
+  .pt-logo { @apply inline-block shrink-0 rounded-md object-contain align-middle; }
+  /* a white logo on the white page (Nike, Visa, Boeing, IBM): the shadow draws its outline; on the others it is a faint edge.
+     It follows the image's own shape, so the logo has no background of its own. */
+  img.pt-logo, .pt-mv-co image { filter: drop-shadow(0 0 0.5px color-mix(in oklab, var(--color-ink) 75%, transparent)) drop-shadow(0 0px 1.5px color-mix(in oklab, var(--color-ink) 28%, transparent)); }
   .pt-logo-initials { @apply inline-flex items-center justify-center bg-primary/10 text-[0.6rem] font-semibold leading-none text-primary; }
   .pt-co { @apply inline-flex min-w-0 items-center gap-1.5 text-ink no-underline hover:text-primary; }
   .pt-co-t { @apply font-mono font-semibold; }
@@ -200,45 +203,12 @@
   .pt-more { @apply mt-3 flex justify-center; }
   .pt-more-btn { @apply rounded-control border border-border bg-surface-raised px-4 py-1.5 text-sm text-ink hover:border-primary hover:text-primary; }
   .pt-toggles { @apply mb-2 flex gap-1; }
+  /* in a title row the row keeps the space below: a margin of the toggles' own would lift them 4px off the row's centre line */
+  .pt-head .pt-toggles { @apply mb-0; }
   .pt-toggles button { @apply rounded-md px-2 py-0.5 text-xs text-ink-soft hover:bg-surface; }
   .pt-toggles button[aria-pressed='true'] { @apply bg-primary text-primary-ink; }
 
   /* price target */
-  /* the targets upright against today's price (pt-price-target, buildLadder): a rail from the lowest target to the highest, green above
-     today and red below, deeper toward its ends; each firm's target a dot beside it; today a dashed line ending in a dark pill; the
-     labels on the right kept apart and joined to their place by a lead; the average's distance (the upside) in a pill */
-  .pt-tg { @apply relative mb-3 h-60 w-full max-w-md select-none; }
-  .pt-tg-lines { @apply pointer-events-none absolute inset-0 h-full w-full overflow-visible; }
-  .pt-tg-lead { fill: none; stroke: var(--color-border); stroke-width: 1; vector-effect: non-scaling-stroke; }
-  .pt-tg-lead-pos { stroke: var(--color-pos); stroke-opacity: 0.5; }
-  .pt-tg-lead-neg { stroke: var(--color-neg); stroke-opacity: 0.5; }
-  .pt-tg-lead-now { stroke: var(--color-ink); stroke-width: 1.5; stroke-dasharray: 4 3; }
-  .pt-tg-rail { @apply absolute inset-y-0 left-[30%] w-[3%] min-w-2; }
-  .pt-tg-zone { @apply absolute inset-x-0; }
-  .pt-tg-zone:first-child { @apply rounded-t-full; }
-  .pt-tg-zone:last-child { @apply rounded-b-full; }
-  .pt-tg-zone-pos { @apply bg-linear-to-b from-pos to-pos/25; }
-  .pt-tg-zone-neg { @apply bg-linear-to-b from-neg/25 to-neg; }
-  .pt-tg-zone-flat { @apply bg-ink-soft/30; }
-  .pt-tg-dot { @apply absolute h-[7px] w-[7px] -translate-x-1/2 -translate-y-1/2 cursor-default rounded-full ring-2 ring-surface-raised transition-transform; }
-  .pt-tg-dot:hover { @apply scale-150; }
-  .pt-tg-dot-pos { @apply bg-pos; }
-  .pt-tg-dot-neg { @apply bg-neg; }
-  .pt-tg-dot-flat { @apply bg-ink-soft; }
-  .pt-tg-mark { @apply absolute left-[37%] flex -translate-y-1/2 items-center gap-1.5 whitespace-nowrap pl-1.5 text-xs leading-none; }
-  .pt-tg-name { @apply w-12 shrink-0 text-3xs font-semibold uppercase tracking-wide text-ink-soft; }
-  .pt-tg-price { @apply font-mono font-semibold text-ink; }
-  .pt-tg-pct { @apply font-mono text-2xs font-semibold; }
-  .pt-tg-pos .pt-tg-pct { @apply text-pos; }
-  .pt-tg-neg .pt-tg-pct { @apply text-neg; }
-  .pt-tg-flat .pt-tg-pct { @apply text-ink-soft; }
-  .pt-tg-mean .pt-tg-price { @apply text-sm; }
-  .pt-tg-mean .pt-tg-pct { @apply rounded-full px-2 py-1 text-xs; }
-  .pt-tg-mean.pt-tg-pos .pt-tg-pct { @apply bg-pos/12; }
-  .pt-tg-mean.pt-tg-neg .pt-tg-pct { @apply bg-neg/12; }
-  .pt-tg-now { @apply rounded-full bg-ink py-1 pr-2.5 shadow-sm; }
-  .pt-tg-now .pt-tg-name { @apply w-auto text-surface-raised/70; }
-  .pt-tg-now .pt-tg-price { @apply text-surface-raised; }
   /* zoom & pan (any svg[data-zoom]) — ported from beta: grab strips on the price (right) and time (bottom) axes, lit while
      hovered, and the fit / today / reset cluster that grows as the view moves */
   svg[data-zoom] { touch-action: pan-y; cursor: crosshair; }
@@ -256,7 +226,14 @@
 
   /* price-target chart — ported from beta (pt-chart): dashed segments with a grey→green/red gradient, dots sized by count */
   .pt-wrap { @apply relative; }
-  .pt-today { @apply stroke-ink-soft; stroke-width: 0.75; stroke-dasharray: 3 3; opacity: 0.6; }
+  /* pt-price-target: the last close and the high, average and low targets across the plot, their prices on the axis (the now one in a pill) */
+  .pt-lvl { stroke-width: 1; stroke-dasharray: 4 3; }
+  .pt-lvl-pos { @apply stroke-pos/70; } .pt-lvl-neg { @apply stroke-neg/70; } .pt-lvl-flat, .pt-lvl-now { @apply stroke-ink/55; }
+  .pt-lvl-t { @apply text-3xs font-semibold; }
+  .pt-lvl-t-pos { @apply fill-pos; } .pt-lvl-t-neg { @apply fill-neg; } .pt-lvl-t-flat { @apply fill-ink; } .pt-lvl-t-now { @apply fill-surface-raised; }
+  .pt-lvl-pill { @apply fill-ink; }
+  .pt-lvl-n { @apply text-[7px] font-semibold uppercase; letter-spacing: 0.06em; }   /* under its price, centred on it */
+  .pt-lvl-n-pos { @apply fill-pos; } .pt-lvl-n-neg { @apply fill-neg; } .pt-lvl-n-flat, .pt-lvl-n-now { @apply fill-ink-soft; }
   .pt-price { fill: none; @apply stroke-ink-soft; stroke-width: 1.5; opacity: 0.7; }
   .pt-seg { fill: none; stroke-width: 1.5; stroke-dasharray: 4 3; }
   .pt-grad-from { stop-color: var(--color-ink-soft); stop-opacity: 0.35; }
@@ -299,6 +276,17 @@
   .pt-consensus-h { @apply bg-ink-soft/40; }
   .pt-consensus-s { @apply bg-neg/60; }
   .pt-consensus-ss { @apply bg-neg; }
+  /* the consensus by month under the target chart (beta's stacked areas, half as tall), on the chart's time axis; its counts as the key */
+  .pt-cons { @apply mt-1 block h-auto w-full; }
+  .pt-cons-band { stroke: var(--color-surface-raised); stroke-width: 0.5; }
+  .pt-cons-strongBuy { @apply fill-pos; } .pt-cons-buy { @apply fill-pos/60; } .pt-cons-hold { @apply fill-ink-soft/40; }
+  .pt-cons-sell { @apply fill-neg/60; } .pt-cons-strongSell { @apply fill-neg; }
+  .pt-cons-base { @apply stroke-border; stroke-width: 1; }
+  .pt-cons-hit { fill: transparent; } .pt-cons-hit:hover { @apply fill-ink/5; }
+  .pt-cons-keys { @apply mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-soft; }
+  .pt-cons-k::before { content: ''; @apply mr-1 inline-block h-2 w-2 rounded-sm align-[-1px]; }
+  .pt-cons-k-sb::before { @apply bg-pos; } .pt-cons-k-b::before { @apply bg-pos/60; } .pt-cons-k-h::before { @apply bg-ink-soft/40; }
+  .pt-cons-k-s::before { @apply bg-neg/60; } .pt-cons-k-ss::before { @apply bg-neg; }
 
   /* calendar */
   .pt-cal-nav { @apply flex gap-1; }
