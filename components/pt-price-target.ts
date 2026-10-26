@@ -1,6 +1,6 @@
 /**
  * Where do analysts think this stock is going, and how spread out are they?
- * @version 2.4.0
+ * @version 2.4.1
  * @evidence DataForSEO: "{ticker} price target" ~103k searches/month, "{ticker} stock forecast" ~151k (launch/data, public-site spec §4)
  * @evidence beta: pt-chart (pretickt-frontend/src/app/companies/pt-chart.ts) — geometry, clustering, hover animations and zoom/pan ported 1:1
  * @evidence Romeo, 2026-10-26: "togliamo la linea verticale e mettiamo dei prezzi sull'asse a destra del prezzo, con linee tratteggiate orizzontali di colore opportuno"
@@ -185,12 +185,18 @@ export function buildConsensusHistory(history: Analysts['history'], x: { min: nu
 const axisPrice = (v: number) => usd(v, { digits: Math.abs(v) >= 100 ? 0 : 2 });
 const levelTone = (v: number, current: number): PtLevel['tone'] => (Math.abs(v / current - 1) < FLAT_PCT ? 'flat' : v > current ? 'pos' : 'neg');
 const LEVEL_ORDER = { high: 0, mean: 1, now: 2, low: 3 } as const;
-/** Top to bottom; each label at least LEVEL_GAP below the one above it, the column lifted back inside the plot if it ran off the bottom. */
+/**
+ * Top to bottom; each label at least LEVEL_GAP below the one above it. When that runs the last one off the bottom, it goes back to
+ * the bottom and the labels above it move up only as far as the gap needs: a label with room stays on its line.
+ */
 function placeLevels(ls: Omit<PtLevel, 'labelY'>[]): PtLevel[] {
   const out: PtLevel[] = [...ls].sort((a, b) => a.y - b.y || LEVEL_ORDER[a.key] - LEVEL_ORDER[b.key]).map((l) => ({ ...l, labelY: l.y }));
   for (let i = 1; i < out.length; i++) out[i]!.labelY = f(Math.max(out[i]!.labelY, out[i - 1]!.labelY + LEVEL_GAP));
-  const over = out.length ? f(out.at(-1)!.labelY - (H - MB - NAME_DY - 1)) : 0;
-  if (over > 0) for (const l of out) l.labelY = f(l.labelY - over);
+  const bottom = H - MB - NAME_DY - 1;
+  if (out.length && out.at(-1)!.labelY > bottom) {
+    out.at(-1)!.labelY = bottom;
+    for (let i = out.length - 2; i >= 0; i--) out[i]!.labelY = f(Math.min(out[i]!.labelY, out[i + 1]!.labelY - LEVEL_GAP));
+  }
   return out;
 }
 

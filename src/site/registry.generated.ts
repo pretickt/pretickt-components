@@ -28,7 +28,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
   'pt-movers': { version: '1.0.0', sample: {} },
   'pt-news': { version: '2.1.0', sample: { ticker: 'NVDA' } },
   'pt-price-events': { version: '2.2.0', sample: { ticker: 'NVDA' } },
-  'pt-price-target': { version: '2.4.0', sample: { ticker: 'NVDA' } },
+  'pt-price-target': { version: '2.4.1', sample: { ticker: 'NVDA' } },
   'pt-screen': { version: '2.4.0', sample: {} },
   'pt-why-today': { version: '2.2.0', sample: { ticker: 'NVDA' } },
 };

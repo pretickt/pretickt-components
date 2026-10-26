@@ -67,6 +67,24 @@ describe('buildPtChart (ported from beta pt-chart.geometry)', () => {
     expect(Math.abs(now.labelY - mean.labelY)).toBeGreaterThanOrEqual(LEVEL_GAP - 1e-9);
     expect(mean.tone).toBe('pos');
   });
+  it('crowded at the bottom, only the labels short of room move up: the ones with room stay on their lines (CHTR, 2026-10-26)', () => {
+    const c = buildPtChart(pts, [tg({ firm: 'A', target: 500 }), tg({ firm: 'B', target: 100 })], '2026-01-05', 101, undefined, { low: 100, mean: 173, high: 500 })!;
+    const at = (k: string) => c.levels.find((l) => l.key === k)!;
+    expect(c.levels.map((l) => l.key)).toEqual(['high', 'mean', 'now', 'low']);
+    expect(at('high').labelY).toBe(at('high').y);
+    expect(at('mean').labelY).toBe(at('mean').y);
+    const ys = c.levels.map((l) => l.labelY);
+    ys.slice(1).forEach((y, i) => expect(y - ys[i]!).toBeGreaterThanOrEqual(LEVEL_GAP - 1e-9));
+    expect(at('low').labelY + 13).toBeLessThanOrEqual(c.h - 22 - 1);                                                     // its name above the time axis
+  });
+  it('four levels crowded together near the bottom keep their gaps inside the plot', () => {
+    const c = buildPtChart(pts, [tg({ firm: 'A', target: 104 }), tg({ firm: 'B', target: 100 })], '2026-01-05', 101, undefined, { low: 100, mean: 102, high: 104 })!;
+    const ys = c.levels.map((l) => l.labelY);
+    expect(ys).toHaveLength(4);
+    ys.slice(1).forEach((y, i) => expect(y - ys[i]!).toBeGreaterThanOrEqual(LEVEL_GAP - 1e-9));
+    expect(ys[0]! - 7).toBeGreaterThan(0);                                                                               // the top pill inside the chart
+    expect(ys.at(-1)! + 13).toBeLessThanOrEqual(c.h - 22 - 1);
+  });
   it('a level outside the visible prices draws neither line nor label; without a summary only the last close', () => {
     const two = [tg({ firm: 'A', target: 150 }), tg({ firm: 'B', target: 80 })], s = { low: 80, mean: 115, high: 150 };
     const zoomed = buildPtChart(pts, two, '2026-01-05', 120, { start: 0, end: 1, yScale: 0.25, yShift: 0 }, s)!;  // a quarter of the prices: 105–125
