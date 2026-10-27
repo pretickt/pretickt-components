@@ -165,3 +165,40 @@
 .dv-co-v { font: 600 .62rem/1 var(--font-mono); text-align: right; white-space: nowrap; }
 .dv-co-pos { color: var(--dv-pos); } .dv-co-neg { color: var(--dv-neg); } .dv-co-flat { color: color-mix(in oklab, var(--dv-flat) 70%, var(--color-ink)); } .dv-co-na { color: var(--color-ink-soft); }
 .dv-cos li:not(:has(.dv-co-track)) { grid-template-columns: 16px 1fr auto; }
+
+/* Earnings calendar with the possible outcome (pt-cal-outlook): the number in a row, the card over it, the agenda that opens it in place */
+.do-cue { font: 600 .7rem/1.2 var(--font-mono); white-space: nowrap; }
+.do-est { color: var(--color-ink); }
+.do-grid .pt-cal-ev { gap: .3rem; }
+.do-ev:hover, .do-ev:focus-visible { outline: 1px solid var(--color-primary); outline-offset: -1px; }
+button.do-ev { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: .25rem; border: 0; font: inherit; color: inherit;
+  text-align: left; cursor: default; }
+.do-pop { position: absolute; z-index: 30; width: min(19rem, 100%); transform: translateY(-100%); pointer-events: none; }
+.do-pop-below { transform: none; }
+.do-card { display: grid; gap: .35rem; max-width: 24rem; padding: .7rem .8rem; border: 1px solid var(--color-border); border-radius: var(--radius-control);
+  background: var(--color-surface-raised); color: var(--color-ink); font-size: .8rem; line-height: 1.35; box-shadow: 0 10px 28px rgb(0 0 0 / .16); }
+.do-card p { margin: 0; }
+.do-card-head { display: flex; align-items: center; gap: .45rem; font-size: .875rem; }
+.do-big { display: flex; flex-wrap: wrap; align-items: baseline; gap: .1rem .5rem; }
+.do-big b { font: 700 1.5rem/1.1 var(--font-mono); }
+.do-big span { color: var(--color-ink-soft); font-size: .75rem; }
+.do-bars { display: block; width: 100%; max-width: 15rem; height: auto; overflow: visible; }
+.do-axis { stroke: var(--color-border); }
+.do-band { stroke: var(--color-ink-soft); stroke-dasharray: 2 2; opacity: .7; }
+.do-bar-pos { fill: var(--color-pos); } .do-bar-neg { fill: var(--color-neg); } .do-bar-flat, .do-bar-na { fill: var(--color-ink-soft); }
+.do-bar-now { stroke: var(--color-ink); stroke-width: 1.5; }
+.do-dot-beat { fill: var(--color-pos); } .do-dot-miss { fill: var(--color-neg); } .do-dot-inline { fill: none; stroke: var(--color-ink-soft); }
+.do-facts { display: grid; grid-template-columns: auto 1fr; gap: .15rem .6rem; margin: 0; }
+.do-facts dt { font-weight: 600; color: var(--color-ink-soft); }
+.do-facts dd { margin: 0; }
+.do-agenda { margin: 1rem 0 .5rem; }
+.do-agenda-day { margin: .8rem 0 .2rem; font-size: .75rem; text-transform: uppercase; letter-spacing: .02em; color: var(--color-ink-soft); }
+.do-row summary { display: flex; align-items: center; gap: .5rem; padding: .35rem .25rem; border-bottom: 1px solid var(--color-border); font-size: .875rem;
+  list-style: none; cursor: pointer; }
+.do-row summary::-webkit-details-marker { display: none; }
+.do-row summary::after { content: '▸'; font-size: .7rem; color: var(--color-ink-soft); }
+.do-row[open] summary::after { content: '▾'; }
+.do-row summary .do-cue { font-size: .8rem; }
+.do-row .do-card { max-width: 30rem; margin: .4rem 0 .7rem; box-shadow: none; }
+.do-sum-name { flex: 1; min-width: 0; }
+@media (width < 40rem) { .do-grid { display: none; } }
