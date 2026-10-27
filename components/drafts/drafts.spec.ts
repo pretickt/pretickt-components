@@ -3,6 +3,8 @@ import { railMarks, splitBars } from './pt-asked';
 import { bubbleSize, heat, hotSentence, ring } from './pt-hot';
 import { arc, oddsDays, oddsTone } from './pt-odds';
 import { boardColumns, boardSentence } from './pt-quality-strip';
+import { arcPath, at, barGeom, list, onArc, valueAnswer, type Value } from './pt-value';
+import { VALUE_INTC, VALUE_NKE, VALUE_NVDA } from './value-mock';
 
 describe('home drafts: the helpers their components will keep', () => {
   it('H1: heat against a usual day, the ring it earns, a bubble whose area grows with the posts, the sentence', () => {
@@ -34,5 +36,28 @@ describe('home drafts: the helpers their components will keep', () => {
     expect(cols[3]!.up).toHaveLength(8);
     expect(cols[3]!.down.map((i) => i.ticker)).toEqual(['NKE']);
     expect(boardSentence(BOARD)).toBe('This week Execution strengthened at 8 companies; Fragility weakened or needs watching at META and GOOGL.');
+  });
+});
+
+
+describe('pt-value (draft): the answer and the small pictures', () => {
+  it('answers in words: how many of the five questions about the business are strong, what is weak, then the price', () => {
+    expect(valueAnswer(VALUE_NVDA)).toEqual({ lead: 'Mostly yes', text: 'A strong business on 4 of the 5 questions about the company. The price: expensive.' });
+    expect(valueAnswer(VALUE_NKE)).toEqual({ lead: 'Not really, for now', text: 'A strong business on 1 of the 5 questions about the company; weak on demand and economics. The price: below its usual.' });
+    expect(valueAnswer(VALUE_INTC)).toEqual({ lead: 'Mostly no', text: 'Weak on advantage, economics, execution and fragility; demand in between. The price: hard to judge.' });
+    expect(valueAnswer({ ...VALUE_NVDA, sections: [] } as Value)).toEqual({ lead: 'Not enough data yet', text: 'The questions about the company have no data yet.' });
+    expect([list([]), list(['a']), list(['a', 'b']), list(['a', 'b', 'c'])]).toEqual(['', 'a', 'a and b', 'a, b and c']);
+  });
+  it('bars stand on zero, negatives hang below it, the last one is the one in colour', () => {
+    const g = barGeom([16, 4, 27, -7]);
+    expect(g.bars.map((b) => [b.neg, b.last])).toEqual([[false, false], [false, false], [false, false], [true, true]]);
+    expect(g.bars[3]!.y).toBe(g.base);
+    expect(g.bars[2]!.y + g.bars[2]!.h).toBeCloseTo(g.base, 1);
+  });
+  it('the gauge: a share of the half circle from the left, its arcs from share to share', () => {
+    expect([at(5, 0, 10), at(-1, 0, 10), at(11, 0, 10)]).toEqual([0.5, 0, 1]);
+    expect(onArc(0)).toEqual({ x: 30, y: 36 });
+    expect(onArc(0.5)).toEqual({ x: 60, y: 6 });
+    expect(arcPath(0, 1)).toBe('M30 36A30 30 0 0 1 90 36');
   });
 });
