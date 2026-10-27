@@ -130,7 +130,7 @@
   .pt-logo { @apply inline-block shrink-0 rounded-md object-contain align-middle; }
   /* a white logo on the white page (Nike, Visa, Boeing, IBM): the shadow draws its outline; on the others it is a faint edge.
      It follows the image's own shape, so the logo has no background of its own. */
-  img.pt-logo, .pt-mv-co image { filter: drop-shadow(0 0 0.5px color-mix(in oklab, var(--color-ink) 75%, transparent)) drop-shadow(0 0px 1.5px color-mix(in oklab, var(--color-ink) 28%, transparent)); }
+  img.pt-logo, .pt-mv-co image, .pt-lm-logo { filter: drop-shadow(0 0 0.5px color-mix(in oklab, var(--color-ink) 75%, transparent)) drop-shadow(0 0px 1.5px color-mix(in oklab, var(--color-ink) 28%, transparent)); }
   .pt-logo-initials { @apply inline-flex items-center justify-center bg-primary/10 text-[0.6rem] font-semibold leading-none text-primary; }
   .pt-co { @apply inline-flex min-w-0 items-center gap-1.5 text-ink no-underline hover:text-primary; }
   .pt-co-t { @apply font-mono font-semibold; }
@@ -470,6 +470,25 @@
   .pt-ins-buy .pt-ins-type { @apply bg-pos/15 text-pos; }
   .pt-ins-sell .pt-ins-type { @apply bg-neg/15 text-neg; }
   .pt-ins-other .pt-ins-type { @apply bg-surface text-ink-soft; }
+
+  /* the market map (pt-logo-map): a block per sector, a tile per company as large as its market value, coloured by today's move */
+  .pt-lm { @apply m-0 grid gap-2; }
+  .pt-lm-svg { @apply block h-auto w-full; }
+  .pt-lm-wide { @apply hidden sm:block; }
+  .pt-lm-narrow { @apply sm:hidden; }
+  .pt-lm-block { fill: var(--color-surface); }
+  .pt-lm-sector { font: 600 10px var(--font-mono); letter-spacing: 0.04em; fill: var(--color-ink-soft); }
+  .pt-lm-tile { stroke: var(--color-surface-raised); stroke-width: 1; }
+  .pt-lm a:is(:hover, :focus-visible) .pt-lm-tile { stroke: var(--color-ink); stroke-width: 2; }
+  .pt-lm-up2 { fill: var(--color-pos); background: var(--color-pos); }
+  .pt-lm-up1 { fill: color-mix(in oklab, var(--color-pos) 45%, var(--color-surface-raised)); background: color-mix(in oklab, var(--color-pos) 45%, var(--color-surface-raised)); }
+  .pt-lm-flat, .pt-lm-na { fill: color-mix(in oklab, var(--color-ink-soft) 22%, var(--color-surface-raised)); background: color-mix(in oklab, var(--color-ink-soft) 22%, var(--color-surface-raised)); }
+  .pt-lm-dn1 { fill: color-mix(in oklab, var(--color-neg) 45%, var(--color-surface-raised)); background: color-mix(in oklab, var(--color-neg) 45%, var(--color-surface-raised)); }
+  .pt-lm-dn2 { fill: var(--color-neg); background: var(--color-neg); }
+  .pt-lm-t { font: 700 12px var(--font-mono); fill: var(--color-ink); }
+  .pt-lm-m { font: 500 11px var(--font-mono); fill: var(--color-ink); }
+  :is(.pt-lm-up2, .pt-lm-dn2) ~ :is(.pt-lm-t, .pt-lm-m) { fill: #fff; }
+  .pt-lm-sw { @apply mr-1 inline-block h-3 w-3 rounded-sm align-[-1px]; }
 
   /* quality (pt-quality): the drop test, six boxes in three rows by horizon, a box's cards below; Price has a colour of its own */
   .pt-q { @apply grid gap-4; }
