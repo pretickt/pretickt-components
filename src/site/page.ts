@@ -6,6 +6,7 @@ import { attachCompanyBar } from './cobar';
 import { attachHeader } from './header';
 import { PAGE_KEY, PT_PAGE } from './model';
 import { PtSlot, REGISTRY } from './registry.generated';
+import { attachShare } from './share';
 import { attachTips } from './tips';
 
 const CARD = 'pt-company-card';
@@ -45,6 +46,7 @@ export class PtPage {
       startBeacon(doc, this.model.api, sendBeacon);
       attachHeader(doc, { buildId: this.model.buildId });
       attachCompanyBar(doc); // company pages: the company in the header once its card has scrolled away
+      attachShare(doc); // each placement's "Share": the placement as an image, and the link back
       const card = REGISTRY[CARD];
       const cards = card ? attachCards(doc, appRef, {
         id: `${CARD}@${card.version}`, subject: this.model.subject,

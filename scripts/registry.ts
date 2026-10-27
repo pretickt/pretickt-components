@@ -21,6 +21,10 @@ function jsLiteral(v: unknown): string {
   return templateLiteral(v);
 }
 
+/** Under every placement: the button that shares it as an image and a link (src/site/share.ts answers it; static markup). */
+export const SHARE_FOOT = '<div class="pt-island-foot"><button type="button" class="pt-share" data-share aria-haspopup="dialog">' +
+  '<svg class="pt-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 10V2M5 5l3-3 3 3M3 9v5h10V9"/></svg>Share</button></div>';
+
 /** `src/site/registry.generated.ts`: PtSlot (one `@defer (hydrate on viewport)` case per component, literal defaults) and REGISTRY. */
 export function registrySource(entries: RegistryEntry[]): string {
   const list = [...entries].sort((a, b) => (a.tag < b.tag ? -1 : 1));
@@ -36,7 +40,10 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
 ${list.map((e) => `  '${e.tag}': { version: '${e.version}', sample: ${jsLiteral(e.sample)} },`).join('\n')}
 };
 
-/** One placement: the island wrapper (\`tag@version\` for the beacon, the error notice) and its component, hydrated when it scrolls into view. */
+/**
+ * One placement: the island wrapper (\`tag@version\` for the beacon, the error notice) and its component, hydrated when it scrolls
+ * into view; under it the share button, which the page answers before anything hydrates (src/site/share.ts).
+ */
 @Component({
   selector: 'div[ptSlot]',
   imports: [${list.map((e) => e.className).join(', ')}],
@@ -45,7 +52,8 @@ ${list.map((e) => `  '${e.tag}': { version: '${e.version}', sample: ${jsLiteral(
   template: \`
     @switch (c()) {
 ${list.map((e) => `      @case ('${e.tag}') { @defer (hydrate on viewport) {<${e.tag} ${e.inputs.map(binding).join(' ')} />} }`).join('\n')}
-    }\`,
+    }
+    ${SHARE_FOOT}\`,
 })
 export class PtSlot {
   readonly c = input.required<string>();

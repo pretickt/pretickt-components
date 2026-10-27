@@ -145,6 +145,10 @@ platform change (schema here + resolver in the private platform + a public-data 
 - **Tooltips without code**: `[attr.data-tip]="tip({ Label: value })"` on any element; the page shows it as text.
 - **Interactions** are counted by the page (analytics): the primitives dispatch `pt-interact`; for your own controls dispatch
   `new CustomEvent('pt-interact', { bubbles: true, detail: { action } })` from the element.
+- **Sharing is the page's** (`src/site/share.ts`): under every placement a "Share" button draws the island as a PNG (html-to-image)
+  with the page's title above and its link below, and offers the share sheet, copy, download, X and Reddit; the link is the
+  canonical page with the section's anchor. Nothing to write in a component; keep its look inside its island (no rule that
+  depends on the page around it) and its images on the site (`/logos/…`), so the drawing matches the screen.
 
 ## CSS
 **Design-system classes only** — a component has no `styles`: Angular inserts component styles as `<style>` elements, which the

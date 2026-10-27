@@ -6,6 +6,7 @@
 import { afterNextRender, Component, computed, inject } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 import { REGISTRY } from '../site/registry.generated';
+import { attachShare } from '../site/share';
 import { attachTips } from '../site/tips';
 import { stories as experiments } from './experiments';
 import { STORIES } from './index';
@@ -36,7 +37,8 @@ export function indexOf(all: StoryConfiguration[]) {
   template: `
     @let r = route;
     @if (r.tag && r.n !== null) {
-      @if (list()[r.n]; as s) {<pt-story [configuration]="s" />}
+      @if (list()[r.n]; as s) {<div class="pt-island" [attr.data-share-title]="s.name ?? r.tag" [attr.data-share-url]="SITE"><pt-story [configuration]="s" />
+        <div class="pt-island-foot"><button type="button" class="pt-share" data-share aria-haspopup="dialog">Share</button></div></div>}
       @else {<p class="pt-na">No story {{ r.n }} for {{ r.tag }}</p>}
     } @else if (r.tag) {
       <nav class="sb-bar">
@@ -51,7 +53,8 @@ export function indexOf(all: StoryConfiguration[]) {
           <h2 class="sb-name"><a [href]="'/visual/' + r.tag + '/' + $index">{{ s.name ?? 'Story ' + ($index + 1) }}</a>
             @if (s.live) {<span class="sb-live">live</span>}</h2>
           @if (r.phone) {<iframe class="sb-frame" [src]="frames()[$index]" [width]="PHONE" [title]="s.name ?? r.tag" (load)="fit($event)"></iframe>}
-          @else {<div class="pt-island"><pt-story [configuration]="s" /></div>}
+          @else {<div class="pt-island" [attr.data-share-title]="s.name ?? r.tag" [attr.data-share-url]="SITE"><pt-story [configuration]="s" />
+            <div class="pt-island-foot"><button type="button" class="pt-share" data-share aria-haspopup="dialog">Share</button></div></div>}
         </section>
       } @empty {<p class="pt-na">No stories for {{ r.tag }}</p>}
     } @else {
@@ -74,6 +77,8 @@ export function indexOf(all: StoryConfiguration[]) {
 })
 export class PtVisual {
   protected readonly PHONE = PHONE;
+  // the address a story's share image names: stories are not public, the site is
+  protected readonly SITE = 'https://www.pretickt.com/';
   protected readonly route = routeOf(location.pathname, location.search);
   private readonly all = [...STORIES, ...experiments];
   protected readonly index = indexOf(this.all);
@@ -86,7 +91,11 @@ export class PtVisual {
   constructor() {
     // a story in a phone frame never scrolls: the frame grows to it (fit), and a scrollbar would change the width it is shown at
     if (this.route.n !== null && window.parent !== window) document.documentElement.style.overflow = 'hidden';
-    afterNextRender(() => { const main = document.querySelector('main'); if (main) attachTips(main); });
+    afterNextRender(() => {
+      const main = document.querySelector('main');
+      if (main) attachTips(main);
+      attachShare(document); // each story's "Share": the image the site would make of it
+    });
   }
 
   /**

@@ -33,7 +33,10 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
   'pt-why-today': { version: '2.2.0', sample: { ticker: 'NVDA' } },
 };
 
-/** One placement: the island wrapper (`tag@version` for the beacon, the error notice) and its component, hydrated when it scrolls into view. */
+/**
+ * One placement: the island wrapper (`tag@version` for the beacon, the error notice) and its component, hydrated when it scrolls
+ * into view; under it the share button, which the page answers before anything hydrates (src/site/share.ts).
+ */
 @Component({
   selector: 'div[ptSlot]',
   imports: [PtAnswer, PtCalendar, PtCompanyCard, PtFeed, PtFinancials, PtInsiders, PtMetric, PtMovers, PtNews, PtPriceEvents, PtPriceTarget, PtScreen, PtWhyToday],
@@ -54,7 +57,8 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
       @case ('pt-price-target') { @defer (hydrate on viewport) {<pt-price-target [ticker]="$any(p()).ticker" />} }
       @case ('pt-screen') { @defer (hydrate on viewport) {<pt-screen [list]="$any(p()).list" [peersOf]="$any(p()).peersOf" [limit]="$any(p()).limit ?? 25" [sector]="$any(p()).sector" />} }
       @case ('pt-why-today') { @defer (hydrate on viewport) {<pt-why-today [ticker]="$any(p()).ticker" [window]="$any(p()).window ?? '1d'" />} }
-    }`,
+    }
+    <div class="pt-island-foot"><button type="button" class="pt-share" data-share aria-haspopup="dialog"><svg class="pt-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 10V2M5 5l3-3 3 3M3 9v5h10V9"/></svg>Share</button></div>`,
 })
 export class PtSlot {
   readonly c = input.required<string>();

@@ -113,6 +113,18 @@
   /* A request failed (rate limit, offline): the island keeps its last values and says so; it is not loading any more. */
   .pt-island-error::after { content: 'Could not load data — showing the last values.'; @apply mt-2 block text-xs text-danger; }
   .pt-island-error .pt-busy { @apply opacity-100; }
+  /* Share: a button under each placement (src/site/share.ts) and the menu it opens, with the placement drawn as an image */
+  .pt-island-foot { @apply mt-1.5 flex justify-end; }
+  .pt-share { @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs text-ink-soft hover:bg-surface hover:text-primary; }
+  .pt-share-menu { @apply fixed z-50 w-80 max-w-[calc(100vw-2rem)] rounded-control border border-border bg-surface-raised p-3 text-sm shadow-lg; }
+  .pt-share-head { @apply mb-2 flex items-center justify-between gap-2 font-semibold text-ink; }
+  .pt-share-x { @apply rounded-md px-1.5 text-base leading-none text-ink-soft hover:bg-surface hover:text-ink; }
+  .pt-share-preview { @apply block max-h-64 w-full rounded-md border border-border bg-surface object-contain object-top; }
+  .pt-share-wait { @apply flex h-24 items-center justify-center rounded-md border border-dashed border-border text-xs text-ink-soft; }
+  .pt-share-acts { @apply mt-3 grid grid-cols-2 gap-1.5; }
+  .pt-share-act { @apply rounded-control border border-border bg-surface-raised px-2 py-1.5 text-center text-sm text-ink no-underline hover:border-primary hover:text-primary; }
+  .pt-share-main { @apply col-span-2 border-primary bg-primary text-primary-ink hover:bg-primary-hover hover:text-primary-ink; }
+  .pt-share-note { @apply mt-2 min-h-4 text-xs text-ink-soft; }
 
   /* companies: logo, ticker, name */
   .pt-logo { @apply inline-block shrink-0 rounded-md object-contain align-middle; }
