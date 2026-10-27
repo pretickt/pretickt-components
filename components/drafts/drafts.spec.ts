@@ -76,3 +76,18 @@ describe('pt-value (draft): the cards read across other companies', () => {
     expect(via.flatMap((c) => (c.viz.kind === 'companies' ? c.viz.rows : [])).filter((r) => r.logo).length).toBeGreaterThan(30);
   });
 });
+
+describe('pt-value (draft): every card', () => {
+  const all = [VALUE_NVDA, VALUE_NKE, VALUE_INTC];
+  it('has a short title, one of a kind in its column, and a source', () => {
+    for (const v of all) for (const s of v.sections) {
+      expect(s.cards.every((c) => c.title.length > 0 && c.title.length <= 24 && c.source.length > 0)).toBe(true);
+      expect(new Set(s.cards.map((c) => c.title)).size).toBe(s.cards.length);
+    }
+  });
+  it('says how much the biggest customers weigh, under fragility: the 10-K table, the customers unnamed', () => {
+    const fragility = all.map((v) => v.sections.find((s) => s.key === 'fragility')!.cards.find((c) => c.title === 'Biggest customers'));
+    expect(fragility.map((c) => c?.big)).toEqual(['34%', 'under 10%', '42%']);
+    expect(fragility.every((c) => c?.viz.kind === 'split' && c.source.includes('financial-reports-json'))).toBe(true);
+  });
+});

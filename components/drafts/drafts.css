@@ -109,7 +109,6 @@
 .dv-track { stroke: var(--color-border); stroke-width: 5; stroke-linecap: round; }
 .dv-mark { stroke: var(--color-ink-soft); stroke-width: 1.5; }
 .dv-t { font: 600 8.5px var(--font-mono); fill: var(--color-ink-soft); }
-.dv-missing { fill: none; stroke: var(--color-border); stroke-dasharray: 3 3; }
 @media (width >= 64rem) { .dv-strip { display: none; } }   /* the columns show the verdicts side by side */
 @media (width < 64rem) { .dv-cols { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (width < 40rem) { .dv-cols { grid-template-columns: 1fr; } .dv-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
@@ -150,7 +149,11 @@
 
 /* pt-value: cards read across other companies (pretickt's own analysis), with their logos */
 .dv-card.dv-via { background: color-mix(in oklab, var(--color-primary) 4%, var(--color-surface-raised)); }
-.dv-via-l { font-size: .6rem; font-weight: 700; letter-spacing: .02em; color: var(--color-primary); }
+.dv-title { font-size: .72rem; font-weight: 700; line-height: 1.2; color: var(--color-primary); }
+/* small on purpose: it marks the card, it is not a heading (a DS class when pt-value is promoted) */
+.dv-badge { justify-self: start; padding: 0 .35rem; border: 1px solid color-mix(in oklab, var(--color-primary) 35%, var(--color-border));
+  border-radius: 999px; background: color-mix(in oklab, var(--color-primary) 8%, var(--color-surface-raised));
+  font-size: .56rem; font-weight: 600; line-height: .95rem; letter-spacing: .02em; color: var(--color-primary); white-space: nowrap; }
 .dv-cos { display: grid; gap: .2rem; margin: .1rem 0 .15rem; padding: 0; list-style: none; }
 .dv-cos li { display: grid; grid-template-columns: 16px 2.6rem 1fr auto; align-items: center; gap: .3rem; padding: .05rem .15rem; border-radius: .3rem; }
 .dv-cos li.dv-self { background: color-mix(in oklab, var(--color-ink) 7%, transparent); font-weight: 700; }

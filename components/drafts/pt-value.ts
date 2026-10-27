@@ -2,9 +2,10 @@
  * DRAFT · Is this a company of value? (made-up data, stories only) — for anyone, not only investors: six plain questions side by
  * side (Demand, Advantage, Economics, Execution, Fragility, Price), each with a verdict in words and a few schematic cards, a number
  * and a small picture each. The answer on top says how many of the five questions about the business are strong, and what the
- * price already counts on. Each card names the FMP endpoint that will feed it (Romeo's coverage analysis, 2026-10-27); the facts
- * FMP does not have (customers, market share, risk factors, short interest) show as "not measured yet".
- * @version 0.0.1
+ * price already counts on. Each card has a title in blue and names the FMP endpoint that will feed it (checked against the API on
+ * the Display key, 2026-10-27); a card that reads other companies wears a small "pretickt analysis" badge under its title. A fact
+ * with no data has no card: never a placeholder on a public page.
+ * @version 0.0.2
  */
 import { Component, computed, input } from '@angular/core';
 import { PtIcon, PtLogo } from '@pretickt/components/ds';
@@ -19,15 +20,14 @@ export type ValueViz =
   | { kind: 'gauge'; value: number; min: number; max: number; zones: [number, number] } // a score with a red, amber, green zone
   | { kind: 'range'; low: number; high: number; value: number; mark?: number; labels?: [string, string] } // where it sits in a range
   | { kind: 'split'; parts: { label: string; share: number }[] }   // shares of a whole: segments, pay
-  | { kind: 'companies'; rows: ValueCompany[]; bars: boolean }     // other companies: customers, rivals, holders, analysts' banks
-  | { kind: 'missing' };                                          // the data has no source yet
+  | { kind: 'companies'; rows: ValueCompany[]; bars: boolean };    // other companies: customers, rivals, holders, analysts' banks
 /** One company on a card that reads others: its logo, its value (the bar), its label; `self` is the company of the page. */
 export interface ValueCompany { ticker: string; logo: string | null; value: number | null; label: string; tone?: ValueTone; self?: boolean }
 /**
- * A card: a big number, a plain line, a small picture. `via` marks pretickt's own analysis — a fact read across other companies
- * (its customers' spending, its rivals' returns, its holders, the banks' analysts) that no single data point gives.
+ * A card: a title, a small picture, a big number, a plain line. `via` marks pretickt's own analysis — a fact read across other
+ * companies (its customers' spending, its rivals' returns, its holders, the banks' analysts) that no single data point gives.
  */
-export interface ValueCard { tone: ValueTone; big: string; line: string; why: string; source: string; viz: ValueViz; via?: string }
+export interface ValueCard { tone: ValueTone; title: string; big: string; line: string; why: string; source: string; viz: ValueViz; via?: string }
 export interface ValueSection { key: ValueKey; tone: ValueTone; verdict: string; cards: ValueCard[] }
 /** The future `value@1` payload: one company, its six sections. */
 export interface Value { asOf: string; ticker: string; name: string; logo: string | null; sections: ValueSection[] }
@@ -111,7 +111,8 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
               </div>
               @for (c of s.cards; track $index) {
                 <div [class]="'dv-card dv-' + c.tone" [class.dv-via]="!!c.via" [attr.data-tip]="cardTip(c)">
-                  @if (c.via) {<span class="dv-via-l">◆ pretickt analysis · {{ c.via }}</span>}
+                  <span class="dv-title">{{ c.title }}</span>
+                  @if (c.via) {<span class="dv-badge">pretickt analysis</span>}
                   @switch (c.viz.kind) {
                     @case ('bars') {
                       @let g = bars(c);
@@ -167,9 +168,6 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
                           </li>
                         }
                       </ul>
-                    }
-                    @case ('missing') {
-                      <svg class="dv-viz" viewBox="0 0 120 32" aria-hidden="true"><rect class="dv-missing" x="1" y="4" width="118" height="24" rx="4" /><text class="dv-t" x="60" y="20" text-anchor="middle">not measured yet</text></svg>
                     }
                   }
                   <b class="dv-big">{{ c.big }}</b>
