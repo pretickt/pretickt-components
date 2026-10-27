@@ -210,6 +210,11 @@ export const stories = [
   media queries apply; `/visual/pt-x/<n>`: one alone). The platform's experiments (`admin/experiments`, next to this checkout)
   show up too, their bench presets as stories. In the console, `copy(storyOf($0))` copies what a story shows as a new story.
 - `src/stories/stories.spec.ts` fails a component without stories, a fixture its typology rejects and a story that does not render.
+- **Drafts** (`components/drafts/`): a component whose data has no pipeline yet, to be looked at before it has one. It takes its
+  payload as an input (the shape its typology will have), its made-up data is in `mock.ts`, its classes in `drafts.css` (loaded by
+  the stories app only) and its stories in `home.stories.ts`. The build never sees it (not in the registry, never on a page). To
+  promote one: move it to `components/`, add the typology (schema = the input's type, demo = the mock) with its resolver in the
+  platform, replace the input with the `pt` call, move its classes to `ds.css`, and give it `@evidence`.
 
 ## Workflow
 1. Write `components/pt-x.spec.ts` first. 2. Write `components/pt-x.ts`. 3. Write `components/pt-x.stories.ts` and look at it

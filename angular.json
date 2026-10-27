@@ -71,7 +71,8 @@
             "browser": "src/stories/main.ts",
             "tsConfig": "tsconfig.stories.json",
             "styles": [
-              "src/stories/stories.css"
+              "src/stories/stories.css",
+              "components/drafts/drafts.css"
             ],
             "assets": [
               {
