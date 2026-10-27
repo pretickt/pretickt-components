@@ -2,11 +2,14 @@
  * DRAFT · The earnings calendar with each event's possible outcome (made-up data, stories only). Before a report its row carries one
  * number, in one of four variants: the stock's usual move after a report (±%), that move in market value (±$), its record against the
  * EPS estimate (7/8 beat) or the price range the usual move spans ($lo–hi); after it, what happened. Hovering or focusing a row opens
- * a card above it with the detail (the last eight reactions, the bar to clear, the run into the report); the agenda under the grid
- * opens the same card in place, which is how a phone reads it. A macro date (Fed, CPI, jobs…) carries the market's (SPY) usual move on
+ * a card above it with the detail (the last eight reactions, the bar to clear, the run into the report, which session trades it) and
+ * what others expect: the analysts' average target and how many raised or cut it in 30 days, how its peers reacted this season,
+ * Polymarket's odds where a market trades $5K or more (not live before Polymarket agrees in writing: its terms bar data use by
+ * financial technology companies and market data distributors otherwise). The agenda under the grid opens the same card in place, which is how a phone reads it.
+ * BMO/AMC stay out of the row: the card says it in words, with the session that reacts. A macro date (Fed, CPI, jobs…) carries the market's (SPY) usual move on
  * its releases. Past reactions say how big a move has been, not which way the next one goes (FORECAST.md: direction did not hold up).
  * The numbers are the nightly feed's (typical move: the last 8 reports, at least 4); until a typology carries them, the payload is an input.
- * @version 0.0.1
+ * @version 0.0.2
  */
 import { Component, computed, input, signal } from '@angular/core';
 import { PtLogo } from '@pretickt/components/ds';
@@ -17,6 +20,12 @@ export type OutlookVariant = 'move' | 'dollars' | 'record' | 'range';
 export type Verdict = 'beat' | 'inline' | 'miss';
 /** A past report: the move of the session that traded it, and its EPS against the estimate. */
 export interface Reaction { date: string; move: number; verdict: Verdict | null }
+/** Analysts' price targets: the average, how many analysts, how many raised or cut theirs in the last 30 days. */
+export interface Analysts { target: number; n: number; raised: number; cut: number }
+/** A peer's report this season and the move of the session that traded it. */
+export interface PeerMove { ticker: string; date: string; move: number }
+/** A prediction market's price for one outcome (Polymarket) and the dollars traded on it. */
+export interface Odds { what: string; p: number; volume: number }
 export interface CoEvent {
   kind: 'earnings'; date: string; ticker: string; name: string; logo: string | null; time: 'bmo' | 'amc' | null; confirmed: boolean | null;
   /** The last close and market value before the report. */
@@ -28,6 +37,7 @@ export interface CoEvent {
   runup: number | null; marketRunup: number | null;
   /** Reported: its figures, and the move once a session has traded them (null on the evening of an after-the-close report). */
   result: { move: number | null; epsActual: number | null; revActual: number | null } | null;
+  analysts: Analysts | null; peers: PeerMove[]; odds: Odds | null;
 }
 export interface MacroEvent {
   kind: 'macro'; date: string; label: string; event: string;
@@ -35,12 +45,15 @@ export interface MacroEvent {
   moves: { date: string; move: number }[];
   expected: string | null; previous: string | null;
   result: { move: number | null; actual: string | null } | null;
+  odds: Odds | null;
 }
 export type OutlookEvent = CoEvent | MacroEvent;
 /** `normal`: the market's (SPY) usual daily move, to size a macro date against an ordinary session. */
 export interface CalOutlook { asOf: string; from: string; to: string; normal: number | null; items: OutlookEvent[] }
 
 const REPORTS = 8, MIN_REPORTS = 4, SURPRISE = 0.02, CAP = 4;
+/** What others expect is shown only with enough of it: analysts, peers that reported, dollars traded on the odds. */
+const MIN_ANALYSTS = 3, MIN_PEERS = 2, MIN_VOLUME = 5_000, PEERS_NAMED = 3;
 
 /** The usual size of the move: the mean absolute move of the last eight, null with fewer than four (the nightly feed's rule). */
 export function usualMove(moves: readonly number[]): number | null {
@@ -113,11 +126,20 @@ export function bars(moves: { move: number; verdict?: Verdict | null; now?: bool
 const TIME = { bmo: 'before the open', amc: 'after the close' } as const;
 const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const dayLabel = (d: string) => `${WEEKDAY[weekdayOf(d)]}, ${dayMonth(d)}`;
+/** The session that trades a report: its own before the open, the next weekday's after the close (no market holidays in the draft). */
+export function reactsOn(e: CoEvent): string | null {
+  if (e.time !== 'amc') return e.time === 'bmo' ? e.date : null;
+  let d = addDays(e.date, 1);
+  while (weekdayOf(d) === 0 || weekdayOf(d) === 6) d = addDays(d, 1);
+  return d;
+}
 export function when(e: OutlookEvent): string {
   if (e.kind === 'macro') return `${e.result ? 'Released' : 'Due'} ${dayLabel(e.date)}`;
-  const t = e.time ? ` ${TIME[e.time]}` : '';
-  if (e.result) return `Reported ${dayLabel(e.date)}${t}`;
-  return e.confirmed === false ? `Expected around ${dayLabel(e.date)}${t} (date not confirmed)` : `Reports ${dayLabel(e.date)}${t}`;
+  const t = e.time ? `, ${TIME[e.time]}` : '';
+  if (!e.result && e.confirmed === false) return `Expected around ${dayLabel(e.date)}${t} (date not confirmed)`;
+  const on = reactsOn(e);
+  const reacts = on == null ? '' : ` · the stock ${moved(e) != null ? 'reacted' : 'reacts'} ${on === e.date ? 'the same day' : dayLabel(on)}`;
+  return `${e.result ? 'Reported' : 'Reports'} ${dayLabel(e.date)}${t}${reacts}`;
 }
 const growth = (now: number | null, before: number | null) => (now != null && before != null && before > 0 && now > 0 ? `, ${pct(now / before - 1, 0)} on a year ago` : '');
 function verdictPhrase(actual: number, est: number) {
@@ -125,8 +147,33 @@ function verdictPhrase(actual: number, est: number) {
   return v === 'inline' ? 'in line' : `a ${v} (${pct(s, 0)})`;
 }
 
-/** Everything the card says, as text: the big number and what it is, the lines under it, the facts, the bars. */
-export interface Card { big: string; tone: Tone | 'est'; says: string; lines: string[]; facts: [string, string][]; bars: ReturnType<typeof bars> }
+const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
+function analystsText(a: Analysts | null, price: number | null): string | null {
+  if (!a || a.n < MIN_ANALYSTS) return null;
+  const vs = price ? ` (${pct(a.target / price - 1, 0)} vs the price)` : '';
+  const moves = [a.raised ? `${a.raised} raised it` : '', a.cut ? `${a.cut} cut it` : ''].filter(Boolean).join(', ');
+  return `$${num(a.target, priceDigits(a.target))} average target${vs}, ${plural(a.n, 'analyst')} · ${moves ? `last 30 days: ${moves}` : 'no changes in the last 30 days'}`;
+}
+/** The peers that reported this season: how many rose, their usual size, the biggest movers named. */
+function peersText(ps: readonly PeerMove[]): string | null {
+  if (ps.length < MIN_PEERS) return null;
+  const avg = ps.reduce((s, p) => s + Math.abs(p.move), 0) / ps.length, ups = ps.filter((p) => p.move > 0).length;
+  const named = [...ps].sort((a, b) => Math.abs(b.move) - Math.abs(a.move)).slice(0, PEERS_NAMED).map((p) => `${p.ticker} ${pct(p.move)}`);
+  return `${ups} of ${ps.length} rose after reporting this season, ±${level(avg)} on average · ${named.join(', ')}`;
+}
+const oddsText = (o: Odds | null) => (o && o.volume >= MIN_VOLUME ? `${level(o.p, 0)} chance: ${o.what} · ${usd(o.volume, { compact: true })} traded` : null);
+/** Others' views before the event (none once it is out): the analysts, the peers, the prediction market. */
+function expectations(e: OutlookEvent): [string, string][] {
+  if (e.result) return [];
+  const rows: [string, string | null][] = e.kind === 'macro' ? [['Polymarket', oddsText(e.odds)]]
+    : [['Analysts', analystsText(e.analysts, e.price)], ['Peers', peersText(e.peers)], ['Polymarket', oddsText(e.odds)]];
+  return rows.filter((r): r is [string, string] => r[1] != null);
+}
+
+/** Everything the card says, as text: the big number and what it is, the lines under it, the facts, what others expect, the bars. */
+export interface Card {
+  big: string; tone: Tone | 'est'; says: string; lines: string[]; facts: [string, string][]; expect: [string, string][]; bars: ReturnType<typeof bars>;
+}
 export function card(e: OutlookEvent, normal: number | null): Card {
   const m = moved(e), u = usualOf(e), lines: string[] = [], facts: [string, string][] = [];
   if (e.kind === 'macro') {
@@ -138,14 +185,13 @@ export function card(e: OutlookEvent, normal: number | null): Card {
     const head = m != null ? { big: pct(m), tone: tone(m) as Tone | 'est', says: `the market (SPY) that session${normal ? `, ${times(Math.abs(m) / normal)} a normal day` : ''}` }
       : u != null ? { big: `±${level(u)}`, tone: 'est' as const, says: `the market’s (SPY) usual move on its last ${n} releases` }
       : { big: '', tone: 'est' as const, says: 'Not enough past releases on file for a usual move.' };
-    return { ...head, lines, facts, bars: bars(shown, u) };
+    return { ...head, lines, facts, expect: expectations(e), bars: bars(shown, u) };
   }
   const rec = record(e.reactions);
   if (e.result && e.result.epsActual != null && e.epsEst != null) {
     lines.push(`EPS ${money(e.result.epsActual)} vs ${money(e.epsEst)} expected: ${verdictPhrase(e.result.epsActual, e.epsEst)}` +
       (e.result.revActual != null && e.revEst != null ? ` · revenue ${usd(e.result.revActual, { compact: true })} vs ${usd(e.revEst, { compact: true })}` : ''));
   }
-  if (e.result && m == null) lines.push('Not traded yet: the stock trades on it at the next session.');
   if (m == null && u != null) {
     const r = priceRange(e.price, u);
     const parts = [e.mcap != null ? `≈ ±${usd(e.mcap * u, { compact: true })} of market value` : '', r && e.price != null ? `${rangeText(r)} from $${num(e.price, priceDigits(e.price))}` : ''];
@@ -162,10 +208,10 @@ export function card(e: OutlookEvent, normal: number | null): Card {
   const head = m != null ? { big: pct(m), tone: tone(m) as Tone | 'est', says: `the session after the report${u != null ? `, ${times(Math.abs(m) / u)} its usual ±${level(u)}` : ''}` }
     : u != null ? { big: `±${level(u)}`, tone: 'est' as const, says: `its usual move the session after a report (average of the last ${Math.min(rec.n, REPORTS)})` }
     : { big: '', tone: 'est' as const, says: `Not enough reports yet for a usual move (${rec.n} of the ${MIN_REPORTS} it takes).` };
-  return { ...head, lines, facts, bars: bars(shown, u) };
+  return { ...head, lines, facts, expect: expectations(e), bars: bars(shown, u) };
 }
 
-const NOTE = 'Past reactions: how big a move has been, not which way the next one goes.';
+const NOTE = 'Past reactions: how big a move has been, not which way the next one goes. What others expect is their view, not a forecast.';
 
 @Component({
   selector: 'pt-outlook-card',
@@ -196,6 +242,10 @@ const NOTE = 'Past reactions: how big a move has been, not which way the next on
         <p class="pt-meta">{{ e.kind === 'macro' ? BARS_MACRO : BARS_CO }}</p>
       }
       @if (c.facts.length) {<dl class="do-facts">@for (f of c.facts; track f[0]) {<dt>{{ f[0] }}</dt><dd>{{ f[1] }}</dd>}</dl>}
+      @if (c.expect.length) {
+        <p class="do-sub">What others expect</p>
+        <dl class="do-facts">@for (f of c.expect; track f[0]) {<dt>{{ f[0] }}</dt><dd>{{ f[1] }}</dd>}</dl>
+      }
       <p class="pt-meta">{{ NOTE }}</p>
     </div>`,
 })
@@ -238,7 +288,7 @@ const LEGEND: Record<OutlookVariant, string> = {
 const FOOT = 'Usual move: the average size of the stock’s move the session after each of its last 8 reports (for a Fed, CPI or jobs date, ' +
   'the market’s, SPY, on its last 8 releases). How big, not which way: past reactions do not say where the next one goes.';
 /** Room the card needs above a row before it opens below it instead. */
-const ROOM_ABOVE = 320, CARD_W = 304;
+const ROOM_ABOVE = 560, CARD_W = 384;
 
 @Component({
   selector: 'pt-cal-outlook',
@@ -262,7 +312,6 @@ const ROOM_ABOVE = 320, CARD_W = 304;
               @for (e of c.items.slice(0, CAP); track e.ticker) {
                 <a class="pt-cal-ev do-ev" [href]="stockHref(e.ticker)" (pointerenter)="show(e, $event)" (pointerleave)="hide()" (focus)="show(e, $event)" (blur)="hide()">
                   <span class="pt-cal-who"><pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="14" />{{ e.ticker }}</span>
-                  @if (isWeek() && e.time) {<span class="pt-cal-time">{{ e.time }}</span>}
                   <span [class]="cueClass(e)">{{ cueOf(e).text }}</span></a>
               }
               @if (c.items.length > CAP) {<span class="pt-cal-more">+{{ c.items.length - CAP }} more</span>}
@@ -279,7 +328,7 @@ const ROOM_ABOVE = 320, CARD_W = 304;
               <details class="do-row">
                 <summary>
                   @if (e.kind === 'macro') {<span class="pt-cal-macro">{{ e.label }}</span><span class="do-sum-name">{{ e.event }}</span>}
-                  @else {<pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="16" /><span class="do-sum-name">{{ e.name }} <span class="pt-meta">{{ e.name === e.ticker ? '' : e.ticker + ' · ' }}{{ e.time ? TIME[e.time] : '' }}</span></span>}
+                  @else {<pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="16" /><span class="do-sum-name">{{ e.name }} <span class="pt-meta">{{ e.name === e.ticker ? '' : e.ticker }}</span></span>}
                   <b [class]="cueClass(e)">{{ cueOf(e).text }}</b>
                 </summary>
                 <pt-outlook-card [event]="e" [normal]="d.normal" />
@@ -311,7 +360,6 @@ export class PtCalOutlook {
   protected readonly DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   protected readonly LEGEND = LEGEND;
   protected readonly FOOT = FOOT;
-  protected readonly TIME = TIME;
   protected readonly dayLabel = dayLabel;
   protected readonly stockHref = stockHref;
   protected cueOf = (e: OutlookEvent) => cue(e, this.variant());

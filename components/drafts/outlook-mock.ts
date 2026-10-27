@@ -2,11 +2,12 @@
  * Made-up data for the earnings-calendar outlook draft: October 2026 as the calendar shows it on the evening of Tuesday Oct 27 (the
  * last session's close). The reports up to then carry what the stock did, the rest what it usually does. Real tickers and the site's
  * logo files, invented numbers: each usual move is the average of the eight reactions listed with it, MSFT, UPS and the Fed by hand,
- * the others drawn from a seed around a plausible size.
+ * the others drawn from a seed around a plausible size. A company's peers this season are the calendar's own reports in its sector
+ * (MSFT's by hand); Polymarket odds only for the largest names and the Fed, Lilly's too thin to show.
  */
 import { addDays } from '../pt-calendar';
 import { co } from './mock';
-import type { CalOutlook, CoEvent, MacroEvent, Reaction, Verdict } from './pt-cal-outlook';
+import type { Analysts, CalOutlook, CoEvent, MacroEvent, Odds, PeerMove, Reaction, Verdict } from './pt-cal-outlook';
 
 const ASOF = '2026-10-27';
 /** A seeded draw in [0, 1): the same numbers on every build (the typologies' own prng is not in the browser entry). */
@@ -52,6 +53,30 @@ const ROWS: Row[] = [
   ['XOM', '2026-10-30', 'bmo', 117, 497, 0.022, null], ['CVX', '2026-10-30', 'bmo', 158, 276, 0.025, null, false],
 ];
 
+/** The sector each name is in, for its peers this season. */
+const SECTOR: Record<string, string> = {
+  ACN: 'tech', TXN: 'tech', MSFT: 'tech', AAPL: 'tech', META: 'comm', NFLX: 'comm', GOOGL: 'comm', VZ: 'comm',
+  NKE: 'cyclical', TSLA: 'cyclical', AMZN: 'cyclical', RCL: 'cyclical', JPM: 'fin', WFC: 'fin', C: 'fin', BAC: 'fin', MS: 'fin', GS: 'fin',
+  AXP: 'fin', V: 'fin', JNJ: 'health', ABT: 'health', LLY: 'health', MRK: 'health', DAL: 'ind', RTX: 'ind', GE: 'ind', BA: 'ind', UPS: 'ind',
+  CAT: 'ind', PEP: 'staples', PG: 'staples', KO: 'staples', XOM: 'energy', CVX: 'energy',
+};
+/** The calendar's reports in `t`'s sector traded before `date` (and by the evening of the 27th). */
+const peersOf = (t: string, date: string): PeerMove[] => ROWS
+  .filter(([p, d, , , , , res]) => p !== t && SECTOR[p] === SECTOR[t] && d < date && d <= ASOF && res?.[0] != null)
+  .map(([ticker, d, , , , , res]) => ({ ticker, date: d, move: res![0]! }));
+/** Analysts' average target a little above the price, a seeded count and the last 30 days' raises and cuts. */
+function analysts(t: string, price: number): Analysts {
+  const r = prng(`${t}:analysts`), target = price * (1.03 + r() * 0.17);
+  return { target: target >= 100 ? Math.round(target) : r2(target), n: 14 + Math.floor(r() * 34), raised: Math.floor(r() * 7), cut: Math.floor(r() * 3) };
+}
+const BEAT = 'EPS above the estimate';
+/** Polymarket's price of a beat and the dollars traded (these markets are thin: a few thousand dollars, the largest around $13K in
+ *  October 2026), Lilly's too thin to show. */
+const ODDS: Record<string, [number, number]> = {
+  GOOGL: [0.79, 9_400], AAPL: [0.86, 11_200], AMZN: [0.74, 6_800], LLY: [0.81, 1_200], META: [0.8, 8_900], TSLA: [0.55, 10_600], NFLX: [0.77, 5_300],
+};
+const odds = (t: string): Odds | null => (ODDS[t] ? { what: BEAT, p: ODDS[t]![0], volume: ODDS[t]![1] } : null);
+
 /** A quarter's revenue estimate, $B (about the companies' real size, so the card reads plausibly). */
 const REV: Record<string, number> = {
   ACN: 17.6, NKE: 11.7, PEP: 23.9, DAL: 15.9, JPM: 46, WFC: 21, C: 21.5, JNJ: 23.5, BAC: 27.5, MS: 17.5, ABT: 11.4, GS: 15, RTX: 21.5, GE: 11.5,
@@ -66,19 +91,25 @@ function company([t, date, time, price, cap, u, res, confirmed = true]: Row): Co
   return { kind: 'earnings', date, ...who(t), time, confirmed, price, mcap: cap * 1e9, reactions: history(t, date, u),
     epsEst: eps, epsYearAgo: r2(eps / (1 + (-0.08 + r() * 0.38))), revEst, revYearAgo: Math.round(revEst / (1 + (-0.03 + r() * 0.23)) / 1e8) * 1e8,
     runup: r3(-0.08 + r() * 0.18), marketRunup: 0.018,
-    result: res ? { move: res[0], epsActual: r2(eps + res[1] * Math.abs(eps)), revActual: Math.round((revEst * (1 + res[1] / 3)) / 1e8) * 1e8 } : null };
+    result: res ? { move: res[0], epsActual: r2(eps + res[1] * Math.abs(eps)), revActual: Math.round((revEst * (1 + res[1] / 3)) / 1e8) * 1e8 } : null,
+    analysts: analysts(t, price), peers: peersOf(t, date), odds: odds(t) };
 }
 
-/** Microsoft the day before its report: beat 7 of 8, rose after 5, a usual move of 4.7% (37.5 / 8). */
+/** Microsoft the day before its report: beat 7 of 8, rose after 5, a usual move of 4.7% (37.5 / 8); its software peers this season
+ *  rose after 2 of 4 reports, by 5.6% on average either way (22.4 / 4). */
 export const MSFT: CoEvent = { kind: 'earnings', date: '2026-10-28', ...who('MSFT'), time: 'amc', confirmed: true, price: 522.4, mcap: 3.88e12,
   reactions: hand('2026-10-28', [[0.042, 'beat'], [-0.061, 'beat'], [0.018, 'beat'], [0.075, 'beat'], [-0.039, 'miss'], [0.045, 'beat'], [0.083, 'beat'], [-0.012, 'beat']]),
-  epsEst: 3.68, epsYearAgo: 3.3, revEst: 77.4e9, revYearAgo: 65.6e9, runup: 0.062, marketRunup: 0.018, result: null };
+  epsEst: 3.68, epsYearAgo: 3.3, revEst: 77.4e9, revYearAgo: 65.6e9, runup: 0.062, marketRunup: 0.018, result: null,
+  analysts: { target: 625, n: 52, raised: 9, cut: 1 },
+  peers: [{ ticker: 'IBM', date: '2026-10-21', move: -0.054 }, { ticker: 'META', date: '2026-10-21', move: -0.058 },
+    { ticker: 'NOW', date: '2026-10-22', move: 0.081 }, { ticker: 'SAP', date: '2026-10-22', move: 0.031 }],
+  odds: { what: BEAT, p: 0.83, volume: 12_000 } };
 
 /** UPS this morning: a beat (+4.3%) and the stock down 6.8%, 1.2 times its usual 5.8% (46.4 / 8). */
 export const UPS: CoEvent = { kind: 'earnings', date: '2026-10-27', ...who('UPS'), time: 'bmo', confirmed: true, price: 131.5, mcap: 112e9,
   reactions: hand('2026-10-27', [[-0.081, 'miss'], [0.035, 'beat'], [-0.052, 'inline'], [0.024, 'beat'], [-0.143, 'miss'], [0.041, 'beat'], [-0.028, 'beat'], [0.06, 'beat']]),
   epsEst: 1.64, epsYearAgo: 1.76, revEst: 22.1e9, revYearAgo: 22.2e9, runup: -0.034, marketRunup: 0.018,
-  result: { move: -0.068, epsActual: 1.71, revActual: 22.4e9 } };
+  result: { move: -0.068, epsActual: 1.71, revActual: 22.4e9 }, analysts: analysts('UPS', 131.5), peers: peersOf('UPS', '2026-10-27'), odds: null };
 
 const NORMAL = 0.0068;
 const releases = (label: string, date: string, u: number) => {
@@ -86,12 +117,13 @@ const releases = (label: string, date: string, u: number) => {
   return Array.from({ length: 8 }, (_, i) => ({ date: addDays(date, -45 * (8 - i)), move: r3((r() > 0.45 ? 1 : -1) * u * (0.35 + r() * 1.3)) }));
 };
 const macro = (date: string, label: string, event: string, u: number, expected: string | null, previous: string | null,
-  result: MacroEvent['result'] = null): MacroEvent => ({ kind: 'macro', date, label, event, moves: releases(label, date, u), expected, previous, result });
+  result: MacroEvent['result'] = null): MacroEvent => ({ kind: 'macro', date, label, event, moves: releases(label, date, u), expected, previous, result, odds: null });
 
-/** The Fed tomorrow: the market's usual move on the last eight decisions is 1.2% (9.8 / 8), 1.8 times a normal day. */
+/** The Fed tomorrow: the market's usual move on the last eight decisions is 1.2% (9.8 / 8), 1.8 times a normal day; Polymarket prices
+ *  the quarter-point cut at 94%. */
 export const FED: MacroEvent = { kind: 'macro', date: '2026-10-28', label: 'Fed', event: 'Fed Interest Rate Decision',
   moves: [0.011, -0.016, 0.009, 0.012, -0.007, 0.014, -0.021, 0.008].map((move, i) => ({ date: addDays('2026-10-28', -45 * (8 - i)), move })),
-  expected: '3.50%', previous: '3.75%', result: null };
+  expected: '3.50%', previous: '3.75%', result: null, odds: { what: 'a 0.25-point cut', p: 0.94, volume: 5.2e6 } };
 const MACRO: MacroEvent[] = [
   macro('2026-10-02', 'Jobs', 'Nonfarm Payrolls (Sep) · Unemployment Rate (Sep)', 0.009, '120K', '22K', { move: 0.004, actual: '142K' }),
   macro('2026-10-07', 'FOMC', 'FOMC Minutes', 0.005, null, null, { move: -0.003, actual: null }),

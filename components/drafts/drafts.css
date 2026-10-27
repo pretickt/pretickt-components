@@ -173,7 +173,7 @@
 .do-ev:hover, .do-ev:focus-visible { outline: 1px solid var(--color-primary); outline-offset: -1px; }
 button.do-ev { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: .25rem; border: 0; font: inherit; color: inherit;
   text-align: left; cursor: default; }
-.do-pop { position: absolute; z-index: 30; width: min(19rem, 100%); transform: translateY(-100%); pointer-events: none; }
+.do-pop { position: absolute; z-index: 30; width: min(24rem, 100%); transform: translateY(-100%); pointer-events: none; }
 .do-pop-below { transform: none; }
 .do-card { display: grid; gap: .35rem; max-width: 24rem; padding: .7rem .8rem; border: 1px solid var(--color-border); border-radius: var(--radius-control);
   background: var(--color-surface-raised); color: var(--color-ink); font-size: .8rem; line-height: 1.35; box-shadow: 0 10px 28px rgb(0 0 0 / .16); }
@@ -191,6 +191,8 @@ button.do-ev { display: flex; width: 100%; align-items: center; justify-content:
 .do-facts { display: grid; grid-template-columns: auto 1fr; gap: .15rem .6rem; margin: 0; }
 .do-facts dt { font-weight: 600; color: var(--color-ink-soft); }
 .do-facts dd { margin: 0; }
+.do-sub { padding-top: .35rem; border-top: 1px solid var(--color-border); font-size: .7rem; text-transform: uppercase; letter-spacing: .02em;
+  color: var(--color-ink-soft); }
 .do-agenda { margin: 1rem 0 .5rem; }
 .do-agenda-day { margin: .8rem 0 .2rem; font-size: .75rem; text-transform: uppercase; letter-spacing: .02em; color: var(--color-ink-soft); }
 .do-row summary { display: flex; align-items: center; gap: .5rem; padding: .35rem .25rem; border-bottom: 1px solid var(--color-border); font-size: .875rem;

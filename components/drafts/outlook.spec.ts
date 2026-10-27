@@ -1,6 +1,6 @@
 import { render } from '../_spec';
 import { CPI, FED, MSFT, OCTOBER, UPS, V_TONIGHT, WEEK } from './outlook-mock';
-import { card, cue, priceRange, PtCalOutlook, rangeText, record, usualMove, verdictOf } from './pt-cal-outlook';
+import { card, cue, priceRange, PtCalOutlook, rangeText, record, usualMove, verdictOf, when, type CoEvent } from './pt-cal-outlook';
 
 describe('pt-cal-outlook (draft): the earnings calendar with each event\'s possible outcome', () => {
   it('the usual move is the mean size of the last eight reactions, and needs four', () => {
@@ -56,7 +56,6 @@ describe('pt-cal-outlook (draft): the earnings calendar with each event\'s possi
     expect(c.bars.bars.map((b) => b.now)).toEqual([false, false, false, false, false, false, false, false, true]);
     const v = card(V_TONIGHT, OCTOBER.normal);
     expect(v.big).toMatch(/^±/);
-    expect(v.lines).toContain('Not traded yet: the stock trades on it at the next session.');
     expect(card({ ...MSFT, reactions: MSFT.reactions.slice(-3) }, null).says).toBe('Not enough reports yet for a usual move (3 of the 4 it takes).');
   });
 
@@ -68,11 +67,46 @@ describe('pt-cal-outlook (draft): the earnings calendar with each event\'s possi
     expect([c.big, c.says, c.facts]).toEqual(['-1.2%', 'the market (SPY) that session, 1.8× a normal day', [['Actual', '2.9% vs 2.8% expected · previous 2.9%']]]);
   });
 
+  it('the card says which session trades the report, instead of BMO/AMC: the same one before the open, the next weekday after the close', () => {
+    expect(when(MSFT)).toBe('Reports Wed, Oct 28, after the close · the stock reacts Thu, Oct 29');
+    expect(when({ ...MSFT, date: '2026-10-30' })).toBe('Reports Fri, Oct 30, after the close · the stock reacts Mon, Nov 2');
+    expect(when({ ...MSFT, date: '2026-10-29', time: 'bmo' })).toBe('Reports Thu, Oct 29, before the open · the stock reacts the same day');
+    expect(when(UPS)).toBe('Reported Tue, Oct 27, before the open · the stock reacted the same day');
+    expect(when(V_TONIGHT)).toBe('Reported Tue, Oct 27, after the close · the stock reacts Wed, Oct 28');
+    expect(when({ ...MSFT, confirmed: false })).toBe('Expected around Wed, Oct 28, after the close (date not confirmed)');
+    expect(when({ ...MSFT, time: null })).toBe('Reports Wed, Oct 28');
+  });
+
+  it('what others expect, before a report: the analysts\' target and its last 30 days, how peers reacted this season, Polymarket\'s odds', () => {
+    expect(card(MSFT, OCTOBER.normal).expect).toEqual([
+      ['Analysts', '$625 average target (+20% vs the price), 52 analysts · last 30 days: 9 raised it, 1 cut it'],
+      ['Peers', '2 of 4 rose after reporting this season, ±5.6% on average · NOW +8.1%, META -5.8%, IBM -5.4%'],
+      ['Polymarket', '83% chance: EPS above the estimate · $12K traded'],
+    ]);
+    const googl = OCTOBER.items.find((e): e is CoEvent => e.kind === 'earnings' && e.ticker === 'GOOGL')!;
+    expect(card(googl, OCTOBER.normal).expect.find((f) => f[0] === 'Peers')![1])
+      .toBe('0 of 3 rose after reporting this season, ±4.5% on average · META -5.8%, NFLX -5.2%, VZ -2.4%');
+    expect(card(FED, OCTOBER.normal).expect).toEqual([['Polymarket', '94% chance: a 0.25-point cut · $5.2M traded']]);
+  });
+
+  it('what others expect needs enough of it, and stops once the report is out', () => {
+    const thin = { ...MSFT, analysts: { target: 600, n: 2, raised: 0, cut: 0 }, peers: MSFT.peers.slice(0, 1), odds: { what: 'EPS above the estimate', p: 0.8, volume: 4_000 } };
+    expect(card(thin, null).expect).toEqual([]);
+    expect(card({ ...MSFT, analysts: { target: 500, n: 12, raised: 0, cut: 0 }, peers: [], odds: null }, null).expect)
+      .toEqual([['Analysts', '$500 average target (-4% vs the price), 12 analysts · no changes in the last 30 days']]);
+    expect(card(UPS, OCTOBER.normal).expect).toEqual([]);
+    expect(card(V_TONIGHT, OCTOBER.normal).expect).toEqual([]);
+    expect(card(CPI, OCTOBER.normal).expect).toEqual([]);
+  });
+
   it('the week: five sessions, a number in each row, the macro dates, every event in the agenda; hovering opens the card', async () => {
     const { f, el, text } = await render(PtCalOutlook, { data: WEEK, view: 'week' });
     expect(el.querySelectorAll('.pt-cal-dow')).toHaveLength(5);
     const msft = el.querySelector<HTMLElement>('.do-grid a[href="/stocks/msft/"]')!;
     expect(msft.textContent).toContain('±4.7%');
+    expect(msft.textContent).not.toMatch(/amc|bmo/i);
+    const summary = [...el.querySelectorAll('.do-agenda summary')].find((s) => s.textContent!.includes('Microsoft'))!;
+    expect(summary.textContent).not.toMatch(/after the close|before the open/);
     expect(el.querySelector('.do-grid .pt-cal-macro')!.textContent).toContain('±1.2%');
     expect(el.querySelector('.pt-cal-asof')!.textContent).toContain('UPS');
     expect(el.querySelectorAll('.do-agenda details')).toHaveLength(WEEK.items.length);
@@ -80,6 +114,8 @@ describe('pt-cal-outlook (draft): the earnings calendar with each event\'s possi
     msft.dispatchEvent(new Event('pointerenter'));
     f.detectChanges();
     expect(el.querySelector('.do-pop')!.textContent).toContain('its usual move the session after a report');
+    expect(el.querySelector('.do-pop')!.textContent).toContain('What others expect');
+    expect(el.querySelector('.do-pop .do-sub + .do-facts')!.textContent).toContain('83% chance: EPS above the estimate');
     msft.dispatchEvent(new Event('pointerleave'));
     f.detectChanges();
     expect(el.querySelector('.do-pop')).toBeNull();
