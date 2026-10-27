@@ -19,8 +19,15 @@ export type ValueViz =
   | { kind: 'gauge'; value: number; min: number; max: number; zones: [number, number] } // a score with a red, amber, green zone
   | { kind: 'range'; low: number; high: number; value: number; mark?: number; labels?: [string, string] } // where it sits in a range
   | { kind: 'split'; parts: { label: string; share: number }[] }   // shares of a whole: segments, pay
+  | { kind: 'companies'; rows: ValueCompany[]; bars: boolean }     // other companies: customers, rivals, holders, analysts' banks
   | { kind: 'missing' };                                          // the data has no source yet
-export interface ValueCard { tone: ValueTone; big: string; line: string; why: string; source: string; viz: ValueViz }
+/** One company on a card that reads others: its logo, its value (the bar), its label; `self` is the company of the page. */
+export interface ValueCompany { ticker: string; logo: string | null; value: number | null; label: string; tone?: ValueTone; self?: boolean }
+/**
+ * A card: a big number, a plain line, a small picture. `via` marks pretickt's own analysis — a fact read across other companies
+ * (its customers' spending, its rivals' returns, its holders, the banks' analysts) that no single data point gives.
+ */
+export interface ValueCard { tone: ValueTone; big: string; line: string; why: string; source: string; viz: ValueViz; via?: string }
 export interface ValueSection { key: ValueKey; tone: ValueTone; verdict: string; cards: ValueCard[] }
 /** The future `value@1` payload: one company, its six sections. */
 export interface Value { asOf: string; ticker: string; name: string; logo: string | null; sections: ValueSection[] }
@@ -62,6 +69,13 @@ export function barGeom(values: number[]) {
       w: Math.round(w * 10) / 10, h: Math.round(h * 10) / 10, neg: v < 0, last: i === values.length - 1 };
   }) };
 }
+/** A companies card's rows: each bar as a share of the largest value (none without bars or a value), its tone by its sign. */
+export function companyRows(rows: ValueCompany[], bars: boolean) {
+  const max = Math.max(...rows.map((r) => Math.abs(r.value ?? 0)), 1e-9);
+  return rows.map((r) => ({ ...r, self: !!r.self, tone: r.tone ?? (r.value === null ? 'na' : r.value < 0 ? 'neg' : 'pos') as ValueTone,
+    width: bars && r.value !== null ? Math.max(3, Math.round((Math.abs(r.value) / max) * 100)) : null }));
+}
+
 /** Where `v` falls between `min` and `max`, 0–1, clamped. */
 export const at = (v: number, min: number, max: number) => Math.max(0, Math.min(1, (v - min) / (max - min || 1)));
 /** A point on the gauge's half circle (centre 60,36, radius 30) for a share 0–1 from the left. */
@@ -96,7 +110,8 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
                 <span [class]="'dv-verdict dv-' + s.tone">{{ s.verdict }}</span>
               </div>
               @for (c of s.cards; track $index) {
-                <div [class]="'dv-card dv-' + c.tone" [attr.data-tip]="cardTip(c)">
+                <div [class]="'dv-card dv-' + c.tone" [class.dv-via]="!!c.via" [attr.data-tip]="cardTip(c)">
+                  @if (c.via) {<span class="dv-via-l">◆ pretickt analysis · {{ c.via }}</span>}
                   @switch (c.viz.kind) {
                     @case ('bars') {
                       @let g = bars(c);
@@ -141,6 +156,18 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
                         @if (p[0]; as f) {<text class="dv-t" x="0" y="28">{{ f.label }}</text>}
                       </svg>
                     }
+                    @case ('companies') {
+                      <ul class="dv-cos">
+                        @for (r of companies(c); track r.ticker) {
+                          <li [class.dv-self]="r.self">
+                            <pt-logo [ticker]="r.ticker" [src]="r.logo" [size]="16" />
+                            <span class="dv-co-t">{{ r.ticker }}</span>
+                            @if (r.width !== null) {<span class="dv-co-track"><i [class]="'dv-co-bar dv-last-' + r.tone" [style.width.%]="r.width"></i></span>}
+                            <span [class]="'dv-co-v dv-co-' + r.tone">{{ r.label }}</span>
+                          </li>
+                        }
+                      </ul>
+                    }
                     @case ('missing') {
                       <svg class="dv-viz" viewBox="0 0 120 32" aria-hidden="true"><rect class="dv-missing" x="1" y="4" width="118" height="24" rx="4" /><text class="dv-t" x="60" y="20" text-anchor="middle">not measured yet</text></svg>
                     }
@@ -162,7 +189,8 @@ export class PtValue {
   protected readonly answer = computed(() => { const v = this.data(); return v ? valueAnswer(v) : { lead: '', text: '' }; });
   protected readonly QUESTIONS = QUESTIONS;
   protected readonly date = date;
-  protected readonly cardTip = (c: ValueCard) => tip({ [c.big]: c.line, Why: c.why, Source: c.source });
+  protected readonly cardTip = (c: ValueCard) => tip({ [c.big]: c.line, Why: c.why, 'pretickt analysis': c.via ?? null, Source: c.source });
+  protected companies(c: ValueCard) { return c.viz.kind === 'companies' ? companyRows(c.viz.rows, c.viz.bars) : []; }
   protected bars(c: ValueCard) { return c.viz.kind === 'bars' ? barGeom(c.viz.values) : { base: 0, bars: [] }; }
   protected vs(c: ValueCard) {
     if (c.viz.kind !== 'vs') return { it: 0, peers: 0 };

@@ -3,7 +3,7 @@ import { railMarks, splitBars } from './pt-asked';
 import { bubbleSize, heat, hotSentence, ring } from './pt-hot';
 import { arc, oddsDays, oddsTone } from './pt-odds';
 import { boardColumns, boardSentence } from './pt-quality-strip';
-import { arcPath, at, barGeom, list, onArc, valueAnswer, type Value } from './pt-value';
+import { arcPath, at, barGeom, companyRows, list, onArc, valueAnswer, type Value } from './pt-value';
 import { VALUE_INTC, VALUE_NKE, VALUE_NVDA } from './value-mock';
 
 describe('home drafts: the helpers their components will keep', () => {
@@ -59,5 +59,20 @@ describe('pt-value (draft): the answer and the small pictures', () => {
     expect(onArc(0)).toEqual({ x: 30, y: 36 });
     expect(onArc(0.5)).toEqual({ x: 60, y: 6 });
     expect(arcPath(0, 1)).toBe('M30 36A30 30 0 0 1 90 36');
+  });
+});
+
+describe('pt-value (draft): the cards read across other companies', () => {
+  it('bars as a share of the largest value, the tone from the sign unless given, the page\'s company marked; no bars without them', () => {
+    const rows = companyRows([{ ticker: 'NVDA', logo: null, value: 78, label: '78%', self: true }, { ticker: 'INTC', logo: null, value: -2, label: '−2%' },
+      { ticker: 'QCOM', logo: null, value: null, label: 'no profit' }], true);
+    expect(rows.map((r) => [r.ticker, r.width, r.tone, r.self])).toEqual([['NVDA', 100, 'pos', true], ['INTC', 3, 'neg', false], ['QCOM', null, 'na', false]]);
+    expect(companyRows([{ ticker: 'GS', logo: null, value: 1, label: 'upgrade', tone: 'pos' }], false)[0]).toMatchObject({ width: null, tone: 'pos' });
+  });
+  it('every card that reads other companies says so, with their logos where the site has one', () => {
+    const via = [VALUE_NVDA, VALUE_NKE, VALUE_INTC].flatMap((v) => v.sections.flatMap((s) => s.cards)).filter((c) => c.viz.kind === 'companies');
+    expect(via.length).toBeGreaterThanOrEqual(10);
+    expect(via.every((c) => !!c.via)).toBe(true);
+    expect(via.flatMap((c) => (c.viz.kind === 'companies' ? c.viz.rows : [])).filter((r) => r.logo).length).toBeGreaterThan(30);
   });
 });

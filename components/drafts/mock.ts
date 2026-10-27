@@ -17,7 +17,10 @@ export const LOGO: Record<string, string> = {
   GE: '/logos/ge.1f27a2e3.webp', RTX: '/logos/rtx.fb379448.webp', NFLX: '/logos/nflx.f17daaff.webp', AMGN: '/logos/amgn.a6bc8743.webp',
   TXN: '/logos/txn.de1c253b.webp', PG: '/logos/pg.63af38a1.webp', AXP: '/logos/axp.976c0bbe.webp', VZ: '/logos/vz.28a7b201.webp',
   RCL: '/logos/rcl.473b0746.webp', UPS: '/logos/ups.f9146c96.webp', BA: '/logos/ba.7c6c0cf3.webp', NKE: '/logos/nke.70e2412d.webp',
-  SCHW: '/logos/schw.92aca459.webp', SPGI: '/logos/spgi.733b73c0.webp',
+  SCHW: '/logos/schw.92aca459.webp', SPGI: '/logos/spgi.733b73c0.webp', QCOM: '/logos/qcom.143ff674.webp', AVGO: '/logos/avgo.39190370.webp',
+  LULU: '/logos/lulu.2d32003e.webp', DECK: '/logos/deck.7bae04ce.webp', DELL: '/logos/dell.95462363.webp', HPQ: '/logos/hpq.962cd0d3.webp',
+  BLK: '/logos/blk.944a18fd.webp', STT: '/logos/stt.7f427d3f.webp', GS: '/logos/gs.20a49c49.webp', MS: '/logos/ms.747d7472.webp',
+  C: '/logos/c.b8155757.webp', BAC: '/logos/bac.2069ed50.webp', WFC: '/logos/wfc.31a06487.webp',
 };
 const NAMES: Record<string, string> = {
   NVDA: 'NVIDIA', AAPL: 'Apple', MSFT: 'Microsoft', GOOGL: 'Alphabet', AMZN: 'Amazon', SPCX: 'SpaceX', META: 'Meta Platforms', TSLA: 'Tesla',

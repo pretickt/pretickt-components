@@ -147,3 +147,18 @@
   background: var(--color-surface-raised); }
 .dp-cards .dp-big { font-size: 1.6rem; }
 @media (width < 40rem) { .dp-faq .dp-qa { grid-template-columns: 1fr; gap: .2rem; } .dp-faq .dp-big { text-align: left; } .dp-pulse { grid-template-columns: 1fr; } }
+
+/* pt-value: cards read across other companies (pretickt's own analysis), with their logos */
+.dv-card.dv-via { background: color-mix(in oklab, var(--color-primary) 4%, var(--color-surface-raised)); }
+.dv-via-l { font-size: .6rem; font-weight: 700; letter-spacing: .02em; color: var(--color-primary); }
+.dv-cos { display: grid; gap: .2rem; margin: .1rem 0 .15rem; padding: 0; list-style: none; }
+.dv-cos li { display: grid; grid-template-columns: 16px 2.6rem 1fr auto; align-items: center; gap: .3rem; padding: .05rem .15rem; border-radius: .3rem; }
+.dv-cos li.dv-self { background: color-mix(in oklab, var(--color-ink) 7%, transparent); font-weight: 700; }
+.dv-co-t { font: 600 .62rem/1 var(--font-mono); color: var(--color-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dv-co-track { height: 6px; border-radius: 3px; background: var(--color-surface); overflow: hidden; }
+.dv-co-bar { display: block; height: 100%; border-radius: 3px; }
+.dv-co-bar.dv-last-pos { background: var(--dv-pos); } .dv-co-bar.dv-last-flat { background: var(--dv-flat); }
+.dv-co-bar.dv-last-neg { background: var(--dv-neg); } .dv-co-bar.dv-last-na { background: var(--dv-na); }
+.dv-co-v { font: 600 .62rem/1 var(--font-mono); text-align: right; white-space: nowrap; }
+.dv-co-pos { color: var(--dv-pos); } .dv-co-neg { color: var(--dv-neg); } .dv-co-flat { color: color-mix(in oklab, var(--dv-flat) 70%, var(--color-ink)); } .dv-co-na { color: var(--color-ink-soft); }
+.dv-cos li:not(:has(.dv-co-track)) { grid-template-columns: 16px 1fr auto; }
