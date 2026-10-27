@@ -117,6 +117,8 @@ export function needBar(needs: PeopleAsk['needs']): { key: string; label: string
                         <line class="dr-v-track" x1="8" x2="192" y1="14" y2="14" />
                         <line [class]="'dr-v-run ' + (v.target >= v.price ? 'dr-v-pos' : 'dr-v-neg')" [attr.x1]="m.price" [attr.x2]="m.target" y1="14" y2="14" />
                         <circle class="dr-v-dot" [attr.cx]="m.price" cy="14" r="5" /><circle class="dr-v-high" [attr.cx]="m.high" cy="14" r="3" />
+                        <text class="dr-v-l" [attr.x]="clamp(m.price)" y="29" text-anchor="middle">price</text>
+                        <text class="dr-v-l" [attr.x]="clamp(m.target)" y="29" text-anchor="middle">target</text>
                       }
                       @case ('bars') {
                         @let bm = max(abs(v.values));
@@ -150,6 +152,8 @@ export class PtPeopleAsk {
   protected readonly max = (xs: number[]) => Math.max(...xs, 1e-9);
   protected readonly abs = (xs: number[]) => xs.map(Math.abs);
   protected readonly abs1 = Math.abs;
+  /** a label under a rail mark, kept whole inside the 200-unit box */
+  protected readonly clamp = (x: number) => Math.max(16, Math.min(184, x));
   protected readonly num = num;
   protected readonly level = level;
 }
