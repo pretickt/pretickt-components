@@ -5,6 +5,7 @@ import { stories as companyCard } from '../../components/pt-company-card.stories
 import { stories as feed } from '../../components/pt-feed.stories';
 import { stories as drafts } from '../../components/drafts/home.stories';
 import { stories as value } from '../../components/drafts/value.stories';
+import { stories as peopleAsk } from '../../components/drafts/people-ask.stories';
 import { stories as financials } from '../../components/pt-financials.stories';
 import { stories as insiders } from '../../components/pt-insiders.stories';
 import { stories as logoMap } from '../../components/pt-logo-map.stories';
@@ -20,5 +21,5 @@ import type { StoryConfiguration } from './story';
 
 export const STORIES: StoryConfiguration[] = [
   ...companyCard, ...answer, ...quality, ...whyToday, ...priceTarget, ...priceEvents, ...metric, ...financials, ...insiders, ...news,
-  ...screen, ...calendar, ...movers, ...logoMap, ...feed, ...value, ...drafts,
+  ...screen, ...calendar, ...movers, ...logoMap, ...feed, ...value, ...peopleAsk, ...drafts,
 ];
