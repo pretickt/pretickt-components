@@ -470,6 +470,42 @@
   .pt-ins-buy .pt-ins-type { @apply bg-pos/15 text-pos; }
   .pt-ins-sell .pt-ins-type { @apply bg-neg/15 text-neg; }
   .pt-ins-other .pt-ins-type { @apply bg-surface text-ink-soft; }
+
+  /* quality (pt-quality): the drop test, six boxes in three rows by horizon, a box's cards below; Price has a colour of its own */
+  .pt-q { @apply grid gap-4; }
+  .pt-q-drop { @apply rounded-control border border-neg/30 bg-neg/5 px-4 py-3 text-sm leading-relaxed; }
+  .pt-q-drop-lead { @apply m-0 font-semibold text-ink; }
+  .pt-q-drop-since { @apply m-0 mt-1 text-ink-soft; }
+  .pt-q-rows { @apply grid gap-3; }
+  .pt-q-row-h { @apply m-0 mb-1.5 text-sm font-semibold text-ink; }
+  .pt-q-pair { @apply grid gap-2 sm:grid-cols-2; }
+  .pt-q-box { @apply grid content-start gap-1 rounded-control border border-border bg-surface-raised p-3 text-left text-sm hover:border-primary; }
+  .pt-q-box[aria-pressed='true'] { @apply border-primary ring-1 ring-primary; }
+  .pt-q-price { @apply bg-fund/5; }
+  .pt-q-name { @apply text-xs font-semibold uppercase tracking-wide text-ink; }
+  .pt-q-ask { @apply text-xs text-ink-soft; }
+  .pt-q-base { @apply font-mono text-sm font-semibold text-ink; }
+  .pt-q-counts { @apply flex flex-wrap gap-2 text-xs; }
+  .pt-q-n { @apply text-ink-soft; }
+  .pt-q-n.pt-q-pos, .pt-q-pos > .pt-q-mark { @apply text-pos; }
+  .pt-q-n.pt-q-neg, .pt-q-neg > .pt-q-mark { @apply text-neg; }
+  .pt-q-n.pt-q-flat, .pt-q-flat > .pt-q-mark { @apply text-warn; }
+  .pt-q-last { @apply line-clamp-2 text-xs text-ink-soft; }
+  .pt-q-panel-h { @apply m-0 mb-2 text-sm font-semibold text-ink; }
+  .pt-q-cards { @apply m-0 grid list-none gap-2 p-0; }
+  .pt-q-card { @apply grid grid-cols-[1rem_1fr_3.5rem] items-start gap-2 rounded-control border border-border bg-surface-raised px-3 py-2 text-sm; }
+  .pt-q-mark { @apply pt-0.5 text-xs leading-5; }
+  .pt-q-body > p { @apply m-0; }
+  .pt-q-fact { @apply font-semibold text-ink; }
+  .pt-q-why { @apply text-ink-soft; }
+  .pt-q-viz { @apply mt-1 h-5 w-14; }
+  .pt-q-zero { stroke: var(--color-border); stroke-width: 1; }
+  .pt-q-slope { stroke: var(--color-ink-soft); stroke-width: 1.5; }
+  .pt-q-from { fill: var(--color-ink-soft); }
+  .pt-q-pos .pt-q-to, .pt-q-pos .pt-q-bar { fill: var(--color-pos); }
+  .pt-q-neg .pt-q-to, .pt-q-neg .pt-q-bar { fill: var(--color-neg); }
+  .pt-q-flat .pt-q-to, .pt-q-flat .pt-q-bar { fill: var(--color-warn); }
+  .pt-q-empty { @apply m-0 rounded-control border border-dashed border-border px-3 py-3 text-sm text-ink-soft; }
 }
 
 @keyframes pt-dash-flow { to { stroke-dashoffset: -7; } }

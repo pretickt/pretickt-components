@@ -13,6 +13,7 @@ import { PtMovers } from '../../components/pt-movers';
 import { PtNews } from '../../components/pt-news';
 import { PtPriceEvents } from '../../components/pt-price-events';
 import { PtPriceTarget } from '../../components/pt-price-target';
+import { PtQuality } from '../../components/pt-quality';
 import { PtScreen } from '../../components/pt-screen';
 import { PtWhyToday } from '../../components/pt-why-today';
 
@@ -29,6 +30,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
   'pt-news': { version: '2.1.0', sample: { ticker: 'NVDA' } },
   'pt-price-events': { version: '2.2.0', sample: { ticker: 'NVDA' } },
   'pt-price-target': { version: '2.4.1', sample: { ticker: 'NVDA' } },
+  'pt-quality': { version: '0.1.0', sample: { ticker: 'NVDA' } },
   'pt-screen': { version: '2.4.0', sample: {} },
   'pt-why-today': { version: '2.2.0', sample: { ticker: 'NVDA' } },
 };
@@ -39,7 +41,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
  */
 @Component({
   selector: 'div[ptSlot]',
-  imports: [PtAnswer, PtCalendar, PtCompanyCard, PtFeed, PtFinancials, PtInsiders, PtMetric, PtMovers, PtNews, PtPriceEvents, PtPriceTarget, PtScreen, PtWhyToday],
+  imports: [PtAnswer, PtCalendar, PtCompanyCard, PtFeed, PtFinancials, PtInsiders, PtMetric, PtMovers, PtNews, PtPriceEvents, PtPriceTarget, PtQuality, PtScreen, PtWhyToday],
   providers: [Pt, { provide: PT_SLOT, useFactory: () => { const injector = inject(Injector); return () => injector.get(PtSlot).id(); } }],
   host: { class: 'pt-island', '[attr.data-island]': 'id()', '[class.pt-island-error]': 'pt.failed()' },
   template: `
@@ -55,6 +57,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
       @case ('pt-news') { @defer (hydrate on viewport) {<pt-news [ticker]="$any(p()).ticker" [limit]="$any(p()).limit ?? 20" />} }
       @case ('pt-price-events') { @defer (hydrate on viewport) {<pt-price-events [ticker]="$any(p()).ticker" [range]="$any(p()).range ?? '1y'" />} }
       @case ('pt-price-target') { @defer (hydrate on viewport) {<pt-price-target [ticker]="$any(p()).ticker" />} }
+      @case ('pt-quality') { @defer (hydrate on viewport) {<pt-quality [ticker]="$any(p()).ticker" />} }
       @case ('pt-screen') { @defer (hydrate on viewport) {<pt-screen [list]="$any(p()).list" [peersOf]="$any(p()).peersOf" [limit]="$any(p()).limit ?? 25" [sector]="$any(p()).sector" />} }
       @case ('pt-why-today') { @defer (hydrate on viewport) {<pt-why-today [ticker]="$any(p()).ticker" [window]="$any(p()).window ?? '1d'" />} }
     }

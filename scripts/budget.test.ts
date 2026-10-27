@@ -7,9 +7,10 @@ describe('build budget', () => {
     expect(overBudget('main', BUDGET.main)).toBeNull();
     expect(overBudget('component', BUDGET.component + 1)).toMatch(/component bundle is \d+ bytes, over the 32000-byte budget/);
   });
-  it('the components to build are the pt-*.ts files, never their specs or the spec helpers', () => {
+  it('the components to build are the pt-*.ts files, never their specs, their stories or the spec helpers', () => {
     const files = componentFiles(readdirSync('components'));
-    expect(files.length).toBe(13);
+    expect(files.length).toBe(14);
+    expect(componentFiles(['pt-x.ts', 'pt-x.spec.ts', 'pt-x.stories.ts', '_spec.ts'])).toEqual(['pt-x.ts']);
     expect(files.every((f) => /^pt-[a-z0-9-]+\.ts$/.test(f))).toBe(true);
   });
 });
