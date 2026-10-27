@@ -183,11 +183,35 @@ bars they read. Fields named `*Pct` are in percent (2.5 = +2.5%), not fractions:
   element of the server HTML** (development build: Angular validates every node; production build: as shipped) without one data
   request.
 
+## Stories (how a component is looked at)
+Every component has `components/pt-x.stories.ts`: the scenarios a reader can meet, each a `story()` from `src/stories/story.ts` (a
+port of browserbot's `story.component.ts`), exported as `stories` and listed in `src/stories/index.ts` (the package is
+`sideEffects: false`: a stories file imported only for its effect would be dropped).
+```ts
+export const stories = [
+  story(PtX, { name: 'Demo', inputs: { ticker: 'NVDA' } }),
+  story(PtX, { name: 'www: NKE', inputs: { ticker: 'NKE' }, live: true }),                    // www's API, through the dev proxy
+  story(PtX, { name: 'Crowded', inputs: { ticker: 'NVDA' }, data: { 'analysts@1': crowded } }), // fixed answers, the rest the demo
+  story(PtX, { name: 'Market open', inputs: { ticker: 'NVDA' }, providers: liveDay({ q: { NVDA: … } }) }),
+  story(PtX, { name: 'Not available', inputs: { ticker: 'NVDA' }, data: null }),
+];
+```
+- `data`: answers by typology id — a payload, `null` (not available) or a function of the call's params (a toggle that asks again);
+  `demo<T>(typology, params)` gives a payload to build a fixture on. `picks` pre-fills the reader's picks; `run(refresh, el)` plays
+  an interaction a second after mounting (a press).
+- Cover: the demo, each input that changes the look, the edge cases the spec tests (empty, a missing part, crowded, long), one or
+  two live tickers that show them on real data, not available. **Fixtures are made up**: the repo is public, real payloads stay on
+  www (`live` reads them when the page is viewed).
+- `npm run stories` → http://localhost:4300/visual/pt-x, every scenario under its name (`?phone`: 390 px frames, so the phone
+  media queries apply; `/visual/pt-x/<n>`: one alone). The platform's experiments (`admin/experiments`, next to this checkout)
+  show up too, their bench presets as stories. In the console, `copy(storyOf($0))` copies what a story shows as a new story.
+- `src/stories/stories.spec.ts` fails a component without stories, a fixture its typology rejects and a story that does not render.
+
 ## Workflow
-1. Write `components/pt-x.spec.ts` first. 2. Write `components/pt-x.ts`. 3. `npm test`. 4. `npm run build` → `dist/`
-(`site/browser`, `site/server`, `ds.css`, `index.json`) and `npm run check`. 5. Commit on `develop`; `main` = release. Pages that
-place a component are defined in the platform repo (`plant/src/generate/pages.ts`); the build makes every component placeable
-(registry).
+1. Write `components/pt-x.spec.ts` first. 2. Write `components/pt-x.ts`. 3. Write `components/pt-x.stories.ts` and look at it
+(`npm run stories`). 4. `npm test`. 5. `npm run build` → `dist/` (`site/browser`, `site/server`, `ds.css`, `index.json`) and
+`npm run check`. 6. Commit on `develop`; `main` = release. Pages that place a component are defined in the platform repo
+(`plant/src/generate/pages.ts`); the build makes every component placeable (registry).
 
 ## Existing components (`dist/index.json`)
 `pt-company-card` (the company at a glance — logo, price over 60 sessions, 52-week range, consensus, PT, tags with "Show all";

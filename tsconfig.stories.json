@@ -1,0 +1,6 @@
+/* The stories app (npm run stories, src/stories): the site's compiler settings; its entry, plus the experiments it may be given. */
+{
+  "extends": "./tsconfig.app.json",
+  "files": ["src/stories/main.ts"],
+  "include": [".stories/**/*.ts"]
+}

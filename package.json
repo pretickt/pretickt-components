@@ -7,7 +7,8 @@
     "test:ng": "ng test --watch=false",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "tsx scripts/build.ts",
-    "check": "tsx scripts/check.ts"
+    "check": "tsx scripts/check.ts",
+    "stories": "tsx scripts/stories.ts"
   },
   "keywords": [],
   "author": "",

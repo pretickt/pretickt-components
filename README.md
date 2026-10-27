@@ -10,4 +10,5 @@ npm test            # Vitest (typologies, indicators, checks, scripts) + ng test
 npm run typecheck   # tsc
 npm run build       # dist/: site/browser (/c/), site/server, ds.css, index.json
 npm run check       # server checks, concurrent renders, hydration
+npm run stories     # http://localhost:4300: every component in its scenarios (components/*.stories.ts)
 ```

@@ -56,6 +56,69 @@
           }
         }
       }
+    },
+    "stories": {
+      "projectType": "application",
+      "root": "src/stories",
+      "sourceRoot": "src/stories",
+      "prefix": "pt",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "outputPath": "dist/stories",
+            "index": "src/stories/index.html",
+            "browser": "src/stories/main.ts",
+            "tsConfig": "tsconfig.stories.json",
+            "styles": [
+              "src/stories/stories.css"
+            ],
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "styles/fonts",
+                "output": "fonts"
+              },
+              {
+                "glob": "**/*",
+                "input": "styles/brand",
+                "output": "brand"
+              },
+              {
+                "glob": "*.css",
+                "input": ".stories",
+                "output": "."
+              }
+            ],
+            "optimization": false,
+            "extractLicenses": false,
+            "sourceMap": true
+          },
+          "configurations": {
+            "experiments": {
+              "fileReplacements": [
+                {
+                  "replace": "src/stories/experiments.ts",
+                  "with": ".stories/experiments.ts"
+                }
+              ]
+            }
+          }
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "options": {
+            "buildTarget": "stories:build",
+            "port": 4300,
+            "proxyConfig": "src/stories/proxy.json"
+          },
+          "configurations": {
+            "experiments": {
+              "buildTarget": "stories:build:experiments"
+            }
+          }
+        }
+      }
     }
   }
 }
