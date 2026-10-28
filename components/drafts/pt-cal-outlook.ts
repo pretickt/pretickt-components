@@ -386,7 +386,7 @@ const ROOM_ABOVE = 560, CARD_W = 384;
                   </summary>
                   <pt-outlook-card [event]="e" [normal]="d.normal" />
                 </details>
-                <p class="do-say">{{ say(e, d.normal) }} @if (e.kind === 'earnings') {<a [href]="stockHref(e.ticker)">{{ e.name }} earnings date →</a>}</p>
+                <p class="do-say">{{ say(e, d.normal) }} @if (e.kind === 'earnings') {<a [href]="stockHref(e.ticker)">{{ e.name }} earnings date&nbsp;→</a>}</p>
               </div>
             }
           }

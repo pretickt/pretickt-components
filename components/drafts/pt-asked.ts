@@ -85,7 +85,7 @@ export function railMarks(v: { price: number; high: number; target: number }) {
                     }
                   </svg>
                 }
-                <span class="pt-meta">asked {{ a.asks }} times · {{ a.link }} →</span>
+                <span class="pt-meta">asked {{ a.asks }} times · {{ a.link }}&nbsp;→</span>
               </a></li>
             }
           </ul>

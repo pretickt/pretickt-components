@@ -10,7 +10,8 @@
  * in a sentence in the page (company, number, date): a tooltip is not text to a search engine or an AI. Under the columns, the
  * questions people search that the cards answer ("Who is dumping Nvidia stock?"); the resolver templates them, so the generator
  * can put the same pairs in the page's structured data — one answer per question on a page.
- * @version 0.0.3
+ * The six columns share their rows (a subgrid): a question on one line or two, the verdicts and the first cards start level.
+ * @version 0.0.4
  */
 import { Component, computed, input } from '@angular/core';
 import { PtIcon, PtLogo } from '@pretickt/components/ds';
@@ -143,9 +144,10 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
                 <span class="dv-ask">{{ QUESTIONS[s.key].ask }}</span>
                 <span [class]="'dv-verdict dv-' + s.tone">{{ s.verdict }}</span>
               </div>
+              <div class="dv-stack">
               @for (c of s.cards; track $index) {
                 <div [class]="'dv-card dv-' + c.tone" [class.dv-via]="!!c.via" [attr.data-tip]="cardTip(c)">
-                  <span class="dv-title">{{ c.title }}@if (c.term) {<span class="dv-term"> · {{ c.term }}</span>}</span>
+                  <span class="dv-title">{{ c.title }}@if (c.term) {<span class="dv-term">{{ ' ' + c.term }}</span>}</span>
                   @if (c.via) {<span class="dv-badge">pretickt analysis</span>}
                   @switch (c.viz.kind) {
                     @case ('bars') {
@@ -209,6 +211,7 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
                   <p class="dv-say">{{ c.say }}</p>
                 </div>
               }
+              </div>
             </div>
           }
         </div>

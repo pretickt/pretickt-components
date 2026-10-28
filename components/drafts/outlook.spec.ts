@@ -157,7 +157,7 @@ describe('pt-cal-outlook (draft): the earnings calendar with each event\'s possi
     expect(el.querySelector('.pt-section-title')!.textContent).toBe('Earnings calendar this week · Oct 26–Oct 30, 2026');
     expect([...el.querySelectorAll('.do-agenda-day')].map((h) => h.textContent)).toEqual(expect.arrayContaining(['Earnings today · Wed, Oct 28', 'Earnings tomorrow · Thu, Oct 29']));
     expect(text()).toContain(agendaSentence(MSFT, WEEK.normal));
-    expect(el.querySelector('.do-agenda a[href="/stocks/msft/"]')!.textContent).toBe('Microsoft earnings date →');
+    expect(el.querySelector('.do-agenda a[href="/stocks/msft/"]')!.textContent).toBe('Microsoft earnings date\u00a0→');
     const cvx = el.querySelector('.do-grid a[href="/stocks/cvx/"]')!;
     expect(cvx.classList).toContain('do-unconf');
     expect(cvx.textContent).toContain('(date not confirmed)');

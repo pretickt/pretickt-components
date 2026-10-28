@@ -498,7 +498,11 @@
   .pt-q-rows { @apply grid gap-3; }
   .pt-q-row-h { @apply m-0 mb-1.5 text-sm font-semibold text-ink; }
   .pt-q-pair { @apply grid gap-2 sm:grid-cols-2; }
-  .pt-q-box { @apply grid content-start gap-1 rounded-control border border-border bg-surface-raised p-3 text-left text-sm hover:border-primary; }
+  /* the two boxes of a pair share five rows (name, question, number, counts, newest fact): a subgrid keeps them level */
+  .pt-q-box { @apply grid gap-1 rounded-control border border-border bg-surface-raised p-3 text-left text-sm hover:border-primary;
+    grid-row: span 5; grid-template-rows: subgrid; }
+  .pt-q-box > .pt-q-name { grid-row: 1; } .pt-q-box > .pt-q-ask { grid-row: 2; } .pt-q-box > .pt-q-base { grid-row: 3; }
+  .pt-q-box > .pt-q-counts { grid-row: 4; } .pt-q-box > .pt-q-last { grid-row: 5; }
   .pt-q-box[aria-pressed='true'] { @apply border-primary ring-1 ring-primary; }
   .pt-q-price { @apply bg-fund/5; }
   .pt-q-name { @apply text-xs font-semibold uppercase tracking-wide text-ink; }

@@ -147,7 +147,7 @@ export function needBar(needs: PeopleAsk['needs']): { key: string; label: string
                     }
                   </svg>
                 }
-                <p class="pt-meta">@if (a.asked) {asked {{ a.asked }} {{ a.asked === 1 ? 'time' : 'times' }} this week · }<a [href]="a.href">{{ a.link }} →</a></p>
+                <p class="pt-meta">@if (a.asked) {asked {{ a.asked }} {{ a.asked === 1 ? 'time' : 'times' }} this week · }<a [href]="a.href">{{ a.link }}&nbsp;→</a></p>
               </div>
             </article>
           }
