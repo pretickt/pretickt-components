@@ -119,7 +119,7 @@ platform change (schema here + resolver in the private platform + a public-data 
 - **Format** (deterministic, the same on server and browser — never `Intl`/`toLocale*`): `num(v,digits)`, `pct(fraction →
   "+12.3%")`, `level(fraction → "12.3%")`, `usd(v,{compact,signed,digits})`, `money(v,digits)`, `amount(cash)`, `compact`,
   `date(iso → "Sep 30, 2026")`, `month(ym → "Mar 26")`, `dayMonth(iso → "Oct 30")`, `tone(v, flatBand)`, `href(url)` (http(s) or a site path, else `#`),
-  `stockHref(ticker)`, `tip({ Label: value })`, `badgeValue(badge)`, `svgId(s)`. Expose what the template uses as class fields
+  `stockHref(ticker)`, `plainName(name → "Apple" from "Apple Inc.")`, `tip({ Label: value })`, `badgeValue(badge)`, `svgId(s)`. Expose what the template uses as class fields
   (`protected readonly pct = pct`).
 - **Companies**: `<a ptCompany [ticker] [name] [logo]></a>` (logo + ticker + name, linked to the company page) and `<pt-logo [ticker]
   [src] [size] />` (`src` = a payload's `logo`; none → initials, no request). **Every link to `/stocks/<t>/` opens the company card
@@ -169,6 +169,23 @@ change in this repo, reviewed like any other).
 - **Null & unknown**: every call can answer `null` → render the `pt-na` state (or a reduced view). Payload lists may contain entries
   you don't know (new metric keys, new event kinds, events **without ticker**): render them generically or skip them, never throw.
 - **Public copy is US English**, templated from data. **No LLM prose** on pages. Never show index symbols (`^…`); "the market" is SPY.
+
+## Search engines and AI answers (SEO, AI search)
+Google shows an AI Overview on most questions about a stock, and the chat assistants (ChatGPT, Claude, Gemini, Perplexity) answer
+them too, quoting the sites that write the exact number with its date. What a component prints is that text:
+- **The answer is a sentence in the page**: the company's common name with its ticker, the number, the date — "Nvidia (NVDA) moved
+  ±6.8% on average in the session after its last 8 reports (as of Oct 27, 2026)". A `data-tip`, an SVG or a hover card is not text to
+  them: the fact is in the template's text too (a `pt-sr` span when it must not show).
+- **The question in the words people search, then the answer in its first sentence**: "Is Nvidia a good stock to buy?", "When does
+  Nvidia report earnings?", "Earnings calendar this week", "Stock market heat map". Common names, as people and the press write them
+  ("Nvidia", "Meta"; `plainName` drops "Inc." and the like).
+- **The date in the text**, and in a heading when the data is today's ("Earnings today · Wed, Oct 28"), always with the explicit date:
+  a page built at night is read the next day. Say what is an estimate (a date not confirmed, a forecast).
+- **Links say where they go** ("Nvidia earnings date", "Why Meta is down this week"), never "more" or "the answer on pretickt".
+- **Questions with their answers come in the payload**, templated by the resolver, so the generator puts the same pairs in the page's
+  structured data; one answer per question on a page. A question about buying is answered with facts, never a yes or a no.
+The evidence (the questions searched for each component, who the AI answers cite) is in the private repo: `launch/RESEARCH.md` §9
+and `launch/AI-SEARCH.md`.
 
 ## Indicators (`@pretickt/components/indicators`, pure, ported from beta with tests)
 `sma smaLast ema wilder rsi macd(→{macd,signal}) bollinger atr technicalSnapshot supportResistance vectorise(pivots) dailySigmaPct SCALES

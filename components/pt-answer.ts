@@ -7,20 +7,14 @@
  */
 import { Component, computed, inject, input } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
-import { amount, cash, date, level, money, num, pct, usd } from '@pretickt/components/format';
+import { amount, cash, date, level, money, num, pct, plainName, usd } from '@pretickt/components/format';
 import { INSIDER_WINDOW_DAYS, type EventItem, type ScreenList, type ScreenRow, type Sector } from '@pretickt/components/typologies';
+
+export { plainName } from '@pretickt/components/format';
 
 type Topic = 'forecast' | 'price-target' | 'peers' | 'financials' | 'insiders' | 'list' | 'earnings' | 'dividends';
 type Named = { ticker: string; name: string };
 
-// legal suffixes and share classes at the end of a provider name; "Company"/"Co." go with their "and"/"&" (the generator's shortName)
-const SUFFIX = /(?:(?:\s+(?:and|&))?,?\s+(?:Company|Co\.)|,?\s+(?:Inc\.?|Incorporated|Corporation|Corp\.?|plc|PLC|Ltd\.?|Limited|Public Limited Company|N\.V\.|S\.A\.|L\.P\.)|\s+Class [A-C](?: Common Stock)?|\s+Common Stock|\s+American Depositary Shares|\s+Ordinary Shares)$/;
-/** A company's name as people search it: "Apple Inc." → "Apple", "The Coca-Cola Company" → "Coca-Cola". */
-export function plainName(name: string): string {
-  let n = name.trim();
-  for (let prev = ''; prev !== n;) { prev = n; const next = n.replace(SUFFIX, ''); if (next) n = next; }
-  return n.replace(/^The\s+/, '') || n;
-}
 /** "Apple (AAPL)", or the ticker alone when it is the name. */
 const who = (c: Named) => { const n = plainName(c.name); return n.toUpperCase() === c.ticker ? c.ticker : `${n} (${c.ticker})`; };
 const and = (parts: string[]) => (parts.length < 2 ? parts.join('') : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`);

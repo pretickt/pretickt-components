@@ -2,7 +2,10 @@
  * DRAFT · H2 Questions people are asking, answered (mock data, stories only): the week's real questions about a stock from Reddit
  * and X, each with the number that answers it, a small graphic and the pretickt page that explains it. Its data (the pulse's
  * questions, typed by need and matched to a page) has no pipeline yet, so it comes as an input.
- * @version 0.0.1
+ * It chases no search of its own (DataForSEO, 2026-10-28): it sends weight to the company pages, where the questions are searched —
+ * so each question is in the searched words with the company's common name ("Why is Meta stock down this week?"), and each card ends
+ * with descriptive link words ("Why Meta is down this week"), not "the answer on pretickt".
+ * @version 0.0.2
  */
 import { Component, input } from '@angular/core';
 import { PtLogo } from '@pretickt/components/ds';
@@ -14,8 +17,9 @@ export type AskViz =
   | { kind: 'bars'; values: number[]; labels: string[] }
   | { kind: 'off'; off: number }
   | { kind: 'pe'; pe: number; sector: number };
+/** `link`: the words of the page it leads to (an internal link: descriptive, as a search engine reads it). */
 export interface AskedItem { ticker: string; name: string; logo: string | null; question: string; asks: number; answer: string;
-  tone: 'pos' | 'neg' | 'flat'; sub: string; href: string; viz: AskViz | null }
+  tone: 'pos' | 'neg' | 'flat'; sub: string; href: string; link: string; viz: AskViz | null }
 export interface Asked { asOf: string; items: AskedItem[] }
 
 const W = 200;
@@ -81,7 +85,7 @@ export function railMarks(v: { price: number; high: number; target: number }) {
                     }
                   </svg>
                 }
-                <span class="pt-meta">asked {{ a.asks }} times · the answer on pretickt →</span>
+                <span class="pt-meta">asked {{ a.asks }} times · {{ a.link }} →</span>
               </a></li>
             }
           </ul>

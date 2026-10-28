@@ -30,13 +30,17 @@ export function screenDemo(p: ScreenParams): Screen {
   const seed = 'list' in p.scope ? `${p.scope.list}:${p.scope.sector ?? ''}` : `peers:${p.scope.peersOf}`;
   const sector = ('list' in p.scope && p.scope.sector) || 'Technology';
   const r = prng(`screen:${seed}`);
-  const rows = DEMO_COMPANIES.slice(0, Math.min(p.limit, 10)).map(([ticker, name], i) => {
+  // peers: the company itself first, with its own name, and not again among its peers
+  const own = 'peersOf' in p.scope ? p.scope.peersOf : null;
+  const list: readonly (readonly [string, string])[] = own
+    ? [[own, DEMO_COMPANIES.find(([t]) => t === own)?.[1] ?? own], ...DEMO_COMPANIES.filter(([t]) => t !== own)] : DEMO_COMPANIES;
+  const rows = list.slice(0, Math.min(p.limit, 10)).map(([ticker, name], i) => {
     let c = 100 + r() * 300;
     const spark = Array.from({ length: 20 }, () => (c = round(c * (1 + (r() - 0.5) * 0.04))));
-    return { ticker: 'peersOf' in p.scope && i === 0 ? p.scope.peersOf : ticker, name, sector, logo: null, close: spark.at(-1)!,
+    return { ticker, name, sector, logo: null, close: spark.at(-1)!,
       chg1d: round((r() - 0.5) * 0.1, 4), offHigh: round(-r() * 0.4, 4), pe: round(10 + r() * 40, 1), ptUpside: round(r() * 0.4 - 0.05, 4),
       marketCap: round(1e10 + r() * 3e12, 0), insiderNet: round((r() - 0.5) * 1e8, 0), volumeRatio: round(0.5 + r() * 2, 2), spark,
-      self: 'peersOf' in p.scope && i === 0 };
+      self: own !== null && i === 0 };
   });
   return { asOf: DEMO_ASOF, rows };
 }

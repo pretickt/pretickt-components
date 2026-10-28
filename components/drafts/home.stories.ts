@@ -12,6 +12,7 @@ export const stories = [
   story(PtHot, { name: 'H1 · a busy day', inputs: { data: HOT }, group: GROUP }),
   story(PtHot, { name: 'H1 · one stock everywhere', group: GROUP, inputs: { data: { ...HOT, rows: HOT.rows.map((r) => (r.ticker === 'NKE' ? { ...r, mentions: 900, usual: 14 } : r)) } } }),
   story(PtHot, { name: 'H1 · a quiet day', group: GROUP, inputs: { data: { ...HOT, rows: [] } } }),
+  story(PtHot, { name: 'H1 · stale counts (the pulse stopped on Friday)', group: GROUP, inputs: { data: { ...HOT, asOf: '2026-10-23', time: '16:30', stale: true } } }),
   story(PtHot, { name: 'H1 · not available', inputs: { data: null }, group: GROUP }),
   story(PtAsked, { name: 'H2 · this week\'s questions', inputs: { data: ASKED }, group: GROUP }),
   story(PtAsked, { name: 'H2 · two questions', inputs: { data: { ...ASKED, items: ASKED.items.slice(0, 2) } }, group: GROUP }),

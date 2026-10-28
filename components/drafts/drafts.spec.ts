@@ -1,10 +1,11 @@
 import { ASKED, BOARD, HOT, ODDS } from './mock';
 import { railMarks, splitBars } from './pt-asked';
-import { bubbleSize, heat, hotSentence, ring } from './pt-hot';
+import { bubbleSize, etTime, heat, hotSentence, hotWhen, PtHot, ring } from './pt-hot';
 import { arc, oddsDays, oddsTone } from './pt-odds';
-import { boardColumns, boardSentence } from './pt-quality-strip';
-import { arcPath, at, barGeom, companyRows, list, onArc, valueAnswer, type Value } from './pt-value';
+import { boardColumns, boardSentence, boardWeek, PtQualityStrip } from './pt-quality-strip';
+import { arcPath, at, barGeom, companyRows, list, NOT_ADVICE, onArc, priceSentence, PtValue, valueAnswer, type Value } from './pt-value';
 import { VALUE_INTC, VALUE_NKE, VALUE_NVDA } from './value-mock';
+import { render } from '../_spec';
 
 describe('home drafts: the helpers their components will keep', () => {
   it('H1: heat against a usual day, the ring it earns, a bubble whose area grows with the posts, the sentence', () => {
@@ -12,8 +13,21 @@ describe('home drafts: the helpers their components will keep', () => {
     expect(heat({ mentions: 5, usual: 0 })).toBeNull();
     expect([2.5, 1, 0.5, null].map(ring)).toEqual(['hot', 'usual', 'cool', 'cool']);
     expect(bubbleSize(400) - 34).toBeCloseTo(2 * (bubbleSize(100) - 34), 0);
-    expect(hotSentence(HOT.rows)).toBe('Most discussed in the last 24 hours: SPCX (220 posts, 3.1× its usual), GOOGL (170) and AMZN (150). AMGN draws 6.7× its usual.');
-    expect(hotSentence(HOT.rows.slice(0, 2))).toBe('Most discussed in the last 24 hours: SPCX (220 posts, 3.1× its usual) and GOOGL (170). SPCX draws 3.1× its usual.');
+    expect(hotSentence(HOT.rows, hotWhen(HOT), HOT.sources)).toBe('Most discussed on Reddit and X in the 24 hours to 10:30 a.m. ET, Mon, Oct 26, 2026: ' +
+      'SpaceX (SPCX, 220 posts, 3.1× its usual), Alphabet (GOOGL, 170) and Amazon (AMZN, 150). Amgen (AMGN) draws 6.7× its usual. Posts from r/wallstreetbets, r/stocks and X.');
+    expect(hotSentence(HOT.rows.slice(0, 2))).toBe('Most discussed on Reddit and X in the last 24 hours: SpaceX (SPCX, 220 posts, 3.1× its usual) and Alphabet (GOOGL, 170). ' +
+      'SpaceX (SPCX) draws 3.1× its usual.');
+    expect([etTime('10:30'), etTime('14:00'), etTime('09:05'), etTime('00:15')]).toEqual(['10:30 a.m. ET', '2 p.m. ET', '9:05 a.m. ET', '12:15 a.m. ET']);
+    expect(hotWhen({ asOf: '2026-10-26', time: null })).toBe('Mon, Oct 26, 2026');
+  });
+  it('H1 in the page: the heading says "today" only while the counts are today\'s; a bubble opens what people ask about the company', async () => {
+    const fresh = await render(PtHot, { data: HOT });
+    expect(fresh.el.querySelector('.dr-head b')!.textContent).toBe('Most talked about stocks on Reddit and X today');
+    expect(fresh.el.querySelector('.dr-bub')!.getAttribute('href')).toBe('/stocks/spcx/#people-ask');
+    expect(fresh.el.querySelector('.dr-bub')!.getAttribute('aria-label')).toBe('What people ask about SpaceX: 220 posts in 24 hours, 3.1 times its usual');
+    const stale = await render(PtHot, { data: { ...HOT, asOf: '2026-10-23', stale: true } });
+    expect(stale.el.querySelector('.dr-head b')!.textContent).toBe('Most talked about stocks on Reddit and X');
+    expect(stale.text()).toContain('last updated 10:30 a.m. ET, Fri, Oct 23, 2026 — not today’s counts');
   });
   it('H2: a move split into three bars in proportion; a rail with price, high and target on it', () => {
     const b = splitBars({ market: -0.004, sector: -0.003, own: -0.087 });
@@ -35,18 +49,32 @@ describe('home drafts: the helpers their components will keep', () => {
     expect(cols.map((c) => c.name)).toEqual(['Demand', 'Advantage', 'Economics', 'Execution', 'Fragility', 'Price']);
     expect(cols[3]!.up).toHaveLength(8);
     expect(cols[3]!.down.map((i) => i.ticker)).toEqual(['NKE']);
-    expect(boardSentence(BOARD)).toBe('This week Execution strengthened at 8 companies; Fragility weakened or needs watching at META and GOOGL.');
+    expect(boardSentence(BOARD)).toBe('In the week to Oct 23, 2026, Execution strengthened at 8 companies; Fragility weakened or needs watching at Meta and Alphabet.');
+    expect(boardWeek(BOARD)).toBe('Oct 19–Oct 23, 2026');
+  });
+  it('H5 in the page: each logo\'s link says where it goes', async () => {
+    const { el } = await render(PtQualityStrip, { data: BOARD });
+    expect(el.querySelector('a[href="/stocks/meta/#quality"]')!.getAttribute('aria-label')).toMatch(/^Meta’s quality this week: /);
   });
 });
 
 
 describe('pt-value (draft): the answer and the small pictures', () => {
-  it('answers in words: how many of the five questions about the business are strong, what is weak, then the price', () => {
-    expect(valueAnswer(VALUE_NVDA)).toEqual({ lead: 'Mostly yes', text: 'A strong business on 4 of the 5 questions about the company. The price: expensive.' });
-    expect(valueAnswer(VALUE_NKE)).toEqual({ lead: 'Not really, for now', text: 'A strong business on 1 of the 5 questions about the company; weak on demand and economics. The price: below its usual.' });
-    expect(valueAnswer(VALUE_INTC)).toEqual({ lead: 'Mostly no', text: 'Weak on advantage, economics, execution and fragility; demand in between. The price: hard to judge.' });
-    expect(valueAnswer({ ...VALUE_NVDA, sections: [] } as Value)).toEqual({ lead: 'Not enough data yet', text: 'The questions about the company have no data yet.' });
+  it('answers "Is it a good stock to buy?" in facts: the strong questions about the business, the P/E against its median, dated — never a yes or a no', () => {
+    expect(valueAnswer(VALUE_NVDA)).toEqual({ lead: 'Nvidia is strong on 4 of the 5 questions about the business.',
+      text: 'The price is high: 41.2 times its earnings, above its 3-year median of 33.4 (Oct 26, 2026). pretickt does not say whether to buy or sell.' });
+    expect(valueAnswer(VALUE_NKE)).toEqual({ lead: 'Nike is strong on 1 of the 5 questions about the business; weak on demand and economics.',
+      text: 'The price is low: 19.4 times its earnings, below its 3-year median of 30.2 (Oct 26, 2026). pretickt does not say whether to buy or sell.' });
+    expect(valueAnswer(VALUE_INTC)).toEqual({ lead: 'Intel is weak on advantage, economics, execution and fragility; demand in between.',
+      text: 'With a loss over the last 12 months, Intel has no P/E ratio (Oct 26, 2026). pretickt does not say whether to buy or sell.' });
+    expect(valueAnswer({ ...VALUE_NVDA, sections: [], pe: null } as Value)).toEqual({ lead: 'The questions about Nvidia\'s business have no data yet.', text: NOT_ADVICE });
+    for (const v of [VALUE_NVDA, VALUE_NKE, VALUE_INTC]) expect(valueAnswer(v).lead).not.toMatch(/^(yes|no|mostly)\b/i);
     expect([list([]), list(['a']), list(['a', 'b']), list(['a', 'b', 'c'])]).toEqual(['', 'a', 'a and b', 'a, b and c']);
+  });
+  it('the price sentence: within 15% of its 3-year median the P/E is about usual; no median, the P/E alone; no reading, nothing', () => {
+    expect(priceSentence({ ...VALUE_NVDA, pe: { now: 35, median: 33.4 } })).toBe('The price is about usual: 35.0 times its earnings, near its 3-year median of 33.4 (Oct 26, 2026).');
+    expect(priceSentence({ ...VALUE_NVDA, pe: { now: 41.2, median: null } })).toBe('Nvidia\'s P/E ratio is 41.2 (Oct 26, 2026).');
+    expect(priceSentence({ ...VALUE_NVDA, pe: null })).toBe('');
   });
   it('bars stand on zero, negatives hang below it, the last one is the one in colour', () => {
     const g = barGeom([16, 4, 27, -7]);
@@ -89,5 +117,25 @@ describe('pt-value (draft): every card', () => {
     const fragility = all.map((v) => v.sections.find((s) => s.key === 'fragility')!.cards.find((c) => c.title === 'Biggest customers'));
     expect(fragility.map((c) => c?.big)).toEqual(['34%', 'under 10%', '42%']);
     expect(fragility.every((c) => c?.viz.kind === 'split' && c.source.includes('financial-reports-json'))).toBe(true);
+  });
+  it('says its fact in a sentence that names the company; a searched term beside the title only when it differs', () => {
+    for (const v of all) for (const c of v.sections.flatMap((s) => s.cards)) {
+      expect(c.say).toContain(v.name);
+      expect(c.say).toMatch(/\.$/);
+      if (c.term) expect(c.term.toLowerCase()).not.toBe(c.title.toLowerCase());
+    }
+    const titles = VALUE_NVDA.sections.flatMap((s) => s.cards.map((c) => `${c.title}${c.term ? ` · ${c.term}` : ''}`));
+    expect(titles).toEqual(expect.arrayContaining(['Price vs profit · P/E ratio', 'Competitors', 'Number of employees', 'Who owns the stock · institutional ownership', 'Insider selling']));
+  });
+});
+
+describe('pt-value (draft): in the page\'s text', () => {
+  it('the searched question on top, each card\'s sentence and the searched questions with their answers as headings', async () => {
+    const { el, text } = await render(PtValue, { data: VALUE_NVDA });
+    expect(el.querySelector('.dv-q')!.textContent).toBe('Is Nvidia a good stock to buy?');
+    expect(text()).toContain('Nvidia\'s P/E ratio is 41.2 (Oct 26, 2026), above its 3-year median of 33.4.');
+    expect([...el.querySelectorAll('.dv-faq h3')].map((h) => h.textContent)).toEqual(VALUE_NVDA.faq.map((f) => f.q));
+    expect(text()).toContain(VALUE_NVDA.faq[0]!.a);
+    for (const v of [VALUE_NVDA, VALUE_NKE, VALUE_INTC]) expect(v.faq.every((f) => f.q.endsWith('?') && f.a.includes(v.name))).toBe(true);
   });
 });

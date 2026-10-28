@@ -6,15 +6,26 @@
  * and orders the questions; a company nobody talks about keeps the usual ones. The sentences come in the payload, templated by the
  * resolver, so the generator can put the same questions and answers in the page's FAQPage structured data. Its data has no
  * pipeline yet, so it comes as an input. Two looks on the same text: `faq` (the number beside each answer) and `cards`.
- * @version 0.0.1
+ * The wording is the searched one (DataForSEO, 2026-10-28): "Why is Nvidia stock down today?", "When does Nvidia report earnings?",
+ * "Is Nvidia a good stock to buy?", the company's common name ("Nvidia", not "NVIDIA"). "Why is it down" answers with the measure,
+ * a reference (the distance from the high) and the split into market, sector and its own part — the piece the AI answers lack.
+ * Next to the pulse's needs, the questions Google keeps asking that pretickt's data answers: what $10,000 invested 5 years ago is
+ * worth, who is selling (insiders and the largest funds), how it makes money, who owns it (both readings: a parent company or its
+ * shareholders). A question another placement of the page answers (pt-value's) is left out by the resolver: one answer per question
+ * on a page.
+ * @version 0.0.2
  */
 import { Component, input } from '@angular/core';
 import { PtLogo } from '@pretickt/components/ds';
 import { date, level, num } from '@pretickt/components/format';
 import { railMarks, splitBars, type AskViz } from './pt-asked';
 
-/** The pulse's needs that a company page answers (pretickt-pulse `config.ANSWERABLE_NEEDS` and two more). */
-export type AskNeed = 'why_moving' | 'buy_or_not' | 'when_sell' | 'dip_pullback' | 'earnings_events' | 'dividends_income' | 'trust_track_record';
+/**
+ * The pulse's needs that a company page answers (pretickt-pulse `config.ANSWERABLE_NEEDS` and two more), and four the pulse does not
+ * type yet that Google keeps asking (`past_return`, `who_sells`, `business`, `ownership`): usual questions until the pulse knows them.
+ */
+export type AskNeed = 'why_moving' | 'buy_or_not' | 'when_sell' | 'dip_pullback' | 'earnings_events' | 'dividends_income' | 'trust_track_record'
+  | 'past_return' | 'who_sells' | 'business' | 'ownership';
 export interface PeopleAskItem {
   need: AskNeed; question: string; answer: string; big: string; tone: 'pos' | 'neg' | 'flat';
   /** the page that explains the answer, and the link's words (descriptive: they are an internal link) */
@@ -39,6 +50,10 @@ export const NEEDS: Record<AskNeed, { label: string; phrase: string }> = {
   earnings_events: { label: 'Earnings', phrase: 'about earnings' },
   dividends_income: { label: 'Dividends', phrase: 'about the dividend' },
   trust_track_record: { label: 'Analysts', phrase: 'about the analysts' },
+  past_return: { label: 'Past returns', phrase: 'what it returned' },
+  who_sells: { label: 'Who is selling', phrase: 'who is selling' },
+  business: { label: 'The business', phrase: 'how it makes money' },
+  ownership: { label: 'Who owns it', phrase: 'who owns it' },
 };
 const QUIET = 10, HOT = 1.5, TOP_SHARE = 0.15;
 const known = (n: { need: string }): n is { need: AskNeed; share: number } => n.need in NEEDS;

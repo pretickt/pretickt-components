@@ -1,15 +1,20 @@
 /**
  * DRAFT · Is this a company of value? (made-up data, stories only) — for anyone, not only investors: six plain questions side by
  * side (Demand, Advantage, Economics, Execution, Fragility, Price), each with a verdict in words and a few schematic cards, a number
- * and a small picture each. The answer on top says how many of the five questions about the business are strong, and what the
- * price already counts on. Each card has a title in blue and names the FMP endpoint that will feed it (checked against the API on
+ * and a small picture each. Each card has a title in blue and names the FMP endpoint that will feed it (checked against the API on
  * the Display key, 2026-10-27); a card that reads other companies wears a small "pretickt analysis" badge under its title. A fact
  * with no data has no card: never a placeholder on a public page.
- * @version 0.0.2
+ * In the words people search (DataForSEO, 2026-10-28): the top line asks "Is {company} a good stock to buy?" and answers with facts —
+ * how many of the five questions about the business are strong, the P/E against its 3-year median with the date — never with a yes
+ * or a no. A card's title stays plain, with the searched term beside it ("Price vs profit · P/E ratio"), and every card says its fact
+ * in a sentence in the page (company, number, date): a tooltip is not text to a search engine or an AI. Under the columns, the
+ * questions people search that the cards answer ("Who is dumping Nvidia stock?"); the resolver templates them, so the generator
+ * can put the same pairs in the page's structured data — one answer per question on a page.
+ * @version 0.0.3
  */
 import { Component, computed, input } from '@angular/core';
 import { PtIcon, PtLogo } from '@pretickt/components/ds';
-import { date, tip } from '@pretickt/components/format';
+import { date, num, tip } from '@pretickt/components/format';
 
 export type ValueKey = 'demand' | 'advantage' | 'economics' | 'execution' | 'fragility' | 'price';
 export type ValueTone = 'pos' | 'flat' | 'neg' | 'na';
@@ -24,13 +29,25 @@ export type ValueViz =
 /** One company on a card that reads others: its logo, its value (the bar), its label; `self` is the company of the page. */
 export interface ValueCompany { ticker: string; logo: string | null; value: number | null; label: string; tone?: ValueTone; self?: boolean }
 /**
- * A card: a title, a small picture, a big number, a plain line. `via` marks pretickt's own analysis — a fact read across other
- * companies (its customers' spending, its rivals' returns, its holders, the banks' analysts) that no single data point gives.
+ * A card: a title, a small picture, a big number, a plain line, the fact in a sentence (`say`: the company, the number, the date or
+ * period). `term` is the words people search for it when they differ from the title. `via` marks pretickt's own analysis — a fact
+ * read across other companies (its customers' spending, its competitors' returns, its holders, the banks' analysts) that no single
+ * data point gives.
  */
-export interface ValueCard { tone: ValueTone; title: string; big: string; line: string; why: string; source: string; viz: ValueViz; via?: string }
+export interface ValueCard {
+  tone: ValueTone; title: string; term?: string; big: string; line: string; say: string; why: string; source: string; viz: ValueViz; via?: string;
+}
 export interface ValueSection { key: ValueKey; tone: ValueTone; verdict: string; cards: ValueCard[] }
-/** The future `value@1` payload: one company, its six sections. */
-export interface Value { asOf: string; ticker: string; name: string; logo: string | null; sections: ValueSection[] }
+/** A question people search and its answer, both templated from the cards' numbers. */
+export interface ValueFaq { q: string; a: string }
+/**
+ * The future `value@1` payload: one company, its six sections, its P/E against its 3-year median (`now` null: a loss over the last
+ * 12 months; as pt-quality computes it) and the searched questions the cards answer.
+ */
+export interface Value {
+  asOf: string; ticker: string; name: string; logo: string | null; sections: ValueSection[];
+  pe: { now: number | null; median: number | null } | null; faq: ValueFaq[];
+}
 
 export const QUESTIONS: Record<ValueKey, { name: string; ask: string; icon: string }> = {
   demand: { name: 'Demand', ask: 'Do people want more of what it sells?', icon: 'trend-up' },
@@ -41,19 +58,36 @@ export const QUESTIONS: Record<ValueKey, { name: string; ask: string; icon: stri
   price: { name: 'Price', ask: 'Is the price reasonable?', icon: 'gauge' },
 };
 const BUSINESS: ValueKey[] = ['demand', 'advantage', 'economics', 'execution', 'fragility'];
+/** A P/E within 15% of its 3-year median is about usual (pt-quality's band). */
+const PE_BAND = 0.15;
+export const NOT_ADVICE = 'pretickt does not say whether to buy or sell.';
 
-/** The answer on top, in words anyone reads: how many of the five questions about the business are strong, then the price. */
+/** The price in a sentence: the P/E against its 3-year median, dated; '' without a P/E reading. */
+export function priceSentence(v: Value): string {
+  const pe = v.pe, on = date(v.asOf);
+  if (!pe) return '';
+  if (pe.now === null || pe.now <= 0) return `With a loss over the last 12 months, ${v.name} has no P/E ratio (${on}).`;
+  if (pe.median === null || pe.median <= 0) return `${v.name}'s P/E ratio is ${num(pe.now, 1)} (${on}).`;
+  const r = pe.now / pe.median - 1;
+  const [word, rel] = r >= PE_BAND ? ['high', 'above'] : r <= -PE_BAND ? ['low', 'below'] : ['about usual', 'near'];
+  return `The price is ${word}: ${num(pe.now, 1)} times its earnings, ${rel} its 3-year median of ${num(pe.median, 1)} (${on}).`;
+}
+
+/**
+ * The answer to "Is {company} a good stock to buy?" in facts anyone reads: how many of the five questions about the business are
+ * strong (`lead`), then the price and that pretickt does not tell anyone to buy or sell (`text`). Never a yes or a no.
+ */
 export function valueAnswer(v: Value): { lead: string; text: string } {
   const by = (k: ValueKey) => v.sections.find((s) => s.key === k);
   const known = BUSINESS.map(by).filter((s): s is ValueSection => !!s && s.tone !== 'na');
   const strong = known.filter((s) => s.tone === 'pos').length, weak = known.filter((s) => s.tone === 'neg').length;
-  const lead = !known.length ? 'Not enough data yet' : strong >= 4 && weak === 0 ? 'Mostly yes' : weak >= 3 ? 'Mostly no' : weak > strong ? 'Not really, for now' : 'In part';
   const names = (tone: ValueTone) => list(known.filter((s) => s.tone === tone).map((s) => QUESTIONS[s.key].name.toLowerCase()));
-  const price = by('price');
-  const business = !known.length ? 'The questions about the company have no data yet'
-    : strong ? `A strong business on ${strong} of the ${known.length} questions about the company${weak ? `; weak on ${names('neg')}` : ''}`
-    : weak ? `Weak on ${names('neg')}${weak < known.length ? `; ${names('flat') || 'the rest'} in between` : ''}` : 'Nothing strong, nothing weak: in between on every question';
-  return { lead, text: `${business}.${price && price.tone !== 'na' ? ` The price: ${price.verdict}.` : ''}` };
+  const lead = !known.length ? `The questions about ${v.name}'s business have no data yet.`
+    : strong ? `${v.name} is strong on ${strong} of the ${known.length} questions about the business${weak ? `; weak on ${names('neg')}` : ''}.`
+    : weak ? `${v.name} is weak on ${names('neg')}${weak < known.length ? `; ${names('flat') || 'the rest'} in between` : ''}.`
+    : `${v.name} is in between on every question about the business.`;
+  const price = priceSentence(v);
+  return { lead, text: price ? `${price} ${NOT_ADVICE}` : NOT_ADVICE };
 }
 
 /** "a", "a and b", "a, b and c". */
@@ -94,8 +128,8 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
         <div class="dv-top">
           <pt-logo [ticker]="v.ticker" [src]="v.logo" [size]="36" />
           <div>
-            <p class="dv-q">Is {{ v.name }} a company of value?</p>
-            <p class="dv-a"><b>{{ answer().lead }}.</b> {{ answer().text }}</p>
+            <p class="dv-q">Is {{ v.name }} a good stock to buy?</p>
+            <p class="dv-a"><b>{{ answer().lead }}</b> {{ answer().text }}</p>
           </div>
         </div>
         <ol class="dv-strip" aria-label="The six questions at a glance">
@@ -111,7 +145,7 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
               </div>
               @for (c of s.cards; track $index) {
                 <div [class]="'dv-card dv-' + c.tone" [class.dv-via]="!!c.via" [attr.data-tip]="cardTip(c)">
-                  <span class="dv-title">{{ c.title }}</span>
+                  <span class="dv-title">{{ c.title }}@if (c.term) {<span class="dv-term"> · {{ c.term }}</span>}</span>
                   @if (c.via) {<span class="dv-badge">pretickt analysis</span>}
                   @switch (c.viz.kind) {
                     @case ('bars') {
@@ -172,11 +206,17 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
                   }
                   <b class="dv-big">{{ c.big }}</b>
                   <span class="dv-line">{{ c.line }}</span>
+                  <p class="dv-say">{{ c.say }}</p>
                 </div>
               }
             </div>
           }
         </div>
+        @if (v.faq.length) {
+          <div class="dv-faq">
+            @for (f of v.faq; track f.q) {<div class="dv-faq-i"><h3 class="dv-faq-q">{{ f.q }}</h3><p class="dv-faq-a">{{ f.a }}</p></div>}
+          </div>
+        }
         <p class="pt-note">Made-up numbers, to look at the design; real ones come from FMP and the filings. Each card says what a fact means for its
           question, never what to do with the stock. For information only — not investment advice. As of {{ date(v.asOf) }}.</p>
       </section>

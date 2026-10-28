@@ -166,6 +166,14 @@
 .dv-co-pos { color: var(--dv-pos); } .dv-co-neg { color: var(--dv-neg); } .dv-co-flat { color: color-mix(in oklab, var(--dv-flat) 70%, var(--color-ink)); } .dv-co-na { color: var(--color-ink-soft); }
 .dv-cos li:not(:has(.dv-co-track)) { grid-template-columns: 16px 1fr auto; }
 
+/* pt-value in the words people search: the term beside a title, each card's fact in a sentence, the questions the cards answer */
+.dv-term { font-weight: 500; color: var(--color-ink-soft); }
+.dv-say { margin: .2rem 0 0; padding-top: .25rem; border-top: 1px solid var(--color-border); font-size: .68rem; line-height: 1.35; color: var(--color-ink); }
+.dv-faq { display: grid; gap: 0 1.5rem; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); }
+.dv-faq-i { padding: .6rem 0; border-top: 1px solid var(--color-border); }
+.dv-faq-q { margin: 0 0 .2rem; font-size: .9rem; font-weight: 650; color: var(--color-ink); }
+.dv-faq-a { margin: 0; font-size: .85rem; line-height: 1.45; color: var(--color-ink); }
+
 /* Earnings calendar with the possible outcome (pt-cal-outlook): the number in a row, the card over it, the agenda that opens it in place */
 .do-cue { font: 600 .7rem/1.2 var(--font-mono); white-space: nowrap; }
 .do-est { color: var(--color-ink); }
@@ -195,8 +203,13 @@ button.do-ev { display: flex; width: 100%; align-items: center; justify-content:
   color: var(--color-ink-soft); }
 .do-agenda { margin: 1rem 0 .5rem; }
 .do-agenda-day { margin: .8rem 0 .2rem; font-size: .75rem; text-transform: uppercase; letter-spacing: .02em; color: var(--color-ink-soft); }
-.do-row summary { display: flex; align-items: center; gap: .5rem; padding: .35rem .25rem; border-bottom: 1px solid var(--color-border); font-size: .875rem;
+.do-row summary { display: flex; align-items: center; gap: .5rem; padding: .35rem .25rem .1rem; font-size: .875rem;
   list-style: none; cursor: pointer; }
+/* an agenda row: the line that opens the card, then the row in a sentence (the page's text) with the link to the company's date */
+.do-item { border-bottom: 1px solid var(--color-border); }
+.do-say { margin: 0 .25rem .4rem; font-size: .78rem; line-height: 1.4; color: var(--color-ink-soft); }
+.do-say a { white-space: nowrap; }
+.do-unconf .pt-cal-who { text-decoration: underline dotted; text-underline-offset: 2px; }
 .do-row summary::-webkit-details-marker { display: none; }
 .do-row summary::after { content: '▸'; font-size: .7rem; color: var(--color-ink-soft); }
 .do-row[open] summary::after { content: '▾'; }

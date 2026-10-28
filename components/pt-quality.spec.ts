@@ -1,5 +1,5 @@
 import type { Events, Fundamentals, PriceSeries } from '../src/typologies';
-import { dropTest, PtQuality, qualityCards, reactionAfter, rowSentence, slope, verdict, type QCard } from './pt-quality';
+import { dropTest, PtQuality, qualityCards, qualityLead, reactionAfter, rowSentence, slope, verdict, type QCard } from './pt-quality';
 import { basics, render, withData } from './_spec';
 
 type Period = Fundamentals['periods'][number];
@@ -54,7 +54,7 @@ describe('qualityCards (version 1: the numbers pretickt has)', () => {
   });
   it('price: up- and downgrades of the last 90 days (a reiteration is not a fact), and the P/E against its 3-year median', () => {
     expect(of('price').map((c) => [c.date, c.tone, c.fact])).toEqual([['2026-10-01', 'neg', 'Firm A downgrades it to Hold'],
-      ['2026-07-29', 'pos', 'P/E 14.0× at the last report, below its 3-year median of 20.0×']]);   // the P/E dated at the last report
+      ['2026-07-29', 'pos', 'P/E ratio 14.0× at the last report, below its 3-year median of 20.0×']]);   // the P/E dated at the last report
   });
   it('newest first; nothing without quarters or events', () => {
     expect(cards.map((c) => c.date)).toEqual([...cards.map((c) => c.date)].sort().reverse());
@@ -91,6 +91,12 @@ describe('the words and the marks', () => {
     expect(rowSentence('Next 1–3 years', ['economics', 'execution'], [c('economics', 'neg'), c('execution', 'pos')]))
       .toBe('Next 1–3 years: Economics weakened, Execution strengthened.');
   });
+  it('the answer first: the company, the 12 months to the date, the facts that strengthened and weakened its quality', () => {
+    const cards = qualityCards('XYZ', fund, events, series()[0]!.points, '2026-10-23');
+    expect(qualityLead('XYZ Corp (XYZ)', cards, '2026-10-23')).toBe('XYZ Corp (XYZ) in the 12 months to Oct 23, 2026: 3 facts strengthened its quality, 3 weakened it, 4 to watch.');
+    expect(qualityLead('XYZ', [c('demand', 'pos')], '2026-10-23')).toBe('XYZ in the 12 months to Oct 23, 2026: 1 fact strengthened its quality, 0 weakened it.');
+    expect(qualityLead('XYZ', [], '2026-10-23')).toBe('XYZ: no new facts in the 12 months to Oct 23, 2026.');
+  });
   it('a slope keeps zero in its box', () => {
     expect(slope(0.1, 0.2)).toEqual({ y1: 10, y2: 3, zero: 17 });
     expect(slope(-0.1, 0.1)).toEqual({ y1: 17, y2: 3, zero: 10 });
@@ -118,6 +124,18 @@ describe('pt-quality', () => {
     const r = await view();
     expect(r.el.querySelector('.pt-q-drop-lead')!.textContent!.replace(/\s+/g, ' ').trim()).toMatch(/^XYZ is 19\.9% below its high of .+ Over the same sessions the market \(SPY\) moved -1\.2% and its peers -3\.4%: 16\.6 of the 19\.9 points are its own\.$/);
     expect(r.el.querySelector('.pt-q-drop-since')!.textContent!.replace(/\s+/g, ' ')).toContain('Price weakened: P/E 14.0×');
+  });
+  it('opens with its answer in a sentence and names the company (from its own row in the peers\' list) instead of the ticker', async () => {
+    const self = { ticker: 'XYZ', name: 'Xylo Zen Corporation', sector: 'Technology', logo: null, close: 96, chg1d: 0, offHigh: -0.2, pe: 14, ptUpside: 0.1,
+      marketCap: 1e11, insiderNet: 0, volumeRatio: 1, spark: [], self: true };
+    const r = await render(PtQuality, { ticker: 'XYZ' }, withData({ 'fundamentals@1': fund, 'events@1': events, 'price-series@1': series(),
+      'screen@1': { asOf: '2026-10-23', rows: [self] } }));
+    expect(r.el.querySelector('.pt-lede')!.textContent).toBe('Xylo Zen (XYZ) in the 12 months to Oct 23, 2026: 3 facts strengthened its quality, 3 weakened it, 4 to watch.');
+    expect(r.el.querySelector('.pt-q-drop-lead')!.textContent!.trim()).toMatch(/^Xylo Zen \(XYZ\) is 19\.9% below/);
+    const other = { ...self, ticker: 'AAPL', name: 'Apple Inc.' };          // a row marked self but for another ticker is not its name
+    const r2 = await render(PtQuality, { ticker: 'XYZ' }, withData({ 'fundamentals@1': fund, 'events@1': events, 'price-series@1': series(),
+      'screen@1': { asOf: '2026-10-23', rows: [other] } }));
+    expect(r2.el.querySelector('.pt-lede')!.textContent).toMatch(/^XYZ in the 12 months/);
   });
   it('asks for the peers first, then the prices of the company, SPY and up to six peers', async () => {
     const r = await render(PtQuality, { ticker: 'NVDA' });

@@ -3,14 +3,17 @@
  * Execution, Fragility, Price) with a card for each new fact, dated and sourced, and — when the stock is well off its high — the
  * fall split into market, peers and its own part, with the pillars that moved since the high. Version 1 builds its cards from the
  * numbers pretickt already has (results, estimates, margins, P/E, analyst actions, prices); facts from filings and news come next.
- * @version 0.1.0
+ * It opens with its answer in a sentence — the company's common name and ticker, the 12 months to the date of the data, how many
+ * facts strengthened its quality and how many weakened it — and names the company, not the ticker, in the drop test: the text an
+ * AI answer can quote with its date.
+ * @version 0.2.0
  * @evidence Romeo 2026-10-24: "la qualità dell'azienda è intatta, a breve, medio e lungo termine?" — six sections, a card per new fact (brainstorming/scheda-qualita.html, proposals A + D)
  * @evidence pulse 19–25 Oct 2026: 89% of the real questions about a stock ask about quality or the decision (impact scorecard 7.5/10)
- * @evidence DataForSEO: "is {ticker} a buy" + "{ticker} stock analysis" + "should i buy {ticker} stock", 53,340 searches a month on 164 tickers
+ * @evidence DataForSEO 2026-10-28 (round 13): "is {company} a good stock to buy" ≈64,000 searches a month on ~100 companies, AI Overview on 90%; the facts' own words ("pe ratio", "revenue growth", "gross margin", "guidance"…) 153,000 on 25 companies (launch/RESEARCH.md §9)
  */
 import { Component, computed, input, linkedSignal, inject } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
-import { cash, date, level, num, pct, tip } from '@pretickt/components/format';
+import { cash, date, level, num, pct, plainName, tip } from '@pretickt/components/format';
 import type { EventItem, Events, Fundamentals, PriceSeries } from '@pretickt/components/typologies';
 
 export type Pillar = 'demand' | 'advantage' | 'economics' | 'execution' | 'fragility' | 'price';
@@ -127,7 +130,7 @@ export function qualityCards(ticker: string, f: Fundamentals | null | undefined,
     const m = median(pe), r = last / m - 1;
     const tone: QTone = r <= -0.15 ? 'pos' : r >= 0.15 ? 'neg' : 'flat';
     out.push({ pillar: 'price', tone, date: reported(lastQ.period), horizon: 'months', href: fin, source: 'P/E history', reaction: null,
-      fact: `P/E ${num(last, 1)}× at the last report, ${tone === 'flat' ? 'near' : tone === 'pos' ? 'below' : 'above'} its 3-year median of ${num(m, 1)}×`,
+      fact: `P/E ratio ${num(last, 1)}× at the last report, ${tone === 'flat' ? 'near' : tone === 'pos' ? 'below' : 'above'} its 3-year median of ${num(m, 1)}×`,
       why: tone === 'pos' ? 'Less of its future is in the price than usual.' : tone === 'neg' ? 'More of its future is in the price than usual.'
         : 'About as much of its future is in the price as usual.',
       viz: { kind: 'change', from: m, to: last } });
@@ -168,6 +171,17 @@ export function verdict(tones: QTone[]): string {
   return up ? 'strengthened' : down ? 'weakened' : 'steady';
 }
 
+/**
+ * The answer first, in a sentence: "Nvidia (NVDA) in the 12 months to Oct 23, 2026: 3 facts strengthened its quality, 3 weakened it,
+ * 4 to watch." — `who` is the name with the ticker.
+ */
+export function qualityLead(who: string, cards: QCard[], asOf: string): string {
+  const n = (t: QTone) => cards.filter((c) => c.tone === t).length, up = n('pos'), down = n('neg'), flat = n('flat');
+  if (!cards.length) return `${who}: no new facts in the 12 months to ${date(asOf)}.`;
+  return `${who} in the 12 months to ${date(asOf)}: ${up} ${up === 1 ? 'fact' : 'facts'} strengthened its quality, ${down} weakened it` +
+    `${flat ? `, ${flat} to watch` : ''}.`;
+}
+
 /** A row's sentence (templated, the text search engines read): "Next 1–3 years: Economics weakened, Execution strengthened." */
 export const rowSentence = (label: string, pillars: [Pillar, Pillar], cards: QCard[]) =>
   `${label}: ${pillars.map((p) => `${PILLARS[p].name} ${verdict(cards.filter((c) => c.pillar === p).map((c) => c.tone))}`).join(', ')}.`;
@@ -186,9 +200,10 @@ export function slope(from: number, to: number) {
     @if (f === null) {<p class="pt-na">Data not available</p>}
     @else if (f) {
       <section class="pt-q" [class.pt-busy]="fund.loading()">
+        <p class="pt-lede">{{ lead() }}</p>
         @if (drop(); as d) {
           <div class="pt-q-drop">
-            <p class="pt-q-drop-lead">{{ ticker() }} is {{ level(-d.ret) }} below its high of {{ date(d.high) }}.
+            <p class="pt-q-drop-lead">{{ who() }} is {{ level(-d.ret) }} below its high of {{ date(d.high) }}.
               @if (d.peers !== null && d.own !== null && d.market !== null) {
                 Over the same sessions the market (SPY) moved {{ pct(d.market) }} and its peers {{ pct(d.peers) }}:
                 {{ num(-d.own * 100, 1) }} of the {{ num(-d.ret * 100, 1) }} points are its own.
@@ -285,6 +300,13 @@ export class PtQuality {
   });
 
   protected readonly asOf = computed(() => this.fund.value()?.asOf ?? '');
+  /** "Nvidia (NVDA)": the name from the peers' list (the row with its ticker), the ticker alone until it is known */
+  protected readonly who = computed(() => {
+    const t = this.ticker(), n = this.peers.value()?.rows.find((r) => r.ticker === t)?.name;
+    const plain = n ? plainName(n) : '';
+    return plain && plain.toUpperCase() !== t ? `${plain} (${t})` : t;
+  });
+  protected readonly lead = computed(() => qualityLead(this.who(), this.cards(), this.asOf()));
   private readonly bars = computed(() => this.prices.value()?.find((s) => s.ticker === this.ticker())?.points ?? []);
   protected readonly cards = computed(() => qualityCards(this.ticker(), this.fund.value(), this.events.value(), this.bars(), this.asOf()));
   protected readonly byPillar = computed(() => Object.fromEntries(Object.keys(PILLARS).map((k) => [k, this.cards().filter((c) => c.pillar === k)])) as Record<Pillar, QCard[]>);

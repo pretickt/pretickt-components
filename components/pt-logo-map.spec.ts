@@ -47,9 +47,12 @@ describe('the map', () => {
     expect(sectorLabel('Financial Services', -0.018, 80)).toBe('FINANCIALS');
     expect(sectorLabel('Financial Services', -0.018, 40)).toBeNull();
   });
-  it('says the day in a sentence', () => {
-    expect(mapSentence(rows, buildMap(rows, 1000, 560).blocks)).toBe('Of the 5 largest companies, 3 rose and 2 fell; the biggest moves were AAA +3.1% and CCC -3.0%. '
-      + 'By market value, Technology moved +1.9% and Financial Services -1.8%.');
+  it('says the day in a dated sentence: the sectors that rose, the companies, the three largest, the biggest moves', () => {
+    expect(mapSentence(rows, buildMap(rows, 1000, 560).blocks, '2026-10-23')).toBe('As of Oct 23, 2026: 2 of 3 sectors rose, and 3 of the 5 largest companies. '
+      + 'The three largest, AAA, BBB and CCC, moved +3.1%, -0.4% and -3.0%; the biggest moves were AAA +3.1% and CCC -3.0%.');
+    const named = [{ ...rows[0]!, ticker: 'NVDA', name: 'NVIDIA Corporation' }, { ...rows[1]!, ticker: 'AAPL', name: 'Apple Inc.' }];
+    expect(mapSentence(named, buildMap(named, 1000, 560).blocks, '2026-10-23')).toBe('As of Oct 23, 2026: Technology moved +1.9%, and 1 of its 2 largest companies rose. '
+      + 'The two largest, NVIDIA (NVDA) and Apple (AAPL), moved +3.1% and -0.4%; the biggest moves were NVIDIA (NVDA) +3.1% and Apple (AAPL) -0.4%.');
   });
 });
 
@@ -64,6 +67,9 @@ describe('pt-logo-map', () => {
     expect(JSON.parse(wide.querySelector('a')!.getAttribute('data-tip')!)).toEqual({ AAA: 'AAA Inc.', Today: '+3.1%', 'Market value': '$4T' });
     expect(r.el.querySelector('svg.pt-lm-narrow')).toBeTruthy();
     expect(r.text()).toContain('size = market value · as of Oct 23, 2026');
+    expect(wide.getAttribute('aria-label')).toBe('Stock market heat map: the 5 largest companies by sector, Oct 23, 2026');
+    expect(r.text()).toContain('Each tile is a company, sized by its market value and colored by the day’s move, grouped by sector.');
+    expect(r.el.querySelector('.pt-lede')!.textContent).toMatch(/^As of Oct 23, 2026: /);
   });
   it('asks for the largest companies, of one sector when it is given', async () => {
     const all = await render(PtLogoMap, {});

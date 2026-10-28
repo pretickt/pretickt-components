@@ -22,8 +22,9 @@ export const LOGO: Record<string, string> = {
   BLK: '/logos/blk.944a18fd.webp', STT: '/logos/stt.7f427d3f.webp', GS: '/logos/gs.20a49c49.webp', MS: '/logos/ms.747d7472.webp',
   C: '/logos/c.b8155757.webp', BAC: '/logos/bac.2069ed50.webp', WFC: '/logos/wfc.31a06487.webp',
 };
+/** Common names, the way people, the press and the AIs write them ("Nvidia", not "NVIDIA"; "Meta", not "Meta Platforms"). */
 const NAMES: Record<string, string> = {
-  NVDA: 'NVIDIA', AAPL: 'Apple', MSFT: 'Microsoft', GOOGL: 'Alphabet', AMZN: 'Amazon', SPCX: 'SpaceX', META: 'Meta Platforms', TSLA: 'Tesla',
+  NVDA: 'Nvidia', AAPL: 'Apple', MSFT: 'Microsoft', GOOGL: 'Alphabet', AMZN: 'Amazon', SPCX: 'SpaceX', META: 'Meta', TSLA: 'Tesla',
   LLY: 'Eli Lilly', MU: 'Micron', JPM: 'JPMorgan Chase', AMD: 'AMD', XOM: 'Exxon Mobil', V: 'Visa', INTC: 'Intel', CVX: 'Chevron', PLTR: 'Palantir',
   KO: 'Coca-Cola', MRK: 'Merck', CAT: 'Caterpillar', GE: 'GE Aerospace', RTX: 'RTX', NFLX: 'Netflix', AMGN: 'Amgen', TXN: 'Texas Instruments',
   PG: 'Procter & Gamble', AXP: 'American Express', UPS: 'UPS', VZ: 'Verizon', BA: 'Boeing', RCL: 'Royal Caribbean', SPGI: 'S&P Global', SCHW: 'Charles Schwab',
@@ -32,7 +33,7 @@ const NAMES: Record<string, string> = {
 export const co = (ticker: string) => ({ ticker, name: NAMES[ticker] ?? ticker, logo: LOGO[ticker] ?? null });
 
 // H1 · Hot right now: posts naming the company on Reddit and X in the last 24 hours, against its usual day
-export const HOT: Hot = { asOf: '2026-10-26', window: '24h', rows: ([
+export const HOT: Hot = { asOf: '2026-10-26', time: '10:30', window: '24h', sources: ['r/wallstreetbets', 'r/stocks', 'X'], stale: false, rows: ([
   ['SPCX', 220, 70, 0.019, 'portfolio risk'], ['GOOGL', 170, 65, -0.012, 'is it a buy?'], ['AMZN', 150, 40, -0.01, 'is it a buy?'],
   ['NVDA', 150, 140, -0.006, 'is it a buy?'], ['META', 140, 92, -0.01, 'why is it moving?'], ['TSLA', 90, 80, -0.006, 'is it a buy?'],
   ['NKE', 70, 14, -0.027, 'is it a buy?'], ['MSFT', 60, 50, 0.007, 'earnings'], ['AAPL', 60, 70, -0.001, 'macro'], ['NFLX', 50, 38, -0.018, 'why is it moving?'],
@@ -41,16 +42,16 @@ export const HOT: Hot = { asOf: '2026-10-26', window: '24h', rows: ([
 
 // H2 · Questions people are asking, each with the number that answers it and the page that explains it
 export const ASKED: Asked = { asOf: '2026-10-26', items: [
-  { ...co('META'), question: 'Why is META down this week?', asks: 6, answer: '−9.4%', tone: 'neg', sub: 'in 5 days · 8.7 points its own',
-    href: '/stocks/meta/why-moving/', viz: { kind: 'split', market: -0.004, sector: -0.003, own: -0.087 } },
-  { ...co('GOOGL'), question: 'Is GOOGL a buy after the drop?', asks: 9, answer: '+31.5%', tone: 'pos', sub: 'to the analysts’ average target · P/E 16.1×',
-    href: '/stocks/googl/price-target/', viz: { kind: 'rail', price: 164, high: 209, target: 216 } },
-  { ...co('AMZN'), question: 'Is AMZN spending too much on AI?', asks: 7, answer: '−$8.8B', tone: 'neg', sub: 'free cash flow last quarter, a second one below zero',
-    href: '/stocks/amzn/financials/', viz: { kind: 'bars', values: [5.1, 3.2, -2.4, -8.8], labels: ['Q3', 'Q4', 'Q1', 'Q2'] } },
-  { ...co('NKE'), question: 'Can NKE recover?', asks: 4, answer: '−47%', tone: 'neg', sub: 'from its high · P/E 40% below its average',
-    href: '/stocks/nke/', viz: { kind: 'off', off: -0.47 } },
-  { ...co('MU'), question: 'Is MU cheap?', asks: 3, answer: '11.8×', tone: 'pos', sub: 'its earnings · its sector trades at 33.1×',
-    href: '/stocks/mu/peers/', viz: { kind: 'pe', pe: 11.8, sector: 33.1 } },
+  { ...co('META'), question: 'Why is Meta stock down this week?', asks: 6, answer: '−9.4%', tone: 'neg', sub: 'in 5 days · 8.7 points its own',
+    href: '/stocks/meta/why-moving/', link: 'Why Meta is down this week', viz: { kind: 'split', market: -0.004, sector: -0.003, own: -0.087 } },
+  { ...co('GOOGL'), question: 'Is Alphabet a good stock to buy?', asks: 9, answer: '+31.5%', tone: 'pos', sub: 'to the analysts’ average target · P/E 16.1×',
+    href: '/stocks/googl/price-target/', link: 'Alphabet price target', viz: { kind: 'rail', price: 164, high: 209, target: 216 } },
+  { ...co('AMZN'), question: 'Is Amazon spending too much on AI?', asks: 7, answer: '−$8.8B', tone: 'neg', sub: 'free cash flow last quarter, a second one below zero',
+    href: '/stocks/amzn/financials/', link: 'Amazon free cash flow', viz: { kind: 'bars', values: [5.1, 3.2, -2.4, -8.8], labels: ['Q3', 'Q4', 'Q1', 'Q2'] } },
+  { ...co('NKE'), question: 'Is Nike ever going to recover?', asks: 4, answer: '−47%', tone: 'neg', sub: 'from its high · P/E 40% below its average',
+    href: '/stocks/nke/', link: 'Nike stock forecast', viz: { kind: 'off', off: -0.47 } },
+  { ...co('MU'), question: 'Is Micron stock undervalued?', asks: 3, answer: '11.8×', tone: 'pos', sub: 'its earnings · its sector trades at 33.1×',
+    href: '/stocks/mu/peers/', link: 'Micron vs its competitors', viz: { kind: 'pe', pe: 11.8, sector: 33.1 } },
 ] };
 
 // H4 · Earnings next week and the crowd's odds of clearing the EPS bar (Polymarket markets, volume in dollars)

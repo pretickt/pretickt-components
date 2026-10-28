@@ -1,10 +1,10 @@
 import { render } from '../_spec';
-import { PA_KO, PA_MRNA, PA_NVDA, PA_ODFL } from './people-ask-mock';
+import { PA_KO, PA_MRNA, PA_NVDA, PA_NVDA_ALL, PA_ODFL } from './people-ask-mock';
 import { askLede, needBar, PtPeopleAsk } from './pt-people-ask';
 
 describe('pt-people-ask (draft): what people ask about a company, answered', () => {
   it('opens with the week on Reddit and X, the heat against a usual week and the two most asked kinds', () => {
-    expect(askLede(PA_NVDA)).toBe('264 posts on Reddit and X mentioned NVIDIA in the week to Oct 23, 2026, 3.1× its usual week. ' +
+    expect(askLede(PA_NVDA)).toBe('264 posts on Reddit and X mentioned Nvidia in the week to Oct 23, 2026, 3.1× its usual week. ' +
       'Most asked why it is moving (38%) and about earnings (24%).');
     expect(askLede(PA_MRNA)).toBe('143 posts on Reddit and X mentioned Moderna in the week to Oct 22, 2026, 11.9× its usual week. ' +
       'Most asked why it is moving (61%) and whether to buy the dip (17%).');
@@ -16,7 +16,7 @@ describe('pt-people-ask (draft): what people ask about a company, answered', () 
 
   it('a bar of the kinds of question, the largest first, unknown kinds folded into the rest', () => {
     const bar = needBar(PA_NVDA.needs);
-    expect(bar.map((s) => s.key)).toEqual(['why_moving', 'earnings_events', 'buy_or_not', 'when_sell', 'dip_pullback', 'other']);
+    expect(bar.map((s) => s.key)).toEqual(['why_moving', 'earnings_events', 'buy_or_not', 'when_sell', 'who_sells', 'other']);
     expect(bar.at(-1)!.share).toBeCloseTo(0.05, 9);
     expect(needBar([{ need: 'astrology' as never, share: 0.1 }, { need: 'buy_or_not', share: 0.9 }]).map((s) => [s.key, s.share]))
       .toEqual([['buy_or_not', 0.9], ['other', expect.closeTo(0.1, 9)]]);
@@ -26,11 +26,21 @@ describe('pt-people-ask (draft): what people ask about a company, answered', () 
     const { el, text } = await render(PtPeopleAsk, { data: PA_NVDA });
     const qs = [...el.querySelectorAll('h3')].map((h) => h.textContent!.trim());
     expect(qs).toHaveLength(PA_NVDA.items.length);
-    expect(qs[0]).toBe('Why is NVIDIA stock down today?');
+    expect(qs[0]).toBe('Why is Nvidia stock down today?');
     expect(text()).toContain(PA_NVDA.items[0]!.answer);
     expect(text()).toContain('asked 41 times this week');
-    expect(el.querySelector('a[href="/stocks/nvda/why-moving/"]')!.textContent).toContain('Why NVIDIA moved');
+    expect(el.querySelector('a[href="/stocks/nvda/why-moving/"]')!.textContent).toContain('Why Nvidia moved');
     expect(el.querySelector('.dp-faq')).not.toBeNull();
+  });
+
+  it('in the words people search: the common name, the questions Google keeps asking, dates said confirmed or not', () => {
+    const all = [PA_NVDA_ALL, PA_MRNA, PA_KO, PA_ODFL].flatMap((d) => d.items);
+    expect(all.some((a) => /NVIDIA/.test(a.question + a.answer + a.link))).toBe(false);
+    expect(PA_NVDA_ALL.items.map((a) => a.question)).toEqual(expect.arrayContaining(['When does Nvidia report earnings?', 'Is Nvidia a good stock to buy?',
+      'Should I sell Nvidia stock?', 'Who is dumping Nvidia stock?', 'What if I invested $10,000 in Nvidia 5 years ago?', 'How does Nvidia make money?',
+      'Who owns Nvidia?', 'Does Nvidia pay dividends?']));
+    for (const a of all.filter((x) => x.need === 'earnings_events')) expect(a.answer).toMatch(/\((confirmed date|date not confirmed)\)/);
+    expect(new Set(PA_NVDA_ALL.items.map((a) => a.question)).size).toBe(PA_NVDA_ALL.items.length);
   });
 
   it('cards show the same questions and answers (the text a search engine reads does not change)', async () => {

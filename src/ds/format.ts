@@ -118,6 +118,15 @@ export function stockHref(ticker: string): string {
   return href(`/stocks/${String(ticker).toLowerCase()}/`);
 }
 
+// legal suffixes and share classes at the end of a provider name; "Company"/"Co." go with their "and"/"&" (the generator's shortName)
+const SUFFIX = /(?:(?:\s+(?:and|&))?,?\s+(?:Company|Co\.)|,?\s+(?:Inc\.?|Incorporated|Corporation|Corp\.?|plc|PLC|Ltd\.?|Limited|Public Limited Company|N\.V\.|S\.A\.|L\.P\.)|\s+Class [A-C](?: Common Stock)?|\s+Common Stock|\s+American Depositary Shares|\s+Ordinary Shares)$/;
+/** A company's name as people search it: "Apple Inc." → "Apple", "The Coca-Cola Company" → "Coca-Cola". */
+export function plainName(name: string): string {
+  let n = name.trim();
+  for (let prev = ''; prev !== n;) { prev = n; const next = n.replace(SUFFIX, ''); if (next) n = next; }
+  return n.replace(/^The\s+/, '') || n;
+}
+
 /** The JSON a `data-tip` attribute carries; the island runtime shows it as a tooltip (label → value rows). */
 export function tip(o: Record<string, string | number | null>): string {
   return JSON.stringify(o);

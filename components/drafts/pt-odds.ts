@@ -2,7 +2,10 @@
  * DRAFT · H4 Earnings next week + the crowd's odds (mock data, stories only): the week's earnings calendar, each company's logo
  * inside a ring as full as the chance Polymarket's traders give it of clearing its EPS bar. Its data (Polymarket markets matched
  * to tickers and report dates, with their volume) has no pipeline yet — and its terms of use come first — so it comes as an input.
- * @version 0.0.1
+ * Not a piece for search (DataForSEO, 2026-10-28: "will nvidia beat earnings polymarket" 30 searches a month): people ask what these
+ * markets are and whether they can be trusted ("what is kalshi" 40,500, "is kalshi legit" 18,100), so the caption says in one line
+ * what a chance means. Not live before Polymarket agrees in writing.
+ * @version 0.0.2
  */
 import { Component, computed, input } from '@angular/core';
 import { PtLogo } from '@pretickt/components/ds';
@@ -58,7 +61,8 @@ export function oddsDays(o: Odds, per = 4) {
             </div>
           }
         </div>
-        <figcaption class="pt-meta">A full ring: the crowd expects the company to clear its bar. Odds from Polymarket markets as of {{ date(d.asOf) }}; not a forecast of pretickt.</figcaption>
+        <figcaption class="pt-meta">A full ring: the crowd expects the company to clear its bar. Polymarket is a prediction market: a share pays $1 if the
+          company clears it, so its price is the chance its traders give it. Odds as of {{ date(d.asOf) }}; not a forecast of pretickt.</figcaption>
       </figure>
     }`,
 })

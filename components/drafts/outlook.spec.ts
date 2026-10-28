@@ -1,6 +1,6 @@
 import { render } from '../_spec';
 import { CPI, FED, MSFT, OCTOBER, UPS, V_TONIGHT, WEEK } from './outlook-mock';
-import { card, cue, priceRange, PtCalOutlook, rangeText, record, usualMove, verdictOf, when, type CoEvent } from './pt-cal-outlook';
+import { agendaSentence, card, cue, dayHeading, priceRange, PtCalOutlook, rangeText, record, usualMove, verdictOf, when, type CoEvent } from './pt-cal-outlook';
 
 describe('pt-cal-outlook (draft): the earnings calendar with each event\'s possible outcome', () => {
   it('the usual move is the mean size of the last eight reactions, and needs four', () => {
@@ -68,32 +68,33 @@ describe('pt-cal-outlook (draft): the earnings calendar with each event\'s possi
   });
 
   it('the card says which session trades the report, instead of BMO/AMC: the same one before the open, the next weekday after the close', () => {
-    expect(when(MSFT)).toBe('Reports Wed, Oct 28, after the close · the stock reacts Thu, Oct 29');
-    expect(when({ ...MSFT, date: '2026-10-30' })).toBe('Reports Fri, Oct 30, after the close · the stock reacts Mon, Nov 2');
-    expect(when({ ...MSFT, date: '2026-10-29', time: 'bmo' })).toBe('Reports Thu, Oct 29, before the open · the stock reacts the same day');
+    expect(when(MSFT)).toBe('Reports Wed, Oct 28 (confirmed), after the close · the stock reacts Thu, Oct 29');
+    expect(when({ ...MSFT, date: '2026-10-30' })).toBe('Reports Fri, Oct 30 (confirmed), after the close · the stock reacts Mon, Nov 2');
+    expect(when({ ...MSFT, date: '2026-10-29', time: 'bmo' })).toBe('Reports Thu, Oct 29 (confirmed), before the open · the stock reacts the same day');
     expect(when(UPS)).toBe('Reported Tue, Oct 27, before the open · the stock reacted the same day');
     expect(when(V_TONIGHT)).toBe('Reported Tue, Oct 27, after the close · the stock reacts Wed, Oct 28');
     expect(when({ ...MSFT, confirmed: false })).toBe('Expected around Wed, Oct 28, after the close (date not confirmed)');
-    expect(when({ ...MSFT, time: null })).toBe('Reports Wed, Oct 28');
+    expect(when({ ...MSFT, time: null })).toBe('Reports Wed, Oct 28 (confirmed)');
+    expect(when({ ...MSFT, time: null, confirmed: null })).toBe('Reports Wed, Oct 28');
   });
 
   it('what others expect, before a report: the analysts\' target and its last 30 days, how peers reacted this season, Polymarket\'s odds', () => {
     expect(card(MSFT, OCTOBER.normal).expect).toEqual([
-      ['Analysts', '$625 average target (+20% vs the price), 52 analysts · last 30 days: 9 raised it, 1 cut it'],
-      ['Peers', '2 of 4 rose after reporting this season, ±5.6% on average · NOW +8.1%, META -5.8%, IBM -5.4%'],
-      ['Polymarket', '83% chance: EPS above the estimate · $12K traded'],
+      ['Analysts', 'Analysts’ average target is $625, 20% above the price (52 analysts); 9 raised it and 1 cut it in the last 30 days.'],
+      ['Peers', '2 of 4 peers rose after reporting this season, moving ±5.6% on average: NOW +8.1%, META -5.8%, IBM -5.4%.'],
+      ['Polymarket', '83% chance of EPS above the estimate: the price of a share that pays $1 if it happens ($12K traded).'],
     ]);
     const googl = OCTOBER.items.find((e): e is CoEvent => e.kind === 'earnings' && e.ticker === 'GOOGL')!;
     expect(card(googl, OCTOBER.normal).expect.find((f) => f[0] === 'Peers')![1])
-      .toBe('0 of 3 rose after reporting this season, ±4.5% on average · META -5.8%, NFLX -5.2%, VZ -2.4%');
-    expect(card(FED, OCTOBER.normal).expect).toEqual([['Polymarket', '94% chance: a 0.25-point cut · $5.2M traded']]);
+      .toBe('0 of 3 peers rose after reporting this season, moving ±4.5% on average: META -5.8%, NFLX -5.2%, VZ -2.4%.');
+    expect(card(FED, OCTOBER.normal).expect).toEqual([['Polymarket', '94% chance of a 0.25-point cut: the price of a share that pays $1 if it happens ($5.2M traded).']]);
   });
 
   it('what others expect needs enough of it, and stops once the report is out', () => {
     const thin = { ...MSFT, analysts: { target: 600, n: 2, raised: 0, cut: 0 }, peers: MSFT.peers.slice(0, 1), odds: { what: 'EPS above the estimate', p: 0.8, volume: 4_000 } };
     expect(card(thin, null).expect).toEqual([]);
     expect(card({ ...MSFT, analysts: { target: 500, n: 12, raised: 0, cut: 0 }, peers: [], odds: null }, null).expect)
-      .toEqual([['Analysts', '$500 average target (-4% vs the price), 12 analysts · no changes in the last 30 days']]);
+      .toEqual([['Analysts', 'Analysts’ average target is $500, 4% below the price (12 analysts); none changed it in the last 30 days.']]);
     expect(card(UPS, OCTOBER.normal).expect).toEqual([]);
     expect(card(V_TONIGHT, OCTOBER.normal).expect).toEqual([]);
     expect(card(CPI, OCTOBER.normal).expect).toEqual([]);
@@ -115,7 +116,7 @@ describe('pt-cal-outlook (draft): the earnings calendar with each event\'s possi
     f.detectChanges();
     expect(el.querySelector('.do-pop')!.textContent).toContain('its usual move the session after a report');
     expect(el.querySelector('.do-pop')!.textContent).toContain('What others expect');
-    expect(el.querySelector('.do-pop .do-sub + .do-facts')!.textContent).toContain('83% chance: EPS above the estimate');
+    expect(el.querySelector('.do-pop .do-sub + .do-facts')!.textContent).toContain('83% chance of EPS above the estimate');
     msft.dispatchEvent(new Event('pointerleave'));
     f.detectChanges();
     expect(el.querySelector('.do-pop')).toBeNull();
@@ -128,6 +129,38 @@ describe('pt-cal-outlook (draft): the earnings calendar with each event\'s possi
     expect(el.querySelector('.do-grid a[href="/stocks/msft/"]')!.textContent).toContain('±$182B');
     expect(el.querySelector('.do-grid a[href="/stocks/ups/"] .pt-t-neg')!.textContent).toBe('-$7.62B');
     expect(el.querySelector('.pt-cal-asof .pt-cal-more')!.textContent).toContain('+1 more');
+  });
+
+  it('every agenda row in a sentence: the date, confirmed or not, the session that reacts, the usual move; after it, the figures and the move', () => {
+    expect(agendaSentence(MSFT, OCTOBER.normal)).toBe('Microsoft (MSFT) reports Wed, Oct 28 (confirmed), after the close; the stock reacts Thu, Oct 29. ' +
+      'In the session after its last 8 reports it moved ±4.7% on average.');
+    expect(agendaSentence(UPS, OCTOBER.normal)).toBe('UPS reported Tue, Oct 27, before the open: EPS $1.71 vs $1.64 expected, a beat (+4%). ' +
+      'The stock moved -6.8% in the session that traded it, 1.2× its usual ±5.8%.');
+    expect(agendaSentence(V_TONIGHT, OCTOBER.normal)).toMatch(/^Visa \(V\) reported Tue, Oct 27, after the close: EPS \$[\d.]+ vs \$[\d.]+ expected, [^;]+; the stock reacts Wed, Oct 28\. Its usual move after a report: ±\d+\.\d%\.$/);
+    const cvx = OCTOBER.items.find((e): e is CoEvent => e.kind === 'earnings' && e.ticker === 'CVX')!;
+    expect(agendaSentence(cvx, OCTOBER.normal)).toMatch(/^Chevron \(CVX\) is expected to report around Fri, Oct 30 \(date not confirmed\), before the open\. In the session after its last 8 reports it moved ±\d+\.\d% on average\.$/);
+    expect(agendaSentence(FED, OCTOBER.normal)).toBe('Fed Interest Rate Decision is due Wed, Oct 28 (expected 3.50%, previous 3.75%). ' +
+      'On its last 8 releases the market (SPY) moved ±1.2% on average, 1.8× a normal day.');
+    expect(agendaSentence(CPI, OCTOBER.normal)).toBe('Inflation Rate YoY (Sep), released Wed, Oct 14: 2.9% vs 2.8% expected; the market (SPY) moved -1.2% that session.');
+  });
+
+  it('the agenda\'s days in the words people search: earnings today and tomorrow, for the session the page is read in, always with the date', () => {
+    expect(dayHeading('2026-10-28', 3, '2026-10-27')).toBe('Earnings today · Wed, Oct 28');
+    expect(dayHeading('2026-10-29', 5, '2026-10-27')).toBe('Earnings tomorrow · Thu, Oct 29');
+    expect(dayHeading('2026-10-27', 4, '2026-10-27')).toBe('Tue, Oct 27');
+    expect(dayHeading('2026-10-28', 0, '2026-10-27')).toBe('Today · Wed, Oct 28');
+    expect(dayHeading('2026-11-02', 1, '2026-10-30')).toBe('Earnings today · Mon, Nov 2');
+  });
+
+  it('in the page: the week titled as searched, each row\'s sentence and a link that says where it goes; an unconfirmed date dotted in the grid', async () => {
+    const { el, text } = await render(PtCalOutlook, { data: WEEK, view: 'week' });
+    expect(el.querySelector('.pt-section-title')!.textContent).toBe('Earnings calendar this week · Oct 26–Oct 30, 2026');
+    expect([...el.querySelectorAll('.do-agenda-day')].map((h) => h.textContent)).toEqual(expect.arrayContaining(['Earnings today · Wed, Oct 28', 'Earnings tomorrow · Thu, Oct 29']));
+    expect(text()).toContain(agendaSentence(MSFT, WEEK.normal));
+    expect(el.querySelector('.do-agenda a[href="/stocks/msft/"]')!.textContent).toBe('Microsoft earnings date →');
+    const cvx = el.querySelector('.do-grid a[href="/stocks/cvx/"]')!;
+    expect(cvx.classList).toContain('do-unconf');
+    expect(cvx.textContent).toContain('(date not confirmed)');
   });
 
   it('not available', async () => {

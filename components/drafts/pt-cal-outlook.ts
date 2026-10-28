@@ -9,7 +9,13 @@
  * BMO/AMC stay out of the row: the card says it in words, with the session that reacts. A macro date (Fed, CPI, jobs…) carries the market's (SPY) usual move on
  * its releases. Past reactions say how big a move has been, not which way the next one goes (FORECAST.md: direction did not hold up).
  * The numbers are the nightly feed's (typical move: the last 8 reports, at least 4); until a typology carries them, the payload is an input.
- * @version 0.0.2
+ * In the words people search (DataForSEO, 2026-10-28: they search the date — "{company} earnings date", "earnings calendar this week",
+ * "earnings today" — and the AIs fetch the usual move after a report from small sites with a reactions table): the week is titled
+ * "Earnings calendar this week", the agenda's days "Earnings today" and "Earnings tomorrow" with their date (the page is built after
+ * the close and read in the next session), and every agenda row is a sentence in the page — the date, confirmed or not, the session
+ * that reacts, the usual move — with a link that says where it goes ("Microsoft earnings date"). What others expect is said in
+ * sentences too, and the Polymarket line says what its chance is. A date not yet confirmed is dotted in the grid.
+ * @version 0.0.3
  */
 import { Component, computed, input, signal } from '@angular/core';
 import { PtLogo } from '@pretickt/components/ds';
@@ -126,12 +132,21 @@ export function bars(moves: { move: number; verdict?: Verdict | null; now?: bool
 const TIME = { bmo: 'before the open', amc: 'after the close' } as const;
 const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const dayLabel = (d: string) => `${WEEKDAY[weekdayOf(d)]}, ${dayMonth(d)}`;
-/** The session that trades a report: its own before the open, the next weekday's after the close (no market holidays in the draft). */
+/** The next weekday after `d` (no market holidays in the draft). */
+const nextWeekday = (d: string) => { let x = addDays(d, 1); while (weekdayOf(x) === 0 || weekdayOf(x) === 6) x = addDays(x, 1); return x; };
+/** The session that trades a report: its own before the open, the next weekday's after the close. */
 export function reactsOn(e: CoEvent): string | null {
   if (e.time !== 'amc') return e.time === 'bmo' ? e.date : null;
-  let d = addDays(e.date, 1);
-  while (weekdayOf(d) === 0 || weekdayOf(d) === 6) d = addDays(d, 1);
-  return d;
+  return nextWeekday(e.date);
+}
+/**
+ * An agenda day's heading, in the words people search: "Earnings today · Wed, Oct 28" for the session the page is read in (the one
+ * after `asOf`, the last close the build saw), "Earnings tomorrow · Thu, Oct 29" for the next; the date is always there, so a page
+ * read later never lies. A day with only macro dates says "Today" or "Tomorrow".
+ */
+export function dayHeading(date: string, companies: number, asOf: string): string {
+  const today = nextWeekday(asOf), rel = date === today ? 'today' : date === nextWeekday(today) ? 'tomorrow' : null;
+  return rel ? `${companies ? `Earnings ${rel}` : rel[0]!.toUpperCase() + rel.slice(1)} · ${dayLabel(date)}` : dayLabel(date);
 }
 export function when(e: OutlookEvent): string {
   if (e.kind === 'macro') return `${e.result ? 'Released' : 'Due'} ${dayLabel(e.date)}`;
@@ -139,7 +154,7 @@ export function when(e: OutlookEvent): string {
   if (!e.result && e.confirmed === false) return `Expected around ${dayLabel(e.date)}${t} (date not confirmed)`;
   const on = reactsOn(e);
   const reacts = on == null ? '' : ` · the stock ${moved(e) != null ? 'reacted' : 'reacts'} ${on === e.date ? 'the same day' : dayLabel(on)}`;
-  return `${e.result ? 'Reported' : 'Reports'} ${dayLabel(e.date)}${t}${reacts}`;
+  return `${e.result ? 'Reported' : 'Reports'} ${dayLabel(e.date)}${!e.result && e.confirmed ? ' (confirmed)' : ''}${t}${reacts}`;
 }
 const growth = (now: number | null, before: number | null) => (now != null && before != null && before > 0 && now > 0 ? `, ${pct(now / before - 1, 0)} on a year ago` : '');
 function verdictPhrase(actual: number, est: number) {
@@ -148,20 +163,25 @@ function verdictPhrase(actual: number, est: number) {
 }
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
+/** "Analysts' average target is $625, 20% above the price (52 analysts); 9 raised it and 1 cut it in the last 30 days." */
 function analystsText(a: Analysts | null, price: number | null): string | null {
   if (!a || a.n < MIN_ANALYSTS) return null;
-  const vs = price ? ` (${pct(a.target / price - 1, 0)} vs the price)` : '';
-  const moves = [a.raised ? `${a.raised} raised it` : '', a.cut ? `${a.cut} cut it` : ''].filter(Boolean).join(', ');
-  return `$${num(a.target, priceDigits(a.target))} average target${vs}, ${plural(a.n, 'analyst')} · ${moves ? `last 30 days: ${moves}` : 'no changes in the last 30 days'}`;
+  const r = price ? a.target / price - 1 : null;
+  const vs = r === null ? '' : `, ${level(Math.abs(r), 0)} ${r >= 0 ? 'above' : 'below'} the price`;
+  const moves = [a.raised ? `${a.raised} raised it` : '', a.cut ? `${a.cut} cut it` : ''].filter(Boolean).join(' and ');
+  return `Analysts’ average target is $${num(a.target, priceDigits(a.target))}${vs} (${plural(a.n, 'analyst')}); ` +
+    `${moves ? `${moves} in the last 30 days` : 'none changed it in the last 30 days'}.`;
 }
-/** The peers that reported this season: how many rose, their usual size, the biggest movers named. */
+/** The peers that reported this season: how many rose, their usual size, the biggest movers named, in a sentence. */
 function peersText(ps: readonly PeerMove[]): string | null {
   if (ps.length < MIN_PEERS) return null;
   const avg = ps.reduce((s, p) => s + Math.abs(p.move), 0) / ps.length, ups = ps.filter((p) => p.move > 0).length;
   const named = [...ps].sort((a, b) => Math.abs(b.move) - Math.abs(a.move)).slice(0, PEERS_NAMED).map((p) => `${p.ticker} ${pct(p.move)}`);
-  return `${ups} of ${ps.length} rose after reporting this season, ±${level(avg)} on average · ${named.join(', ')}`;
+  return `${ups} of ${ps.length} peers rose after reporting this season, moving ±${level(avg)} on average: ${named.join(', ')}.`;
 }
-const oddsText = (o: Odds | null) => (o && o.volume >= MIN_VOLUME ? `${level(o.p, 0)} chance: ${o.what} · ${usd(o.volume, { compact: true })} traded` : null);
+/** The prediction market's price, and what it means: people ask what these markets are ("what is kalshi", "is kalshi legit"). */
+const oddsText = (o: Odds | null) => (o && o.volume >= MIN_VOLUME
+  ? `${level(o.p, 0)} chance of ${o.what}: the price of a share that pays $1 if it happens (${usd(o.volume, { compact: true })} traded).` : null);
 /** Others' views before the event (none once it is out): the analysts, the peers, the prediction market. */
 function expectations(e: OutlookEvent): [string, string][] {
   if (e.result) return [];
@@ -209,6 +229,37 @@ export function card(e: OutlookEvent, normal: number | null): Card {
     : u != null ? { big: `±${level(u)}`, tone: 'est' as const, says: `its usual move the session after a report (average of the last ${Math.min(rec.n, REPORTS)})` }
     : { big: '', tone: 'est' as const, says: `Not enough reports yet for a usual move (${rec.n} of the ${MIN_REPORTS} it takes).` };
   return { ...head, lines, facts, expect: expectations(e), bars: bars(shown, u) };
+}
+
+const named = (e: CoEvent) => (e.name && e.name !== e.ticker ? `${e.name} (${e.ticker})` : e.ticker);
+/**
+ * An agenda row in a sentence, the text a search engine and an AI read: "Microsoft (MSFT) reports Wed, Oct 28 (confirmed), after the
+ * close; the stock reacts Thu, Oct 29. In the session after its last 8 reports it moved ±4.7% on average." After the report, its
+ * figures and the move against the usual one; for a macro date, the market's (SPY) usual move on its releases.
+ */
+export function agendaSentence(e: OutlookEvent, normal: number | null): string {
+  const m = moved(e), u = usualOf(e);
+  if (e.kind === 'macro') {
+    if (e.result) {
+      const fig = e.result.actual ? `: ${e.result.actual}${e.expected ? ` vs ${e.expected} expected` : ''}` : '';
+      return `${e.event}, released ${dayLabel(e.date)}${fig}${m != null ? `; the market (SPY) moved ${pct(m)} that session` : ''}.`;
+    }
+    const n = Math.min(e.moves.length, REPORTS);
+    return `${e.event} is due ${dayLabel(e.date)}${e.expected ? ` (expected ${e.expected}${e.previous ? `, previous ${e.previous}` : ''})` : ''}.` +
+      (u != null ? ` On its last ${n} releases the market (SPY) moved ±${level(u)} on average${normal ? `, ${times(u / normal)} a normal day` : ''}.` : '');
+  }
+  const t = e.time ? `, ${TIME[e.time]}` : '', on = reactsOn(e), usual = u != null ? `±${level(u)}` : null;
+  const reacts = on == null ? '' : `; the stock reacts ${on === e.date ? 'the same day' : dayLabel(on)}`;
+  if (e.result) {
+    const eps = e.result.epsActual != null && e.epsEst != null
+      ? `: EPS ${money(e.result.epsActual)} vs ${money(e.epsEst)} expected, ${verdictPhrase(e.result.epsActual, e.epsEst)}` : '';
+    if (m != null) return `${named(e)} reported ${dayLabel(e.date)}${t}${eps}. The stock moved ${pct(m)} in the session that traded it` +
+      `${u != null ? `, ${times(Math.abs(m) / u)} its usual ${usual}` : ''}.`;
+    return `${named(e)} reported ${dayLabel(e.date)}${t}${eps}${reacts}.${usual ? ` Its usual move after a report: ${usual}.` : ''}`;
+  }
+  const head = e.confirmed === false ? `${named(e)} is expected to report around ${dayLabel(e.date)} (date not confirmed)${t}`
+    : `${named(e)} reports ${dayLabel(e.date)}${e.confirmed ? ' (confirmed)' : ''}${t}${reacts}`;
+  return `${head}.${usual ? ` In the session after its last ${Math.min(e.reactions.length, REPORTS)} reports it moved ${usual} on average.` : ''}`;
 }
 
 const NOTE = 'Past reactions: how big a move has been, not which way the next one goes. What others expect is their view, not a forecast.';
@@ -286,7 +337,8 @@ const LEGEND: Record<OutlookVariant, string> = {
   range: 'Before a report: the price range its usual move spans. After: the move it made.',
 };
 const FOOT = 'Usual move: the average size of the stock’s move the session after each of its last 8 reports (for a Fed, CPI or jobs date, ' +
-  'the market’s, SPY, on its last 8 releases). How big, not which way: past reactions do not say where the next one goes.';
+  'the market’s, SPY, on its last 8 releases). How big, not which way: past reactions do not say where the next one goes. ' +
+  'A dotted ticker: the date is not confirmed yet.';
 /** Room the card needs above a row before it opens below it instead. */
 const ROOM_ABOVE = 560, CARD_W = 384;
 
@@ -310,8 +362,8 @@ const ROOM_ABOVE = 560, CARD_W = 384;
                   <span>{{ m.label }}</span><span [class]="cueClass(m)">{{ cueOf(m).text }}</span></button>
               }
               @for (e of c.items.slice(0, CAP); track e.ticker) {
-                <a class="pt-cal-ev do-ev" [href]="stockHref(e.ticker)" (pointerenter)="show(e, $event)" (pointerleave)="hide()" (focus)="show(e, $event)" (blur)="hide()">
-                  <span class="pt-cal-who"><pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="14" />{{ e.ticker }}</span>
+                <a class="pt-cal-ev do-ev" [class.do-unconf]="e.confirmed === false" [href]="stockHref(e.ticker)" (pointerenter)="show(e, $event)" (pointerleave)="hide()" (focus)="show(e, $event)" (blur)="hide()">
+                  <span class="pt-cal-who"><pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="14" />{{ e.ticker }}@if (e.confirmed === false) {<span class="pt-sr"> (date not confirmed)</span>}</span>
                   <span [class]="cueClass(e)">{{ cueOf(e).text }}</span></a>
               }
               @if (c.items.length > CAP) {<span class="pt-cal-more">+{{ c.items.length - CAP }} more</span>}
@@ -323,16 +375,19 @@ const ROOM_ABOVE = 560, CARD_W = 384;
         }
         <div class="do-agenda">
           @for (c of listed(); track c.date) {
-            <h4 class="do-agenda-day">{{ dayLabel(c.date) }}</h4>
+            <h4 class="do-agenda-day">{{ heading(c, d.asOf) }}</h4>
             @for (e of entries(c); track key(e)) {
-              <details class="do-row">
-                <summary>
-                  @if (e.kind === 'macro') {<span class="pt-cal-macro">{{ e.label }}</span><span class="do-sum-name">{{ e.event }}</span>}
-                  @else {<pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="16" /><span class="do-sum-name">{{ e.name }} <span class="pt-meta">{{ e.name === e.ticker ? '' : e.ticker }}</span></span>}
-                  <b [class]="cueClass(e)">{{ cueOf(e).text }}</b>
-                </summary>
-                <pt-outlook-card [event]="e" [normal]="d.normal" />
-              </details>
+              <div class="do-item">
+                <details class="do-row">
+                  <summary>
+                    @if (e.kind === 'macro') {<span class="pt-cal-macro">{{ e.label }}</span><span class="do-sum-name">{{ e.event }}</span>}
+                    @else {<pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="16" /><span class="do-sum-name">{{ e.name }} <span class="pt-meta">{{ e.name === e.ticker ? '' : e.ticker }}</span></span>}
+                    <b [class]="cueClass(e)">{{ cueOf(e).text }}</b>
+                  </summary>
+                  <pt-outlook-card [event]="e" [normal]="d.normal" />
+                </details>
+                <p class="do-say">{{ say(e, d.normal) }} @if (e.kind === 'earnings') {<a [href]="stockHref(e.ticker)">{{ e.name }} earnings date →</a>}</p>
+              </div>
             }
           }
         </div>
@@ -351,7 +406,7 @@ export class PtCalOutlook {
   protected readonly title = computed(() => {
     const d = this.data();
     if (!d) return '';
-    return this.isWeek() ? `Earnings this week · ${dayMonth(mondayOf(d.from))}–${dayMonth(addDays(mondayOf(d.from), 4))}`
+    return this.isWeek() ? `Earnings calendar this week · ${dayMonth(mondayOf(d.from))}–${dayMonth(addDays(mondayOf(d.from), 4))}, ${d.from.slice(0, 4)}`
       : `Earnings calendar — ${MONTHS[Number(d.from.slice(5, 7)) - 1]} ${d.from.slice(0, 4)}`;
   });
   protected readonly pop = signal<{ e: OutlookEvent; left: number; top: number; below: boolean } | null>(null);
@@ -362,6 +417,8 @@ export class PtCalOutlook {
   protected readonly FOOT = FOOT;
   protected readonly dayLabel = dayLabel;
   protected readonly stockHref = stockHref;
+  protected readonly say = agendaSentence;
+  protected heading = (c: Cell, asOf: string) => dayHeading(c.date, c.items.length, asOf);
   protected cueOf = (e: OutlookEvent) => cue(e, this.variant());
   protected cueClass = (e: OutlookEvent) => { const t = this.cueOf(e).tone; return `do-cue ${t === 'est' ? 'do-est' : `pt-t-${t}`}`; };
   protected entries = (c: Cell): OutlookEvent[] => [...c.macro, ...c.items];
