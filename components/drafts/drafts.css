@@ -161,6 +161,7 @@
 /* pt-value: cards read across other companies (pretickt's own analysis), with their logos */
 .dv-card.dv-via { background: color-mix(in oklab, var(--color-primary) 4%, var(--color-surface-raised)); }
 .dv-title { min-height: 2.4em; font-size: .72rem; font-weight: 700; line-height: 1.2; color: var(--color-primary); }
+@media (width >= 64rem) { .dv-title { min-height: 3.6em; } }   /* six narrow columns: ticker, title and term take three lines */
 /* small on purpose: it marks the card, it is not a heading (a DS class when pt-value is promoted) */
 .dv-badge { justify-self: start; padding: 0 .35rem; border: 1px solid color-mix(in oklab, var(--color-primary) 35%, var(--color-border));
   border-radius: 999px; background: color-mix(in oklab, var(--color-primary) 8%, var(--color-surface-raised));

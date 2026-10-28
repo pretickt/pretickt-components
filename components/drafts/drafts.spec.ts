@@ -107,14 +107,18 @@ describe('pt-value (draft): the cards read across other companies', () => {
 
 describe('pt-value (draft): every card', () => {
   const all = [VALUE_NVDA, VALUE_NKE, VALUE_INTC];
-  it('has a short title, one of a kind in its column, and a source', () => {
+  it('has a short title that reads after the ticker, one of a kind in its column, and a source', () => {
     for (const v of all) for (const s of v.sections) {
-      expect(s.cards.every((c) => c.title.length > 0 && c.title.length <= 24 && c.source.length > 0)).toBe(true);
+      for (const c of s.cards) {
+        expect(c.title).toMatch(/^([a-z]|[A-Z]{2,}\b)/);
+        expect(`${v.ticker} ${c.title}`.length).toBeLessThanOrEqual(c.term ? 24 : 30);
+        expect(c.source.length).toBeGreaterThan(0);
+      }
       expect(new Set(s.cards.map((c) => c.title)).size).toBe(s.cards.length);
     }
   });
   it('says how much the biggest customers weigh, under fragility: the 10-K table, the customers unnamed', () => {
-    const fragility = all.map((v) => v.sections.find((s) => s.key === 'fragility')!.cards.find((c) => c.title === 'Biggest customers'));
+    const fragility = all.map((v) => v.sections.find((s) => s.key === 'fragility')!.cards.find((c) => c.title === 'biggest customers'));
     expect(fragility.map((c) => c?.big)).toEqual(['34%', 'under 10%', '42%']);
     expect(fragility.every((c) => c?.viz.kind === 'split' && c.source.includes('financial-reports-json'))).toBe(true);
   });
@@ -125,7 +129,7 @@ describe('pt-value (draft): every card', () => {
       if (c.term) expect(c.term.toLowerCase()).not.toBe(c.title.toLowerCase());
     }
     const titles = VALUE_NVDA.sections.flatMap((s) => s.cards.map((c) => `${c.title}${c.term ? ` · ${c.term}` : ''}`));
-    expect(titles).toEqual(expect.arrayContaining(['Price vs profit · P/E ratio', 'Competitors', 'Number of employees', 'Who owns the stock · institutional ownership', 'Insider selling']));
+    expect(titles).toEqual(expect.arrayContaining(['price vs profit · P/E ratio', 'competitors', 'number of employees', 'shareholders · institutional ownership', 'insider selling', 'CEO pay']));
   });
 });
 
@@ -137,5 +141,15 @@ describe('pt-value (draft): in the page\'s text', () => {
     expect([...el.querySelectorAll('.dv-faq h3')].map((h) => h.textContent)).toEqual(VALUE_NVDA.faq.map((f) => f.q));
     expect(text()).toContain(VALUE_NVDA.faq[0]!.a);
     for (const v of [VALUE_NVDA, VALUE_NKE, VALUE_INTC]) expect(v.faq.every((f) => f.q.endsWith('?') && f.a.includes(v.name))).toBe(true);
+  });
+  it('each card\'s title starts with the company\'s ticker, the searched term after it', async () => {
+    for (const v of [VALUE_NVDA, VALUE_NKE, VALUE_INTC]) {
+      const { el } = await render(PtValue, { data: v });
+      const titles = [...el.querySelectorAll('.dv-title')].map((t) => t.textContent!);
+      expect(titles.length).toBe(v.sections.flatMap((s) => s.cards).length);
+      expect(titles.every((t) => t.startsWith(`${v.ticker} `))).toBe(true);
+    }
+    const { el } = await render(PtValue, { data: VALUE_NVDA });
+    expect(el.querySelector('.dv-title')!.textContent).toBe('NVDA sales growth revenue growth');
   });
 });
