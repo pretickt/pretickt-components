@@ -222,7 +222,8 @@ export const stories = [
   an interaction a second after mounting (a press).
 - Cover: the demo, each input that changes the look, the edge cases the spec tests (empty, a missing part, crowded, long), one or
   two live tickers that show them on real data, not available. **Fixtures are made up**: the repo is public, real payloads stay on
-  www (`live` reads them when the page is viewed).
+  www (`live` reads them when the page is viewed). A preview on real data gathered by hand (a draft with no pipeline yet) goes in
+  `.stories/local/stories.ts`, git-ignored: `npm run stories` adds its stories at start, and it is never committed.
 - `npm run stories` → http://localhost:4300/visual/pt-x, every scenario under its name (`?phone`: 390 px frames, so the phone
   media queries apply; `/visual/pt-x/<n>`: one alone). The platform's experiments (`admin/experiments`, next to this checkout)
   show up too, their bench presets as stories. In the console, `copy(storyOf($0))` copies what a story shows as a new story.

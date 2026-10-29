@@ -2,7 +2,9 @@
  * `npm run stories`: the stories page on http://localhost:4300 (see src/stories/story.ts). Three things run together: Tailwind
  * rebuilds ds.css on every change, `ng serve stories` serves the app (its proxy answers the live stories from www), and the
  * platform's experiments (`../pretickt-platform/admin/experiments`, or `PT_EXPERIMENTS`) are copied in with their bench presets as
- * stories, again whenever they change. Extra arguments go to `ng serve` (`npm run stories -- --port 4301`).
+ * stories, again whenever they change. So are the local stories in `.stories/local/stories.ts`, read at start: real data gathered
+ * by hand for a preview, git-ignored with the rest of `.stories/` (the repo is public, its fixtures are made up). Extra arguments
+ * go to `ng serve` (`npm run stories -- --port 4301`).
  */
 import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, watch, writeFileSync } from 'node:fs';
@@ -11,6 +13,7 @@ import { experimentsCss, experimentsModule, readExperiments } from './stories-ex
 
 const OUT = '.stories';
 const ROOT = resolve(process.env.PT_EXPERIMENTS ?? '../pretickt-platform/admin/experiments');
+const LOCAL = join(OUT, 'local', 'stories.ts');
 
 /** Writes only what changed: every write makes the dev server build again. */
 function put(path: string, text: string) {
@@ -22,7 +25,8 @@ function put(path: string, text: string) {
 function sync() {
   const list = readExperiments(ROOT);
   for (const e of list) for (const c of e.components) put(join(OUT, 'experiments', e.slug, `${c.tag}.ts`), c.source);
-  put(join(OUT, 'experiments.ts'), experimentsModule(list));
+  const local = existsSync(LOCAL) ? "\nimport { stories as local } from './local/stories';\nstories.push(...local);\n" : '';
+  put(join(OUT, 'experiments.ts'), experimentsModule(list) + local);
   put(join(OUT, 'experiments.css'), experimentsCss(list));
   return list;
 }
@@ -31,6 +35,7 @@ const found = sync();
 console.log(existsSync(ROOT)
   ? `stories: experiments from ${ROOT}: ${found.map((e) => `${e.slug} (${e.components.length})`).join(', ') || 'none'}`
   : `stories: no experiments (${ROOT} not found)`);
+if (existsSync(LOCAL)) console.log(`stories: local stories from ${LOCAL}`);
 if (existsSync(ROOT)) {
   let timer: NodeJS.Timeout | undefined;
   watch(ROOT, { recursive: true }, () => { clearTimeout(timer); timer = setTimeout(sync, 200); });
