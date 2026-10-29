@@ -24,7 +24,8 @@ describe('build', () => {
       expect(existsSync(`dist/${c.chunk}`), c.tag).toBe(true);
     }
     for (const f of Object.values(index.site)) expect(existsSync(`dist/${f}`), f).toBe(true);
-    for (const f of ['ds.css', 'fonts', 'brand/favicon.svg']) expect(existsSync(`dist/${f}`), f).toBe(true);
+    // the brand marks, and the icons browsers and crawlers ask for by fixed name (/favicon.ico, /apple-touch-icon.png)
+    for (const f of ['ds.css', 'fonts', 'brand/favicon.svg', 'brand/favicon.ico', 'brand/apple-touch-icon.png']) expect(existsSync(`dist/${f}`), f).toBe(true);
     expect(index.components.find((c) => c.tag === 'pt-why-today')!.props).toContainEqual({ name: 'window', required: false, type: 'Window', default: '"1d"' });
     // the build regenerates the registry from the components: committed and generated must agree
     execFileSync('git', ['diff', '--exit-code', '--', 'src/site/registry.generated.ts']);
