@@ -6,14 +6,14 @@
  * with no data has no card: never a placeholder on a public page.
  * In the words people search (DataForSEO, 2026-10-28): the top line asks "Is {company} a good stock to buy?" and answers with facts —
  * how many of the five questions about the business are strong, the P/E against its 3-year median with the date — never with a yes
- * or a no. A card's title starts with the ticker and stays plain, with the searched term below it ("NVDA price vs profit · P/E
- * ratio"), and every card says its fact in a sentence that names the company (company, number, date): the card carries both ways
- * people search it (DataForSEO, 2026-10-28: the price terms with the ticker half the time, "nvda price target"; the business ones
- * with the name, "nvidia number of employees", 93%). A tooltip is not text to a search engine or an AI. Under the columns, the
- * questions people search that the cards answer ("Who is dumping Nvidia stock?"); the resolver templates them, so the generator
- * can put the same pairs in the page's structured data — one answer per question on a page.
+ * or a no. A card's title is a heading (h3, as the questions under the columns) that starts with the ticker, with the searched term
+ * inside it, below ("NVDA price vs profit · P/E ratio"), and every card says its fact in a sentence that names the company (company,
+ * number, date): the card carries both ways people search it (DataForSEO, 2026-10-28: the price terms with the ticker half the time,
+ * "nvda price target"; the business ones with the name, "nvidia number of employees", 93%). A tooltip is not text to a search engine
+ * or an AI. Under the columns, the questions people search that the cards answer ("Who is dumping Nvidia stock?"); the resolver
+ * templates them, so the generator can put the same pairs in the page's structured data — one answer per question on a page.
  * The six columns share their rows (a subgrid): a question on one line or two, the verdicts and the first cards start level.
- * @version 0.0.5
+ * @version 0.0.6
  */
 import { Component, computed, input } from '@angular/core';
 import { PtIcon, PtLogo } from '@pretickt/components/ds';
@@ -150,7 +150,7 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
               <div class="dv-stack">
               @for (c of s.cards; track $index) {
                 <div [class]="'dv-card dv-' + c.tone" [class.dv-via]="!!c.via" [attr.data-tip]="cardTip(c)">
-                  <span class="dv-title">{{ v.ticker }} {{ c.title }}@if (c.term) {<span class="dv-term">{{ ' ' + c.term }}</span>}</span>
+                  <h3 class="dv-title">{{ v.ticker }} {{ c.title }}@if (c.term) {<span class="dv-term">{{ ' ' + c.term }}</span>}</h3>
                   @if (c.via) {<span class="dv-badge">pretickt analysis</span>}
                   @switch (c.viz.kind) {
                     @case ('bars') {

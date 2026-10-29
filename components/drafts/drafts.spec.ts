@@ -152,4 +152,11 @@ describe('pt-value (draft): in the page\'s text', () => {
     const { el } = await render(PtValue, { data: VALUE_NVDA });
     expect(el.querySelector('.dv-title')!.textContent).toBe('NVDA sales growth revenue growth');
   });
+  it('each card\'s title is a heading, as the searched questions under the columns, with its searched term inside it', async () => {
+    const { el } = await render(PtValue, { data: VALUE_NVDA });
+    const titles = [...el.querySelectorAll('.dv-title')];
+    expect(titles.length).toBe(VALUE_NVDA.sections.flatMap((s) => s.cards).length);
+    expect(titles.every((t) => t.tagName === 'H3')).toBe(true);
+    expect(el.querySelector('h3.dv-title .dv-term')!.textContent).toBe(' revenue growth');
+  });
 });
