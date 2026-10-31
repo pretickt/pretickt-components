@@ -1,6 +1,7 @@
+import { saidText } from '../../src/ds/format';
 import { render } from '../_spec';
 import { CPI, FED, MSFT, OCTOBER, UPS, V_TONIGHT, WEEK } from './outlook-mock';
-import { agendaSentence, card, cue, dayHeading, priceRange, PtCalOutlook, rangeText, record, usualMove, verdictOf, when, type CoEvent } from './pt-cal-outlook';
+import { agendaSentence, card, cue, dayHeading, priceRange, PtCalOutlook, PtOutlookCard, rangeText, record, usualMove, verdictOf, when, type CoEvent } from './pt-cal-outlook';
 
 describe('pt-cal-outlook (draft): the earnings calendar with each event\'s possible outcome', () => {
   it('the usual move is the mean size of the last eight reactions, and needs four', () => {
@@ -131,17 +132,24 @@ describe('pt-cal-outlook (draft): the earnings calendar with each event\'s possi
     expect(el.querySelector('.pt-cal-asof .pt-cal-more')!.textContent).toContain('+1 more');
   });
 
+  it('names each company as a link with its logo (its card on hover): in the agenda\'s sentences and on the card', async () => {
+    const { el } = await render(PtCalOutlook, { data: WEEK, view: 'week' });
+    const said = el.querySelector('.do-agenda .do-say a.pt-mention')!;
+    expect(said.getAttribute('href')).toMatch(/^\/stocks\/[a-z.]+\/$/);
+    const card = await render(PtOutlookCard, { event: MSFT, normal: OCTOBER.normal });
+    expect(card.el.querySelector('.do-card-head a.pt-mention')!.getAttribute('href')).toBe('/stocks/msft/');
+  });
   it('every agenda row in a sentence: the date, confirmed or not, the session that reacts, the usual move; after it, the figures and the move', () => {
-    expect(agendaSentence(MSFT, OCTOBER.normal)).toBe('Microsoft MSFT reports Wed, Oct 28 (confirmed), after the close; the stock reacts Thu, Oct 29. ' +
+    expect(saidText(agendaSentence(MSFT, OCTOBER.normal))).toBe('Microsoft MSFT reports Wed, Oct 28 (confirmed), after the close; the stock reacts Thu, Oct 29. ' +
       'In the session after its last 8 reports it moved ±4.7% on average.');
-    expect(agendaSentence(UPS, OCTOBER.normal)).toBe('UPS reported Tue, Oct 27, before the open: EPS $1.71 vs $1.64 expected, a beat (+4%). ' +
+    expect(saidText(agendaSentence(UPS, OCTOBER.normal))).toBe('UPS reported Tue, Oct 27, before the open: EPS $1.71 vs $1.64 expected, a beat (+4%). ' +
       'The stock moved -6.8% in the session that traded it, 1.2× its usual ±5.8%.');
-    expect(agendaSentence(V_TONIGHT, OCTOBER.normal)).toMatch(/^Visa V reported Tue, Oct 27, after the close: EPS \$[\d.]+ vs \$[\d.]+ expected, [^;]+; the stock reacts Wed, Oct 28\. Its usual move after a report: ±\d+\.\d%\.$/);
+    expect(saidText(agendaSentence(V_TONIGHT, OCTOBER.normal))).toMatch(/^Visa V reported Tue, Oct 27, after the close: EPS \$[\d.]+ vs \$[\d.]+ expected, [^;]+; the stock reacts Wed, Oct 28\. Its usual move after a report: ±\d+\.\d%\.$/);
     const cvx = OCTOBER.items.find((e): e is CoEvent => e.kind === 'earnings' && e.ticker === 'CVX')!;
-    expect(agendaSentence(cvx, OCTOBER.normal)).toMatch(/^Chevron CVX is expected to report around Fri, Oct 30 \(date not confirmed\), before the open\. In the session after its last 8 reports it moved ±\d+\.\d% on average\.$/);
-    expect(agendaSentence(FED, OCTOBER.normal)).toBe('Fed Interest Rate Decision is due Wed, Oct 28 (expected 3.50%, previous 3.75%). ' +
+    expect(saidText(agendaSentence(cvx, OCTOBER.normal))).toMatch(/^Chevron CVX is expected to report around Fri, Oct 30 \(date not confirmed\), before the open\. In the session after its last 8 reports it moved ±\d+\.\d% on average\.$/);
+    expect(saidText(agendaSentence(FED, OCTOBER.normal))).toBe('Fed Interest Rate Decision is due Wed, Oct 28 (expected 3.50%, previous 3.75%). ' +
       'On its last 8 releases the market (SPY) moved ±1.2% on average, 1.8× a normal day.');
-    expect(agendaSentence(CPI, OCTOBER.normal)).toBe('Inflation Rate YoY (Sep), released Wed, Oct 14: 2.9% vs 2.8% expected; the market (SPY) moved -1.2% that session.');
+    expect(saidText(agendaSentence(CPI, OCTOBER.normal))).toBe('Inflation Rate YoY (Sep), released Wed, Oct 14: 2.9% vs 2.8% expected; the market (SPY) moved -1.2% that session.');
   });
 
   it('the agenda\'s days in the words people search: earnings today and tomorrow, for the session the page is read in, always with the date', () => {
@@ -156,8 +164,9 @@ describe('pt-cal-outlook (draft): the earnings calendar with each event\'s possi
     const { el, text } = await render(PtCalOutlook, { data: WEEK, view: 'week' });
     expect(el.querySelector('.pt-section-title')!.textContent).toBe('Earnings calendar this week · Oct 26–Oct 30, 2026');
     expect([...el.querySelectorAll('.do-agenda-day')].map((h) => h.textContent)).toEqual(expect.arrayContaining(['Earnings today · Wed, Oct 28', 'Earnings tomorrow · Thu, Oct 29']));
-    expect(text()).toContain(agendaSentence(MSFT, WEEK.normal));
-    expect(el.querySelector('.do-agenda a[href="/stocks/msft/"]')!.textContent).toBe('Microsoft earnings date\u00a0→');
+    expect(text().replace(/\s+/g, ' ')).toContain(saidText(agendaSentence(MSFT, WEEK.normal)));
+    // the sentence's company (a mention) and the link that says where it goes, both to the company's page
+    expect([...el.querySelectorAll('.do-agenda a[href="/stocks/msft/"]')].map((a) => a.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['Microsoft MSFT', 'Microsoft MSFT', 'Microsoft earnings date →']); // the card's head, the sentence, the link
     const cvx = el.querySelector('.do-grid a[href="/stocks/cvx/"]')!;
     expect(cvx.classList).toContain('do-unconf');
     expect(cvx.textContent).toContain('(date not confirmed)');

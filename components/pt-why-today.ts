@@ -1,14 +1,14 @@
 /**
  * Why did this stock move today: the whole market, its sector, or something specific to the company? While the market is open, today's
  * move so far (prices 15 minutes late), the news since the last close and the results just reported.
- * @version 2.2.1
+ * @version 2.3.0
  * @evidence DataForSEO: "why is <ticker> stock down today" family (launch/data/08c-serp-why-is-stock-down-today.json, 10a-why-moving-ticker.json)
  * @evidence beta: news spike detector (market-relative story spikes, validated 1.92x abnormal move)
  */
 import { Component, computed, inject, input, linkedSignal } from '@angular/core';
 import { Pt, PtLive } from '@pretickt/components/context';
-import { PtToggles } from '@pretickt/components/ds';
-import { date, href, level, money, named, num, pct, tone, usd } from '@pretickt/components/format';
+import { PtSay, PtToggles } from '@pretickt/components/ds';
+import { date, href, level, mention, money, num, pct, say, tone, usd, type Said } from '@pretickt/components/format';
 import { SENTIMENT_FLAT, type MoveBreakdown } from '@pretickt/components/typologies';
 
 type Window = '1d' | '5d' | '1m';
@@ -30,18 +30,18 @@ const when = (m: MoveBreakdown) =>
 
 @Component({
   selector: 'pt-why-today',
-  imports: [PtToggles],
+  imports: [PtSay, PtToggles],
   template: `
     @let m = move.value();
     @if (m === null) {<p class="pt-na">Data not available</p>}
     @else if (m) {
       <section class="pt-why" [class.pt-busy]="move.loading()">
         <div class="pt-head">
-          <p class="pt-why-lead">{{ lead() }}</p>
+          <p class="pt-why-lead"><pt-say [parts]="lead()" /></p>
           <div ptToggles [value]="win()" [options]="windows()" aria-label="Window" (choose)="pick($event)"></div>
         </div>
-        <p class="pt-lede">{{ context() }}</p>
-        @if (reported(); as r) {<p class="pt-lede">{{ r }}</p>}
+        <p class="pt-lede"><pt-say [parts]="context()" /></p>
+        @if (reported(); as r) {<p class="pt-lede"><pt-say [parts]="r" /></p>}
         <div class="pt-bd">
           @for (b of bars(); track b.label) {
             <div class="pt-bd-row">
@@ -62,7 +62,7 @@ const when = (m: MoveBreakdown) =>
             }
           </ul>
         }
-        @if (today()) {<p class="pt-note">{{ before() }}</p>}
+        @if (today()) {<p class="pt-note"><pt-say [parts]="before()" /></p>}
         <p class="pt-note">Market = SPY. Sector = equal-weight average of the tracked companies in the same sector, net of the market.@if (today(); as t) { Prices {{ t.d.delayMin }} minutes delayed.}</p>
       </section>
     }`,
@@ -75,6 +75,10 @@ export class PtWhyToday {
 
   protected readonly win = linkedSignal(() => this.window());
   protected readonly move = this.pt.moveBreakdown(() => ({ ticker: this.ticker(), window: this.win() }));
+  /** The company's logo for its name in the sentences: the card at the top of its pages asks for the same. */
+  protected readonly co = this.pt.company(() => ({ ticker: this.ticker() }));
+  /** The company as the sentences name it: a link with its logo, its card on hover. */
+  private readonly self = computed(() => { const m = this.move.value(); return m ? mention(m.ticker, m.name, this.co.value()?.logo ?? null) : null; });
   protected readonly WINDOWS = [['1d', '1D'], ['5d', '5D'], ['1m', '1M']] as const;
   protected readonly BAR = BAR;
   protected readonly DOT = DOT;
@@ -94,10 +98,10 @@ export class PtWhyToday {
   });
   protected readonly windows = computed(() => (this.day() ? ([['1d', 'Today'], ['5d', '5D'], ['1m', '1M']] as const) : this.WINDOWS));
 
-  protected readonly lead = computed(() => {
-    const m = this.move.value(), t = this.today();
-    if (m && t) return `${named(m.name, m.ticker)} ${t.d.closed ? `${verb(t.q.r)} today` : `${verbNow(t.q.r)} today, as of ${t.d.time}`}.`;
-    return m ? `${named(m.name, m.ticker)} ${verb(m.ret)} ${when(m)}.` : '';
+  protected readonly lead = computed((): Said => {
+    const m = this.move.value(), t = this.today(), n = this.self();
+    if (m && n && t) return say`${n} ${t.d.closed ? `${verb(t.q.r)} today` : `${verbNow(t.q.r)} today, as of ${t.d.time}`}.`;
+    return m && n ? say`${n} ${verb(m.ret)} ${when(m)}.` : [];
   });
   /** One market / sector / specific reading, from the last session's breakdown or from today's. */
   private readonly parts = computed(() => {
@@ -109,14 +113,14 @@ export class PtWhyToday {
     return { ret: r, marketRet: market, sectorRet: sector == null ? null : sector + market, market, sector: sector ?? 0, specific,
       driver: driverOf(market, sector ?? 0, specific), past: t.d.closed };
   });
-  protected readonly context = computed(() => {
-    const m = this.move.value(), p = this.parts();
-    if (!m || !p) return '';
+  protected readonly context = computed((): Said => {
+    const m = this.move.value(), p = this.parts(), n = this.self();
+    if (!m || !p || !n) return [];
     const v = (x: number, plural = false) => (p.past ? verb(x) : verbNow(x, plural));
     const ctx = `The market (SPY) ${v(p.marketRet)}` + (p.sectorRet != null && m.sectorName ? `; ${m.sectorName} stocks ${v(p.sectorRet, true)}` : '') + '.';
     const driver = Math.abs(p.ret) < FLAT ? '' : p.driver === 'market' ? 'Most of the move came from the market as a whole.'
-      : p.driver === 'sector' ? 'Most of the move came from its sector.' : `Most of the move is specific to ${m.ticker}.`;
-    return `${ctx} ${driver}`.trim();
+      : p.driver === 'sector' ? 'Most of the move came from its sector.' : say`Most of the move is specific to ${n}.`;
+    return driver.length ? say`${ctx} ${driver}` : [ctx];
   });
   /** The results reported since the last close, against what analysts expected. */
   protected readonly reported = computed(() => {
@@ -124,14 +128,14 @@ export class PtWhyToday {
     if (!e || (e.eps == null && e.rev == null)) return null;
     const eps = e.eps != null ? `EPS ${money(e.eps)}${e.epsEst != null ? ` vs ${money(e.epsEst)} expected${surprise(e.eps, e.epsEst)}` : ''}` : '';
     const rev = e.rev != null ? `revenue ${usd(e.rev, { compact: true })}${e.revEst != null ? ` vs ${usd(e.revEst, { compact: true })}${surprise(e.rev, e.revEst)}` : ''}` : '';
-    return `${t} reported ${e.time ? WHEN_REPORTED[e.time] : 'on'} ${date(e.date)}: ${[eps, rev].filter(Boolean).join('; ')}.`;
+    return say`${this.self() ?? t} reported ${e.time ? WHEN_REPORTED[e.time] : 'on'} ${date(e.date)}: ${[eps, rev].filter(Boolean).join('; ')}.`;
   });
   protected readonly stories = computed(() => {
     const t = this.today();
     return t ? t.news.top.map((s) => ({ title: s.title, site: s.site, url: s.url, sentiment: null })) : (this.move.value()?.news.top ?? []);
   });
   /** Under today's move: how the last session ended, which the page's other numbers still stand on. */
-  protected readonly before = computed(() => { const m = this.move.value(); return m ? `On ${date(m.asOf)} ${m.ticker} ${verb(m.ret)}.` : ''; });
+  protected readonly before = computed((): Said => { const m = this.move.value(), n = this.self(); return m && n ? say`On ${date(m.asOf)} ${n} ${verb(m.ret)}.` : []; });
   protected readonly bars = computed(() => {
     const m = this.move.value(), p = this.parts();
     if (!m || !p) return [];

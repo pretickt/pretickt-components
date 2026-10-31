@@ -194,6 +194,45 @@ export function named(name: string | null | undefined, ticker: string): string {
   return n.toUpperCase() === ticker.toUpperCase() ? n : `${n} ${ticker}`;
 }
 
+/** A company a sentence names, drawn as a link to its page with its logo beside the name (PtMention, PtSay): its card opens on hover. */
+export interface Mention { ticker: string; name: string | null; logo: string | null }
+/** A sentence in parts: its text, and the companies it names. */
+export type Said = (string | Mention)[];
+
+/** A company to name in a sentence: its ticker, its provider name (plainName makes it common) and its logo, the site's file. */
+export const mention = (ticker: string, name?: string | null, logo?: string | null): Mention => ({ ticker, name: name ?? null, logo: logo ?? null });
+export const isMention = (p: unknown): p is Mention => typeof p === 'object' && p !== null && !Array.isArray(p) && 'ticker' in p;
+
+/**
+ * A sentence with the companies it names: say`The target for ${mention('NVDA', name, logo)} is ${money(x)}.` A mention stays a mention,
+ * a sentence in parts is spread in, anything else becomes text; neighbouring text is merged.
+ */
+export function say(strings: TemplateStringsArray, ...values: unknown[]): Said {
+  const out: Said = [];
+  const push = (p: string | Mention) => {
+    if (isMention(p)) { out.push(p); return; }
+    if (!p) return;
+    const last = out.at(-1);
+    if (typeof last === 'string') out[out.length - 1] = last + p; else out.push(p);
+  };
+  strings.forEach((s, i) => {
+    push(s);
+    if (i >= values.length) return;
+    const v = values[i];
+    if (Array.isArray(v)) for (const p of v as Said) push(p); else push(isMention(v) ? v : String(v));
+  });
+  return out;
+}
+
+/** The sentence as text, each company by its common name and ticker ("Nvidia NVDA"): what a search engine reads. */
+export const saidText = (s: Said): string => s.map((p) => (typeof p === 'string' ? p : named(p.name, p.ticker))).join('');
+
+/** "a", "a and b", "a, b and c", over sentences in parts. */
+export function andSaid(xs: Said[]): Said {
+  if (xs.length < 2) return xs[0] ?? [];
+  return say`${xs.slice(0, -1).flatMap((x, i) => (i ? [', ', ...x] : x))} and ${xs.at(-1)!}`;
+}
+
 /**
  * A question's address on the page, from its words: "Who is dumping Nvidia stock?" → "who-is-dumping-nvidia-stock". A component
  * prefixes it with its own name (`value-…`), so another placement can link to the answer instead of giving a second one.

@@ -3,14 +3,16 @@
  * market value and coloured by today's move — where the market's weight is and which way it went today. Under the map a line says
  * how to read it, the way the AI answers describe a heat map; above it, the day in a dated sentence (sectors up, the three largest,
  * the biggest moves) — the text that changes every day and that an answer can quote with its date.
- * @version 0.2.1
+ * Its sentence names the companies as links with their logos (PtSay): the card opens on hover, as on the tiles.
+ * @version 0.3.0
  * @evidence Romeo 2026-10-25: home components "con i loghi delle aziende" for the overview — H3 · The market at a glance, ★ sector map (brainstorming/mappa-componenti.html)
  * @evidence DataForSEO 2026-10-28 (round 13): the "stock market heat map" family ≈33,400 searches a month, keyword difficulty 25–30, AI Overview on 2%, no dominant site (apps, guides, brokers); "largest companies by market cap" 22,200 (launch/RESEARCH.md §9)
  * @evidence AI answers (ChatGPT, Claude, Gemini, Perplexity, AI Mode, 2026-10-28) to "where can I see a stock market heat map today" list TradingView, Finviz, Investing.com, Barchart, MarketBeat, each with one line on how the map reads (launch/AI-SEARCH.md)
  */
 import { Component, computed, inject, input } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
-import { date, named, pct, plainName, stockHref, tip, usd } from '@pretickt/components/format';
+import { PtSay } from '@pretickt/components/ds';
+import { andSaid, date, mention, pct, plainName, say, stockHref, tip, usd, type Said } from '@pretickt/components/format';
 import type { ScreenRow } from '@pretickt/components/typologies';
 
 type Sector = 'Technology' | 'Industrials' | 'Financial Services' | 'Healthcare' | 'Consumer Cyclical' | 'Consumer Defensive' | 'Utilities'
@@ -91,8 +93,8 @@ export function buildMap(rows: readonly ScreenRow[], w: number, h: number): { bl
   return { blocks, tiles };
 }
 
-/** "Nvidia NVDA", or the name alone when it is the ticker. */
-const who = (r: ScreenRow) => named(r.name, r.ticker);
+/** A company the sentence names: a link with its logo ("Nvidia NVDA"), its card on hover. */
+const who = (r: ScreenRow) => mention(r.ticker, r.name, r.logo);
 const and = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
 
 /**
@@ -100,9 +102,9 @@ const and = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).
  * 11 sectors rose, and 61 of the 100 largest companies. The three largest, Nvidia NVDA, Apple AAPL and Microsoft MSFT, moved
  * +1.2%, -0.4% and +0.8%; the biggest moves were …".
  */
-export function mapSentence(rows: readonly ScreenRow[], blocks: Block[], asOf: string): string {
+export function mapSentence(rows: readonly ScreenRow[], blocks: Block[], asOf: string): Said {
   const moved = rows.filter((r) => r.chg1d != null);
-  if (!moved.length) return '';
+  if (!moved.length) return [];
   const up = moved.filter((r) => r.chg1d! > 0).length;
   const sec = blocks.filter((b) => b.move !== null), secUp = sec.filter((b) => b.move! > 0).length;
   const largest = [...moved].sort((a, b) => (b.marketCap ?? 0) - (a.marketCap ?? 0)).slice(0, 3);
@@ -110,9 +112,9 @@ export function mapSentence(rows: readonly ScreenRow[], blocks: Block[], asOf: s
   const first = sec.length > 1 ? `${secUp} of ${sec.length} sectors rose, and ${up} of the ${moved.length} largest companies`
     : sec.length ? `${sec[0]!.sector} moved ${pct(sec[0]!.move)}, and ${up} of its ${moved.length} largest companies rose`
     : `${up} of the ${moved.length} largest companies rose`;
-  return `As of ${date(asOf)}: ${first}. ` +
-    `The ${['largest', 'largest', 'two largest', 'three largest'][largest.length]}, ${and(largest.map(who))}, moved ${and(largest.map((r) => pct(r.chg1d)))}` +
-    (best !== worst ? `; the biggest moves were ${who(best)} ${pct(best.chg1d)} and ${who(worst)} ${pct(worst.chg1d)}.` : '.');
+  const extremes = best !== worst ? say`; the biggest moves were ${who(best)} ${pct(best.chg1d)} and ${who(worst)} ${pct(worst.chg1d)}.` : ['.'];
+  const lead = say`As of ${date(asOf)}: ${first}. The ${['largest', 'largest', 'two largest', 'three largest'][largest.length]}, ${andSaid(largest.map((r) => [who(r)]))}, `;
+  return say`${lead}moved ${and(largest.map((r) => pct(r.chg1d)))}${extremes}`;
 }
 /** How to read the map, in the words the AI answers use for a heat map. */
 export const HOW_TO_READ = 'Each tile is a company, sized by its market value and colored by the day’s move, grouped by sector.';
@@ -122,6 +124,7 @@ const NARROW = { w: 400, h: 600, n: 40 } as const;
 
 @Component({
   selector: 'pt-logo-map',
+  imports: [PtSay],
   template: `
     @let s = data.value();
     @if (s === null) {<p class="pt-na">Data not available</p>}
@@ -129,7 +132,7 @@ const NARROW = { w: 400, h: 600, n: 40 } as const;
       @if (!s.rows.length) {<p class="pt-na">No companies to show</p>}
       @else {
         <figure class="pt-lm" [class.pt-busy]="data.loading()">
-          <p class="pt-lede">{{ sentence() }}</p>
+          <p class="pt-lede"><pt-say [parts]="sentence()" /></p>
           @for (m of maps(); track m.key) {
             <svg [class]="'pt-lm-svg pt-lm-' + m.key" [attr.viewBox]="'0 0 ' + m.w + ' ' + m.h" role="group" [attr.aria-label]="'Stock market heat map: the ' + m.tiles.length + ' largest companies by sector, ' + date(s.asOf)">
               @for (b of m.blocks; track b.sector) {

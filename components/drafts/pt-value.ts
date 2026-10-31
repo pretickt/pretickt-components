@@ -16,11 +16,12 @@
  * Its questions and answers are marked for the page's structured data (`data-faq`, `data-faq-q`, `data-faq-a`): the top question is an
  * h2 with its answer, each searched question has an address of its own (`#value-<its words>`), so pt-people-ask links to it instead
  * of answering it again. The columns carry the words people search beside their own ("Price valuation", "Advantage moat").
- * @version 0.0.7
+ * A ticker of another company on a card is a link to its page: its card opens on hover, as on every ticker of the site.
+ * @version 0.0.8
  */
 import { Component, computed, input } from '@angular/core';
 import { PtIcon, PtLogo } from '@pretickt/components/ds';
-import { date, faqId, num, plainName, tip } from '@pretickt/components/format';
+import { date, faqId, num, plainName, stockHref, tip } from '@pretickt/components/format';
 
 export type ValueKey = 'demand' | 'advantage' | 'economics' | 'execution' | 'fragility' | 'price';
 export type ValueTone = 'pos' | 'flat' | 'neg' | 'na';
@@ -205,7 +206,7 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
                         @for (r of companies(c); track r.ticker) {
                           <li [class.dv-self]="r.self">
                             <pt-logo [ticker]="r.ticker" [src]="r.logo" [size]="16" />
-                            <span class="dv-co-t">{{ r.ticker }}</span>
+                            <a class="pt-mention dv-co-t" [href]="stockHref(r.ticker)">{{ r.ticker }}</a>
                             @if (r.width !== null) {<span class="dv-co-track"><i [class]="'dv-co-bar dv-last-' + r.tone" [style.width.%]="r.width"></i></span>}
                             <span [class]="'dv-co-v dv-co-' + r.tone">{{ r.label }}</span>
                           </li>
@@ -238,6 +239,7 @@ export class PtValue {
   protected readonly value = computed(() => { const v = this.data(); return v ? { ...v, name: plainName(v.name) } : null; });
   protected readonly answer = computed(() => { const v = this.value(); return v ? valueAnswer(v) : { lead: '', text: '' }; });
   protected readonly faqId = faqId;
+  protected readonly stockHref = stockHref;
   protected readonly QUESTIONS = QUESTIONS;
   protected readonly date = date;
   protected readonly cardTip = (c: ValueCard) => tip({ [c.big]: c.line, Why: c.why, 'pretickt analysis': c.via ?? null, Source: c.source });

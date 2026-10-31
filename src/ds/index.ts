@@ -7,6 +7,7 @@ export { PtBadge } from './pt-badge';
 export { PtChart } from './pt-chart';
 export { PtCompany } from './pt-company';
 export { iconPath, PtIcon } from './pt-icon';
+export { PtMention, PtSay } from './pt-mention';
 export { PtLogo } from './pt-logo';
 export { MORE_STEP, PtMore } from './pt-more';
 export { PtSortTh } from './pt-sort-th';

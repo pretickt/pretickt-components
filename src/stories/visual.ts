@@ -3,8 +3,9 @@
  * scenarios under its name, `/visual/<tag>/<n>` one alone — what the phone frames load. `?phone` shows the scenarios in frames
  * 390 px wide, so the phone media queries apply. Plain links, no router: a dev page can reload.
  */
-import { afterNextRender, Component, computed, inject } from '@angular/core';
+import { afterNextRender, ApplicationRef, Component, computed, inject } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
+import { attachCards, companyOf } from '../site/cards';
 import { REGISTRY } from '../site/registry.generated';
 import { attachShare } from '../site/share';
 import { attachTips } from '../site/tips';
@@ -91,9 +92,15 @@ export class PtVisual {
   constructor() {
     // a story in a phone frame never scrolls: the frame grows to it (fit), and a scrollbar would change the width it is shown at
     if (this.route.n !== null && window.parent !== window) document.documentElement.style.overflow = 'hidden';
+    const appRef = inject(ApplicationRef);
     afterNextRender(() => {
+      // the company card on hover over any company link, as on the site (its data from www, through the dev proxy)
+      const card = REGISTRY['pt-company-card'];
+      const cards = card ? attachCards(document, appRef, { id: `pt-company-card@${card.version}`,
+        hover: !!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches,
+        load: () => import('../../components/pt-company-card').then((m) => m.PtCompanyCard) }) : { active: () => false };
       const main = document.querySelector('main');
-      if (main) attachTips(main);
+      if (main) attachTips(main, (t) => cards.active() && companyOf(t.closest('a[href]')) !== null);
       attachShare(document); // each story's "Share": the image the site would make of it
     });
   }

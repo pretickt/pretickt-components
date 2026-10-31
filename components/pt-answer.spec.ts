@@ -42,7 +42,7 @@ describe('pt-answer', () => {
       row('AMD', 'Advanced Micro Devices, Inc.', { marketCap: 3e11, pe: 80 }), row('QCOM', 'QUALCOMM Incorporated', { marketCap: 1.8e11, pe: 15 }),
       row('INTC', 'Intel Corporation', { marketCap: 1e11, pe: null })].sort((a, b) => b.marketCap! - a.marketCap!);
     expect(await text({ topic: 'peers', ticker: 'NVDA' }, { 'screen@1': screen(rows) })).toBe(
-      'The peers of Nvidia NVDA by industry and size include Broadcom AVGO, AMD and Qualcomm QCOM. Among these 5 companies NVDA ranks ' +
+      'The peers of Nvidia NVDA by industry and size include Broadcom AVGO, AMD and Qualcomm QCOM. Among these 5 companies Nvidia NVDA ranks ' +
       '1st by market cap ($4.4T); its P/E of 45.2 compares with a median of 30.0 for its peers.');
   });
   it('financials: the latest quarter\'s revenue and its growth over a year, then EPS, free cash flow and net margin', async () => {
@@ -99,6 +99,17 @@ describe('pt-answer', () => {
     expect(await text({ topic: 'dividends', month: '2026-11' }, { 'events@1': dividends })).toBe(
       '1 company goes ex-dividend in November 2026. The largest: Apple AAPL $0.26 on Nov 10, 2026.');
     expect(await text({ topic: 'earnings', month: '2026-12' }, { 'events@1': { asOf: ASOF, items: [] } })).toBe('No earnings report is scheduled for December 2026 yet.');
+  });
+  it('names each company as a link with its logo (its card on hover): the page\'s own company and the ones its lists name', async () => {
+    const company = { ticker: 'NVDA', name: 'NVIDIA Corporation', sector: 'Technology', industry: 'Semiconductors', logo: '/logos/nvda-1.png' };
+    const r = await render(PtAnswer, { topic: 'forecast', ticker: 'NVDA' }, withData({ 'analysts@1': analysts(), 'metric@1': consensus('Buy'), 'company@1': company }));
+    const a = r.el.querySelector('.pt-answer a.pt-mention')!;
+    expect(a.getAttribute('href')).toBe('/stocks/nvda/');
+    expect(a.querySelector('img')!.getAttribute('src')).toBe('/logos/nvda-1.png');
+    const losers = screen([row('INTC', 'Intel Corporation', { chg1d: -0.081, logo: '/logos/intc-1.png' }), row('F', 'Ford Motor Company', { chg1d: -0.05 })]);
+    const l = await render(PtAnswer, { topic: 'list', list: 'biggest_losers' }, withData({ 'screen@1': losers }));
+    expect([...l.el.querySelectorAll('.pt-answer a.pt-mention')].map((x) => x.getAttribute('href'))).toEqual(['/stocks/intc/', '/stocks/f/']);
+    expect(l.el.querySelector('.pt-answer a.pt-mention img')!.getAttribute('src')).toBe('/logos/intc-1.png');
   });
   it('asks only for what its topic answers from (the page already asked for the same, so the build has it: the company card asks for the name)', async () => {
     const r = await render(PtAnswer, { topic: 'peers', ticker: 'NVDA' });

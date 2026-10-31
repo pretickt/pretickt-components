@@ -15,11 +15,12 @@
  * the close and read in the next session), and every agenda row is a sentence in the page — the date, confirmed or not, the session
  * that reacts, the usual move — with a link that says where it goes ("Microsoft earnings date"). What others expect is said in
  * sentences too, and the Polymarket line says what its chance is. A date not yet confirmed is dotted in the grid.
- * @version 0.0.3
+ * Each company it names, in a sentence or on the card, is a link with its logo (PtMention): the card opens on any ticker.
+ * @version 0.0.4
  */
 import { Component, computed, input, signal } from '@angular/core';
-import { PtLogo } from '@pretickt/components/ds';
-import { dayMonth, level, money, named, num, pct, stockHref, tone, usd, type Tone } from '@pretickt/components/format';
+import { PtLogo, PtMention, PtSay } from '@pretickt/components/ds';
+import { dayMonth, level, mention, money, num, pct, say, stockHref, tone, usd, type Said, type Tone } from '@pretickt/components/format';
 import { addDays, mondayOf, weekdayOf } from '../pt-calendar';
 
 export type OutlookVariant = 'move' | 'dollars' | 'record' | 'range';
@@ -231,50 +232,49 @@ export function card(e: OutlookEvent, normal: number | null): Card {
   return { ...head, lines, facts, expect: expectations(e), bars: bars(shown, u) };
 }
 
-/** "Microsoft MSFT": the company's common name with its ticker, no parentheses. */
-const coName = (e: CoEvent) => named(e.name, e.ticker);
+/** The company as the agenda names it: "Microsoft MSFT" with its logo, a link that opens its card. */
+const coName = (e: CoEvent) => mention(e.ticker, e.name, e.logo);
 /**
  * An agenda row in a sentence, the text a search engine and an AI read: "Microsoft MSFT reports Wed, Oct 28 (confirmed), after the
  * close; the stock reacts Thu, Oct 29. In the session after its last 8 reports it moved ±4.7% on average." After the report, its
  * figures and the move against the usual one; for a macro date, the market's (SPY) usual move on its releases.
  */
-export function agendaSentence(e: OutlookEvent, normal: number | null): string {
+export function agendaSentence(e: OutlookEvent, normal: number | null): Said {
   const m = moved(e), u = usualOf(e);
   if (e.kind === 'macro') {
     if (e.result) {
       const fig = e.result.actual ? `: ${e.result.actual}${e.expected ? ` vs ${e.expected} expected` : ''}` : '';
-      return `${e.event}, released ${dayLabel(e.date)}${fig}${m != null ? `; the market (SPY) moved ${pct(m)} that session` : ''}.`;
+      return [`${e.event}, released ${dayLabel(e.date)}${fig}${m != null ? `; the market (SPY) moved ${pct(m)} that session` : ''}.`];
     }
     const n = Math.min(e.moves.length, REPORTS);
-    return `${e.event} is due ${dayLabel(e.date)}${e.expected ? ` (expected ${e.expected}${e.previous ? `, previous ${e.previous}` : ''})` : ''}.` +
-      (u != null ? ` On its last ${n} releases the market (SPY) moved ±${level(u)} on average${normal ? `, ${times(u / normal)} a normal day` : ''}.` : '');
+    return [`${e.event} is due ${dayLabel(e.date)}${e.expected ? ` (expected ${e.expected}${e.previous ? `, previous ${e.previous}` : ''})` : ''}.` +
+      (u != null ? ` On its last ${n} releases the market (SPY) moved ±${level(u)} on average${normal ? `, ${times(u / normal)} a normal day` : ''}.` : '')];
   }
   const t = e.time ? `, ${TIME[e.time]}` : '', on = reactsOn(e), usual = u != null ? `±${level(u)}` : null;
   const reacts = on == null ? '' : `; the stock reacts ${on === e.date ? 'the same day' : dayLabel(on)}`;
   if (e.result) {
     const eps = e.result.epsActual != null && e.epsEst != null
       ? `: EPS ${money(e.result.epsActual)} vs ${money(e.epsEst)} expected, ${verdictPhrase(e.result.epsActual, e.epsEst)}` : '';
-    if (m != null) return `${coName(e)} reported ${dayLabel(e.date)}${t}${eps}. The stock moved ${pct(m)} in the session that traded it` +
-      `${u != null ? `, ${times(Math.abs(m) / u)} its usual ${usual}` : ''}.`;
-    return `${coName(e)} reported ${dayLabel(e.date)}${t}${eps}${reacts}.${usual ? ` Its usual move after a report: ${usual}.` : ''}`;
+    if (m != null) return say`${coName(e)} reported ${dayLabel(e.date)}${t}${eps}. The stock moved ${pct(m)} in the session that traded it${u != null ? `, ${times(Math.abs(m) / u)} its usual ${usual}` : ''}.`;
+    return say`${coName(e)} reported ${dayLabel(e.date)}${t}${eps}${reacts}.${usual ? ` Its usual move after a report: ${usual}.` : ''}`;
   }
-  const head = e.confirmed === false ? `${coName(e)} is expected to report around ${dayLabel(e.date)} (date not confirmed)${t}`
-    : `${coName(e)} reports ${dayLabel(e.date)}${e.confirmed ? ' (confirmed)' : ''}${t}${reacts}`;
-  return `${head}.${usual ? ` In the session after its last ${Math.min(e.reactions.length, REPORTS)} reports it moved ${usual} on average.` : ''}`;
+  const head = e.confirmed === false ? say`${coName(e)} is expected to report around ${dayLabel(e.date)} (date not confirmed)${t}`
+    : say`${coName(e)} reports ${dayLabel(e.date)}${e.confirmed ? ' (confirmed)' : ''}${t}${reacts}`;
+  return say`${head}.${usual ? ` In the session after its last ${Math.min(e.reactions.length, REPORTS)} reports it moved ${usual} on average.` : ''}`;
 }
 
 const NOTE = 'Past reactions: how big a move has been, not which way the next one goes. What others expect is their view, not a forecast.';
 
 @Component({
   selector: 'pt-outlook-card',
-  imports: [PtLogo],
+  imports: [PtMention],
   template: `
     @let e = event();
     @let c = view();
     <div class="do-card">
       <div class="do-card-head">
         @if (e.kind === 'macro') {<span class="pt-cal-macro">{{ e.label }}</span><b>{{ e.event }}</b>}
-        @else {<pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="20" /><b>{{ coName(e) }}</b>}
+        @else {<b><a ptMention [ticker]="e.ticker" [name]="e.name" [logo]="e.logo"></a></b>}
       </div>
       <p class="pt-meta">{{ whenText() }}</p>
       <p class="do-big">@if (c.big) {<b [class]="c.tone === 'est' ? 'do-est' : 'pt-t-' + c.tone">{{ c.big }}</b>}<span>{{ c.says }}</span></p>
@@ -304,7 +304,6 @@ const NOTE = 'Past reactions: how big a move has been, not which way the next on
 export class PtOutlookCard {
   readonly event = input.required<OutlookEvent>();
   readonly normal = input<number | null>(null);
-  protected readonly coName = coName;
   protected readonly view = computed(() => card(this.event(), this.normal()));
   protected readonly whenText = computed(() => when(this.event()));
   protected readonly barsLabel = computed(() => {
@@ -346,7 +345,7 @@ const ROOM_ABOVE = 560, CARD_W = 384;
 
 @Component({
   selector: 'pt-cal-outlook',
-  imports: [PtLogo, PtOutlookCard],
+  imports: [PtLogo, PtOutlookCard, PtSay],
   template: `
     @let d = data();
     @if (d === null) {<p class="pt-na">Data not available</p>}
@@ -388,7 +387,7 @@ const ROOM_ABOVE = 560, CARD_W = 384;
                   </summary>
                   <pt-outlook-card [event]="e" [normal]="d.normal" />
                 </details>
-                <p class="do-say">{{ say(e, d.normal) }} @if (e.kind === 'earnings') {<a [href]="stockHref(e.ticker)">{{ e.name }} earnings date&nbsp;→</a>}</p>
+                <p class="do-say"><pt-say [parts]="say(e, d.normal)" /> @if (e.kind === 'earnings') {<a [href]="stockHref(e.ticker)">{{ e.name }} earnings date&nbsp;→</a>}</p>
               </div>
             }
           }

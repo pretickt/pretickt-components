@@ -133,6 +133,10 @@
   img.pt-logo, .pt-mv-co image, .pt-lm-logo { filter: drop-shadow(0 0 0.5px color-mix(in oklab, var(--color-ink) 75%, transparent)) drop-shadow(0 0px 1.5px color-mix(in oklab, var(--color-ink) 28%, transparent)); }
   .pt-logo-initials { @apply inline-flex items-center justify-center bg-primary/10 text-[0.6rem] font-semibold leading-none text-primary; }
   .pt-co { @apply inline-flex min-w-0 items-center gap-1.5 text-ink no-underline hover:text-primary; }
+  /* a company named in a sentence (PtMention): its logo, its name, its ticker, kept on one line; its card opens on hover */
+  .pt-mention { @apply whitespace-nowrap text-inherit no-underline hover:text-primary; }
+  .pt-mention .pt-logo { @apply mr-1 h-[1.15em] w-[1.15em] align-[-0.22em]; }
+  .pt-mention-t { @apply font-semibold text-primary; }
   .pt-co-t { @apply font-mono font-semibold; }
   .pt-co-n { @apply truncate text-ink-soft; }
   .pt-scr-co .pt-logo { @apply mr-1 align-[-4px]; }

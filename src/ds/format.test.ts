@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { amount, badgeValue, cash, COMMON_NAMES, compact, currencyName, date, dayMonth, faqId, href, level, money, month, named, num, pct, plainName, stockHref, tip, tone, usd, withoutSuffixes } from './format';
+import { amount, andSaid, badgeValue, cash, COMMON_NAMES, compact, currencyName, date, dayMonth, faqId, href, level, mention, money, month, named, num, pct, plainName, saidText, say, stockHref, tip, tone, usd, withoutSuffixes } from './format';
 
 describe('company names as people, the press and the AI answers write them (plainName)', () => {
   it('drops the legal suffixes and share classes, whatever their case', () => {
@@ -33,6 +33,25 @@ describe('company names as people, the press and the AI answers write them (plai
       expect(Object.hasOwn(COMMON_NAMES, to), to).toBe(false);
       expect(plainName(to), to).toBe(to);
     }
+  });
+});
+
+describe('sentences that name companies (say): text, and each company as a mention drawn with its logo and its card', () => {
+  const nvda = mention('NVDA', 'NVIDIA Corporation', '/logos/nvda-1.png'), meta = mention('META', 'Meta Platforms, Inc.');
+  it('keeps the companies as mentions and the rest as text, neighbouring text merged', () => {
+    expect(say`The target for ${nvda} is ${'$326'} (${12}%).`).toEqual(['The target for ', nvda, ' is $326 (12%).']);
+    expect(say`${nvda}`).toEqual([nvda]);
+    expect(say`Peers: ${say`${nvda} and ${meta}`}.`).toEqual(['Peers: ', nvda, ' and ', meta, '.']);
+  });
+  it('reads as text with each company by its common name and ticker, as a search engine reads it', () => {
+    expect(saidText(say`The target for ${nvda} and ${meta} is up.`)).toBe('The target for Nvidia NVDA and Meta is up.');
+  });
+  it('lists sentences in parts: "a", "a and b", "a, b and c"', () => {
+    const one = say`${nvda} +3%`, two = say`${meta} -1%`;
+    expect(saidText(andSaid([one]))).toBe('Nvidia NVDA +3%');
+    expect(saidText(andSaid([one, two]))).toBe('Nvidia NVDA +3% and Meta -1%');
+    expect(saidText(andSaid([one, two, say`AMD`]))).toBe('Nvidia NVDA +3%, Meta -1% and AMD');
+    expect(andSaid([])).toEqual([]);
   });
 });
 

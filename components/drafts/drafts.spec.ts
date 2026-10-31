@@ -6,6 +6,7 @@ import { boardColumns, boardSentence, boardWeek, PtQualityStrip } from './pt-qua
 import { arcPath, at, barGeom, companyRows, list, NOT_ADVICE, onArc, priceSentence, PtValue, valueAnswer, type Value } from './pt-value';
 import { VALUE_INTC, VALUE_NKE, VALUE_NVDA } from './value-mock';
 import { render } from '../_spec';
+import { saidText } from '../../src/ds/format';
 
 describe('home drafts: the helpers their components will keep', () => {
   it('H1: heat against a usual day, the ring it earns, a bubble whose area grows with the posts, the sentence', () => {
@@ -13,9 +14,9 @@ describe('home drafts: the helpers their components will keep', () => {
     expect(heat({ mentions: 5, usual: 0 })).toBeNull();
     expect([2.5, 1, 0.5, null].map(ring)).toEqual(['hot', 'usual', 'cool', 'cool']);
     expect(bubbleSize(400) - 34).toBeCloseTo(2 * (bubbleSize(100) - 34), 0);
-    expect(hotSentence(HOT.rows, hotWhen(HOT), HOT.sources)).toBe('Most discussed on Reddit and X in the 24 hours to 10:30 a.m. ET, Mon, Oct 26, 2026: ' +
+    expect(saidText(hotSentence(HOT.rows, hotWhen(HOT), HOT.sources))).toBe('Most discussed on Reddit and X in the 24 hours to 10:30 a.m. ET, Mon, Oct 26, 2026: ' +
       'SpaceX SPCX (220 posts, 3.1× its usual), Alphabet GOOGL (170) and Amazon AMZN (150). Amgen AMGN draws 6.7× its usual. Posts from r/wallstreetbets, r/stocks and X.');
-    expect(hotSentence(HOT.rows.slice(0, 2))).toBe('Most discussed on Reddit and X in the last 24 hours: SpaceX SPCX (220 posts, 3.1× its usual) and Alphabet GOOGL (170). ' +
+    expect(saidText(hotSentence(HOT.rows.slice(0, 2)))).toBe('Most discussed on Reddit and X in the last 24 hours: SpaceX SPCX (220 posts, 3.1× its usual) and Alphabet GOOGL (170). ' +
       'SpaceX SPCX draws 3.1× its usual.');
     expect([etTime('10:30'), etTime('14:00'), etTime('09:05'), etTime('00:15')]).toEqual(['10:30 a.m. ET', '2 p.m. ET', '9:05 a.m. ET', '12:15 a.m. ET']);
     expect(hotWhen({ asOf: '2026-10-26', time: null })).toBe('Mon, Oct 26, 2026');
@@ -36,7 +37,9 @@ describe('home drafts: the helpers their components will keep', () => {
     const rows = [...el.querySelectorAll('ol.dr-rank li')].map((li) => li.textContent!.replace(/\s+/g, ' ').trim());
     expect(rows).toHaveLength(5);
     expect(rows[0]).toBe('SpaceX SPCX: 220 posts in 24 hours, 3.1× its usual day');
-    expect(el.querySelector('ol.dr-rank a')!.getAttribute('href')).toBe('/stocks/spcx/#people-ask');
+    expect(el.querySelector('ol.dr-rank a.pt-mention')!.getAttribute('href')).toBe('/stocks/spcx/#people-ask');
+    // the sentence names them as links with their logos too: the card opens on any ticker
+    expect([...el.querySelectorAll('.pt-lede a.pt-mention')].map((a) => a.getAttribute('href')).slice(0, 3)).toEqual(['/stocks/spcx/', '/stocks/googl/', '/stocks/amzn/']);
     expect((await render(PtHot, { data: HOT })).el.querySelector('ol.dr-rank')).toBeNull();
   });
   it('H2: a move split into three bars in proportion; a rail with price, high and target on it', () => {
@@ -164,6 +167,12 @@ describe('pt-value (draft): in the page\'s text', () => {
     expect(pairs[0]).toEqual(['Is Nvidia a good stock to buy?', `${lead} ${text}`]);
     expect(pairs.slice(1)).toEqual(VALUE_NVDA.faq.map((f) => [f.q, f.a]));
     expect(el.querySelector('#value-who-is-dumping-nvidia-stock h3')!.textContent).toBe('Who is dumping Nvidia stock?');
+  });
+  it('the other companies a card reads open their card from the ticker, as every ticker on the site does', async () => {
+    const { el } = await render(PtValue, { data: VALUE_NVDA });
+    const t = [...el.querySelectorAll('.dv-cos a.pt-mention')];
+    expect(t.length).toBeGreaterThan(10);
+    expect(t.find((a) => a.textContent === 'MSFT')!.getAttribute('href')).toBe('/stocks/msft/');
   });
   it('each card\'s title starts with the company\'s ticker, the searched term after it', async () => {
     for (const v of [VALUE_NVDA, VALUE_NKE, VALUE_INTC]) {

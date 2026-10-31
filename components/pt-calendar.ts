@@ -1,15 +1,15 @@
 /**
  * Which companies report earnings (or go ex-dividend) this month — or in the coming week — and which market-wide dates (Fed, CPI,
  * jobs) fall around them?
- * @version 2.5.1
+ * @version 2.6.0
  * @evidence DataForSEO: "earnings calendar" ~153k searches/month, SERP without AI overview (reports/Funzioni pretickt da tenere e aggiungere.md)
  * @evidence DataForSEO: "dividend calendar" in launch/data/08c-serp-dividend-calendar.json
  * @evidence beta: events-calendar month grid (pretickt-frontend/src/app/home/events-calendar.ts); stockanalysis.com earnings calendar
  */
 import { afterRenderEffect, Component, computed, type ElementRef, inject, input, linkedSignal, signal, viewChild } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
-import { PtLogo } from '@pretickt/components/ds';
-import { amount, date, named, num, plainName, stockHref, tip } from '@pretickt/components/format';
+import { PtLogo, PtMention } from '@pretickt/components/ds';
+import { amount, date, num, plainName, stockHref, tip } from '@pretickt/components/format';
 import { CALENDAR_MONTHS, type EventItem } from '@pretickt/components/typologies';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -97,7 +97,7 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
  */
 @Component({
   selector: 'pt-calendar',
-  imports: [PtLogo],
+  imports: [PtLogo, PtMention],
   template: `
     @if (data() === null) {<p class="pt-na">Data not available</p>}
     @else if (data()) {
@@ -147,7 +147,7 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
         } @else if (listed().length) {
           <ol class="pt-cal-list">
             @for (c of listed(); track c.date) {
-              <li><span class="pt-cal-list-day">{{ date(c.date) }}</span>@for (e of entries(c); track $index; let i = $index) {<ng-container>{{ i ? ', ' : ' ' }}</ng-container>@if (e.kind === 'macro') {<strong>{{ e.meta.label }}</strong> ({{ e.meta.event }})} @else {<a class="pt-co" [href]="stockHref(e.ticker)"><pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="16" />{{ named(e.name, e.ticker) }}{{ tag(e) ? ' ' + tag(e) : '' }}</a>}}</li>
+              <li><span class="pt-cal-list-day">{{ date(c.date) }}</span>@for (e of entries(c); track $index; let i = $index) {<ng-container>{{ i ? ', ' : ' ' }}</ng-container>@if (e.kind === 'macro') {<strong>{{ e.meta.label }}</strong> ({{ e.meta.event }})} @else {<a ptMention [ticker]="e.ticker" [name]="e.name" [logo]="e.logo"></a>{{ tag(e) ? ' ' + tag(e) : '' }}}}</li>
             }
           </ol>
         } @else {<p class="pt-lede">No {{ kind() === 'dividend' ? 'ex-dividend dates' : 'earnings reports' }} scheduled for {{ cal().label }} in the tracked universe yet.</p>}
@@ -180,7 +180,6 @@ export class PtCalendar {
   protected readonly DOW = DOW;
   protected readonly date = date;
   protected readonly stockHref = stockHref;
-  protected readonly named = named;
   protected readonly tag = tag;
   protected readonly macroTip = macroTip;
   protected readonly chipTip = chipTip;

@@ -6,14 +6,16 @@
  * It opens with its answer in a sentence — the company's common name and ticker, the 12 months to the date of the data, how many
  * facts strengthened its quality and how many weakened it — and names the company, not the ticker, in the drop test: the text an
  * AI answer can quote with its date.
- * @version 0.2.1
+ * The company is named as a link with its logo (PtSay): its card opens on hover, on its own page too.
+ * @version 0.3.0
  * @evidence Romeo 2026-10-24: "la qualità dell'azienda è intatta, a breve, medio e lungo termine?" — six sections, a card per new fact (brainstorming/scheda-qualita.html, proposals A + D)
  * @evidence pulse 19–25 Oct 2026: 89% of the real questions about a stock ask about quality or the decision (impact scorecard 7.5/10)
  * @evidence DataForSEO 2026-10-28 (round 13): "is {company} a good stock to buy" ≈64,000 searches a month on ~100 companies, AI Overview on 90%; the facts' own words ("pe ratio", "revenue growth", "gross margin", "guidance"…) 153,000 on 25 companies (launch/RESEARCH.md §9)
  */
 import { Component, computed, input, linkedSignal, inject } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
-import { cash, date, level, named, num, pct, tip } from '@pretickt/components/format';
+import { PtSay } from '@pretickt/components/ds';
+import { cash, date, level, mention, num, pct, say, tip, type Mention, type Said } from '@pretickt/components/format';
 import type { EventItem, Events, Fundamentals, PriceSeries } from '@pretickt/components/typologies';
 
 export type Pillar = 'demand' | 'advantage' | 'economics' | 'execution' | 'fragility' | 'price';
@@ -173,13 +175,12 @@ export function verdict(tones: QTone[]): string {
 
 /**
  * The answer first, in a sentence: "Nvidia NVDA in the 12 months to Oct 23, 2026: 3 facts strengthened its quality, 3 weakened it,
- * 4 to watch." — `who` is the name with the ticker.
+ * 4 to watch." — `who` is the company, named as a link with its logo (its card on hover).
  */
-export function qualityLead(who: string, cards: QCard[], asOf: string): string {
+export function qualityLead(who: Mention, cards: QCard[], asOf: string): Said {
   const n = (t: QTone) => cards.filter((c) => c.tone === t).length, up = n('pos'), down = n('neg'), flat = n('flat');
-  if (!cards.length) return `${who}: no new facts in the 12 months to ${date(asOf)}.`;
-  return `${who} in the 12 months to ${date(asOf)}: ${up} ${up === 1 ? 'fact' : 'facts'} strengthened its quality, ${down} weakened it` +
-    `${flat ? `, ${flat} to watch` : ''}.`;
+  if (!cards.length) return say`${who}: no new facts in the 12 months to ${date(asOf)}.`;
+  return say`${who} in the 12 months to ${date(asOf)}: ${up} ${up === 1 ? 'fact' : 'facts'} strengthened its quality, ${down} weakened it${flat ? `, ${flat} to watch` : ''}.`;
 }
 
 /** A row's sentence (templated, the text search engines read): "Next 1–3 years: Economics weakened, Execution strengthened." */
@@ -195,15 +196,16 @@ export function slope(from: number, to: number) {
 
 @Component({
   selector: 'pt-quality',
+  imports: [PtSay],
   template: `
     @let f = fund.value();
     @if (f === null) {<p class="pt-na">Data not available</p>}
     @else if (f) {
       <section class="pt-q" [class.pt-busy]="fund.loading()">
-        <p class="pt-lede">{{ lead() }}</p>
+        <p class="pt-lede"><pt-say [parts]="lead()" /></p>
         @if (drop(); as d) {
           <div class="pt-q-drop">
-            <p class="pt-q-drop-lead">{{ who() }} is {{ level(-d.ret) }} below its high of {{ date(d.high) }}.
+            <p class="pt-q-drop-lead"><pt-say [parts]="[who()]" /> is {{ level(-d.ret) }} below its high of {{ date(d.high) }}.
               @if (d.peers !== null && d.own !== null && d.market !== null) {
                 Over the same sessions the market (SPY) moved {{ pct(d.market) }} and its peers {{ pct(d.peers) }}:
                 {{ num(-d.own * 100, 1) }} of the {{ num(-d.ret * 100, 1) }} points are its own.
@@ -300,10 +302,10 @@ export class PtQuality {
   });
 
   protected readonly asOf = computed(() => this.fund.value()?.asOf ?? '');
-  /** "Nvidia NVDA": the name from the peers' list (the row with its ticker), the ticker alone until it is known */
+  /** The company, "Nvidia NVDA" with its logo: its name and logo from the peers' list (its own row), the ticker alone until it is known */
   protected readonly who = computed(() => {
-    const t = this.ticker();
-    return named(this.peers.value()?.rows.find((r) => r.ticker === t)?.name, t);
+    const t = this.ticker(), row = this.peers.value()?.rows.find((r) => r.ticker === t);
+    return mention(t, row?.name ?? null, row?.logo ?? null);
   });
   protected readonly lead = computed(() => qualityLead(this.who(), this.cards(), this.asOf()));
   private readonly bars = computed(() => this.prices.value()?.find((s) => s.ticker === this.ticker())?.points ?? []);

@@ -1,4 +1,5 @@
 import type { Screen, ScreenRow } from '../src/typologies';
+import { saidText } from '../src/ds/format';
 import { buildMap, mapSentence, PtLogoMap, sectorLabel, squarify, stepOf } from './pt-logo-map';
 import { basics, render, withData } from './_spec';
 
@@ -48,10 +49,10 @@ describe('the map', () => {
     expect(sectorLabel('Financial Services', -0.018, 40)).toBeNull();
   });
   it('says the day in a dated sentence: the sectors that rose, the companies, the three largest, the biggest moves', () => {
-    expect(mapSentence(rows, buildMap(rows, 1000, 560).blocks, '2026-10-23')).toBe('As of Oct 23, 2026: 2 of 3 sectors rose, and 3 of the 5 largest companies. '
+    expect(saidText(mapSentence(rows, buildMap(rows, 1000, 560).blocks, '2026-10-23'))).toBe('As of Oct 23, 2026: 2 of 3 sectors rose, and 3 of the 5 largest companies. '
       + 'The three largest, AAA, BBB and CCC, moved +3.1%, -0.4% and -3.0%; the biggest moves were AAA +3.1% and CCC -3.0%.');
     const named = [{ ...rows[0]!, ticker: 'NVDA', name: 'NVIDIA Corporation' }, { ...rows[1]!, ticker: 'AAPL', name: 'Apple Inc.' }];
-    expect(mapSentence(named, buildMap(named, 1000, 560).blocks, '2026-10-23')).toBe('As of Oct 23, 2026: Technology moved +1.9%, and 1 of its 2 largest companies rose. '
+    expect(saidText(mapSentence(named, buildMap(named, 1000, 560).blocks, '2026-10-23'))).toBe('As of Oct 23, 2026: Technology moved +1.9%, and 1 of its 2 largest companies rose. '
       + 'The two largest, Nvidia NVDA and Apple AAPL, moved +3.1% and -0.4%; the biggest moves were Nvidia NVDA +3.1% and Apple AAPL -0.4%.');
   });
 });
@@ -69,6 +70,9 @@ describe('pt-logo-map', () => {
     expect(r.el.querySelector('svg.pt-lm-narrow')).toBeTruthy();
     expect(r.text()).toContain('size = market value · as of Oct 23, 2026');
     expect(wide.getAttribute('aria-label')).toBe('Stock market heat map: the 5 largest companies by sector, Oct 23, 2026');
+    // the sentence names the companies as links with their logos: the card on hover, as on the tiles
+    const said = [...r.el.querySelectorAll('.pt-lede a.pt-mention')];
+    expect(said.map((a) => a.getAttribute('href'))).toEqual(['/stocks/aaa/', '/stocks/bbb/', '/stocks/ccc/', '/stocks/aaa/', '/stocks/ccc/']);
     expect(r.text()).toContain('Each tile is a company, sized by its market value and colored by the day’s move, grouped by sector.');
     expect(r.el.querySelector('.pt-lede')!.textContent).toMatch(/^As of Oct 23, 2026: /);
   });

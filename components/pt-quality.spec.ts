@@ -1,4 +1,5 @@
 import type { Events, Fundamentals, PriceSeries } from '../src/typologies';
+import { mention, saidText } from '../src/ds/format';
 import { dropTest, PtQuality, qualityCards, qualityLead, reactionAfter, rowSentence, slope, verdict, type QCard } from './pt-quality';
 import { basics, render, withData } from './_spec';
 
@@ -93,9 +94,9 @@ describe('the words and the marks', () => {
   });
   it('the answer first: the company, the 12 months to the date, the facts that strengthened and weakened its quality', () => {
     const cards = qualityCards('XYZ', fund, events, series()[0]!.points, '2026-10-23');
-    expect(qualityLead('XYZ Corp XYZ', cards, '2026-10-23')).toBe('XYZ Corp XYZ in the 12 months to Oct 23, 2026: 3 facts strengthened its quality, 3 weakened it, 4 to watch.');
-    expect(qualityLead('XYZ', [c('demand', 'pos')], '2026-10-23')).toBe('XYZ in the 12 months to Oct 23, 2026: 1 fact strengthened its quality, 0 weakened it.');
-    expect(qualityLead('XYZ', [], '2026-10-23')).toBe('XYZ: no new facts in the 12 months to Oct 23, 2026.');
+    expect(saidText(qualityLead(mention('XYZ', 'Xylo Zen Corp'), cards, '2026-10-23'))).toBe('Xylo Zen XYZ in the 12 months to Oct 23, 2026: 3 facts strengthened its quality, 3 weakened it, 4 to watch.');
+    expect(saidText(qualityLead(mention('XYZ'), [c('demand', 'pos')], '2026-10-23'))).toBe('XYZ in the 12 months to Oct 23, 2026: 1 fact strengthened its quality, 0 weakened it.');
+    expect(saidText(qualityLead(mention('XYZ'), [], '2026-10-23'))).toBe('XYZ: no new facts in the 12 months to Oct 23, 2026.');
   });
   it('a slope keeps zero in its box', () => {
     expect(slope(0.1, 0.2)).toEqual({ y1: 10, y2: 3, zero: 17 });
@@ -132,6 +133,8 @@ describe('pt-quality', () => {
       'screen@1': { asOf: '2026-10-23', rows: [self] } }));
     expect(r.el.querySelector('.pt-lede')!.textContent).toBe('Xylo Zen XYZ in the 12 months to Oct 23, 2026: 3 facts strengthened its quality, 3 weakened it, 4 to watch.');
     expect(r.el.querySelector('.pt-q-drop-lead')!.textContent!.trim()).toMatch(/^Xylo Zen XYZ is 19\.9% below/);
+    // the company named as a link, its card on hover: in the lead and in the drop test
+    expect([...r.el.querySelectorAll('.pt-lede a.pt-mention, .pt-q-drop-lead a.pt-mention')].map((a) => a.getAttribute('href'))).toEqual(['/stocks/xyz/', '/stocks/xyz/']);
     const other = { ...self, ticker: 'AAPL', name: 'Apple Inc.' };          // a row marked self but for another ticker is not its name
     const r2 = await render(PtQuality, { ticker: 'XYZ' }, withData({ 'fundamentals@1': fund, 'events@1': events, 'price-series@1': series(),
       'screen@1': { asOf: '2026-10-23', rows: [other] } }));

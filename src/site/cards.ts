@@ -3,9 +3,9 @@ import { Pt } from '@pretickt/components/context';
 
 const GAP = 8;
 
-/** The company a link points to — its page `/stocks/<t>/` and nothing else — as a ticker, or null. */
+/** The company a link points to — its page `/stocks/<t>/`, or a section of it (`#people-ask`) — as a ticker, or null. */
 export function companyOf(el: Element | null): string | null {
-  const m = /^\/stocks\/([a-z0-9.]{1,12})\/$/.exec(el?.getAttribute('href') ?? '');
+  const m = /^\/stocks\/([a-z0-9.]{1,12})\/(?:#[a-z0-9-]*)?$/.exec(el?.getAttribute('href') ?? '');
   return m ? m[1]!.toUpperCase() : null;
 }
 
@@ -41,8 +41,6 @@ export interface CardOptions {
   id: string;
   /** A device with a mouse (`(hover: hover) and (pointer: fine)`); touch screens follow the link instead. */
   hover: boolean;
-  /** The company of a company page: its own links open no card. */
-  subject?: string;
   openMs?: number;
   closeMs?: number;
   /** After a card fails to load (typically the API's rate limit), cards pause this long and links show their text tooltips. */
@@ -51,7 +49,8 @@ export interface CardOptions {
 export interface Cards { active(): boolean }
 
 /**
- * Hovering a company link (any `/stocks/<t>/` link but the page's own company) opens the company card, compact, in a floating panel
+ * Hovering a company link (any `/stocks/<t>/` link, the page's own company too: Romeo, 2026-10-31, "passando sopra al simbolo compare
+ * sempre la card"; not the header's search or the sub-navigation) opens the company card, compact, in a floating panel
  * outside the page markup: after a moment (a passing pointer opens nothing), with the link's tooltip rows as its footer. The panel
  * stays while the pointer is on the link or on it, closes a moment after leaving or on Escape; one at a time. The card is mounted in
  * the page's own app (its calls share the page's answers); a card whose data cannot load is not shown and cards pause.
@@ -59,16 +58,16 @@ export interface Cards { active(): boolean }
 export function attachCards(doc: Document, appRef: ApplicationRef, o: CardOptions): Cards {
   const win = doc.defaultView;
   if (!o.hover || !win) return { active: () => false };
-  const subject = o.subject?.toUpperCase();
   let link: Element | null = null, panel: HTMLElement | null = null, ref: ComponentRef<CardComponent> | null = null, env: EnvironmentInjector | null = null;
   let openTimer = 0, closeTimer = 0, pausedUntil = 0;
   const paused = () => win.performance.now() < pausedUntil;
 
   const linkOf = (t: EventTarget | null): Element | null => {
     const a = (t as Element | null)?.closest?.('a[href]') ?? null;
-    if (a?.closest('.pt-header')) return null; // the header's search results: a card would cover the list
-    const ticker = companyOf(a);
-    return ticker && ticker !== subject ? a : null;
+    // the header's search results (a card would cover the list) and the sub-navigation ("Overview": a page, not a ticker) open none;
+    // every other company link does, the page's own company too: hovering a ticker always shows its card
+    if (a?.closest('.pt-header, .pt-subnav')) return null;
+    return companyOf(a) ? a : null;
   };
   /** Removes the open panel; a card about to open (the next link) is left alone. */
   const teardown = () => {

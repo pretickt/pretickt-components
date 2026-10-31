@@ -106,8 +106,12 @@ describe('pt-calendar', () => {
     expect(out).toContain('Confirmed by the company');
     // a month shows each report twice, as a chip in the grid and as a line of the text list: only NVDA's two carry the ~
     expect(out.match(/~AMC/g)!.length).toBe(2);
-    expect(out).toContain('Nvidia NVDA ~AMC');
-    expect(out).toContain('Apple AAPL AMC');
+    // the text list names each company as a link with its logo (its card on hover), the time after it
+    const list = await render(PtCalendar, { month: '2026-10', kind: 'earnings' }, withData({ 'events@1': d }));
+    const said = list.el.querySelector('.pt-cal-list')!.textContent!.replace(/\s+/g, ' ');
+    expect(said).toContain('Nvidia NVDA ~AMC');
+    expect(said).toContain('Apple AAPL AMC');
+    expect([...list.el.querySelectorAll('.pt-cal-list a.pt-mention')].map((a) => a.getAttribute('href'))).toEqual(['/stocks/nvda/', '/stocks/aapl/', '/stocks/ko/']);
     expect(out).toContain('BMO');
     expect(out).not.toContain('~BMO');
   });

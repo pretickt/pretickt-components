@@ -10,11 +10,12 @@
  * (`#people-ask`, the section of pt-people-ask). A "today" that is not today loses trust: with `stale` (the resolver's call, at
  * build time: the pulse runs on a Mac and can stop) the heading drops "today" and says when the counts are from. On its own page
  * (/trending) the page's h1 is the heading (`head` false) and `rank` lists the most talked about with their counts, as text.
- * @version 0.0.3
+ * Every company it names, in the sentence and in the list, is a link with its logo: the card opens on any ticker.
+ * @version 0.0.4
  */
 import { Component, computed, input } from '@angular/core';
-import { PtLogo } from '@pretickt/components/ds';
-import { dayMonth, named, num, pct, plainName, stockHref, tip } from '@pretickt/components/format';
+import { PtLogo, PtMention, PtSay } from '@pretickt/components/ds';
+import { andSaid, dayMonth, mention, num, pct, plainName, say, stockHref, tip, type Said } from '@pretickt/components/format';
 import { weekdayOf } from '../pt-calendar';
 
 export interface HotRow { ticker: string; name: string; logo: string | null; mentions: number; usual: number; move: number | null; theme: string | null }
@@ -43,21 +44,21 @@ const listed = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -
  * "Most discussed on Reddit and X in the 24 hours to 10:30 a.m. ET, Mon, Oct 26, 2026: SpaceX SPCX (220 posts, 3.1× its usual), Alphabet
  * GOOGL (170) and Amazon AMZN (150). Amgen AMGN draws 6.7× its usual. Posts from r/wallstreetbets, r/stocks and X."
  */
-export function hotSentence(rows: HotRow[], when = '', sources: string[] = []): string {
+export function hotSentence(rows: HotRow[], when = '', sources: string[] = []): Said {
   const top = [...rows].sort((a, b) => b.mentions - a.mentions).slice(0, 3);
-  if (!top.length) return '';
+  if (!top.length) return [];
+  const who = (r: HotRow) => mention(r.ticker, r.name, r.logo);
   const hottest = rows.filter((r) => (heat(r) ?? 0) >= 2).sort((a, b) => heat(b)! - heat(a)!)[0];
   const h0 = heat(top[0]!);
-  const parts = [`${named(top[0]!.name, top[0]!.ticker)} (${top[0]!.mentions} posts${h0 !== null ? `, ${num(h0, 1)}× its usual` : ''})`,
-    ...top.slice(1).map((r) => `${named(r.name, r.ticker)} (${r.mentions})`)];
-  return `Most discussed on Reddit and X ${when ? `in the 24 hours to ${when}` : 'in the last 24 hours'}: ${listed(parts)}.` +
-    (hottest ? ` ${named(hottest.name, hottest.ticker)} draws ${num(heat(hottest), 1)}× its usual.` : '') +
-    (sources.length ? ` Posts from ${listed(sources)}.` : '');
+  const parts = [say`${who(top[0]!)} (${top[0]!.mentions} posts${h0 !== null ? `, ${num(h0, 1)}× its usual` : ''})`,
+    ...top.slice(1).map((r) => say`${who(r)} (${r.mentions})`)];
+  const draws = hottest ? say` ${who(hottest)} draws ${num(heat(hottest), 1)}× its usual.` : [];
+  return say`Most discussed on Reddit and X ${when ? `in the 24 hours to ${when}` : 'in the last 24 hours'}: ${andSaid(parts)}.${draws}${sources.length ? ` Posts from ${listed(sources)}.` : ''}`;
 }
 
 @Component({
   selector: 'pt-hot',
-  imports: [PtLogo],
+  imports: [PtLogo, PtMention, PtSay],
   template: `
     @let d = data();
     @if (d === null) {<p class="pt-na">Data not available</p>}
@@ -66,7 +67,7 @@ export function hotSentence(rows: HotRow[], when = '', sources: string[] = []): 
         <div class="dr-head">@if (head()) {<h2 class="dr-head-t">{{ d.stale ? 'Trending stocks on Reddit and X' : 'Trending stocks on Reddit and X today' }}</h2>}
           <span class="pt-meta">{{ d.stale ? 'last updated ' + when() + ' — not today’s counts' : 'last 24 hours · as of ' + when() }}</span></div>
         @if (bubbles().length) {
-          <p class="pt-lede">{{ sentence() }}</p>
+          <p class="pt-lede"><pt-say [parts]="sentence()" /></p>
           <ul class="dr-bubbles">
             @for (b of bubbles(); track b.ticker) {
               <li class="dr-bub-li">
@@ -78,7 +79,7 @@ export function hotSentence(rows: HotRow[], when = '', sources: string[] = []): 
           </ul>
           @if (ranked().length) {
             <ol class="dr-rank">
-              @for (r of ranked(); track r.ticker) {<li><a [href]="r.href">{{ r.who }}</a>: {{ r.say }}</li>}
+              @for (r of ranked(); track r.ticker) {<li><a ptMention [ticker]="r.ticker" [name]="r.name" [logo]="r.logo" section="people-ask"></a>: {{ r.say }}</li>}
             </ol>
           }
           <figcaption class="pt-legend">
@@ -99,8 +100,7 @@ export class PtHot {
   readonly rank = input(0);
   protected readonly ranked = computed(() => [...(this.data()?.rows ?? [])].sort((a, b) => b.mentions - a.mentions).slice(0, this.rank()).map((r) => {
     const x = heat(r);
-    return { ticker: r.ticker, href: `${stockHref(r.ticker)}#people-ask`, who: named(r.name, r.ticker),
-      say: `${r.mentions} posts in 24 hours${x === null ? '' : `, ${num(x, 1)}× its usual day`}` };
+    return { ticker: r.ticker, name: r.name, logo: r.logo, say: `${r.mentions} posts in 24 hours${x === null ? '' : `, ${num(x, 1)}× its usual day`}` };
   }));
   protected readonly when = computed(() => { const d = this.data(); return d ? hotWhen(d) : ''; });
   protected readonly bubbles = computed(() => [...(this.data()?.rows ?? [])].sort((a, b) => b.mentions - a.mentions).map((r) => {
@@ -110,5 +110,5 @@ export class PtHot {
       label: `What people ask about ${nameOf(r)}: ${r.mentions} posts in 24 hours${x === null ? '' : `, ${num(x, 1)} times its usual`}`,
       tip: tip({ [r.ticker]: r.name, Posts: `${r.mentions} in 24 hours`, 'Usual day': x === null ? null : `${num(r.usual, 0)} posts`, Today: r.move === null ? null : pct(r.move), Talk: r.theme }) };
   }));
-  protected readonly sentence = computed(() => { const d = this.data(); return d ? hotSentence(d.rows, this.when(), d.sources) : ''; });
+  protected readonly sentence = computed(() => { const d = this.data(); return d ? hotSentence(d.rows, this.when(), d.sources) : []; });
 }

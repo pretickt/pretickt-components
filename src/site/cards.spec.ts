@@ -4,7 +4,7 @@ import { PT_STORE } from '@pretickt/components/context';
 import { PtCompanyCard } from '../../components/pt-company-card';
 import { needPath } from '../api';
 import { demoFor } from '../typologies';
-import { attachCards, panelPosition } from './cards';
+import { attachCards, companyOf, panelPosition } from './cards';
 import { browserStore } from './store.browser';
 import { attachTips } from './tips';
 
@@ -16,13 +16,13 @@ const api = vi.fn(async (url: string) => {
   return new Response(JSON.stringify(demoFor({ t, params: JSON.parse(u.searchParams.get('p')!) } as never)));
 });
 
-function page(o: { subject?: string; hover?: boolean; fetchImpl?: typeof api; sent?: string[] } = {}) {
+function page(o: { hover?: boolean; fetchImpl?: typeof api; sent?: string[] } = {}) {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({ providers: [{ provide: PT_STORE, useValue: browserStore({ buildId: 'b1', api: '', sections: [] }, {}, o.fetchImpl ?? api) }] });
   document.body.innerHTML = `<p><a id="aapl" href="/stocks/aapl/" data-tip='{"Earnings":"Oct 28, 2026","EPS est.":null}'>AAPL</a>` +
     `<a id="nvda" href="/stocks/nvda/">NVDA</a><a id="other" href="/earnings-calendar/">calendar</a></p>`;
   document.addEventListener('pt-interact', (e) => o.sent?.push(`${(e.target as Element).getAttribute('data-island')}|${(e as CustomEvent<{ action: string }>).detail.action}`));
-  return attachCards(document, TestBed.inject(ApplicationRef), { id: ID, load: async () => PtCompanyCard, hover: o.hover ?? true, subject: o.subject, openMs: 20, closeMs: 20, pauseMs: 5000 });
+  return attachCards(document, TestBed.inject(ApplicationRef), { id: ID, load: async () => PtCompanyCard, hover: o.hover ?? true, openMs: 20, closeMs: 20, pauseMs: 5000 });
 }
 const over = (id: string) => document.getElementById(id)!.dispatchEvent(new Event('pointerover', { bubbles: true }));
 const out = (id: string, to: Element | null = document.body) => document.getElementById(id)!.dispatchEvent(Object.assign(new Event('pointerout', { bubbles: true }), { relatedTarget: to }));
@@ -81,7 +81,7 @@ describe('company cards on hover', () => {
     await wait(80);
     expect(panel()).toBeNull();
   });
-  it('a quick pass over a link opens nothing; nothing without a mouse, for the page\'s own company, or for other links', async () => {
+  it('a quick pass over a link opens nothing; nothing without a mouse, or for other links', async () => {
     page();
     over('aapl'); out('aapl');
     await wait(60);
@@ -90,10 +90,20 @@ describe('company cards on hover', () => {
     over('aapl');
     await wait(60);
     expect(panel()).toBeNull();
-    page({ subject: 'AAPL' });
-    over('aapl'); over('other');
+    page();
+    over('other');
     await wait(60);
     expect(panel()).toBeNull();
+  });
+  it('hovering a ticker always shows its card, on the company\'s own page too; the sub-navigation (Overview) is not a ticker', async () => {
+    page();
+    document.body.insertAdjacentHTML('beforeend', '<nav class="pt-subnav"><a id="overview" href="/stocks/nvda/">Overview</a></nav>' +
+      '<p>The target for <a id="self" class="pt-mention" href="/stocks/nvda/">Nvidia NVDA</a> is up.</p>');
+    over('overview');
+    await wait(60);
+    expect(panel()).toBeNull();
+    over('self');
+    await vi.waitFor(() => expect(panel()?.querySelector('.pt-card-compact')).toBeTruthy());
   });
   it('the header\'s search results are company links too, but open no card (it would cover the list)', async () => {
     page();
@@ -107,6 +117,11 @@ describe('company cards on hover', () => {
     page({ sent });
     over('aapl');
     await vi.waitFor(() => expect(sent).toContain(`${ID}|hover`));
+  });
+  it('a company link is its page, with or without a section of it (#people-ask), and nothing else', () => {
+    const a = (href: string) => Object.assign(document.createElement('a'), { href }) && (() => { const x = document.createElement('a'); x.setAttribute('href', href); return x; })();
+    expect(['/stocks/nvda/', '/stocks/brk.b/#quality', '/stocks/nvda/#people-ask', '/stocks/nvda/news/', '/stocks/nvda', '/earnings-calendar/'].map((h) => companyOf(a(h))))
+      .toEqual(['NVDA', 'BRK.B', 'NVDA', null, null, null]);
   });
   it('panel position: below the link when it fits, above when it does not, else pinned and scrollable', () => {
     expect(panelPosition({ left: 100, top: 100, bottom: 120 }, 340, 300, 1200, 800)).toEqual({ x: 100, y: 128, maxHeight: null });

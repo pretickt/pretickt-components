@@ -49,7 +49,7 @@ export class PtPage {
       attachShare(doc); // each placement's "Share": the placement as an image, and the link back
       const card = REGISTRY[CARD];
       const cards = card ? attachCards(doc, appRef, {
-        id: `${CARD}@${card.version}`, subject: this.model.subject,
+        id: `${CARD}@${card.version}`,
         hover: !!doc.defaultView?.matchMedia?.('(hover: hover) and (pointer: fine)').matches,
         load: () => import('../../components/pt-company-card').then((m) => m.PtCompanyCard),
       }) : { active: () => false };

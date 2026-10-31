@@ -184,6 +184,12 @@ them too, quoting the sites that write the exact number with its date. What a co
   company with an odd name gets its line there). `named(name, ticker)` is the usual form, "Nvidia NVDA", the ticker without parentheses
   (Romeo, 2026-10-31), the name alone when it is the ticker in other letters ("Meta", "AMD"); a table shows the name beside the ticker
   only when it differs.
+- **Every company a text names is a link with its logo, and its card opens on the ticker** (Romeo, 2026-10-31: "aggiungi i loghi e
+  passando sopra al simbolo compare sempre la card"). A sentence is built with `say` and drawn with `<pt-say [parts]>`: each
+  `mention(ticker, name, logo)` becomes `<a ptMention>` (logo, common name, ticker; `section` opens the page at one of its sections).
+  `saidText` is its text, "Nvidia NVDA". A ticker elsewhere (a table, a chart's row) is a link to `/stocks/<t>/` (a `#section`
+  allowed): the page runtime opens the company card on every company link, the page's own company too, but in the header's search
+  and the sub-navigation (cards.ts).
 - **The date in the text**, and in a heading when the data is today's ("Earnings today · Wed, Oct 28"), always with the explicit date:
   a page built at night is read the next day. Say what is an estimate (a date not confirmed, a forecast).
 - **Links say where they go** ("Nvidia earnings date", "Why Meta is down this week"), never "more" or "the answer on pretickt".
