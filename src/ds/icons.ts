@@ -23,9 +23,6 @@ export const ICON_PATHS: Record<string, string> = {
   gauge: P('M2 12a6 6 0 1 1 12 0M8 12l3-4'),
   bank: P('M1 6l7-4 7 4zM3 7v5M6.3 7v5M9.7 7v5M13 7v5M1 14h14'),
   dot: P('M8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'),
-  // a report against the estimate (pt-calendar): a beat, a miss
-  'thumb-up': P('M1.5 7h3v7h-3zM4.5 7.5L7.5 2c1.2 0 2 1 1.7 2.2L8.7 6.5h4.6c1 0 1.6.9 1.4 1.8l-1.1 4.6c-.2.7-.8 1.1-1.5 1.1H4.5'),
-  'thumb-down': P('M1.5 2h3v7h-3zM4.5 8.5L7.5 14c1.2 0 2-1 1.7-2.2L8.7 9.5h4.6c1 0 1.6-.9 1.4-1.8l-1.1-4.6c-.2-.7-.8-1.1-1.5-1.1H4.5'),
 };
 
 /** Legacy markup of the same icons (string renderers). */

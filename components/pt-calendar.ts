@@ -18,7 +18,7 @@
  */
 import { afterRenderEffect, Component, computed, type ElementRef, inject, input, linkedSignal, signal, viewChild } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
-import { MORE_STEP, PtIcon, PtLogo, PtMention, PtMore, PtSay } from '@pretickt/components/ds';
+import { MORE_STEP, PtLogo, PtMention, PtMore, PtSay } from '@pretickt/components/ds';
 import { amount, date, dayMonth, href, level, mention, money, named, num, pct, plainName, say, tip, tone, usd, type Said, type Tone }
   from '@pretickt/components/format';
 import { CALENDAR_MONTHS, cmp, type EventItem } from '@pretickt/components/typologies';
@@ -153,21 +153,15 @@ function fedChange(to: number, from: number | null, f: (v: number) => string, ex
 }
 const upper = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-type Report = NonNullable<Earnings['meta']['reports']>[number];
-/** A past report against the EPS estimate, as a thumb: up and green a beat, down and red a miss, a grey dot in line, empty without one. */
-export interface Thumb { tone: Tone; icon: 'thumb-up' | 'thumb-down' | 'dot'; word: string; value: string }
 /**
- * Its last reports (eight at most, oldest first) as thumbs, the history people ask about before a report ("will it beat?"; Romeo:
- * "un grafico con il risultato storico e un thumb verde o rosso up o down se expected o meno"); none without a report on file.
+ * Its last eight moves as small bars around zero, in their tones: how big and which way, at a glance (none with fewer than four).
+ * Romeo tried thumbs for beats and misses instead, then: "le barrette restano, erano meglio".
  */
-export function thumbsOf(reports: readonly Report[] | null | undefined): { list: Thumb[]; label: string } | null {
-  const last = (reports ?? []).slice(-REPORTS);
-  if (!last.length) return null;
-  const list = last.map(({ surprise: s }): Thumb => s == null ? { tone: 'na', icon: 'dot', word: 'no estimate', value: '—' }
-    : s > SURPRISE ? { tone: 'pos', icon: 'thumb-up', word: 'beat', value: pct(s, 0) }
-    : s < -SURPRISE ? { tone: 'neg', icon: 'thumb-down', word: 'missed', value: pct(s, 0) }
-    : { tone: 'flat', icon: 'dot', word: 'in line', value: pct(s, 0) });
-  return { list, label: `EPS against the estimate in its last ${last.length} reports: ${list.map((t) => t.word).join(', ')}` };
+export function miniBars(moves: readonly number[] | null | undefined): { w: number; bars: { x: number; y: number; h: number; tone: Tone }[] } | null {
+  const last = (moves ?? []).slice(-REPORTS);
+  if (last.length < MIN_REPORTS) return null;
+  const max = Math.max(...last.map(Math.abs), 1e-9);
+  return { w: last.length * 6 - 2, bars: last.map((v, i) => { const h = Math.max(1.5, (Math.abs(v) / max) * 10); return { x: i * 6, y: v >= 0 ? 11 - h : 11, h, tone: tone(v) }; }) };
 }
 
 /** An event's key: its row's, which its chip in the grid opens. */
@@ -178,7 +172,7 @@ export interface Row {
   key: string; out: boolean;
   /** A market date's label (Fed, CPI…); a company's row has its logo instead. */
   label: string | null; title: string; ticker: string | null; logo: string | null; showTicker: boolean; unconfirmed: boolean;
-  cue: string; cueTone: Tone | 'est'; when: string; hint: string; thumbs: ReturnType<typeof thumbsOf>;
+  cue: string; cueTone: Tone | 'est'; when: string; hint: string; bars: ReturnType<typeof miniBars>;
   said: Said; facts: string; news: Story[];
 }
 
@@ -218,7 +212,7 @@ function earningsRow(e: Earnings, asOf: string, closed: ReadonlySet<string>): Ro
   }
   return { key: rowKey(e), out, label: null, title: name, ticker: e.ticker, logo: e.logo, showTicker: named(e.name, e.ticker) !== name,
     unconfirmed: !out && m.confirmed === false, cue: moved != null ? pct(moved) : usual ?? '', cueTone: moved != null ? tone(moved) : 'est',
-    when, hint, thumbs: thumbsOf(m.reports), said, facts, news: m.news ?? [] };
+    when, hint, bars: miniBars(moves), said, facts, news: m.news ?? [] };
 }
 
 function macroRow(e: Macro, asOf: string, normal: number | null): Row {
@@ -241,13 +235,13 @@ function macroRow(e: Macro, asOf: string, normal: number | null): Row {
   }
   return { key: rowKey(e), out, label: m.label, title, ticker: null, logo: null, showTicker: false, unconfirmed: false,
     cue: moved != null ? pct(moved) : u == null ? '' : `±${level(u)}`, cueTone: moved != null ? tone(moved) : 'est',
-    when: `${out ? 'Released' : 'Due'} ${dayLabel(e.date)}`, hint, thumbs: null, said: [said], facts: '', news: m.news ?? [] };
+    when: `${out ? 'Released' : 'Due'} ${dayLabel(e.date)}`, hint, bars: miniBars(m.moves), said: [said], facts: '', news: m.news ?? [] };
 }
 
 function dividendRow(e: Dividend, asOf: string): Row {
   const out = e.date <= asOf, who = mention(e.ticker, e.name, e.logo), name = plainName(e.name), paid = e.meta.payDate ? dayMonth(e.meta.payDate) : null;
   return { key: rowKey(e), out, label: null, title: name, ticker: e.ticker, logo: e.logo, showTicker: named(e.name, e.ticker) !== name,
-    unconfirmed: false, cue: amount(e.meta.amount), cueTone: 'est', when: `Ex-dividend ${dayLabel(e.date)}`, hint: paid ? `paid ${paid}` : '', thumbs: null,
+    unconfirmed: false, cue: amount(e.meta.amount), cueTone: 'est', when: `Ex-dividend ${dayLabel(e.date)}`, hint: paid ? `paid ${paid}` : '', bars: null,
     said: say`${who} ${out ? 'went' : 'goes'} ex-dividend ${dayLabel(e.date)}: ${amount(e.meta.amount)} a share${paid ? `, paid ${paid}` : ''}.`, facts: '', news: [] };
 }
 
@@ -263,8 +257,7 @@ export function calendarRows(items: EventItem[], kind: Kind, asOf: string, norma
   const row = (e: EventItem) => (e.kind === 'macro' ? macroRow(e, asOf, normal) : e.kind === 'earnings' ? earningsRow(e, asOf, closed) : dividendRow(e as Dividend, asOf));
   return [...mine.filter((e) => e.date > asOf).sort(order), ...mine.filter((e) => e.date <= asOf).sort(order)].map(row);
 }
-const LEGEND = '± is the usual move the session after a report (for a Fed, CPI or jobs date, the market’s, SPY): how big, not which way. ' +
-  'The thumbs: its last reports against the EPS estimate, green a beat, red a miss.';
+const LEGEND = '± is the usual move the session after a report (for a Fed, CPI or jobs date, the market’s, SPY): how big, not which way. The bars: the last 8.';
 
 type DatesScope = { scope: { by: 'dates'; from: string; to: string } };
 type MonthScope = { scope: { by: 'universe'; month: string } };
@@ -276,7 +269,7 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
  */
 @Component({
   selector: 'pt-calendar',
-  imports: [PtIcon, PtLogo, PtMention, PtMore, PtSay],
+  imports: [PtLogo, PtMention, PtMore, PtSay],
   template: `
     @if (data() === null) {<p class="pt-na">Data not available</p>}
     @else if (data()) {
@@ -324,7 +317,7 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
             [attr.aria-label]="(openRow()?.title ?? 'Events') + ' on ' + date(oc.date)" tabindex="-1" (keydown.escape)="close()">
             <div class="pt-cal-pop-head"><span>{{ DOW[(weekdayOf(oc.date) + 6) % 7] }}</span> <b>{{ oc.day }}</b><button type="button" class="pt-cal-pop-x" aria-label="Close" (click)="close()">×</button></div>
             @if (openRow(); as open) {
-              <!-- the event's summary card (its row, its history, its sentence and news), the company's usual card under it (the page fills the slot) -->
+              <!-- the event's summary card (its row, its sentence and news), the company's usual card under it (the page fills the slot) -->
               @for (r of [open]; track r.key) {
                 <div class="pt-cal-sum">
                 <div class="pt-cal-pop-row">
@@ -335,14 +328,14 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
                 }
                 <b [class]="'pt-cal-row-cue ' + (r.cueTone === 'est' ? 'pt-cal-row-est' : 'pt-t-' + r.cueTone)">{{ r.cue }}</b>
                 <span class="pt-cal-row-when">{{ r.when }}</span>
+                @if (r.bars; as mb) {
+                  <svg class="pt-cal-row-bars" [attr.viewBox]="'0 0 ' + mb.w + ' 22'" [attr.width]="mb.w" height="22" aria-hidden="true">
+                    <line x1="0" [attr.x2]="mb.w" y1="11" y2="11" />
+                    @for (b of mb.bars; track $index) {<rect [attr.x]="b.x" [attr.y]="b.y" width="4" [attr.height]="b.h" rx="1" [class]="'pt-t-' + b.tone" />}
+                  </svg>
+                }
                 <span class="pt-cal-row-hint">{{ r.hint }}</span>
                 </div>
-                @if (r.thumbs; as th) {
-                  <ol class="pt-cal-hist" [attr.aria-label]="th.label">
-                    @for (x of th.list; track $index) {<li [class]="'pt-t-' + x.tone"><svg [ptIcon]="x.icon" class="pt-cal-thumb"></svg>{{ x.value }}</li>}
-                  </ol>
-                  <p class="pt-cal-hist-note">EPS against the estimate, its last {{ th.list.length }} reports, oldest first</p>
-                }
                 <div class="pt-cal-row-more">
                 <p class="pt-cal-row-say"><pt-say [parts]="r.said" /></p>
                 @if (r.facts) {<p class="pt-meta">{{ r.facts }}</p>}
@@ -391,8 +384,11 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
                     }
                     <b [class]="'pt-cal-row-cue ' + (row.cueTone === 'est' ? 'pt-cal-row-est' : 'pt-t-' + row.cueTone)">{{ row.cue }}</b>
                     <span class="pt-cal-row-when">{{ row.when }}</span>
-                    @if (row.thumbs; as th) {
-                      <span class="pt-cal-row-thumbs" role="img" [attr.aria-label]="th.label">@for (x of th.list; track $index) {<svg [ptIcon]="x.icon" [class]="'pt-cal-thumb pt-t-' + x.tone"></svg>}</span>
+                    @if (row.bars; as mb) {
+                      <svg class="pt-cal-row-bars" [attr.viewBox]="'0 0 ' + mb.w + ' 22'" [attr.width]="mb.w" height="22" aria-hidden="true">
+                        <line x1="0" [attr.x2]="mb.w" y1="11" y2="11" />
+                        @for (b of mb.bars; track $index) {<rect [attr.x]="b.x" [attr.y]="b.y" width="4" [attr.height]="b.h" rx="1" [class]="'pt-t-' + b.tone" />}
+                      </svg>
                     }
                     <span class="pt-cal-row-hint">{{ row.hint }}</span>
                   </summary>
@@ -486,8 +482,8 @@ export class PtCalendar {
   });
   private readonly shown = linkedSignal({ source: () => this.rows(), computation: (): number => (this.isWeek() ? WEEK_ROWS : MORE_STEP) });
   protected readonly visible = computed(() => this.rows().slice(0, this.shown()));
-  /** Some row has a usual move or a history: the legend says what ± and the thumbs are. */
-  protected readonly hasOutlook = computed(() => this.rows().some((r) => r.thumbs !== null || r.cue.startsWith('±')));
+  /** Some row has a usual move (its last moves, four at least): the legend says what ± and the bars are. */
+  protected readonly hasOutlook = computed(() => this.rows().some((r) => r.bars !== null));
   protected readonly firstOut = computed(() => this.visible().findIndex((r) => r.out));
   protected readonly hasMore = computed(() => this.rows().length > this.shown());
   protected readonly moreCount = computed(() => Math.min(MORE_STEP, this.rows().length - this.shown()));

@@ -208,17 +208,15 @@ describe('pt-calendar rows: what to expect from each event', () => {
     expect(line(of('KO'), 'pt-cal-row-when')).toBe('Reported Tue, Oct 27 · before the open');
     expect(line(of('Visa'), 'pt-cal-row-when')).toBe('Reported Tue, Oct 27 · after the close · reacts Wed');
   });
-  it('before a report: its usual move, its record against the estimate and how often it rose after, its last results as thumbs', async () => {
+  it('before a report: its usual move, its record against the estimate and how often it rose after, its last moves as bars', async () => {
     const { of, line } = await rowsOf(OCT27);
     const msft = of('MSFT');
     expect(line(msft, 'pt-cal-row-cue')).toBe('±4.7%');
     expect(line(msft, 'pt-cal-row-hint')).toBe('beat 7 of 8 · rose after 5 of 8');
-    // a thumb per report, oldest first: green up a beat, red down a miss (Romeo: "un thumb verde o rosso up o down se expected o meno")
-    const thumbs = msft.querySelector('.pt-cal-row-thumbs')!;
-    expect([...thumbs.querySelectorAll('.pt-cal-thumb')].map((t) => t.getAttribute('class')!.match(/pt-t-\w+/)![0]))
-      .toEqual(['pt-t-pos', 'pt-t-pos', 'pt-t-pos', 'pt-t-pos', 'pt-t-neg', 'pt-t-pos', 'pt-t-pos', 'pt-t-pos']);
-    expect(thumbs.getAttribute('aria-label')).toBe('EPS against the estimate in its last 8 reports: beat, beat, beat, beat, missed, beat, beat, beat');
-    expect(msft.querySelector('svg.pt-cal-row-bars')).toBeNull();
+    // the bars stay (Romeo: "le barrette restano, erano meglio"): the move after each of its last reports, up green, down red
+    expect([...msft.querySelectorAll('svg.pt-cal-row-bars rect')].map((r) => r.getAttribute('class')))
+      .toEqual(['pt-t-pos', 'pt-t-neg', 'pt-t-pos', 'pt-t-pos', 'pt-t-neg', 'pt-t-pos', 'pt-t-pos', 'pt-t-neg']);
+    expect(msft.querySelector('.pt-cal-row-thumbs')).toBeNull();
     expect(msft.querySelector('summary')!.querySelector('a')).toBeNull(); // one control: no link inside the summary
     expect(line(msft, 'pt-cal-row-who')).toBe('Microsoft MSFT');
     expect(msft.querySelector('summary [data-card="MSFT"]')!.textContent).toBe('MSFT'); // the symbol opens its card on hover
@@ -227,12 +225,13 @@ describe('pt-calendar rows: what to expect from each event', () => {
     const { of, line } = await rowsOf(OCT27);
     expect(line(of('CVX'), 'pt-cal-row-cue')).toBe('');
     expect(line(of('CVX'), 'pt-cal-row-hint')).toBe('EPS est. $1.30');
-    expect(of('CVX').querySelector('.pt-cal-row-thumbs')).toBeNull();
-    // in line within 2% of the estimate: a grey thumb; no estimate: an empty mark
+    expect(of('CVX').querySelector('svg.pt-cal-row-bars')).toBeNull();
+    // three reports on file: too few for a usual move or its bars, the estimate says what is expected
     const few = co('ZZ', 'Few Inc.', '2026-10-29', 'amc', 1e9, { epsEst: 1, reports: past([0.01, null, -0.03], [0.02, -0.01, 0.03]) });
     const z = (await rowsOf({ ...OCT27, items: [few] })).rows[0]!;
-    expect([...z.querySelectorAll('.pt-cal-thumb')].map((t) => t.getAttribute('class')!.match(/pt-t-\w+/)![0])).toEqual(['pt-t-flat', 'pt-t-na', 'pt-t-neg']);
-    expect(z.querySelector('.pt-cal-row-cue')!.textContent!.trim()).toBe(''); // three reports: too few for a usual move
+    expect(z.querySelector('svg.pt-cal-row-bars')).toBeNull();
+    expect(z.querySelector('.pt-cal-row-cue')!.textContent!.trim()).toBe('');
+    expect(z.querySelector('.pt-cal-row-hint')!.textContent!.trim()).toBe('EPS est. $1.00');
   });
   it('after a report: the move it made against its usual size, and the verdict; until a session trades it, its usual move', async () => {
     const { of, line } = await rowsOf(OCT27);
@@ -355,9 +354,10 @@ describe('pt-calendar grid: the hint in the chip, a click opens the event', () =
     expect(pop.querySelector('.pt-cal-row-hint')!.textContent!.trim()).toBe('beat 7 of 8 · rose after 5 of 8');
     expect(pop.querySelector('.pt-cal-row-say')!.textContent!.replace(/\s+/g, ' ').trim()).toMatch(/^Microsoft MSFT reports Wed, Oct 28 \(confirmed\)/);
     expect(pop.querySelectorAll('.pt-news-item')).toHaveLength(2);
-    // the earnings summary card first, its history with each result; the company's usual card under it
+    // the earnings summary card first (its row, with the bars), the company's usual card under it
     const sum = pop.querySelector('.pt-cal-sum')!;
-    expect([...sum.querySelectorAll('.pt-cal-hist li')].map((li) => li.textContent!.trim())).toEqual(['+5%', '+3%', '+4%', '+8%', '-4%', '+6%', '+9%', '+3%']);
+    expect(sum.querySelectorAll('svg.pt-cal-row-bars rect')).toHaveLength(8);
+    expect(sum.querySelector('.pt-cal-hist')).toBeNull();
     expect(pop.querySelector('[data-card-slot]')!.getAttribute('data-card-slot')).toBe('MSFT');
     expect(sum.compareDocumentPosition(pop.querySelector('[data-card-slot]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(document.activeElement).toBe(pop);
