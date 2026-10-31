@@ -183,11 +183,9 @@ export interface Row {
 }
 
 function earningsRow(e: Earnings, asOf: string, closed: ReadonlySet<string>): Row {
-  const m = e.meta, out = e.date <= asOf, moved = out ? m.move ?? null : null, past = (m.reports ?? []).slice(-REPORTS);
-  const moves = past.map((r) => r.move).filter((v): v is number => v != null), u = usualMove(moves), n = moves.length;
-  const t = m.time ? TIME[m.time] : null, on = reactsOn(e, closed), usual = u == null ? null : `±${level(u)}`;
-  const known = past.filter((r) => r.surprise != null);
-  const record = known.length >= MIN_REPORTS ? { beats: known.filter((r) => r.surprise! > SURPRISE).length, of: known.length } : null;
+  const m = e.meta, out = e.date <= asOf, moved = out ? m.move ?? null : null, moves = (m.moves ?? []).slice(-REPORTS);
+  const u = usualMove(moves), n = moves.length, t = m.time ? TIME[m.time] : null, on = reactsOn(e, closed), usual = u == null ? null : `±${level(u)}`;
+  const record = m.record && m.record.of >= MIN_REPORTS ? m.record : null;
   const who = mention(e.ticker, e.name, e.logo), name = plainName(e.name);
   let when: string, hint: string, said: Said, facts: string;
   if (out) {

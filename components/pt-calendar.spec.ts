@@ -172,18 +172,15 @@ const FED = { date: '2026-10-28', kind: 'macro' as const, meta: { label: 'Fed', 
   moves: [0.011, -0.016, 0.009, 0.012, -0.007, 0.014, -0.021, 0.008], move: null, news: [story('The Fed is expected to cut again', 'Preview', '2026-10-26')] } };
 const CPI = { date: '2026-10-14', kind: 'macro' as const, meta: { label: 'CPI', event: 'Inflation Rate YoY (Sep) · Core Inflation Rate YoY (Sep)', impact: 'High',
   headline: { name: 'CPI YoY', unit: '%', expected: 2.8, previous: 2.9, actual: 2.9 }, moves: [0.01, -0.012, 0.008, 0.011, -0.009, 0.013, -0.01, 0.007], move: -0.012 } };
-/** Each past report: its EPS surprise and the move after it, oldest first. */
-const past = (surprises: (number | null)[], moves: number[]) => moves.map((move, i) => ({ surprise: surprises[i] ?? null, move }));
 const MSFT = co('MSFT', 'Microsoft Corporation', '2026-10-28', 'amc', 3.88e12, { epsEst: 3.68, revEst: 77.4e9, move: null,
-  reports: past([0.05, 0.03, 0.04, 0.08, -0.04, 0.06, 0.09, 0.03], [0.042, -0.061, 0.018, 0.075, -0.039, 0.045, 0.083, -0.012]),
+  moves: [0.042, -0.061, 0.018, 0.075, -0.039, 0.045, 0.083, -0.012], record: { beats: 7, of: 8 },
   news: [story('Microsoft earnings preview: Azure in focus', 'Preview', '2026-10-26'), story('Microsoft signs a cloud deal', null, '2026-10-22')] });
-const AAPL = co('AAPL', 'Apple Inc.', '2026-10-29', 'amc', 3.89e12, { epsEst: 1.77,
-  reports: past([0.04, 0.05, 0.03, 0.06, 0.03, 0.04, 0.05, 0.07], [0.03, -0.02, 0.05, 0.04, -0.03, 0.06, 0.02, -0.04]) });
+const AAPL = co('AAPL', 'Apple Inc.', '2026-10-29', 'amc', 3.89e12, { epsEst: 1.77, moves: [0.03, -0.02, 0.05, 0.04, -0.03, 0.06, 0.02, -0.04], record: { beats: 8, of: 8 } });
 const CVX = co('CVX', 'Chevron Corporation', '2026-10-30', 'bmo', 2.76e11, { confirmed: false, epsEst: 1.3 });
 const KO = co('KO', 'Coca-Cola', '2026-10-27', 'bmo', 3.03e11, { epsEst: 0.78, epsActual: 0.81, move: 0.011,
-  reports: past([0.03, 0.01, 0.04, 0.05, -0.03, 0.03, 0.04, 0.03], [0.021, -0.018, 0.025, -0.02, 0.019, 0.023, -0.022, 0.02]) });
+  moves: [0.021, -0.018, 0.025, -0.02, 0.019, 0.023, -0.022, 0.02], record: { beats: 6, of: 8 } });
 const V = co('V', 'Visa Inc.', '2026-10-27', 'amc', 6.7e11, { epsEst: 2.97, epsActual: 3.04, move: null,
-  reports: past([0.03, 0.04, 0.05, 0.03, -0.01, 0.04, 0.03, 0.05], [0.03, -0.035, 0.028, 0.04, -0.031, 0.033, -0.029, 0.03]) });
+  moves: [0.03, -0.035, 0.028, 0.04, -0.031, 0.033, -0.029, 0.03], record: { beats: 7, of: 8 } });
 const OCT27 = { asOf: '2026-10-27', normal: 0.0068, items: [CPI, KO, V, FED, MSFT, AAPL, CVX] };
 
 const rowsOf = async (ev: unknown, inputs: Record<string, unknown> = { month: '2026-10' }) => {
@@ -230,7 +227,7 @@ describe('pt-calendar rows: what to expect from each event', () => {
     expect(line(of('CVX'), 'pt-cal-row-hint')).toBe('EPS est. $1.30');
     expect(of('CVX').querySelector('svg.pt-cal-row-bars')).toBeNull();
     // three reports on file: too few for a usual move or its bars, the estimate says what is expected
-    const few = co('ZZ', 'Few Inc.', '2026-10-29', 'amc', 1e9, { epsEst: 1, reports: past([0.01, null, -0.03], [0.02, -0.01, 0.03]) });
+    const few = co('ZZ', 'Few Inc.', '2026-10-29', 'amc', 1e9, { epsEst: 1, moves: [0.02, -0.01, 0.03], record: { beats: 0, of: 2 } });
     const z = (await rowsOf({ ...OCT27, items: [few] })).rows[0]!;
     expect(z.querySelector('svg.pt-cal-row-bars')).toBeNull();
     expect(z.querySelector('.pt-cal-row-cue')!.textContent!.trim()).toBe('');

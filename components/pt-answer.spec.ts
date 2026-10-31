@@ -1,5 +1,6 @@
 import type { Analysts, Events, Fundamentals, Insider, MetricItem, Screen, ScreenRow } from '../src/typologies';
 import { plainName, PtAnswer } from './pt-answer';
+import { PtCalendar } from './pt-calendar';
 import { basics, render, withData } from './_spec';
 
 const ASOF = '2026-10-16';
@@ -118,5 +119,13 @@ describe('pt-answer', () => {
     expect(Object.keys(t.record).map((k) => k.split('|')[0]).sort()).toEqual(['analysts@1', 'company@1', 'metric@1']);
     const l = await render(PtAnswer, { topic: 'list', list: 'biggest_gainers' });
     expect(Object.keys(l.record).map((k) => k.split('|')[0])).toEqual(['screen@1']);
+  });
+  it('a calendar\'s answer asks what the calendar under it asks (its kind with the market dates): the page carries one month, not two', async () => {
+    const e = await render(PtAnswer, { topic: 'earnings', month: '2026-10' });
+    const c = await render(PtCalendar, { month: '2026-10', kind: 'earnings' });
+    expect(Object.keys(e.record)).toEqual(Object.keys(c.record));
+    const d = await render(PtAnswer, { topic: 'dividends', month: '2026-11' });
+    const dc = await render(PtCalendar, { month: '2026-11', kind: 'dividend' });
+    expect(Object.keys(d.record)).toEqual(Object.keys(dc.record));
   });
 });

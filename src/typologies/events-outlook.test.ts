@@ -15,14 +15,14 @@ const full = {
   ...plain, normal: 0.0068,
   items: [
     { ...plain.items[0], meta: { ...plain.items[0]!.meta, move: null, news: [story],
-      reports: [0.042, -0.061, 0.018, 0.075, -0.039, 0.045, 0.083, -0.012].map((move, i) => ({ move, surprise: [0.05, 0.03, 0.04, 0.08, -0.04, 0.06, 0.09, null][i]! })) } },
+      moves: [0.042, -0.061, 0.018, 0.075, -0.039, 0.045, 0.083, -0.012], record: { beats: 7, of: 8 } } },
     { ...plain.items[1], meta: { ...plain.items[1]!.meta, headline: { name: 'Fed funds rate', unit: '%', expected: 3.5, previous: 3.75, actual: null },
       moves: [0.011, -0.016, 0.009, 0.012, -0.007, 0.014, -0.021, 0.008], move: null, news: [{ ...story, tag: null }] } },
   ],
 };
 
 describe('events@1.2, what to expect from each event', () => {
-  it('takes the outlook fields: the last reports (EPS surprise, the move after), this report\'s move, the news; a macro date\'s headline figure; the market\'s normal day', () => {
+  it('takes the outlook fields: the moves after the last reports and the record against the estimate, this report\'s move, the news; a macro date\'s headline figure; the market\'s normal day', () => {
     // parsing keeps them (a schema without them would drop them as unknown keys)
     expect(EventsPayload.parse(full)).toEqual(full);
   });
@@ -36,7 +36,7 @@ describe('events@1.2, what to expect from each event', () => {
   });
   it('at most the last 8 reports (or releases) and 5 stories an event, so a month stays small', () => {
     const many = structuredClone(full);
-    (many.items[0]!.meta as { reports: unknown[] }).reports.push({ move: 0.01, surprise: 0.02 });
+    (many.items[0]!.meta as { moves: number[] }).moves.push(0.01);
     expect(EventsPayload.safeParse(many).success).toBe(false);
     const releases = structuredClone(full);
     (releases.items[1]!.meta as { moves: number[] }).moves.push(0.01);
@@ -49,15 +49,14 @@ describe('events@1.2, what to expect from each event', () => {
   const month = eventsDemo(EventsParams.parse({ scope: { by: 'universe', month: '2026-09' }, kinds: ['earnings', 'macro'] }));
   const reports = month.items.filter((e): e is Extract<EventItem, { kind: 'earnings' }> => e.kind === 'earnings');
   const dates = month.items.filter((e): e is Extract<EventItem, { kind: 'macro' }> => e.kind === 'macro');
-  it('the demo fills them, the same every time: each company\'s last reports (beats and misses, the moves), the market\'s normal day', () => {
+  it('the demo fills them, the same every time: each company\'s last moves (to 0.1%) and its record, the market\'s normal day', () => {
     expect(EventsPayload.safeParse(month).success).toBe(true);
     expect(eventsDemo(EventsParams.parse({ scope: { by: 'universe', month: '2026-09' }, kinds: ['earnings', 'macro'] }))).toEqual(month);
     expect(month.normal).toBeGreaterThan(0);
-    const past = reports.flatMap((e) => e.meta.reports ?? []);
-    expect(reports.every((e) => (e.meta.reports?.length ?? 0) <= 8)).toBe(true);
-    expect(past.some((r) => r.surprise! > 0.02) && past.some((r) => r.surprise! < -0.02)).toBe(true); // beats and misses
+    expect(reports.every((e) => (e.meta.moves?.length ?? 0) <= 8 && e.meta.record != null && e.meta.record.beats <= e.meta.record.of)).toBe(true);
+    expect(reports.flatMap((e) => e.meta.moves!).every((m) => Math.round(m * 1000) === m * 1000)).toBe(true);
     // some with too few reports on file for a usual move (fewer than 4)
-    expect(reports.some((e) => e.meta.reports!.length < 4) && reports.some((e) => e.meta.reports!.length === 8)).toBe(true);
+    expect(reports.some((e) => e.meta.moves!.length < 4) && reports.some((e) => e.meta.moves!.length === 8)).toBe(true);
   });
   it('the demo\'s past reports carry what they did (EPS, the move), the coming ones none', () => {
     const past = reports.filter((e) => e.date < month.asOf), next = eventsDemo(EventsParams.parse({ scope: { by: 'universe', month: '2026-10' }, kinds: ['earnings'] })).items;

@@ -3,7 +3,7 @@
  * price target, its peers, its latest quarter, its insiders; who leads a market list; a calendar month at a glance.
  * Company topics name the company as people search it, with its ticker ("Nvidia NVDA"): the sentence an answer engine quotes stands on its own.
  * Each company a sentence names is a link with its logo (PtSay, PtMention): on the site its card opens on hover, the page's own company too.
- * @version 1.3.0
+ * @version 1.3.1
  * @evidence DataForSEO: "<ticker> stock forecast" 151k/month, "<ticker> price target" 103k/month, "earnings calendar" 153k/month, list queries (launch/data/08c-serp-*.json)
  * @evidence SEO measurement 2026-10-09: list and company subpages of ~80–200 words; the answer belongs in the first lines, with its numbers
  */
@@ -86,9 +86,11 @@ export class PtAnswer {
     const s = this.sector();
     return { scope: s ? { list: this.list(), sector: s } : { list: this.list() }, limit: 20 };
   });
+  // the same call as pt-calendar's under it (its kind with the market dates): the page carries one month, not two
   protected readonly calendar = this.pt.events(() => {
     const t = this.topic(), m = this.month();
-    return (t === 'earnings' || t === 'dividends') && m ? { scope: { by: 'universe' as const, month: m }, kinds: [t === 'earnings' ? 'earnings' as const : 'dividend' as const] } : null;
+    return (t === 'earnings' || t === 'dividends') && m
+      ? { scope: { by: 'universe' as const, month: m }, kinds: [t === 'earnings' ? 'earnings' as const : 'dividend' as const, 'macro' as const] } : null;
   });
 
   /** The answer: a sentence (or two); null when the data is not available (or the placement lacks the company or month its topic needs); '' while it is on its way. */
