@@ -307,8 +307,14 @@ describe('pt-calendar rows: what to expect from each event', () => {
     const closed = { date: '2026-10-12', kind: 'macro' as const, meta: { label: 'Closed', event: 'Columbus Day', impact: null } };
     const { r, rows, line } = await rowsOf({ asOf: '2026-10-02', items: [ko, FED, closed] }, { month: '2026-10', kind: 'dividend' });
     expect(rows).toHaveLength(1);
-    expect([line(rows[0]!, 'pt-cal-row-cue'), line(rows[0]!, 'pt-cal-row-when'), line(rows[0]!, 'pt-cal-row-hint')]).toEqual(['$0.51', 'Ex-dividend Thu, Oct 15', 'Paid Oct 30']);
+    // still to be paid: "payable" (the term of the trade), not "paid"
+    expect([line(rows[0]!, 'pt-cal-row-cue'), line(rows[0]!, 'pt-cal-row-when'), line(rows[0]!, 'pt-cal-row-hint')]).toEqual(['$0.51', 'Ex-dividend Thu, Oct 15', 'Payable Oct 30']);
+    expect(line(rows[0]!, 'pt-cal-row-say')).toBe('Coca-Cola KO goes ex-dividend Thu, Oct 15: $0.51 a share, payable Oct 30.');
     expect(r.el.querySelector('.pt-cal-rows-title')!.textContent).toBe('The largest ex-dividend dates in October 2026');
+    // once the pay date has passed (the latest session included)
+    const after = await rowsOf({ asOf: '2026-10-30', items: [ko] }, { month: '2026-10', kind: 'dividend' });
+    expect(after.line(after.rows[0]!, 'pt-cal-row-hint')).toBe('Paid Oct 30');
+    expect(after.line(after.rows[0]!, 'pt-cal-row-say')).toBe('Coca-Cola KO went ex-dividend Thu, Oct 15: $0.51 a share, paid Oct 30.');
     expect((await rowsOf({ asOf: '2026-10-02', items: [closed, CVX] })).rows).toHaveLength(1);
   });
   it('opening a row counts as an interaction', async () => {

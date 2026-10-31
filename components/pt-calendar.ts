@@ -243,10 +243,12 @@ function macroRow(e: Macro, asOf: string, normal: number | null): Row {
 }
 
 function dividendRow(e: Dividend, asOf: string): Row {
-  const out = e.date <= asOf, who = mention(e.ticker, e.name, e.logo), name = plainName(e.name), paid = e.meta.payDate ? dayMonth(e.meta.payDate) : null;
+  const out = e.date <= asOf, who = mention(e.ticker, e.name, e.logo), name = plainName(e.name), pay = e.meta.payDate;
+  // the pay date comes after the ex-date: "payable" until it has passed
+  const paid = pay ? `${pay <= asOf ? 'paid' : 'payable'} ${dayMonth(pay)}` : null;
   return { key: rowKey(e), out, label: null, title: name, ticker: e.ticker, logo: e.logo, showTicker: named(e.name, e.ticker) !== name,
-    unconfirmed: false, cue: amount(e.meta.amount), cueTone: 'est', when: `Ex-dividend ${dayLabel(e.date)}`, hint: paid ? `Paid ${paid}` : '', bars: null,
-    said: say`${who} ${out ? 'went' : 'goes'} ex-dividend ${dayLabel(e.date)}: ${amount(e.meta.amount)} a share${paid ? `, paid ${paid}` : ''}.`, facts: '', news: [] };
+    unconfirmed: false, cue: amount(e.meta.amount), cueTone: 'est', when: `Ex-dividend ${dayLabel(e.date)}`, hint: paid ? upper(paid) : '', bars: null,
+    said: say`${who} ${out ? 'went' : 'goes'} ex-dividend ${dayLabel(e.date)}: ${amount(e.meta.amount)} a share${paid ? `, ${paid}` : ''}.`, facts: '', news: [] };
 }
 
 /**
