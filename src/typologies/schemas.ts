@@ -12,6 +12,7 @@ import { NewsParams, NewsPayload } from './news';
 import { OngoingMovesParams, OngoingMovesPayload } from './ongoing-moves';
 import { PriceSeriesParams, PriceSeriesPayload } from './price-series';
 import { ScreenParams, ScreenPayload } from './screen';
+import { ValueParams, ValuePayload } from './value';
 
 export interface TypologySchema<P extends z.ZodMiniType = z.ZodMiniType, D extends z.ZodMiniType = z.ZodMiniType> {
   id: string;
@@ -40,6 +41,7 @@ export const TYPOLOGY_SCHEMAS = /* @__PURE__ */ withIds({
   'company@1': { params: CompanyParams, payload: CompanyPayload },
   'ongoing-moves@1': { params: OngoingMovesParams, payload: OngoingMovesPayload },
   'feed@1': { params: FeedParams, payload: FeedPayload },
+  'value@1': { params: ValueParams, payload: ValuePayload },
 });
 export type TypologyKey = keyof typeof TYPOLOGY_SCHEMAS;
 

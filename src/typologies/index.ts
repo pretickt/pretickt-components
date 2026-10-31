@@ -12,6 +12,8 @@ import { ongoingMovesDemo, ongoingMovesSamples } from './ongoing-moves';
 import { priceSeriesDemo, priceSeriesSamples } from './price-series';
 import { TYPOLOGY_SCHEMAS, type TypologyKey, type TypologySchema } from './schemas';
 import { screenDemo, screenSamples } from './screen';
+import { valueSamples } from './value';
+import { valueDemo } from './value-demo';
 
 type S = typeof TYPOLOGY_SCHEMAS;
 interface Extras<P extends z.ZodMiniType, D extends z.ZodMiniType> {
@@ -37,6 +39,7 @@ const EXTRAS: { [K in TypologyKey]: Extras<S[K]['params'], S[K]['payload']> } = 
   'company@1': { demo: companyDemo, samples: companySamples },
   'ongoing-moves@1': { demo: ongoingMovesDemo, samples: ongoingMovesSamples },
   'feed@1': { demo: feedDemo, samples: feedSamples, unknownVariant: feedUnknownVariant },
+  'value@1': { demo: valueDemo, samples: valueSamples },
 };
 
 function withExtras(): { [K in TypologyKey]: S[K] & Extras<S[K]['params'], S[K]['payload']> } {
@@ -71,4 +74,5 @@ export * from './move-breakdown';
 export * from './screen';
 export * from './ongoing-moves';
 export * from './feed';
+export * from './value';
 export * from './values';
