@@ -25,24 +25,24 @@ describe('pt-answer', () => {
   });
   it('forecast (the hub): the average 12-month target against the last close, its range, the rating consensus; the company by its common name', async () => {
     expect(await text({ topic: 'forecast', ticker: 'NVDA' }, { 'analysts@1': analysts(), 'metric@1': consensus('Buy') })).toBe(
-      'The average 12-month analyst price target for Nvidia (NVDA) is $215.40, 18.2% above the last close of $182.16 on Oct 16, 2026; targets range from ' +
+      'The average 12-month analyst price target for Nvidia NVDA is $215.40, 18.2% above the last close of $182.16 on Oct 16, 2026; targets range from ' +
       '$150.00 to $275.00. Rating consensus: Buy.');
   });
   it('price target: how many firms, the average against the close, the range and the median; below the close when it is', async () => {
     expect(await text({ topic: 'price-target', ticker: 'NVDA' }, { 'analysts@1': analysts({ price: 230 }), 'metric@1': consensus(null) })).toBe(
-      'The average price target of the 41 analyst firms that published one in the last 12 months is $215.40 for Nvidia (NVDA), 6.3% below the last close of ' +
+      'The average price target of the 41 analyst firms that published one in the last 12 months is $215.40 for Nvidia NVDA, 6.3% below the last close of ' +
       '$230.00 on Oct 16, 2026. Targets range from $150.00 to $275.00, with a median of $210.00.');
   });
   it('no target in a year is an answer too, not a missing page', async () => {
     expect(await text({ topic: 'price-target', ticker: 'XYZ' }, { 'analysts@1': analysts({ summary: null }), 'metric@1': consensus('Hold') }))
-      .toBe('No analyst published a price target for XYZ Demo (XYZ) in the last 12 months. Rating consensus: Hold.');
+      .toBe('No analyst published a price target for XYZ Demo XYZ in the last 12 months. Rating consensus: Hold.');
   });
   it('peers: the largest of them, the company\'s rank by market cap and its P/E against the peers\' median', async () => {
     const rows = [row('AVGO', 'Broadcom Inc.', { marketCap: 1.6e12, pe: 30 }), row('NVDA', 'NVIDIA Corporation', { marketCap: 4.4e12, pe: 45.2, self: true }),
       row('AMD', 'Advanced Micro Devices, Inc.', { marketCap: 3e11, pe: 80 }), row('QCOM', 'QUALCOMM Incorporated', { marketCap: 1.8e11, pe: 15 }),
       row('INTC', 'Intel Corporation', { marketCap: 1e11, pe: null })].sort((a, b) => b.marketCap! - a.marketCap!);
     expect(await text({ topic: 'peers', ticker: 'NVDA' }, { 'screen@1': screen(rows) })).toBe(
-      'The peers of Nvidia (NVDA) by industry and size include Broadcom (AVGO), AMD and Qualcomm (QCOM). Among these 5 companies NVDA ranks ' +
+      'The peers of Nvidia NVDA by industry and size include Broadcom AVGO, AMD and Qualcomm QCOM. Among these 5 companies NVDA ranks ' +
       '1st by market cap ($4.4T); its P/E of 45.2 compares with a median of 30.0 for its peers.');
   });
   it('financials: the latest quarter\'s revenue and its growth over a year, then EPS, free cash flow and net margin', async () => {
@@ -51,7 +51,7 @@ describe('pt-answer', () => {
     const f: Fundamentals = { asOf: ASOF, periods: [q('2025-07-27', 'Q2 FY26', 30e9), q('2025-10-26', 'Q3 FY26', 35e9), q('2026-01-25', 'Q4 FY26', 39e9),
       q('2026-04-26', 'Q1 FY27', 44e9), q('2026-07-26', 'Q2 FY27', 46.8e9)] };
     expect(await text({ topic: 'financials', ticker: 'NVDA' }, { 'fundamentals@1': f })).toBe(
-      'Nvidia (NVDA) reported revenue of $46.8B for the quarter ended Jul 26, 2026 (Q2 FY27), up 56.0% from a year earlier. It posted diluted EPS of $1.05, ' +
+      'Nvidia NVDA reported revenue of $46.8B for the quarter ended Jul 26, 2026 (Q2 FY27), up 56.0% from a year earlier. It posted diluted EPS of $1.05, ' +
       'free cash flow of $13.45B and a net margin of 56.5%.');
   });
   it('financials of a company reporting half-years in euros: its currency, the half-year, growth over two reports', async () => {
@@ -61,7 +61,7 @@ describe('pt-answer', () => {
       h('2026-06-30', 'H1 FY2026', 10.72e9)] };
     const ccep = { ticker: 'CCEP', name: 'Coca-Cola Europacific Partners PLC', sector: 'Consumer Defensive', industry: 'Beverages', logo: null };
     expect(await text({ topic: 'financials', ticker: 'CCEP' }, { 'fundamentals@1': f, 'company@1': ccep })).toBe(
-      'Coca-Cola Europacific Partners (CCEP) reported revenue of €10.72B for the half-year ended Jun 30, 2026 (H1 FY2026), up 4.4% from a year earlier. It posted diluted EPS of €2.17, ' +
+      'Coca-Cola Europacific Partners CCEP reported revenue of €10.72B for the half-year ended Jun 30, 2026 (H1 FY2026), up 4.4% from a year earlier. It posted diluted EPS of €2.17, ' +
       'free cash flow of €1.1B and a net margin of 9.0%.');
   });
   it('insiders: purchases and sales over the year, then the latest trade', async () => {
@@ -70,18 +70,18 @@ describe('pt-answer', () => {
     const ins: Insider = { asOf: ASOF, items: [i('2026-10-10', 'Huang Jen Hsun', 'CEO', 'sell', 75000, 180.1), i('2026-09-01', 'Kress Colette', 'CFO', 'other', 500, 0),
       i('2026-06-02', 'Huang Jen Hsun', 'CEO', 'sell', 100000, 140)] };
     expect(await text({ topic: 'insiders', ticker: 'NVDA' }, { 'insider@1': ins })).toBe(
-      'In the last 12 months Nvidia (NVDA) insiders made 0 open-market purchases and 2 sales worth $27.51M, as reported on SEC Form 4. The latest: ' +
+      'In the last 12 months Nvidia NVDA insiders made 0 open-market purchases and 2 sales worth $27.51M, as reported on SEC Form 4. The latest: ' +
       'Huang Jen Hsun (CEO) sold 75,000 shares at $180.10 on Oct 10, 2026.');
     expect(await text({ topic: 'insiders', ticker: 'KO' }, { 'insider@1': { asOf: ASOF, items: [] } })).toBe(
-      'No open-market purchase or sale of Coca-Cola (KO) stock by its officers and directors was reported in the last 12 months.');
+      'No open-market purchase or sale of Coca-Cola KO stock by its officers and directors was reported in the last 12 months.');
   });
   it('lists: the top three with the number the list ranks by, in the sector when the page has one; an empty list says so', async () => {
     const losers = screen([row('INTC', 'Intel Corporation', { chg1d: -0.081 }), row('MRNA', 'Moderna, Inc.', { chg1d: -0.06 }), row('F', 'Ford Motor Company', { chg1d: -0.052 })]);
     expect(await text({ topic: 'list', list: 'biggest_losers' }, { 'screen@1': losers })).toBe(
-      'The biggest losers on Oct 16, 2026: Intel (INTC) -8.1%, Moderna (MRNA) -6.0% and Ford (F) -5.2%.');
+      'The biggest losers on Oct 16, 2026: Intel INTC -8.1%, Moderna MRNA -6.0% and Ford F -5.2%.');
     const largest = screen([row('AAPL', 'Apple Inc.', { marketCap: 3.9e12 }), row('MSFT', 'Microsoft Corporation', { marketCap: 3.4e12 })]);
     expect(await text({ topic: 'list', list: 'largest', sector: 'Technology' }, { 'screen@1': largest })).toBe(
-      'The largest Technology companies by market capitalization on Oct 16, 2026: Apple (AAPL) $3.9T and Microsoft (MSFT) $3.4T.');
+      'The largest Technology companies by market capitalization on Oct 16, 2026: Apple AAPL $3.9T and Microsoft MSFT $3.4T.');
     expect(await text({ topic: 'list', list: '52w_high', sector: 'Energy' }, { 'screen@1': screen([]) })).toBe('No Energy stock is near its 52-week high on Oct 16, 2026.');
     const buying = screen([row('RTX', 'RTX Corporation', { insiderNet: 12.3e6 })]);
     expect(await text({ topic: 'list', list: 'insider_buying' }, { 'screen@1': buying })).toBe('The largest net insider buying over the last 90 days: RTX +$12.3M.');
@@ -94,10 +94,10 @@ describe('pt-answer', () => {
       e('2026-10-29', 'GOOGL', 'Alphabet Inc. Class A', 2.1e12), e('2026-10-29', 'CMG', 'Chipotle Mexican Grill, Inc.', 7e10),
       e('2026-10-29', 'F', 'Ford Motor Company', 4e10), { date: '2026-10-29', kind: 'macro', meta: { label: 'Fed', event: 'FOMC', impact: 'High' } }] as Events['items'] };
     expect(await text({ topic: 'earnings', month: '2026-10' }, { 'events@1': earnings })).toBe(
-      '5 companies report earnings in October 2026. The busiest day is Oct 29, 2026, with 4 reports, among them Alphabet (GOOGL), Meta (META) and Chipotle (CMG).');
+      '5 companies report earnings in October 2026. The busiest day is Oct 29, 2026, with 4 reports, among them Alphabet GOOGL, Meta and Chipotle CMG.');
     const dividends: Events = { asOf: ASOF, items: [e('2026-11-10', 'AAPL', 'Apple Inc.', 3.9e12, 'dividend')] as Events['items'] };
     expect(await text({ topic: 'dividends', month: '2026-11' }, { 'events@1': dividends })).toBe(
-      '1 company goes ex-dividend in November 2026. The largest: Apple (AAPL) $0.26 on Nov 10, 2026.');
+      '1 company goes ex-dividend in November 2026. The largest: Apple AAPL $0.26 on Nov 10, 2026.');
     expect(await text({ topic: 'earnings', month: '2026-12' }, { 'events@1': { asOf: ASOF, items: [] } })).toBe('No earnings report is scheduled for December 2026 yet.');
   });
   it('asks only for what its topic answers from (the page already asked for the same, so the build has it: the company card asks for the name)', async () => {

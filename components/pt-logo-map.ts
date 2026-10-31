@@ -91,13 +91,13 @@ export function buildMap(rows: readonly ScreenRow[], w: number, h: number): { bl
   return { blocks, tiles };
 }
 
-/** "Nvidia (NVDA)", or the ticker alone when it is the name. */
+/** "Nvidia NVDA", or the name alone when it is the ticker. */
 const who = (r: ScreenRow) => named(r.name, r.ticker);
 const and = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
 
 /**
  * The day in a dated sentence, from the map's own numbers (the text search engines and AI answers read): "As of Oct 27, 2026: 7 of
- * 11 sectors rose, and 61 of the 100 largest companies. The three largest, Nvidia (NVDA), Apple (AAPL) and Microsoft (MSFT), moved
+ * 11 sectors rose, and 61 of the 100 largest companies. The three largest, Nvidia NVDA, Apple AAPL and Microsoft MSFT, moved
  * +1.2%, -0.4% and +0.8%; the biggest moves were …".
  */
 export function mapSentence(rows: readonly ScreenRow[], blocks: Block[], asOf: string): string {

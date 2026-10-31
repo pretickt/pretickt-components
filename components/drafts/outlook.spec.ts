@@ -132,13 +132,13 @@ describe('pt-cal-outlook (draft): the earnings calendar with each event\'s possi
   });
 
   it('every agenda row in a sentence: the date, confirmed or not, the session that reacts, the usual move; after it, the figures and the move', () => {
-    expect(agendaSentence(MSFT, OCTOBER.normal)).toBe('Microsoft (MSFT) reports Wed, Oct 28 (confirmed), after the close; the stock reacts Thu, Oct 29. ' +
+    expect(agendaSentence(MSFT, OCTOBER.normal)).toBe('Microsoft MSFT reports Wed, Oct 28 (confirmed), after the close; the stock reacts Thu, Oct 29. ' +
       'In the session after its last 8 reports it moved ±4.7% on average.');
     expect(agendaSentence(UPS, OCTOBER.normal)).toBe('UPS reported Tue, Oct 27, before the open: EPS $1.71 vs $1.64 expected, a beat (+4%). ' +
       'The stock moved -6.8% in the session that traded it, 1.2× its usual ±5.8%.');
-    expect(agendaSentence(V_TONIGHT, OCTOBER.normal)).toMatch(/^Visa \(V\) reported Tue, Oct 27, after the close: EPS \$[\d.]+ vs \$[\d.]+ expected, [^;]+; the stock reacts Wed, Oct 28\. Its usual move after a report: ±\d+\.\d%\.$/);
+    expect(agendaSentence(V_TONIGHT, OCTOBER.normal)).toMatch(/^Visa V reported Tue, Oct 27, after the close: EPS \$[\d.]+ vs \$[\d.]+ expected, [^;]+; the stock reacts Wed, Oct 28\. Its usual move after a report: ±\d+\.\d%\.$/);
     const cvx = OCTOBER.items.find((e): e is CoEvent => e.kind === 'earnings' && e.ticker === 'CVX')!;
-    expect(agendaSentence(cvx, OCTOBER.normal)).toMatch(/^Chevron \(CVX\) is expected to report around Fri, Oct 30 \(date not confirmed\), before the open\. In the session after its last 8 reports it moved ±\d+\.\d% on average\.$/);
+    expect(agendaSentence(cvx, OCTOBER.normal)).toMatch(/^Chevron CVX is expected to report around Fri, Oct 30 \(date not confirmed\), before the open\. In the session after its last 8 reports it moved ±\d+\.\d% on average\.$/);
     expect(agendaSentence(FED, OCTOBER.normal)).toBe('Fed Interest Rate Decision is due Wed, Oct 28 (expected 3.50%, previous 3.75%). ' +
       'On its last 8 releases the market (SPY) moved ±1.2% on average, 1.8× a normal day.');
     expect(agendaSentence(CPI, OCTOBER.normal)).toBe('Inflation Rate YoY (Sep), released Wed, Oct 14: 2.9% vs 2.8% expected; the market (SPY) moved -1.2% that session.');

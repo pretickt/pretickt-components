@@ -40,18 +40,18 @@ const nameOf = (r: HotRow) => (r.name && r.name !== r.ticker ? plainName(r.name)
 const listed = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
 
 /**
- * "Most discussed on Reddit and X in the 24 hours to 10:30 a.m. ET, Mon, Oct 26, 2026: SpaceX (SPCX, 220 posts, 3.1× its usual), Alphabet
- * (GOOGL, 170) and Amazon (AMZN, 150). Amgen (AMGN) draws 6.7× its usual. Posts from r/wallstreetbets, r/stocks and X."
+ * "Most discussed on Reddit and X in the 24 hours to 10:30 a.m. ET, Mon, Oct 26, 2026: SpaceX SPCX (220 posts, 3.1× its usual), Alphabet
+ * GOOGL (170) and Amazon AMZN (150). Amgen AMGN draws 6.7× its usual. Posts from r/wallstreetbets, r/stocks and X."
  */
 export function hotSentence(rows: HotRow[], when = '', sources: string[] = []): string {
   const top = [...rows].sort((a, b) => b.mentions - a.mentions).slice(0, 3);
   if (!top.length) return '';
   const hottest = rows.filter((r) => (heat(r) ?? 0) >= 2).sort((a, b) => heat(b)! - heat(a)!)[0];
   const h0 = heat(top[0]!);
-  const parts = [`${nameOf(top[0]!)} (${top[0]!.ticker}, ${top[0]!.mentions} posts${h0 !== null ? `, ${num(h0, 1)}× its usual` : ''})`,
-    ...top.slice(1).map((r) => `${nameOf(r)} (${r.ticker}, ${r.mentions})`)];
+  const parts = [`${named(top[0]!.name, top[0]!.ticker)} (${top[0]!.mentions} posts${h0 !== null ? `, ${num(h0, 1)}× its usual` : ''})`,
+    ...top.slice(1).map((r) => `${named(r.name, r.ticker)} (${r.mentions})`)];
   return `Most discussed on Reddit and X ${when ? `in the 24 hours to ${when}` : 'in the last 24 hours'}: ${listed(parts)}.` +
-    (hottest ? ` ${nameOf(hottest)} (${hottest.ticker}) draws ${num(heat(hottest), 1)}× its usual.` : '') +
+    (hottest ? ` ${named(hottest.name, hottest.ticker)} draws ${num(heat(hottest), 1)}× its usual.` : '') +
     (sources.length ? ` Posts from ${listed(sources)}.` : '');
 }
 
@@ -78,7 +78,7 @@ export function hotSentence(rows: HotRow[], when = '', sources: string[] = []): 
           </ul>
           @if (ranked().length) {
             <ol class="dr-rank">
-              @for (r of ranked(); track r.ticker) {<li><a [href]="r.href">{{ r.who }}</a> {{ r.say }}</li>}
+              @for (r of ranked(); track r.ticker) {<li><a [href]="r.href">{{ r.who }}</a>: {{ r.say }}</li>}
             </ol>
           }
           <figcaption class="pt-legend">

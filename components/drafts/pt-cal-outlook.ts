@@ -19,7 +19,7 @@
  */
 import { Component, computed, input, signal } from '@angular/core';
 import { PtLogo } from '@pretickt/components/ds';
-import { dayMonth, level, money, num, pct, stockHref, tone, usd, type Tone } from '@pretickt/components/format';
+import { dayMonth, level, money, named, num, pct, stockHref, tone, usd, type Tone } from '@pretickt/components/format';
 import { addDays, mondayOf, weekdayOf } from '../pt-calendar';
 
 export type OutlookVariant = 'move' | 'dollars' | 'record' | 'range';
@@ -231,9 +231,10 @@ export function card(e: OutlookEvent, normal: number | null): Card {
   return { ...head, lines, facts, expect: expectations(e), bars: bars(shown, u) };
 }
 
-const named = (e: CoEvent) => (e.name && e.name !== e.ticker ? `${e.name} (${e.ticker})` : e.ticker);
+/** "Microsoft MSFT": the company's common name with its ticker, no parentheses. */
+const coName = (e: CoEvent) => named(e.name, e.ticker);
 /**
- * An agenda row in a sentence, the text a search engine and an AI read: "Microsoft (MSFT) reports Wed, Oct 28 (confirmed), after the
+ * An agenda row in a sentence, the text a search engine and an AI read: "Microsoft MSFT reports Wed, Oct 28 (confirmed), after the
  * close; the stock reacts Thu, Oct 29. In the session after its last 8 reports it moved ±4.7% on average." After the report, its
  * figures and the move against the usual one; for a macro date, the market's (SPY) usual move on its releases.
  */
@@ -253,12 +254,12 @@ export function agendaSentence(e: OutlookEvent, normal: number | null): string {
   if (e.result) {
     const eps = e.result.epsActual != null && e.epsEst != null
       ? `: EPS ${money(e.result.epsActual)} vs ${money(e.epsEst)} expected, ${verdictPhrase(e.result.epsActual, e.epsEst)}` : '';
-    if (m != null) return `${named(e)} reported ${dayLabel(e.date)}${t}${eps}. The stock moved ${pct(m)} in the session that traded it` +
+    if (m != null) return `${coName(e)} reported ${dayLabel(e.date)}${t}${eps}. The stock moved ${pct(m)} in the session that traded it` +
       `${u != null ? `, ${times(Math.abs(m) / u)} its usual ${usual}` : ''}.`;
-    return `${named(e)} reported ${dayLabel(e.date)}${t}${eps}${reacts}.${usual ? ` Its usual move after a report: ${usual}.` : ''}`;
+    return `${coName(e)} reported ${dayLabel(e.date)}${t}${eps}${reacts}.${usual ? ` Its usual move after a report: ${usual}.` : ''}`;
   }
-  const head = e.confirmed === false ? `${named(e)} is expected to report around ${dayLabel(e.date)} (date not confirmed)${t}`
-    : `${named(e)} reports ${dayLabel(e.date)}${e.confirmed ? ' (confirmed)' : ''}${t}${reacts}`;
+  const head = e.confirmed === false ? `${coName(e)} is expected to report around ${dayLabel(e.date)} (date not confirmed)${t}`
+    : `${coName(e)} reports ${dayLabel(e.date)}${e.confirmed ? ' (confirmed)' : ''}${t}${reacts}`;
   return `${head}.${usual ? ` In the session after its last ${Math.min(e.reactions.length, REPORTS)} reports it moved ${usual} on average.` : ''}`;
 }
 
@@ -273,7 +274,7 @@ const NOTE = 'Past reactions: how big a move has been, not which way the next on
     <div class="do-card">
       <div class="do-card-head">
         @if (e.kind === 'macro') {<span class="pt-cal-macro">{{ e.label }}</span><b>{{ e.event }}</b>}
-        @else {<pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="20" /><b>{{ e.name }}{{ e.name === e.ticker ? '' : ' (' + e.ticker + ')' }}</b>}
+        @else {<pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="20" /><b>{{ coName(e) }}</b>}
       </div>
       <p class="pt-meta">{{ whenText() }}</p>
       <p class="do-big">@if (c.big) {<b [class]="c.tone === 'est' ? 'do-est' : 'pt-t-' + c.tone">{{ c.big }}</b>}<span>{{ c.says }}</span></p>
@@ -303,6 +304,7 @@ const NOTE = 'Past reactions: how big a move has been, not which way the next on
 export class PtOutlookCard {
   readonly event = input.required<OutlookEvent>();
   readonly normal = input<number | null>(null);
+  protected readonly coName = coName;
   protected readonly view = computed(() => card(this.event(), this.normal()));
   protected readonly whenText = computed(() => when(this.event()));
   protected readonly barsLabel = computed(() => {

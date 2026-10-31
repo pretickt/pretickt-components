@@ -14,9 +14,9 @@ describe('home drafts: the helpers their components will keep', () => {
     expect([2.5, 1, 0.5, null].map(ring)).toEqual(['hot', 'usual', 'cool', 'cool']);
     expect(bubbleSize(400) - 34).toBeCloseTo(2 * (bubbleSize(100) - 34), 0);
     expect(hotSentence(HOT.rows, hotWhen(HOT), HOT.sources)).toBe('Most discussed on Reddit and X in the 24 hours to 10:30 a.m. ET, Mon, Oct 26, 2026: ' +
-      'SpaceX (SPCX, 220 posts, 3.1× its usual), Alphabet (GOOGL, 170) and Amazon (AMZN, 150). Amgen (AMGN) draws 6.7× its usual. Posts from r/wallstreetbets, r/stocks and X.');
-    expect(hotSentence(HOT.rows.slice(0, 2))).toBe('Most discussed on Reddit and X in the last 24 hours: SpaceX (SPCX, 220 posts, 3.1× its usual) and Alphabet (GOOGL, 170). ' +
-      'SpaceX (SPCX) draws 3.1× its usual.');
+      'SpaceX SPCX (220 posts, 3.1× its usual), Alphabet GOOGL (170) and Amazon AMZN (150). Amgen AMGN draws 6.7× its usual. Posts from r/wallstreetbets, r/stocks and X.');
+    expect(hotSentence(HOT.rows.slice(0, 2))).toBe('Most discussed on Reddit and X in the last 24 hours: SpaceX SPCX (220 posts, 3.1× its usual) and Alphabet GOOGL (170). ' +
+      'SpaceX SPCX draws 3.1× its usual.');
     expect([etTime('10:30'), etTime('14:00'), etTime('09:05'), etTime('00:15')]).toEqual(['10:30 a.m. ET', '2 p.m. ET', '9:05 a.m. ET', '12:15 a.m. ET']);
     expect(hotWhen({ asOf: '2026-10-26', time: null })).toBe('Mon, Oct 26, 2026');
   });
@@ -35,7 +35,7 @@ describe('home drafts: the helpers their components will keep', () => {
     expect(text()).toContain('last 24 hours · as of 10:30 a.m. ET, Mon, Oct 26, 2026');
     const rows = [...el.querySelectorAll('ol.dr-rank li')].map((li) => li.textContent!.replace(/\s+/g, ' ').trim());
     expect(rows).toHaveLength(5);
-    expect(rows[0]).toBe('SpaceX (SPCX) 220 posts in 24 hours, 3.1× its usual day');
+    expect(rows[0]).toBe('SpaceX SPCX: 220 posts in 24 hours, 3.1× its usual day');
     expect(el.querySelector('ol.dr-rank a')!.getAttribute('href')).toBe('/stocks/spcx/#people-ask');
     expect((await render(PtHot, { data: HOT })).el.querySelector('ol.dr-rank')).toBeNull();
   });

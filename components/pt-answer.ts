@@ -1,7 +1,7 @@
 /**
  * The page's question answered first, in a sentence or two, from the data the page shows below it: a stock's analyst forecast and
  * price target, its peers, its latest quarter, its insiders; who leads a market list; a calendar month at a glance.
- * Company topics name the company as people search it, with its ticker ("Nvidia (NVDA)"): the sentence an answer engine quotes stands on its own.
+ * Company topics name the company as people search it, with its ticker ("Nvidia NVDA"): the sentence an answer engine quotes stands on its own.
  * @version 1.2.0
  * @evidence DataForSEO: "<ticker> stock forecast" 151k/month, "<ticker> price target" 103k/month, "earnings calendar" 153k/month, list queries (launch/data/08c-serp-*.json)
  * @evidence SEO measurement 2026-10-09: list and company subpages of ~80–200 words; the answer belongs in the first lines, with its numbers
@@ -100,7 +100,7 @@ export class PtAnswer {
     }
   });
 
-  /** "Nvidia (NVDA)": the company's common name with its ticker (the ticker alone without a name); undefined while it is on its way. */
+  /** "Nvidia NVDA": the company's common name with its ticker (the ticker alone without a name); undefined while it is on its way. */
   private named(t: string): string | undefined {
     const c = this.company.value();
     return c === undefined ? undefined : named(c?.name, t);

@@ -93,7 +93,7 @@ describe('the words and the marks', () => {
   });
   it('the answer first: the company, the 12 months to the date, the facts that strengthened and weakened its quality', () => {
     const cards = qualityCards('XYZ', fund, events, series()[0]!.points, '2026-10-23');
-    expect(qualityLead('XYZ Corp (XYZ)', cards, '2026-10-23')).toBe('XYZ Corp (XYZ) in the 12 months to Oct 23, 2026: 3 facts strengthened its quality, 3 weakened it, 4 to watch.');
+    expect(qualityLead('XYZ Corp XYZ', cards, '2026-10-23')).toBe('XYZ Corp XYZ in the 12 months to Oct 23, 2026: 3 facts strengthened its quality, 3 weakened it, 4 to watch.');
     expect(qualityLead('XYZ', [c('demand', 'pos')], '2026-10-23')).toBe('XYZ in the 12 months to Oct 23, 2026: 1 fact strengthened its quality, 0 weakened it.');
     expect(qualityLead('XYZ', [], '2026-10-23')).toBe('XYZ: no new facts in the 12 months to Oct 23, 2026.');
   });
@@ -130,8 +130,8 @@ describe('pt-quality', () => {
       marketCap: 1e11, insiderNet: 0, volumeRatio: 1, spark: [], self: true };
     const r = await render(PtQuality, { ticker: 'XYZ' }, withData({ 'fundamentals@1': fund, 'events@1': events, 'price-series@1': series(),
       'screen@1': { asOf: '2026-10-23', rows: [self] } }));
-    expect(r.el.querySelector('.pt-lede')!.textContent).toBe('Xylo Zen (XYZ) in the 12 months to Oct 23, 2026: 3 facts strengthened its quality, 3 weakened it, 4 to watch.');
-    expect(r.el.querySelector('.pt-q-drop-lead')!.textContent!.trim()).toMatch(/^Xylo Zen \(XYZ\) is 19\.9% below/);
+    expect(r.el.querySelector('.pt-lede')!.textContent).toBe('Xylo Zen XYZ in the 12 months to Oct 23, 2026: 3 facts strengthened its quality, 3 weakened it, 4 to watch.');
+    expect(r.el.querySelector('.pt-q-drop-lead')!.textContent!.trim()).toMatch(/^Xylo Zen XYZ is 19\.9% below/);
     const other = { ...self, ticker: 'AAPL', name: 'Apple Inc.' };          // a row marked self but for another ticker is not its name
     const r2 = await render(PtQuality, { ticker: 'XYZ' }, withData({ 'fundamentals@1': fund, 'events@1': events, 'price-series@1': series(),
       'screen@1': { asOf: '2026-10-23', rows: [other] } }));

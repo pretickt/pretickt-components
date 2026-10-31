@@ -173,7 +173,7 @@ change in this repo, reviewed like any other).
 ## Search engines and AI answers (SEO, AI search)
 Google shows an AI Overview on most questions about a stock, and the chat assistants (ChatGPT, Claude, Gemini, Perplexity) answer
 them too, quoting the sites that write the exact number with its date. What a component prints is that text:
-- **The answer is a sentence in the page**: the company's common name with its ticker, the number, the date — "Nvidia (NVDA) moved
+- **The answer is a sentence in the page**: the company's common name with its ticker, the number, the date — "Nvidia NVDA moved
   ±6.8% on average in the session after its last 8 reports (as of Oct 27, 2026)". A `data-tip`, an SVG or a hover card is not text to
   them: the fact is in the template's text too (a `pt-sr` span when it must not show).
 - **The question in the words people search, then the answer in its first sentence**: "Is Nvidia a good stock to buy?", "When does
@@ -181,8 +181,9 @@ them too, quoting the sites that write the exact number with its date. What a co
 - **Common names, as people and the press write them**: every company name a component prints goes through `plainName` (format):
   the legal suffixes go, then `COMMON_NAMES` gives the name the press uses where the provider's is not it ("NVIDIA Corporation" →
   "Nvidia", "Meta Platforms, Inc." → "Meta", "Advanced Micro Devices" → "AMD"; read against www's 517 companies on 2026-10-31: a new
-  company with an odd name gets its line there). `named(name, ticker)` is the usual form, "Nvidia (NVDA)", the ticker alone when it
-  is the name ("RTX", "AMD"); a table shows the name beside the ticker only when it differs.
+  company with an odd name gets its line there). `named(name, ticker)` is the usual form, "Nvidia NVDA", the ticker without parentheses
+  (Romeo, 2026-10-31), the name alone when it is the ticker in other letters ("Meta", "AMD"); a table shows the name beside the ticker
+  only when it differs.
 - **The date in the text**, and in a heading when the data is today's ("Earnings today · Wed, Oct 28"), always with the explicit date:
   a page built at night is read the next day. Say what is an estimate (a date not confirmed, a forecast).
 - **Links say where they go** ("Nvidia earnings date", "Why Meta is down this week"), never "more" or "the answer on pretickt".

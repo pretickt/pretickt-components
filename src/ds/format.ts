@@ -171,7 +171,7 @@ export const COMMON_NAMES: Readonly<Record<string, string>> = {
 /**
  * A company's name as people search it and the press writes it: the legal suffixes go ("Apple Inc." → "Apple", "The Coca-Cola
  * Company" → "Coca-Cola"), then the common name where the provider's is not it ("NVIDIA Corporation" → "Nvidia", "Meta Platforms,
- * Inc." → "Meta"). Every name a component prints goes through it; the ticker stays beside it ("Nvidia (NVDA)").
+ * Inc." → "Meta"). Every name a component prints goes through it; the ticker stays beside it ("Nvidia NVDA", `named`).
  */
 export function plainName(name: string): string {
   const plain = withoutSuffixes(name);
@@ -185,10 +185,13 @@ export function withoutSuffixes(name: string): string {
   return n.replace(/^The\s+/, '') || n;
 }
 
-/** "Nvidia (NVDA)": the common name with the ticker beside it; the ticker alone when it is the name, case and all ("RTX", "AMD"). */
+/**
+ * "Nvidia NVDA": the common name with the ticker beside it, no parentheses (Romeo, 2026-10-31); the name alone when it is the ticker
+ * in other letters ("Meta", "AMD", "RTX").
+ */
 export function named(name: string | null | undefined, ticker: string): string {
   const n = plainName(name || ticker);
-  return n === ticker ? ticker : `${n} (${ticker})`;
+  return n.toUpperCase() === ticker.toUpperCase() ? n : `${n} ${ticker}`;
 }
 
 /**

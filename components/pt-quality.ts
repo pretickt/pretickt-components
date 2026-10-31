@@ -172,7 +172,7 @@ export function verdict(tones: QTone[]): string {
 }
 
 /**
- * The answer first, in a sentence: "Nvidia (NVDA) in the 12 months to Oct 23, 2026: 3 facts strengthened its quality, 3 weakened it,
+ * The answer first, in a sentence: "Nvidia NVDA in the 12 months to Oct 23, 2026: 3 facts strengthened its quality, 3 weakened it,
  * 4 to watch." — `who` is the name with the ticker.
  */
 export function qualityLead(who: string, cards: QCard[], asOf: string): string {
@@ -300,7 +300,7 @@ export class PtQuality {
   });
 
   protected readonly asOf = computed(() => this.fund.value()?.asOf ?? '');
-  /** "Nvidia (NVDA)": the name from the peers' list (the row with its ticker), the ticker alone until it is known */
+  /** "Nvidia NVDA": the name from the peers' list (the row with its ticker), the ticker alone until it is known */
   protected readonly who = computed(() => {
     const t = this.ticker();
     return named(this.peers.value()?.rows.find((r) => r.ticker === t)?.name, t);

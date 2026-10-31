@@ -22,9 +22,9 @@ describe('company names as people, the press and the AI answers write them (plai
     expect(['Microsoft Corporation', 'JPMorgan Chase & Co.', 'Johnson & Johnson', 'AT&T Inc.', '3M Company', 'Alphabet Inc.', 'Acme Widgets Holdings, Inc.']
       .map(plainName)).toEqual(['Microsoft', 'JPMorgan Chase', 'Johnson & Johnson', 'AT&T', '3M', 'Alphabet', 'Acme Widgets Holdings']);
   });
-  it('names a company with its ticker beside it, or the ticker alone when the name is the ticker (same case)', () => {
+  it('names a company with its ticker beside it, no parentheses; the name alone when it is the ticker in other letters', () => {
     expect([named('NVIDIA Corporation', 'NVDA'), named('Meta Platforms, Inc.', 'META'), named('RTX Corporation', 'RTX'), named('Advanced Micro Devices, Inc.', 'AMD'),
-      named('Dow Inc.', 'DOW'), named(null, 'XYZ'), named('', 'XYZ')]).toEqual(['Nvidia (NVDA)', 'Meta (META)', 'RTX', 'AMD', 'Dow (DOW)', 'XYZ', 'XYZ']);
+      named('Dow Inc.', 'DOW'), named(null, 'XYZ'), named('', 'XYZ')]).toEqual(['Nvidia NVDA', 'Meta', 'RTX', 'AMD', 'Dow', 'XYZ', 'XYZ']);
   });
   it('maps a suffix-free name to another one, which stays itself: no chain, no name that changes twice', () => {
     for (const [from, to] of Object.entries(COMMON_NAMES)) {
