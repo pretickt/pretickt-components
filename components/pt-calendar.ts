@@ -297,7 +297,7 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
               }
               @for (e of c.items.slice(0, CAP); track e.kind + e.ticker) {
                 @let row = rowOf(e);
-                <button type="button" class="pt-cal-ev" [class.pt-cal-ev-unconf]="row?.unconfirmed" [attr.data-tip]="chipTip(e)" (click)="openEvent(e, $event)">
+                <button type="button" class="pt-cal-ev" [class.pt-cal-ev-unconf]="row?.unconfirmed" [attr.data-card]="e.ticker" [attr.data-tip]="chipTip(e)" (click)="openEvent(e, $event)">
                   <span class="pt-cal-who"><pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="14" />{{ e.ticker }}@if (row?.unconfirmed) {<span class="pt-sr"> (date not confirmed)</span>}</span>
                   <span [class]="chipCue(row)">{{ row?.cue ?? '' }}</span>
                 </button>
@@ -351,7 +351,7 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
               }
               @for (e of oc.items; track e.kind + e.ticker) {
                 @let row = rowOf(e);
-                <button type="button" class="pt-cal-ev" [class.pt-cal-ev-unconf]="row?.unconfirmed" [attr.data-tip]="chipTip(e)" (click)="openEvent(e, $event)">
+                <button type="button" class="pt-cal-ev" [class.pt-cal-ev-unconf]="row?.unconfirmed" [attr.data-card]="e.ticker" [attr.data-tip]="chipTip(e)" (click)="openEvent(e, $event)">
                   <span class="pt-cal-who"><pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="14" />{{ e.ticker }}@if (row?.unconfirmed) {<span class="pt-sr"> (date not confirmed)</span>}</span>
                   <span [class]="chipCue(row)">{{ row?.cue ?? '' }}</span>
                 </button>

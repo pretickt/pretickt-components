@@ -327,6 +327,9 @@ describe('pt-calendar grid: the hint in the chip, a click opens the event', () =
     expect(cueOf(chipOf(el, 'CVX'))).toBe(''); // nothing on file but its estimate: no number made up
     expect(chipOf(el, 'CVX').classList).toContain('pt-cal-ev-unconf');
     expect(chipOf(el, 'CVX').textContent).toContain('(date not confirmed)');
+    // hovering the symbol opens the company's card, as everywhere (Romeo: "la card al passaggio del mouse deve rimanere")
+    expect(chipOf(el, 'MSFT').getAttribute('data-card')).toBe('MSFT');
+    expect(chipOf(el, 'Fed').hasAttribute('data-card')).toBe(false);
   });
   it('clicking a chip opens its event as its row opens, with the company\'s card under it (the page fills the slot); × and Escape close it', async () => {
     const r = await render(PtCalendar, { month: '2026-10' }, withData({ 'events@1': OCT27 }));

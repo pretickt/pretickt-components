@@ -116,6 +116,16 @@ describe('company cards on hover', () => {
     await vi.waitFor(() => expect(panel()?.querySelector('.pt-card-compact')).toBeTruthy());
     expect(api.mock.calls.some(([u]) => decodeURIComponent(String(u)).includes('"ticker":"MSFT"'))).toBe(true);
   });
+  it('clicking the symbol closes its card (a chip that opens a box of its own); a click inside the card does not', async () => {
+    page();
+    document.body.insertAdjacentHTML('beforeend', '<button id="chip" data-card="MSFT">MSFT ±4.7%</button>');
+    over('chip');
+    await vi.waitFor(() => expect(panel()?.querySelector('.pt-card-compact')).toBeTruthy());
+    panel()!.click();
+    expect(panel()).not.toBeNull();
+    document.getElementById('chip')!.click();
+    expect(panel()).toBeNull();
+  });
   it('the header\'s search results are company links too, but open no card (it would cover the list)', async () => {
     page();
     document.body.insertAdjacentHTML('afterbegin', '<header class="pt-header"><div class="pt-search-list"><a id="opt" role="option" href="/stocks/msft/">MSFT</a></div></header>');
@@ -137,10 +147,15 @@ describe('company cards on hover', () => {
     expect(['MSFT', 'BRK.B', 'msft', '^GSPC', ''].map((t) => companyOf(named(t)))).toEqual(['MSFT', 'BRK.B', null, null, null]);
     expect(CARD_TARGET).toBe('a[href], [data-card]');
   });
-  it('panel position: below the link when it fits, above when it does not, else pinned and scrollable', () => {
-    expect(panelPosition({ left: 100, top: 100, bottom: 120 }, 340, 300, 1200, 800)).toEqual({ x: 100, y: 128, maxHeight: null });
-    expect(panelPosition({ left: 100, top: 600, bottom: 620 }, 340, 300, 1200, 800)).toEqual({ x: 100, y: 292, maxHeight: null });
-    expect(panelPosition({ left: 1000, top: 300, bottom: 320 }, 340, 900, 1200, 800)).toEqual({ x: 852, y: 8, maxHeight: 784 });
+  it('panel position: below the link when it fits, above when it does not, else beside it; never over the link it previews', () => {
+    expect(panelPosition({ left: 100, right: 140, top: 100, bottom: 120 }, 340, 300, 1200, 800)).toEqual({ x: 100, y: 128, maxHeight: null });
+    expect(panelPosition({ left: 100, right: 140, top: 600, bottom: 620 }, 340, 300, 1200, 800)).toEqual({ x: 100, y: 292, maxHeight: null });
+    // a calendar chip low in the window: neither below nor above, so to its right, centred on it (the chip stays clickable)
+    expect(panelPosition({ left: 600, right: 700, top: 440, bottom: 460 }, 340, 480, 1280, 900)).toEqual({ x: 708, y: 210, maxHeight: null });
+    // no room on its right: on its left; taller than the window: from its top, scrollable
+    expect(panelPosition({ left: 1000, right: 1060, top: 300, bottom: 320 }, 340, 900, 1200, 800)).toEqual({ x: 652, y: 8, maxHeight: 784 });
+    // no room beside it either: the side with more room, scrollable
+    expect(panelPosition({ left: 10, right: 380, top: 300, bottom: 320 }, 340, 600, 390, 700)).toEqual({ x: 10, y: 328, maxHeight: 364 });
   });
 });
 

@@ -23,14 +23,21 @@ export function companyOf(el: Element | null): string | null {
 }
 
 /**
- * Where the panel goes: under the link when it fits, above it when that fits, else pinned to the top of the window with a height
- * that scrolls — the whole card (after "Show all" too) stays reachable.
+ * Where the panel goes: under the link when it fits, above it when that fits, else beside it (right, then left) centred on it, else
+ * on the side with more room with a height that scrolls. Never over the link it previews, which stays clickable (a calendar chip
+ * opens its box); the whole card (after "Show all" too) stays reachable.
  */
-export function panelPosition(r: { left: number; top: number; bottom: number }, w: number, h: number, vw: number, vh: number) {
+export function panelPosition(r: { left: number; right: number; top: number; bottom: number }, w: number, h: number, vw: number, vh: number) {
   const x = Math.max(GAP, Math.min(r.left, vw - w - GAP));
   if (r.bottom + GAP + h <= vh - GAP) return { x, y: r.bottom + GAP, maxHeight: null };
   if (r.top - GAP - h >= GAP) return { x, y: r.top - GAP - h, maxHeight: null };
-  return { x, y: GAP, maxHeight: vh - 2 * GAP };
+  const side = r.right + GAP + w <= vw - GAP ? r.right + GAP : r.left - GAP - w >= GAP ? r.left - GAP - w : null;
+  if (side !== null) {
+    if (h > vh - 2 * GAP) return { x: side, y: GAP, maxHeight: vh - 2 * GAP };
+    return { x: side, y: Math.max(GAP, Math.min((r.top + r.bottom) / 2 - h / 2, vh - GAP - h)), maxHeight: null };
+  }
+  const below = vh - r.bottom - 2 * GAP, above = r.top - 2 * GAP;
+  return below >= above ? { x, y: r.bottom + GAP, maxHeight: below } : { x, y: GAP, maxHeight: above };
 }
 
 function place(panel: HTMLElement, link: Element, win: Window) {
@@ -157,6 +164,8 @@ export function attachCards(doc: Document, appRef: ApplicationRef, o: CardOption
     if (a === link) closeSoon();
   });
   doc.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+  // a click on the symbol does what it does (a link opens the page, a calendar chip its box): the preview goes
+  doc.addEventListener('click', (e) => { if (link && linkOf(e.target) === link) close(); });
   return { active: () => !paused() };
 }
 
