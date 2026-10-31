@@ -3,7 +3,7 @@ import { railMarks, splitBars } from './pt-asked';
 import { bubbleSize, etTime, heat, hotSentence, hotWhen, PtHot, ring } from './pt-hot';
 import { arc, oddsDays, oddsTone } from './pt-odds';
 import { boardColumns, boardSentence, boardWeek, PtQualityStrip } from './pt-quality-strip';
-import { arcPath, at, barGeom, companyRows, list, NOT_ADVICE, onArc, priceSentence, PtValue, QS_TRACK, quarterGeom, valueAnswer, type Value } from './pt-value';
+import { arcPath, at, barGeom, checkGroups, companyRows, list, NOT_ADVICE, onArc, priceSentence, PtValue, QS_TRACK, quarterGeom, valueAnswer, type Value } from './pt-value';
 import { VALUE_INTC, VALUE_NKE, VALUE_NVDA } from './value-mock';
 import { render } from '../_spec';
 import { saidText } from '../../src/ds/format';
@@ -134,6 +134,16 @@ describe('pt-value (draft): the quarters, oldest first', () => {
   });
 });
 
+describe('pt-value (draft): the Piotroski checks, by what they look at', () => {
+  it('nine checks in three groups people read — profit and cash, debt and shares, efficiency — each passed or missed, named on hover', () => {
+    const g = checkGroups({ roa: true, cfo: true, droa: true, accruals: true, leverage: true, liquidity: false, shares: false, margin: true, turnover: false });
+    expect(g.map((x) => [x.label, x.checks.length])).toEqual([['Profit & cash', 4], ['Debt & shares', 3], ['Efficiency', 2]]);
+    expect(g.map((x) => x.checks.map((c) => c.ok))).toEqual([[true, true, true, true], [true, false, false], [true, false]]);
+    expect(JSON.parse(g[1]!.checks[2]!.tip)).toEqual({ 'No new shares issued': 'missed' });
+    expect(JSON.parse(g[0]!.checks[0]!.tip)).toEqual({ 'A profit (return on assets above zero)': 'passed' });
+  });
+});
+
 describe('pt-value (draft): the cards read across other companies', () => {
   it('bars as a share of the largest value, the tone from the sign unless given, the page\'s company marked; no bars without them', () => {
     const rows = companyRows([{ ticker: 'NVDA', logo: null, value: 78, label: '78%', self: true }, { ticker: 'INTC', logo: null, value: -2, label: '−2%' },
@@ -174,6 +184,17 @@ describe('pt-value (draft): every card', () => {
     }
     const titles = VALUE_NVDA.sections.flatMap((s) => s.cards.map((c) => `${c.title}${c.term ? ` · ${c.term}` : ''}`));
     expect(titles).toEqual(expect.arrayContaining(['price vs profit · P/E ratio', 'competitors', 'number of employees', 'shareholders · institutional ownership', 'insider selling', 'CEO pay']));
+  });
+  it('the quality checks show which ones pass, their "7 of 9" counts them, and the sentence names what it misses', () => {
+    const cards = all.flatMap((v) => v.sections.flatMap((s) => s.cards.map((c) => ({ v, c })))).filter(({ c }) => c.title === 'quality checks');
+    expect(cards.length).toBe(3);
+    for (const { c } of cards) {
+      expect(c.viz.kind).toBe('checks');
+      const ok = c.viz.kind === 'checks' ? Object.values(c.viz.ok) : [];
+      const [, hits, total] = /^(\d+) of (\d+)$/.exec(c.big)!.map(Number);
+      expect([ok.filter(Boolean).length, ok.length]).toEqual([hits, total]);
+      expect(c.say).toMatch(/misses on|passes only/);
+    }
   });
   it('a record over time shows its quarters, and its "5 of 8" counts them: the beats are the bars above the line', () => {
     const records = all.flatMap((v) => v.sections.flatMap((s) => s.cards)).filter((c) => /vs (estimates|forecast)$/.test(c.title));
@@ -233,6 +254,14 @@ describe('pt-value (draft): in the page\'s text', () => {
     expect([...card.querySelectorAll('.dv-qs-q')].map((x) => x.textContent)).toEqual(['Q3', 'Q4', 'Q1', 'Q2', 'Q3', 'Q4', 'Q1', 'Q2']);
     expect([...card.querySelectorAll('.dv-qs-y')].map((x) => x.textContent)).toEqual(['FY25', 'FY26', 'FY27']);
     expect(JSON.parse(card.querySelectorAll('.dv-qs-slot')[7]!.getAttribute('data-tip')!)).toEqual({ 'Q2 FY27': '+4.4% vs the analysts\' estimate' });
+  });
+  it('the quality checks card: a row per group with its name, a square per check, full when it passes', async () => {
+    const { el } = await render(PtValue, { data: VALUE_NVDA });
+    const card = [...el.querySelectorAll('.dv-card')].find((c) => c.querySelector('.dv-title')!.textContent!.includes('quality checks'))!;
+    expect([...card.querySelectorAll('.dv-ck-g')].map((x) => x.textContent)).toEqual(['Profit & cash', 'Debt & shares', 'Efficiency']);
+    expect(card.querySelectorAll('.dv-ck i')).toHaveLength(9);
+    expect(card.querySelectorAll('.dv-ck i.dv-ck-on')).toHaveLength(7);
+    expect(card.querySelectorAll('.dv-ck i[data-tip]')).toHaveLength(9);
   });
   it('each card\'s title is a heading, as the searched questions under the columns, with its searched term inside it', async () => {
     const { el } = await render(PtValue, { data: VALUE_NVDA });

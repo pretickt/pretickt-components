@@ -9,7 +9,7 @@
  * and the searched phrases), the titles' `term` the words they search the card's fact with.
  */
 import { LOGO } from './mock';
-import type { Value, ValueCard, ValueCompany } from './pt-value';
+import { CHECKS, type CheckKey, type Value, type ValueCard, type ValueCompany } from './pt-value';
 
 const card = (tone: ValueCard['tone'], title: string, big: string, line: string, say: string, why: string, source: string, viz: ValueCard['viz'],
   o: { via?: string; term?: string } = {}): ValueCard => ({ tone, title, ...(o.term ? { term: o.term } : {}), big, line, say, why, source, viz, ...(o.via ? { via: o.via } : {}) });
@@ -28,6 +28,9 @@ const customers = (tone: ValueCard['tone'], share: number | null, say: string, w
 const record = (vs: string, q: number, fy: number, by: number[]): ValueCard['viz'] => ({ kind: 'quarters', vs,
   quarters: by.map((b, i) => ({ q: `Q${((q - 1 + i) % 4) + 1}`, fy: `FY${fy + Math.floor((q - 1 + i) / 4)}`, by: b })) });
 const ESTIMATE = 'the analysts\' estimate', FORECAST = 'its forecast';
+/** The nine Piotroski checks, all passed but the `missed` ones. */
+const piotroski = (...missed: CheckKey[]): ValueCard['viz'] =>
+  ({ kind: 'checks', ok: Object.fromEntries((Object.keys(CHECKS) as CheckKey[]).map((k) => [k, !missed.includes(k)])) as Record<CheckKey, boolean> });
 const PE_SOURCE = 'price over the last 12 months\' EPS, from FMP prices and income-statement (as pt-quality)';
 const BANKS_SOURCE = 'FMP grades (ratings) + price-target-news (targets)';
 const INSIDERS_SOURCE = 'FMP insider-trading/search (sales and buys at their price; awards and gifts left out)';
@@ -90,8 +93,8 @@ export const VALUE_NVDA: Value = { ...head('NVDA', 'Nvidia'), pe: { now: 41.2, m
   { key: 'fragility', tone: 'flat', verdict: 'some risks', cards: [
     card('pos', 'financial health', '58', 'Altman Z-score, safe above 3', 'Nvidia\'s Altman Z-score is 58 (Oct 26, 2026), far above 3, where the safe zone starts.',
       'No sign of financial stress.', 'FMP financial-scores', { kind: 'gauge', value: 58, min: 0, max: 60, zones: [1.8, 3] }),
-    card('pos', 'quality checks', '7 of 9', 'checks passed', 'Nvidia passes 7 of the 9 Piotroski checks on profits, cash, debt and efficiency.',
-      'Profits, cash, debt and efficiency all improving.', 'FMP financial-scores', { kind: 'dots', hits: 7, total: 9 }, { term: 'Piotroski score' }),
+    card('pos', 'quality checks', '7 of 9', 'checks passed', 'Nvidia passes 7 of the 9 Piotroski checks on profit, cash, debt and efficiency; it misses on new shares and on sales for its assets.',
+      'Strong on profit, cash and debt.', 'FMP financial-scores', piotroski('shares', 'turnover'), { term: 'Piotroski score' }),
     customers('flat', 34, 'Three customers, unnamed in Nvidia\'s 10-K, made 34% of its sales in fiscal 2026.', 'Losing one of them would hurt.'),
     card('neg', 'in past downturns', '−16%', 'its sales in the worst one', 'Nvidia\'s sales fell in 3 of the 4 past downturns, by as much as 16% in 2008.',
       'Its sales in the four past downturns (2001, 2008, 2020, 2023): a cyclical business.', 'FMP income-statement (quarterly, since 1999)',
@@ -165,8 +168,8 @@ export const VALUE_NKE: Value = { ...head('NKE', 'Nike'), pe: { now: 19.4, media
   { key: 'fragility', tone: 'pos', verdict: 'sturdy', cards: [
     card('pos', 'financial health', '5.1', 'Altman Z-score, safe above 3', 'Nike\'s Altman Z-score is 5.1 (Oct 26, 2026), above 3, in the safe zone.',
       'No sign of financial stress.', 'FMP financial-scores', { kind: 'gauge', value: 5.1, min: 0, max: 8, zones: [1.8, 3] }),
-    card('flat', 'quality checks', '5 of 9', 'checks passed', 'Nike passes 5 of the 9 Piotroski checks on profits, cash, debt and efficiency.',
-      'Average.', 'FMP financial-scores', { kind: 'dots', hits: 5, total: 9 }, { term: 'Piotroski score' }),
+    card('flat', 'quality checks', '5 of 9', 'checks passed', 'Nike passes 5 of the 9 Piotroski checks; it misses on return on assets, debt, gross margin and sales for its assets.',
+      'Average: its profit and cash hold, its efficiency slips.', 'FMP financial-scores', piotroski('droa', 'leverage', 'margin', 'turnover'), { term: 'Piotroski score' }),
     customers('pos', null, 'No customer makes 10% of Nike\'s sales, by its fiscal 2026 10-K.', 'No single buyer can break it.'),
   ] },
   { key: 'price', tone: 'pos', verdict: 'below its usual', cards: [
@@ -216,8 +219,8 @@ export const VALUE_INTC: Value = { ...head('INTC', 'Intel'), pe: { now: null, me
   { key: 'fragility', tone: 'neg', verdict: 'fragile', cards: [
     card('neg', 'financial health', '1.4', 'Altman Z-score, stress below 1.8', 'Intel\'s Altman Z-score is 1.4 (Oct 26, 2026), below 1.8, in the stress zone.',
       'A sign of financial stress.', 'FMP financial-scores', { kind: 'gauge', value: 1.4, min: 0, max: 8, zones: [1.8, 3] }),
-    card('neg', 'quality checks', '2 of 9', 'checks passed', 'Intel passes 2 of the 9 Piotroski checks on profits, cash, debt and efficiency.',
-      'Most checks fail.', 'FMP financial-scores', { kind: 'dots', hits: 2, total: 9 }, { term: 'Piotroski score' }),
+    card('neg', 'quality checks', '2 of 9', 'checks passed', 'Intel passes only 2 of the 9 Piotroski checks: cash from operations and liquidity.',
+      'Most checks fail.', 'FMP financial-scores', piotroski('roa', 'droa', 'accruals', 'leverage', 'shares', 'margin', 'turnover'), { term: 'Piotroski score' }),
     customers('neg', 42, 'Three customers, PC makers unnamed in Intel\'s 10-K, made 42% of its sales in 2025.', 'Losing one of them would hurt.'),
   ] },
   { key: 'price', tone: 'flat', verdict: 'hard to judge', cards: [

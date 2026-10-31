@@ -20,7 +20,9 @@
  * A record over time (earnings against the estimate, sales against the forecast) is a bar per quarter, oldest first, on the line of
  * what was expected: up by what it beat, down by what it missed, the latest in full colour; the quarter under each bar, the fiscal
  * year once under its quarters, the number on hover (Romeo, 2026-10-31: the dots were periods with no time on them).
- * @version 0.0.9
+ * The Piotroski checks show what they look at: a row per group people read (profit & cash, debt & shares, efficiency), a square
+ * per check, full when it passes, an outline when it misses, its name on hover; the sentence names what it misses.
+ * @version 0.0.10
  */
 import { Component, computed, input } from '@angular/core';
 import { PtIcon, PtLogo } from '@pretickt/components/ds';
@@ -31,7 +33,8 @@ export type ValueTone = 'pos' | 'flat' | 'neg' | 'na';
 export type ValueViz =
   | { kind: 'bars'; values: number[]; labels?: string[] }          // a trend: years or quarters, the last one in its tone
   | { kind: 'vs'; value: number; peers: number; unit: '%' | '×' }  // the company against its peers' median
-  | { kind: 'dots'; hits: number; total: number }                  // so many of so many, with no time: checks passed
+  | { kind: 'dots'; hits: number; total: number }                  // so many of so many, with no time and no names
+  | { kind: 'checks'; ok: Record<CheckKey, boolean> }              // the nine Piotroski checks, each passed or missed
   | { kind: 'quarters'; quarters: ValueQuarter[]; vs: string }     // a record over time, oldest first, against `vs` (what was expected)
   | { kind: 'gauge'; value: number; min: number; max: number; zones: [number, number] } // a score with a red, amber, green zone
   | { kind: 'range'; low: number; high: number; value: number; mark?: number; labels?: [string, string] } // where it sits in a range
@@ -39,6 +42,22 @@ export type ValueViz =
   | { kind: 'companies'; rows: ValueCompany[]; bars: boolean };    // other companies: customers, rivals, holders, analysts' banks
 /** A quarter of a record, as the company names it (fiscal quarter and year), and by how much it beat what was expected: 0.06 is 6%, a miss below 0. */
 export interface ValueQuarter { q: string; fy: string; by: number }
+type CheckGroup = 'profit' | 'debt' | 'efficiency';
+/** The nine Piotroski checks in their order, each with its group and its plain name (the hover). */
+export const CHECKS = {
+  roa: ['profit', 'A profit (return on assets above zero)'],
+  cfo: ['profit', 'Cash from operations above zero'],
+  droa: ['profit', 'Return on assets up on a year before'],
+  accruals: ['profit', 'More cash from operations than profit'],
+  leverage: ['debt', 'Less long-term debt for its assets than a year before'],
+  liquidity: ['debt', 'Current ratio up on a year before'],
+  shares: ['debt', 'No new shares issued'],
+  margin: ['efficiency', 'Gross margin up on a year before'],
+  turnover: ['efficiency', 'More sales for its assets than a year before'],
+} as const satisfies Record<string, readonly [CheckGroup, string]>;
+export type CheckKey = keyof typeof CHECKS;
+/** The three things the checks look at, in words anyone reads. */
+const CHECK_GROUPS: Record<CheckGroup, string> = { profit: 'Profit & cash', debt: 'Debt & shares', efficiency: 'Efficiency' };
 /** One company on a card that reads others: its logo, its value (the bar), its label; `self` is the company of the page. */
 export interface ValueCompany { ticker: string; logo: string | null; value: number | null; label: string; tone?: ValueTone; self?: boolean }
 /**
@@ -140,6 +159,12 @@ export function quarterGeom(quarters: ValueQuarter[], vs: string) {
   for (const x of quarters) { const y = years.at(-1); if (y?.fy === x.fy) y.span++; else years.push({ fy: x.fy, span: 1 }); }
   return { base, bars, years, cols: `repeat(${quarters.length}, minmax(0, 1fr))` };
 }
+/** The checks by group, in order, each passed or missed, with its name for the hover. */
+export function checkGroups(ok: Record<CheckKey, boolean>) {
+  const keys = Object.keys(CHECKS) as CheckKey[];
+  return (Object.keys(CHECK_GROUPS) as CheckGroup[]).map((g) => ({ key: g, label: CHECK_GROUPS[g],
+    checks: keys.filter((k) => CHECKS[k][0] === g).map((k) => ({ key: k, ok: ok[k], tip: tip({ [CHECKS[k][1]]: ok[k] ? 'passed' : 'missed' }) })) }));
+}
 /** A companies card's rows: each bar as a share of the largest value (none without bars or a value), its tone by its sign. */
 export function companyRows(rows: ValueCompany[], bars: boolean) {
   const max = Math.max(...rows.map((r) => Math.abs(r.value ?? 0)), 1e-9);
@@ -205,6 +230,11 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
                       <svg class="dv-viz" viewBox="0 0 120 32" aria-hidden="true">
                         @for (x of d; track $index) {<circle [class]="x.on ? 'dv-dot-' + c.tone : 'dv-dot'" [attr.cx]="x.cx" cy="16" r="4.2" />}
                       </svg>
+                    }
+                    @case ('checks') {
+                      <div class="dv-ck" aria-hidden="true">
+                        @for (g of checks(c); track g.key) {<span class="dv-ck-g">{{ g.label }}</span><span class="dv-ck-row">@for (x of g.checks; track x.key) {<i [class]="x.ok ? 'dv-ck-on' : 'dv-ck-off'" [attr.data-tip]="x.tip"></i>}</span>}
+                      </div>
                     }
                     @case ('quarters') {
                       @let g = quarters(c);
@@ -283,6 +313,7 @@ export class PtValue {
   protected companies(c: ValueCard) { return c.viz.kind === 'companies' ? companyRows(c.viz.rows, c.viz.bars) : []; }
   protected bars(c: ValueCard) { return c.viz.kind === 'bars' ? barGeom(c.viz.values) : { base: 0, bars: [] }; }
   protected quarters(c: ValueCard) { return c.viz.kind === 'quarters' ? quarterGeom(c.viz.quarters, c.viz.vs) : quarterGeom([], ''); }
+  protected checks(c: ValueCard) { return c.viz.kind === 'checks' ? checkGroups(c.viz.ok) : []; }
   protected vs(c: ValueCard) {
     if (c.viz.kind !== 'vs') return { it: 0, peers: 0 };
     const max = Math.max(c.viz.value, c.viz.peers, 1e-9);
