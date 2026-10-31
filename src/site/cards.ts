@@ -8,6 +8,8 @@ const GAP = 8;
  * `<summary>`, so it holds no link).
  */
 export const CARD_TARGET = 'a[href], [data-card]';
+/** A ticker as the platform stores it (what `data-card` and `data-card-slot` must hold). */
+const TICKER = /^[A-Z][A-Z0-9]{0,5}(\.[A-Z])?$/;
 
 /**
  * The company a link points to — its page `/stocks/<t>/`, or a section of it (`#people-ask`) — or the one an element names in
@@ -15,7 +17,7 @@ export const CARD_TARGET = 'a[href], [data-card]';
  */
 export function companyOf(el: Element | null): string | null {
   const named = el?.getAttribute('data-card');
-  if (named != null) return /^[A-Z][A-Z0-9]{0,5}(\.[A-Z])?$/.test(named) ? named : null;
+  if (named != null) return TICKER.test(named) ? named : null;
   const m = /^\/stocks\/([a-z0-9.]{1,12})\/(?:#[a-z0-9-]*)?$/.exec(el?.getAttribute('href') ?? '');
   return m ? m[1]!.toUpperCase() : null;
 }
@@ -156,4 +158,57 @@ export function attachCards(doc: Document, appRef: ApplicationRef, o: CardOption
   });
   doc.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
   return { active: () => !paused() };
+}
+
+const SLOT = '[data-card-slot]';
+
+/**
+ * The company card where a component leaves room for it: an element `data-card-slot="<TICKER>"` (pt-calendar's box for an event,
+ * opened on a click) gets the compact card mounted inside, on any device — a click, not a hover. Slots already on the page and slots
+ * added later are filled; when a slot leaves the page (the box closes) or names another company, its card is destroyed. The card is
+ * mounted in the page's own app (its calls share the page's answers), named in the beacon by `id`.
+ */
+export function attachCardSlots(doc: Document, appRef: ApplicationRef, o: { load: () => Promise<Type<CardComponent>>; id: string }) {
+  const mounted = new Map<Element, { ticker: string; ref?: ComponentRef<CardComponent>; env?: EnvironmentInjector }>();
+  const drop = (slot: Element) => {
+    const m = mounted.get(slot);
+    if (!m) return;
+    mounted.delete(slot);
+    if (m.ref) { appRef.detachView(m.ref.hostView); m.ref.destroy(); m.ref.location.nativeElement.remove(); }
+    m.env?.destroy();
+  };
+  async function fill(slot: Element) {
+    const ticker = slot.getAttribute('data-card-slot') ?? '';
+    if (mounted.get(slot)?.ticker === ticker) return;
+    drop(slot);
+    if (!TICKER.test(ticker)) return;
+    const m: { ticker: string; ref?: ComponentRef<CardComponent>; env?: EnvironmentInjector } = { ticker };
+    mounted.set(slot, m);
+    const Card = await o.load();
+    if (mounted.get(slot) !== m || !slot.isConnected) return; // gone, or another company, while the card loaded
+    const host = doc.createElement('div');
+    host.setAttribute('data-island', o.id);
+    m.env = createEnvironmentInjector([Pt], appRef.injector);
+    m.ref = createComponent(Card, { environmentInjector: m.env, hostElement: host });
+    m.ref.setInput('ticker', ticker);
+    m.ref.setInput('size', 'compact');
+    m.ref.setInput('extra', null);
+    appRef.attachView(m.ref.hostView);
+    slot.append(host);
+    m.ref.changeDetectorRef.detectChanges(); // its calls start
+  }
+  const scan = (root: ParentNode) => {
+    if (root instanceof Element && root.matches(SLOT)) void fill(root);
+    for (const s of root.querySelectorAll(SLOT)) void fill(s);
+  };
+  const watch = new MutationObserver((records) => {
+    for (const [slot] of mounted) if (!slot.isConnected) drop(slot);
+    for (const r of records) {
+      if (r.type === 'attributes') void fill(r.target as Element);
+      else for (const n of r.addedNodes) if (n instanceof Element) scan(n);
+    }
+  });
+  watch.observe(doc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-card-slot'] });
+  scan(doc.body);
+  return { stop: () => { watch.disconnect(); for (const [slot] of [...mounted]) drop(slot); } };
 }

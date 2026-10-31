@@ -125,7 +125,9 @@ platform change (schema here + resolver in the private platform + a public-data 
   [src] [size] />` (`src` = a payload's `logo`; none → initials, no request). **Every link to `/stocks/<t>/` opens the company card
   on hover** (the page does it, desktop only): link companies with `stockHref` / `ptCompany`, nothing else to do; a `data-tip` on
   such a link becomes the card's footer instead of a text tooltip. A symbol that cannot be a link (inside a `<summary>`, which is one
-  control: pt-calendar's rows) opens the card with `[attr.data-card]="ticker"`.
+  control: pt-calendar's rows) opens the card with `[attr.data-card]="ticker"`. Where the card belongs inside a box the component opens
+  (pt-calendar's event, on a click, on any device), leave an empty `<div [attr.data-card-slot]="ticker"></div>`: the page mounts the
+  compact card in it and removes it with the box.
 - **Sortable tables**: `protected readonly sort = useSort(() => rows, { k: (row) => value, … })` and `<th ptSortTh
   [state]="sort.state('k')" (sort)="sort.toggle('k')">Label</th>` in the header, rows from `sort.sorted()` (numbers high first,
   dates newest first, text A→Z without case, then reverse, then the original order; missing values last). The server renders the

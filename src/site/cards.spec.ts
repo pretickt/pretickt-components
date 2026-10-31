@@ -4,7 +4,7 @@ import { PT_STORE } from '@pretickt/components/context';
 import { PtCompanyCard } from '../../components/pt-company-card';
 import { needPath } from '../api';
 import { demoFor } from '../typologies';
-import { attachCards, CARD_TARGET, companyOf, panelPosition } from './cards';
+import { attachCards, attachCardSlots, CARD_TARGET, companyOf, panelPosition } from './cards';
 import { browserStore } from './store.browser';
 import { attachTips } from './tips';
 
@@ -141,6 +141,27 @@ describe('company cards on hover', () => {
     expect(panelPosition({ left: 100, top: 100, bottom: 120 }, 340, 300, 1200, 800)).toEqual({ x: 100, y: 128, maxHeight: null });
     expect(panelPosition({ left: 100, top: 600, bottom: 620 }, 340, 300, 1200, 800)).toEqual({ x: 100, y: 292, maxHeight: null });
     expect(panelPosition({ left: 1000, top: 300, bottom: 320 }, 340, 900, 1200, 800)).toEqual({ x: 852, y: 8, maxHeight: 784 });
+  });
+});
+
+describe('company cards in a slot', () => {
+  it('a slot a component leaves (data-card-slot) gets the compact card on any device, a click away; when the slot goes, so does the card', async () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [{ provide: PT_STORE, useValue: browserStore({ buildId: 'b1', api: '', sections: [] }, {}, api) }] });
+    const appRef = TestBed.inject(ApplicationRef);
+    document.body.innerHTML = '<div id="pop"><p>Microsoft reports Wed</p><div id="slot" data-card-slot="MSFT"></div><div id="bad" data-card-slot="javascript:x"></div></div>';
+    const slots = attachCardSlots(document, appRef, { id: ID, load: async () => PtCompanyCard });
+    const slot = document.getElementById('slot')!;
+    await vi.waitFor(() => expect(slot.querySelector('.pt-card-compact')).toBeTruthy());
+    expect(slot.querySelector('[data-island]')!.getAttribute('data-island')).toBe(ID);
+    expect(document.getElementById('bad')!.childElementCount).toBe(0);
+    const views = appRef.viewCount;
+    document.getElementById('pop')!.remove();
+    await vi.waitFor(() => expect(appRef.viewCount).toBe(views - 1));
+    // a slot added later (a box opened on a click) is filled too
+    document.body.insertAdjacentHTML('beforeend', '<div><div id="later" data-card-slot="AAPL"></div></div>');
+    await vi.waitFor(() => expect(document.getElementById('later')!.querySelector('.pt-card-compact')).toBeTruthy());
+    slots.stop();
   });
 });
 

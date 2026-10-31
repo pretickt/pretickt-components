@@ -21,9 +21,9 @@ describe('pt-calendar', () => {
     expect(shiftMonth('2026-01', -1)).toBe('2025-12');
   });
   it('caps each day at four chips and reports the overflow', async () => {
-    const out = await html({ asOf: '2026-10-02', items: many });
-    expect(out.match(/class="pt-cal-ev"/g)).toHaveLength(4 + 0);
-    expect(out).toContain('+3 more');
+    const { el } = await render(PtCalendar, { month: '2026-10' }, withData({ 'events@1': { asOf: '2026-10-02', items: many } }));
+    expect(el.querySelectorAll('.pt-cal-grid .pt-cal-ev')).toHaveLength(4);
+    expect(el.querySelector('.pt-cal-grid')!.textContent).toContain('+3 more');
   });
   it('"+N more" opens the whole day over its cell; ×, Escape or a click outside close it, giving the focus back', async () => {
     const r = await render(PtCalendar, { month: '2026-10' }, withData({ 'events@1': { asOf: '2026-10-02', items: many } }));
@@ -105,8 +105,9 @@ describe('pt-calendar', () => {
     expect(out).toContain('~AMC');
     expect(out).toContain('Estimated date');
     expect(out).toContain('Confirmed by the company');
-    // a month shows each report twice, as a chip in the grid and as a line of the text list: only NVDA's two carry the ~
-    expect(out.match(/~AMC/g)!.length).toBe(2);
+    // the grid says no time (its chips carry the hint): the ~ is the text list's, and the chip's tooltip says it in words
+    expect(out.match(/~AMC/g)!.length).toBe(1);
+    expect(out).toContain('after the close');
     // the text list names each company as a link with its logo (its card on hover), the time after it
     const list = await render(PtCalendar, { month: '2026-10', kind: 'earnings' }, withData({ 'events@1': d }));
     const said = list.el.querySelector('.pt-cal-list')!.textContent!.replace(/\s+/g, ' ');
@@ -134,7 +135,7 @@ describe('pt-calendar', () => {
     const first = ev.items.find((e) => e.kind === 'earnings')!;
     first.logo = `/logos/${first.ticker.toLowerCase()}`;
     const { el } = await render(PtCalendar, { month: '2026-10' }, withData({ 'events@1': ev }));
-    const chip = el.querySelector(`.pt-cal-grid a.pt-cal-ev[href="/stocks/${first.ticker.toLowerCase()}/"]`)!;
+    const chip = [...el.querySelectorAll('.pt-cal-grid button.pt-cal-ev')].find((b) => b.textContent!.includes(first.ticker))!;
     expect(chip.getAttribute('data-tip')).toContain(first.ticker);
     expect(chip.querySelector('img.pt-logo')!.getAttribute('src')).toBe(first.logo);
     expect(el.querySelector('.pt-cal-list li img.pt-logo')).not.toBeNull();
@@ -308,5 +309,63 @@ describe('pt-calendar rows: what to expect from each event', () => {
     d.open = false; // closing it is not counted
     await tick();
     expect(seen).toEqual(['open']);
+  });
+});
+
+describe('pt-calendar grid: the hint in the chip, a click opens the event', () => {
+  const chipOf = (el: HTMLElement, key: string) => [...el.querySelectorAll<HTMLElement>('.pt-cal-grid .pt-cal-ev, .pt-cal-grid .pt-cal-macro')]
+    .find((b) => b.textContent!.includes(key))!;
+  const cueOf = (b: Element) => b.querySelector('.pt-cal-cue')?.textContent!.trim() ?? null;
+  it('a chip carries the hint instead of the time: the usual move before a report, the move after it; a market date its usual move', async () => {
+    const { el } = await render(PtCalendar, { month: '2026-10' }, withData({ 'events@1': OCT27 }));
+    const grid = el.querySelector('.pt-cal-grid')!;
+    expect(grid.textContent).not.toMatch(/AMC|BMO/);
+    expect(cueOf(chipOf(el, 'MSFT'))).toBe('±4.7%');
+    expect(cueOf(chipOf(el, 'KO'))).toBe('+1.1%');
+    expect(chipOf(el, 'KO').querySelector('.pt-cal-cue')!.classList).toContain('pt-t-pos');
+    expect(cueOf(chipOf(el, 'Fed'))).toBe('±1.2%');
+    expect(cueOf(chipOf(el, 'CVX'))).toBe(''); // nothing on file but its estimate: no number made up
+    expect(chipOf(el, 'CVX').classList).toContain('pt-cal-ev-unconf');
+    expect(chipOf(el, 'CVX').textContent).toContain('(date not confirmed)');
+  });
+  it('clicking a chip opens its event as its row opens, with the company\'s card under it (the page fills the slot); × and Escape close it', async () => {
+    const r = await render(PtCalendar, { month: '2026-10' }, withData({ 'events@1': OCT27 }));
+    document.body.append(r.el);
+    const chip = chipOf(r.el, 'MSFT');
+    await click(r, chip);
+    const pop = r.el.querySelector('.pt-cal-pop')!;
+    expect(pop.getAttribute('role')).toBe('dialog');
+    expect(pop.querySelector('.pt-cal-row-cue')!.textContent!.trim()).toBe('±4.7%');
+    expect(pop.querySelector('.pt-cal-row-hint')!.textContent!.trim()).toBe('beat 7 of 8 · rose after 5 of 8');
+    expect(pop.querySelector('.pt-cal-row-say')!.textContent!.replace(/\s+/g, ' ').trim()).toMatch(/^Microsoft MSFT reports Wed, Oct 28 \(confirmed\)/);
+    expect(pop.querySelectorAll('.pt-news-item')).toHaveLength(2);
+    expect(pop.querySelector('[data-card-slot]')!.getAttribute('data-card-slot')).toBe('MSFT');
+    expect(document.activeElement).toBe(pop);
+    await click(r, pop.querySelector('button.pt-cal-pop-x'));
+    expect(r.el.querySelector('.pt-cal-pop')).toBeNull();
+    expect(document.activeElement).toBe(chip);
+    await click(r, chip);
+    r.el.querySelector('.pt-cal-pop')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await settle(r.f);
+    expect(r.el.querySelector('.pt-cal-pop')).toBeNull();
+    r.el.remove();
+  });
+  it('a market date opens too, with no company card; a holiday stays a label', async () => {
+    const closed = { date: '2026-10-12', kind: 'macro' as const, meta: { label: 'Closed', event: 'Columbus Day', impact: null } };
+    const r = await render(PtCalendar, { month: '2026-10' }, withData({ 'events@1': { ...OCT27, items: [...OCT27.items, closed] } }));
+    await click(r, chipOf(r.el, 'Fed'));
+    const pop = r.el.querySelector('.pt-cal-pop')!;
+    expect(pop.querySelector('.pt-cal-row-say')!.textContent!.trim()).toMatch(/^The Fed's rate decision is due Wed, Oct 28/);
+    expect(pop.querySelector('[data-card-slot]')).toBeNull();
+    expect(chipOf(r.el, 'Closed').tagName).toBe('DIV');
+  });
+  it('in a day\'s "+N more", a chip opens its event in the same box', async () => {
+    const r = await render(PtCalendar, { month: '2026-10' }, withData({ 'events@1': { asOf: '2026-10-02', items: many } }));
+    await click(r, r.el.querySelector('button.pt-cal-more'));
+    const inDay = [...r.el.querySelectorAll<HTMLElement>('.pt-cal-pop .pt-cal-ev')].find((b) => b.textContent!.includes('T5'))!;
+    await click(r, inDay);
+    expect(r.el.querySelectorAll('.pt-cal-pop')).toHaveLength(1);
+    expect(r.el.querySelector('.pt-cal-pop .pt-cal-row-say')!.textContent!.replace(/\s+/g, ' ')).toContain('Co 5 T5 ');
+    expect(r.el.querySelector('.pt-cal-pop [data-card-slot]')!.getAttribute('data-card-slot')).toBe('T5');
   });
 });

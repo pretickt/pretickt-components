@@ -19,7 +19,7 @@
 import { afterRenderEffect, Component, computed, type ElementRef, inject, input, linkedSignal, signal, viewChild } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
 import { MORE_STEP, PtLogo, PtMention, PtMore, PtSay } from '@pretickt/components/ds';
-import { amount, date, dayMonth, href, level, mention, money, named, num, pct, plainName, say, stockHref, tip, tone, usd, type Said, type Tone }
+import { amount, date, dayMonth, href, level, mention, money, named, num, pct, plainName, say, tip, tone, usd, type Said, type Tone }
   from '@pretickt/components/format';
 import { CALENDAR_MONTHS, cmp, type EventItem } from '@pretickt/components/typologies';
 
@@ -96,7 +96,7 @@ const status = (e: EventItem) => (e.kind !== 'earnings' || e.meta.confirmed == n
 const tag = (e: EventItem) => (e.kind === 'dividend' ? amount(e.meta.amount) : `${e.kind === 'earnings' && e.meta.confirmed === false ? '~' : ''}${time(e)}`);
 const macroTip = (e: Macro) => tip({ [e.meta.label]: e.meta.event, Date: date(e.date), Impact: e.meta.impact });
 const chipTip = (e: Company) => tip({
-  [e.ticker]: plainName(e.name), Date: date(e.date), Time: time(e) || null, Status: status(e),
+  [e.ticker]: plainName(e.name), Date: date(e.date), Time: e.kind === 'earnings' && e.meta.time ? TIME[e.meta.time] : null, Status: status(e),
   'EPS est.': e.kind === 'earnings' && e.meta.epsEst != null ? num(e.meta.epsEst) : null,
   ...(e.kind === 'dividend' ? { Dividend: amount(e.meta.amount), 'Pay date': e.meta.payDate ? date(e.meta.payDate) : null } : {}),
 });
@@ -161,6 +161,9 @@ export function miniBars(moves: readonly number[] | null | undefined): { w: numb
   return { w: last.length * 6 - 2, bars: last.map((v, i) => { const h = Math.max(1.5, (Math.abs(v) / max) * 10); return { x: i * 6, y: v >= 0 ? 11 - h : 11, h, tone: tone(v) }; }) };
 }
 
+/** An event's key: its row's, which its chip in the grid opens. */
+export const rowKey = (e: EventItem): string => (e.kind === 'macro' ? `macro:${e.meta.label}:${e.date}` : `${e.kind}:${isCompany(e) ? e.ticker : ''}:${e.date}`);
+
 /** A row: everything it prints, as text, and the sentence (in parts: the company a link) its detail opens to. */
 export interface Row {
   key: string; out: boolean;
@@ -202,7 +205,7 @@ function earningsRow(e: Earnings, asOf: string, closed: ReadonlySet<string>): Ro
       .filter(Boolean).join(' · ');
     if (facts) facts = upper(facts);
   }
-  return { key: `${e.kind}:${e.ticker}:${e.date}`, out, label: null, title: name, ticker: e.ticker, logo: e.logo, showTicker: named(e.name, e.ticker) !== name,
+  return { key: rowKey(e), out, label: null, title: name, ticker: e.ticker, logo: e.logo, showTicker: named(e.name, e.ticker) !== name,
     unconfirmed: !out && m.confirmed === false, cue: moved != null ? pct(moved) : usual ?? '', cueTone: moved != null ? tone(moved) : 'est',
     when, hint, bars: miniBars(m.moves), said, facts, news: m.news ?? [] };
 }
@@ -225,14 +228,14 @@ function macroRow(e: Macro, asOf: string, normal: number | null): Row {
     said = `${noun} is due ${dayLabel(e.date)}${exp ? `: expected ${exp}` : ''}.` +
       (u != null ? ` On its last ${n} ${fed ? 'decisions' : 'releases'} the market (SPY) moved ±${level(u)} on average${normal ? `, ${times(u / normal)} a normal day` : ''}.` : '');
   }
-  return { key: `macro:${m.label}:${e.date}`, out, label: m.label, title, ticker: null, logo: null, showTicker: false, unconfirmed: false,
+  return { key: rowKey(e), out, label: m.label, title, ticker: null, logo: null, showTicker: false, unconfirmed: false,
     cue: moved != null ? pct(moved) : u == null ? '' : `±${level(u)}`, cueTone: moved != null ? tone(moved) : 'est',
     when: `${out ? 'Released' : 'Due'} ${dayLabel(e.date)}`, hint, bars: miniBars(m.moves), said: [said], facts: '', news: m.news ?? [] };
 }
 
 function dividendRow(e: Dividend, asOf: string): Row {
   const out = e.date <= asOf, who = mention(e.ticker, e.name, e.logo), name = plainName(e.name), paid = e.meta.payDate ? dayMonth(e.meta.payDate) : null;
-  return { key: `${e.kind}:${e.ticker}:${e.date}`, out, label: null, title: name, ticker: e.ticker, logo: e.logo, showTicker: named(e.name, e.ticker) !== name,
+  return { key: rowKey(e), out, label: null, title: name, ticker: e.ticker, logo: e.logo, showTicker: named(e.name, e.ticker) !== name,
     unconfirmed: false, cue: amount(e.meta.amount), cueTone: 'est', when: `Ex-dividend ${dayLabel(e.date)}`, hint: paid ? `paid ${paid}` : '', bars: null,
     said: say`${who} ${out ? 'went' : 'goes'} ex-dividend ${dayLabel(e.date)}: ${amount(e.meta.amount)} a share${paid ? `, paid ${paid}` : ''}.`, facts: '', news: [] };
 }
@@ -287,9 +290,17 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
           @for (c of cells(); track c.date) {
             <div [class]="dayClass(c)">
               @if (!isWeek()) {<div>{{ c.day }}</div>}
-              @for (e of c.macro; track $index) {<div class="pt-cal-macro" [attr.data-tip]="macroTip(e)">{{ e.meta.label }}</div>}
+              @for (e of c.macro; track $index) {
+                @let row = rowOf(e);
+                @if (row) {<button type="button" class="pt-cal-macro" [attr.data-tip]="macroTip(e)" (click)="openEvent(e, $event)"><span>{{ e.meta.label }}</span><span [class]="chipCue(row)">{{ row.cue }}</span></button>}
+                @else {<div class="pt-cal-macro" [attr.data-tip]="macroTip(e)">{{ e.meta.label }}</div>}
+              }
               @for (e of c.items.slice(0, CAP); track e.kind + e.ticker) {
-                <a class="pt-cal-ev" [href]="stockHref(e.ticker)" [attr.data-tip]="chipTip(e)"><span class="pt-cal-who"><pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="14" />{{ e.ticker }}</span><span class="pt-cal-time">{{ tag(e) }}</span></a>
+                @let row = rowOf(e);
+                <button type="button" class="pt-cal-ev" [class.pt-cal-ev-unconf]="row?.unconfirmed" [attr.data-tip]="chipTip(e)" (click)="openEvent(e, $event)">
+                  <span class="pt-cal-who"><pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="14" />{{ e.ticker }}@if (row?.unconfirmed) {<span class="pt-sr"> (date not confirmed)</span>}</span>
+                  <span [class]="chipCue(row)">{{ row?.cue ?? '' }}</span>
+                </button>
               }
               @if (c.items.length > CAP) {<button type="button" class="pt-cal-more" (click)="more(c.date, $event)">+{{ c.items.length - CAP }} more</button>}
             </div>
@@ -297,12 +308,54 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
         </div>
         @if (openCell(); as oc) {
           <div class="pt-cal-backdrop" (click)="close()"></div>
-          <div #pop class="pt-cal-pop" [style.left.px]="popAt().left" [style.top.px]="popAt().top" role="dialog"
-            [attr.aria-label]="'Events on ' + date(oc.date)" tabindex="-1" (keydown.escape)="close()">
+          <div #pop [class]="openRow() ? 'pt-cal-pop pt-cal-pop-ev' : 'pt-cal-pop'" [style.left.px]="popAt().left" [style.top.px]="popAt().top" role="dialog"
+            [attr.aria-label]="(openRow()?.title ?? 'Events') + ' on ' + date(oc.date)" tabindex="-1" (keydown.escape)="close()">
             <div class="pt-cal-pop-head"><span>{{ DOW[(weekdayOf(oc.date) + 6) % 7] }}</span> <b>{{ oc.day }}</b><button type="button" class="pt-cal-pop-x" aria-label="Close" (click)="close()">×</button></div>
-            @for (e of oc.macro; track $index) {<div class="pt-cal-macro" [attr.data-tip]="macroTip(e)">{{ e.meta.label }}</div>}
-            @for (e of oc.items; track e.kind + e.ticker) {
-              <a class="pt-cal-ev" [href]="stockHref(e.ticker)" [attr.data-tip]="chipTip(e)"><span class="pt-cal-who"><pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="14" />{{ e.ticker }}</span><span class="pt-cal-time">{{ tag(e) }}</span></a>
+            @if (openRow(); as open) {
+              <!-- the event as its row opens, and the company's usual card under it (the page fills the slot) -->
+              @for (r of [open]; track r.key) {
+                <div class="pt-cal-pop-row">
+                @if (r.label) {<span class="pt-cal-row-label">{{ r.label }}</span><span class="pt-cal-row-who"><b>{{ r.title }}</b></span>}
+                @else {
+                  <pt-logo [ticker]="r.ticker!" [src]="r.logo" [size]="32" />
+                  <span class="pt-cal-row-who">@if (r.showTicker) {<b>{{ r.title }}</b>{{ ' ' }}<span class="pt-cal-row-t">{{ r.ticker }}</span>} @else {<b>{{ r.title }}</b>}</span>
+                }
+                <b [class]="'pt-cal-row-cue ' + (r.cueTone === 'est' ? 'pt-cal-row-est' : 'pt-t-' + r.cueTone)">{{ r.cue }}</b>
+                <span class="pt-cal-row-when">{{ r.when }}</span>
+                @if (r.bars; as mb) {
+                  <svg class="pt-cal-row-bars" [attr.viewBox]="'0 0 ' + mb.w + ' 22'" [attr.width]="mb.w" height="22" aria-hidden="true">
+                    <line x1="0" [attr.x2]="mb.w" y1="11" y2="11" />
+                    @for (b of mb.bars; track $index) {<rect [attr.x]="b.x" [attr.y]="b.y" width="4" [attr.height]="b.h" rx="1" [class]="'pt-t-' + b.tone" />}
+                  </svg>
+                }
+                <span class="pt-cal-row-hint">{{ r.hint }}</span>
+                </div>
+                <div class="pt-cal-row-more">
+                <p class="pt-cal-row-say"><pt-say [parts]="r.said" /></p>
+                @if (r.facts) {<p class="pt-meta">{{ r.facts }}</p>}
+                @if (r.news.length) {
+                  <ul class="pt-news">
+                    @for (s of r.news; track s.url) {
+                      <li class="pt-news-item"><div>@if (s.tag) {<span class="pt-cal-row-tag">{{ s.tag }}</span>{{ ' ' }}}<a [href]="href(s.url)" target="_blank" rel="nofollow noopener noreferrer">{{ s.title }}</a><div class="pt-meta">{{ s.site }} · {{ dayMonth(s.publishedAt) }}</div></div></li>
+                    }
+                  </ul>
+                }
+                </div>
+                @if (r.ticker) {<div class="pt-cal-pop-card" [attr.data-card-slot]="r.ticker"></div>}
+              }
+            } @else {
+              @for (e of oc.macro; track $index) {
+                @let row = rowOf(e);
+                @if (row) {<button type="button" class="pt-cal-macro" [attr.data-tip]="macroTip(e)" (click)="openEvent(e, $event)"><span>{{ e.meta.label }}</span><span [class]="chipCue(row)">{{ row.cue }}</span></button>}
+                @else {<div class="pt-cal-macro" [attr.data-tip]="macroTip(e)">{{ e.meta.label }}</div>}
+              }
+              @for (e of oc.items; track e.kind + e.ticker) {
+                @let row = rowOf(e);
+                <button type="button" class="pt-cal-ev" [class.pt-cal-ev-unconf]="row?.unconfirmed" [attr.data-tip]="chipTip(e)" (click)="openEvent(e, $event)">
+                  <span class="pt-cal-who"><pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="14" />{{ e.ticker }}@if (row?.unconfirmed) {<span class="pt-sr"> (date not confirmed)</span>}</span>
+                  <span [class]="chipCue(row)">{{ row?.cue ?? '' }}</span>
+                </button>
+              }
             }
           </div>
         }
@@ -387,7 +440,6 @@ export class PtCalendar {
   protected readonly CAP = CAP;
   protected readonly DOW = DOW;
   protected readonly date = date;
-  protected readonly stockHref = stockHref;
   protected readonly tag = tag;
   protected readonly macroTip = macroTip;
   protected readonly chipTip = chipTip;
@@ -429,6 +481,10 @@ export class PtCalendar {
   protected readonly hasMore = computed(() => this.rows().length > this.shown());
   protected readonly moreCount = computed(() => Math.min(MORE_STEP, this.rows().length - this.shown()));
   protected showMore() { this.shown.update((n) => n + MORE_STEP); }
+  /** Each row by its key: a chip in the grid carries its row's number and opens it. */
+  private readonly rowsByKey = computed(() => new Map(this.rows().map((r) => [r.key, r])));
+  protected rowOf = (e: EventItem): Row | null => this.rowsByKey().get(rowKey(e)) ?? null;
+  protected chipCue = (r: Row | null) => `pt-cal-cue${r && r.cueTone !== 'est' ? ` pt-t-${r.cueTone}` : ''}`;
   protected readonly rowsTitle = computed(() => {
     const what = this.kind() === 'dividend' ? 'The largest ex-dividend dates' : 'Important earnings and economic data';
     return this.isWeek() ? `${what}, week of ${dayMonth(this.shownWeek())}` : `${what} in ${this.cal().label}`;
@@ -443,8 +499,11 @@ export class PtCalendar {
   protected go(m: string) { this.close(); this.pickedMonth.set(m); this.monthEvents.retry(); }
   protected goWeek(delta: number) { this.close(); this.pickedWeek.set(addDays(this.shownWeek(), 7 * delta)); this.weekEvents.retry(); }
 
-  // "+N more": the whole day over its cell (as Google Calendar), outside the grid so nothing clips it; ×, Escape or a click outside close it
+  // "+N more": the whole day over its cell (as Google Calendar), outside the grid so nothing clips it; a chip: its event in the same
+  // box, as its row opens, with the company's card under it. ×, Escape or a click outside close it
   private readonly openDay = signal<string | null>(null);
+  private readonly openKey = signal<string | null>(null);
+  protected readonly openRow = computed(() => { const k = this.openKey(); return k ? this.rowsByKey().get(k) ?? null : null; });
   protected readonly popAt = signal({ left: 0, top: 0 });
   private readonly pop = viewChild<ElementRef<HTMLElement>>('pop');
   private opener: HTMLElement | null = null;
@@ -456,6 +515,7 @@ export class PtCalendar {
     // once it is drawn, keep it inside the calendar with its real width (whatever the font size), and give it the focus
     afterRenderEffect(() => {
       const el = this.pop()?.nativeElement;
+      this.openKey(); // an event in the box is wider than its day: place it again
       if (!el || !this.openDay()) return;
       const left = Math.max(0, Math.min(this.cellLeft, this.boxWidth - el.offsetWidth));
       if (left !== this.popAt().left) this.popAt.update((p) => ({ ...p, left }));
@@ -464,21 +524,33 @@ export class PtCalendar {
   }
 
   protected more(d: string, e: Event) {
-    this.opener = e.currentTarget as HTMLElement;
-    const cell = this.opener.closest('.pt-cal-day');
-    const box = cell?.closest('.pt-cal');
-    if (cell && box) {
-      const c = cell.getBoundingClientRect(), b = box.getBoundingClientRect();
-      this.cellLeft = c.left - b.left;
-      this.boxWidth = b.width;
-      this.popAt.set({ left: this.cellLeft, top: c.top - b.top });
-    }
+    this.anchor(e.currentTarget as HTMLElement);
+    this.openKey.set(null);
     this.openDay.set(d);
   }
-  /** Closes the day box and gives the focus back to the "+N more" that opened it. */
+  /** A chip opens its event over its cell; inside a day's box, in the same box. Opening it is an interaction the page counts. */
+  protected openEvent(e: EventItem, ev: Event) {
+    const t = ev.currentTarget as HTMLElement;
+    if (!t.closest('.pt-cal-pop')) this.anchor(t);
+    this.openDay.set(e.date);
+    this.openKey.set(rowKey(e));
+    t.dispatchEvent(new CustomEvent('pt-interact', { bubbles: true, detail: { action: 'open' } }));
+  }
+  /** The box goes over the cell of what opened it, which gets the focus back when it closes. */
+  private anchor(t: HTMLElement) {
+    this.opener = t;
+    const cell = t.closest('.pt-cal-day'), box = cell?.closest('.pt-cal');
+    if (!cell || !box) return;
+    const c = cell.getBoundingClientRect(), b = box.getBoundingClientRect();
+    this.cellLeft = c.left - b.left;
+    this.boxWidth = b.width;
+    this.popAt.set({ left: this.cellLeft, top: c.top - b.top });
+  }
+  /** Closes the box and gives the focus back to what opened it (a chip, "+N more"). */
   protected close() {
     if (!this.openDay()) return;
     this.openDay.set(null);
+    this.openKey.set(null);
     this.opener?.focus();
   }
 }

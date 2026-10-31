@@ -1,7 +1,7 @@
 import { afterNextRender, ApplicationRef, Component, inject, PLATFORM_ID, TransferState } from '@angular/core';
 import { isPlatformServer } from '@angular/common';
 import { sendBeacon, startBeacon } from './beacon';
-import { attachCards, CARD_TARGET, companyOf } from './cards';
+import { attachCards, attachCardSlots, CARD_TARGET, companyOf } from './cards';
 import { attachCompanyBar } from './cobar';
 import { attachHeader } from './header';
 import { PAGE_KEY, PT_PAGE } from './model';
@@ -13,7 +13,7 @@ const CARD = 'pt-company-card';
 
 /**
  * The page app (one per page): the generator's sections — heading, "see all" link, placements. In the browser, once rendered:
- * the beacon, the tooltips, and the company card on hover over company links.
+ * the beacon, the tooltips, and the company card on hover over company links and where a component leaves room for it.
  */
 @Component({
   selector: 'pt-page',
@@ -48,11 +48,13 @@ export class PtPage {
       attachCompanyBar(doc); // company pages: the company in the header once its card has scrolled away
       attachShare(doc); // each placement's "Share": the placement as an image, and the link back
       const card = REGISTRY[CARD];
+      const load = () => import('../../components/pt-company-card').then((m) => m.PtCompanyCard);
       const cards = card ? attachCards(doc, appRef, {
         id: `${CARD}@${card.version}`,
         hover: !!doc.defaultView?.matchMedia?.('(hover: hover) and (pointer: fine)').matches,
-        load: () => import('../../components/pt-company-card').then((m) => m.PtCompanyCard),
+        load,
       }) : { active: () => false };
+      if (card) attachCardSlots(doc, appRef, { id: `${CARD}@${card.version}`, load }); // where a component leaves room for the card (a calendar's event)
       // where a card opens on hover, a company link shows it instead of its text tooltip (the keyboard still gets the tooltip)
       const root = doc.querySelector<HTMLElement>('pt-page');
       if (root) attachTips(root, (t) => cards.active() && companyOf(t.closest(CARD_TARGET)) !== null);

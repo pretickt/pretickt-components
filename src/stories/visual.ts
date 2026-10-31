@@ -5,7 +5,7 @@
  */
 import { afterNextRender, ApplicationRef, Component, computed, inject } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
-import { attachCards, CARD_TARGET, companyOf } from '../site/cards';
+import { attachCards, attachCardSlots, CARD_TARGET, companyOf } from '../site/cards';
 import { REGISTRY } from '../site/registry.generated';
 import { attachShare } from '../site/share';
 import { attachTips } from '../site/tips';
@@ -96,9 +96,10 @@ export class PtVisual {
     afterNextRender(() => {
       // the company card on hover over any company link, as on the site (its data from www, through the dev proxy)
       const card = REGISTRY['pt-company-card'];
+      const load = () => import('../../components/pt-company-card').then((m) => m.PtCompanyCard);
       const cards = card ? attachCards(document, appRef, { id: `pt-company-card@${card.version}`,
-        hover: !!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches,
-        load: () => import('../../components/pt-company-card').then((m) => m.PtCompanyCard) }) : { active: () => false };
+        hover: !!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches, load }) : { active: () => false };
+      if (card) attachCardSlots(document, appRef, { id: `pt-company-card@${card.version}`, load }); // and where a component leaves room for it
       const main = document.querySelector('main');
       if (main) attachTips(main, (t) => cards.active() && companyOf(t.closest(CARD_TARGET)) !== null);
       attachShare(document); // each story's "Share": the image the site would make of it
