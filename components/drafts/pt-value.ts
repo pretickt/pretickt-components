@@ -20,9 +20,9 @@
  * A record over time (earnings against the estimate, sales against the forecast) is a bar per quarter, oldest first, on the line of
  * what was expected: up by what it beat, down by what it missed, the latest in full colour; the quarter under each bar, the fiscal
  * year once under its quarters, the number on hover (Romeo, 2026-10-31: the dots were periods with no time on them).
- * The Piotroski checks show what they look at: a row per group people read (profit & cash, debt & shares, efficiency), a square
- * per check, full when it passes, an outline when it misses, its name on hover; the sentence names what it misses.
- * @version 0.0.10
+ * The Piotroski checks show what they look at: a row per group people read (profit & cash, debt & shares, efficiency), a mark
+ * per check — a green check when it passes, a red x when it misses — its name on hover; the sentence names what it misses.
+ * @version 0.0.11
  */
 import { Component, computed, input } from '@angular/core';
 import { PtIcon, PtLogo } from '@pretickt/components/ds';
@@ -233,7 +233,7 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
                     }
                     @case ('checks') {
                       <div class="dv-ck" aria-hidden="true">
-                        @for (g of checks(c); track g.key) {<span class="dv-ck-g">{{ g.label }}</span><span class="dv-ck-row">@for (x of g.checks; track x.key) {<i [class]="x.ok ? 'dv-ck-on' : 'dv-ck-off'" [attr.data-tip]="x.tip"></i>}</span>}
+                        @for (g of checks(c); track g.key) {<span class="dv-ck-g">{{ g.label }}</span><span class="dv-ck-row">@for (x of g.checks; track x.key) {<svg [ptIcon]="x.ok ? 'check' : 'x'" [class.dv-ck-on]="x.ok" [class.dv-ck-off]="!x.ok" [attr.data-tip]="x.tip"></svg>}</span>}
                       </div>
                     }
                     @case ('quarters') {

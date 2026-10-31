@@ -7,6 +7,7 @@ import { arcPath, at, barGeom, checkGroups, companyRows, list, NOT_ADVICE, onArc
 import { VALUE_INTC, VALUE_NKE, VALUE_NVDA } from './value-mock';
 import { render } from '../_spec';
 import { saidText } from '../../src/ds/format';
+import { iconPath } from '../../src/ds/pt-icon';
 
 describe('home drafts: the helpers their components will keep', () => {
   it('H1: heat against a usual day, the ring it earns, a bubble whose area grows with the posts, the sentence', () => {
@@ -255,13 +256,16 @@ describe('pt-value (draft): in the page\'s text', () => {
     expect([...card.querySelectorAll('.dv-qs-y')].map((x) => x.textContent)).toEqual(['FY25', 'FY26', 'FY27']);
     expect(JSON.parse(card.querySelectorAll('.dv-qs-slot')[7]!.getAttribute('data-tip')!)).toEqual({ 'Q2 FY27': '+4.4% vs the analysts\' estimate' });
   });
-  it('the quality checks card: a row per group with its name, a square per check, full when it passes', async () => {
+  it('the quality checks card: a row per group with its name, a check mark when a check passes, an x when it misses', async () => {
     const { el } = await render(PtValue, { data: VALUE_NVDA });
     const card = [...el.querySelectorAll('.dv-card')].find((c) => c.querySelector('.dv-title')!.textContent!.includes('quality checks'))!;
     expect([...card.querySelectorAll('.dv-ck-g')].map((x) => x.textContent)).toEqual(['Profit & cash', 'Debt & shares', 'Efficiency']);
-    expect(card.querySelectorAll('.dv-ck i')).toHaveLength(9);
-    expect(card.querySelectorAll('.dv-ck i.dv-ck-on')).toHaveLength(7);
-    expect(card.querySelectorAll('.dv-ck i[data-tip]')).toHaveLength(9);
+    const marks = [...card.querySelectorAll('.dv-ck svg.pt-icon')];
+    expect(marks).toHaveLength(9);
+    expect(marks.filter((m) => m.querySelector('path')!.getAttribute('d') === iconPath('check'))).toHaveLength(7);
+    expect(marks.filter((m) => m.querySelector('path')!.getAttribute('d') === iconPath('x'))).toHaveLength(2);
+    expect(card.querySelectorAll('.dv-ck svg.dv-ck-off')).toHaveLength(2);
+    expect(card.querySelectorAll('.dv-ck svg[data-tip]')).toHaveLength(9);
   });
   it('each card\'s title is a heading, as the searched questions under the columns, with its searched term inside it', async () => {
     const { el } = await render(PtValue, { data: VALUE_NVDA });

@@ -23,6 +23,9 @@ export const ICON_PATHS: Record<string, string> = {
   gauge: P('M2 12a6 6 0 1 1 12 0M8 12l3-4'),
   bank: P('M1 6l7-4 7 4zM3 7v5M6.3 7v5M9.7 7v5M13 7v5M1 14h14'),
   dot: P('M8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'),
+  // marks: a check passed, a check missed
+  check: P('M3 8.5l3.2 3.2L13 4.5'),
+  x: P('M4 4l8 8M12 4l-8 8'),
 };
 
 /** Legacy markup of the same icons (string renderers). */
