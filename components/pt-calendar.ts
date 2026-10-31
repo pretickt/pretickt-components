@@ -10,7 +10,7 @@
  * A row opens to its sentence (the company a link that opens its card), the estimates and the news about the event, all in the page's
  * HTML. The outlook fields are events@1.2's, optional: without them a row says the date and the EPS estimate, nothing made up.
  * On a month, every date stays in the list by day under the rows.
- * @version 3.0.0
+ * @version 3.0.1
  * @evidence DataForSEO: "earnings calendar" ~153k searches/month, SERP without AI overview (reports/Funzioni pretickt da tenere e aggiungere.md)
  * @evidence DataForSEO: "dividend calendar" in launch/data/08c-serp-dividend-calendar.json
  * @evidence DataForSEO round 14 (2026-10-31, launch/data/14-summary.json): beyond the date, "who is expected to beat earnings this week?" (AI 574), "is it better to buy before or after earnings?" (357), "fed rate decision" 40,500, "important earnings this week" 590
@@ -121,7 +121,8 @@ const verdictPhrase = (actual: number, est: number) => {
   const v = verdictOf(actual, est)!;
   return v === 'inline' ? 'in line' : `a ${v} (${pct(est === 0 ? 0 : (actual - est) / Math.abs(est), 0)})`;
 };
-const times = (v: number) => `${num(v, 1)}×`;
+/** A ratio to one decimal ("2.4×"); one that would round to "0.0×" reads "under 0.1×". */
+const times = (v: number) => (v < 0.05 ? 'under 0.1×' : `${num(v, 1)}×`);
 const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const dayLabel = (d: string) => `${WEEKDAY[weekday(d)]}, ${dayMonth(d)}`;
 const TIME = { bmo: 'before the open', amc: 'after the close' } as const;

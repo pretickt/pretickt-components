@@ -240,6 +240,10 @@ describe('pt-calendar rows: what to expect from each event', () => {
     expect(line(of('KO'), 'pt-cal-row-hint')).toBe('A beat (+4%) · 0.5× its usual');
     expect(line(of('Visa'), 'pt-cal-row-cue')).toBe('±3.2%');
     expect(line(of('Visa'), 'pt-cal-row-hint')).toBe('A beat (+2%)');
+    // a move under a tenth of its usual size is not "0.0×" (MSFT on www, Oct 31: -0.2% against ±7.0%)
+    const quiet = await rowsOf({ ...OCT27, items: [{ ...KO, meta: { ...KO.meta, move: 0.001 } }] });
+    expect(quiet.line(quiet.rows[0]!, 'pt-cal-row-hint')).toBe('A beat (+4%) · under 0.1× its usual');
+    expect(quiet.line(quiet.rows[0]!, 'pt-cal-row-say')).toContain('moved +0.1% in the session that traded it, under 0.1× its usual ±2.1%.');
   });
   it('a market date: what is expected, the market\'s usual move on its releases; once out, the figure and the move', async () => {
     const { of, line } = await rowsOf(OCT27);
