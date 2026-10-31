@@ -302,7 +302,7 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
                   <span [class]="chipCue(row)">{{ row?.cue ?? '' }}</span>
                 </button>
               }
-              @if (c.items.length > CAP) {<button type="button" class="pt-cal-more" (click)="more(c.date, $event)">+{{ c.items.length - CAP }} more</button>}
+              @if (c.items.length > CAP) {<button type="button" class="pt-cal-more" (click)="more(c.date, $event)">+{{ c.items.length - CAP }}<span class="pt-cal-more-word"> more</span></button>}
             </div>
           }
         </div>
