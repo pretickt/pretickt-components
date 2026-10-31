@@ -16,10 +16,11 @@
  * that reacts, the usual move — with a link that says where it goes ("Microsoft earnings date"). What others expect is said in
  * sentences too, and the Polymarket line says what its chance is. A date not yet confirmed is dotted in the grid.
  * Each company it names, in a sentence or on the card, is a link with its logo (PtMention): the card opens on any ticker.
- * On a phone, as Google Calendar does: the days on top with their logos and a count, the picked day below as tiles (logo, ticker, forecast).
- * @version 0.0.5
+ * On a phone: a row per event, the market's dates and the largest companies first, with the hint people look for beyond the date (how much it
+ * may move, when and which session trades it, its last eight moves, its record against the estimate); a row opens the card and the sentence.
+ * @version 0.0.6
  */
-import { Component, computed, input, signal } from '@angular/core';
+import { Component, computed, input, linkedSignal, signal } from '@angular/core';
 import { PtLogo, PtMention, PtSay } from '@pretickt/components/ds';
 import { dayMonth, level, mention, money, num, pct, plainName, say, stockHref, tone, usd, type Said, type Tone } from '@pretickt/components/format';
 import { addDays, mondayOf, weekdayOf } from '../pt-calendar';
@@ -316,6 +317,45 @@ export class PtOutlookCard {
   protected readonly BARS_MACRO = 'Each bar: the market’s move on a past release, the dashed lines its usual size.';
 }
 
+/** Rows a phone shows at first, and each "Show more" adds. */
+const PHONE_ROWS = 15;
+/** When, in a row: the day, the time and the session that trades the report ("Wed, Oct 28 · after the close · reacts Thu"). */
+export function phoneWhen(e: OutlookEvent): string {
+  if (e.kind === 'macro') return `${e.result ? 'Released' : 'Due'} ${dayLabel(e.date)}`;
+  const t = e.time ? ` · ${TIME[e.time]}` : '';
+  if (e.result) return `Reported ${dayLabel(e.date)}${t}`;
+  if (e.confirmed === false) return `Around ${dayLabel(e.date)}${t} · not confirmed`;
+  const on = reactsOn(e);
+  return `${dayLabel(e.date)}${t}${on && on !== e.date ? ` · reacts ${WEEKDAY[weekdayOf(on)]}` : ''}`;
+}
+/**
+ * The hint beside the date, what people look for in an earnings calendar beyond it (DataForSEO round 13: "will it beat", "how much
+ * does it move after earnings"): before the report its record against the estimate and how often the stock rose after; after it,
+ * the verdict and the move against its usual size; for the market's dates, how they compare with a normal day.
+ */
+export function phoneHint(e: OutlookEvent, normal: number | null = null): string {
+  const u = usualOf(e), m = moved(e);
+  if (e.kind === 'macro') {
+    if (e.result?.actual) return `${e.result.actual}${e.expected ? ` vs ${e.expected} expected` : ''}`;
+    return u != null && normal ? `${times(u / normal)} a normal day` : '';
+  }
+  if (e.result) {
+    const eps = e.result.epsActual != null && e.epsEst != null ? verdictPhrase(e.result.epsActual, e.epsEst) : '';
+    const size = m != null && u != null ? `${times(Math.abs(m) / u)} its usual` : m == null ? `reacts ${dayLabel(reactsOn(e) ?? e.date)}` : '';
+    return [eps, size].filter(Boolean).join(' · ');
+  }
+  const r = record(e.reactions);
+  if (r.n < MIN_REPORTS) return 'few reports on file';
+  return [r.known >= MIN_REPORTS ? `beat ${r.beats} of ${r.known}` : '', `rose after ${r.ups} of ${r.n}`].filter(Boolean).join(' · ');
+}
+/** Its last eight moves as small bars around zero, in their tones: how big and which way, at a glance. */
+export function miniBars(e: OutlookEvent): { w: number; bars: { x: number; y: number; h: number; tone: Tone }[] } | null {
+  const last = pastMoves(e).slice(-REPORTS);
+  if (last.length < MIN_REPORTS) return null;
+  const max = Math.max(...last.map(Math.abs), 1e-9);
+  return { w: last.length * 6 - 2, bars: last.map((v, i) => { const h = Math.max(1, (Math.abs(v) / max) * 7); return { x: i * 6, y: v >= 0 ? 8 - h : 8, h, tone: tone(v) }; }) };
+}
+
 interface Cell { date: string; day: number; inMonth: boolean; items: CoEvent[]; macro: MacroEvent[] }
 /** The five sessions of the week of `from`, or the Monday-first month grid of `from`'s month; a day's companies the largest first. */
 export function outlookCells(d: CalOutlook, view: 'week' | 'month'): Cell[] {
@@ -375,34 +415,33 @@ const ROOM_ABOVE = 560, CARD_W = 384;
         @if (pop(); as p) {
           <div [class]="p.below ? 'do-pop do-pop-below' : 'do-pop'" [style.left.px]="p.left" [style.top.px]="p.top"><pt-outlook-card [event]="p.e" [normal]="d.normal" /></div>
         }
-        <div class="do-m">
-          <div [class]="isWeek() ? 'do-m-days do-m-week' : 'do-m-days do-m-month'">
-            @if (!isWeek()) {@for (w of DOW; track w) {<span class="do-m-dow" aria-hidden="true">{{ w.slice(0, 1) }}</span>}}
-            @for (c of cells(); track c.date) {
-              <button type="button" class="do-m-day" [class.do-m-out]="!c.inMonth" [attr.aria-pressed]="c.date === day()"
-                [disabled]="!c.items.length && !c.macro.length" (click)="pick(c.date)">
-                <span class="do-m-date">@if (isWeek()) {<span class="do-m-wd">{{ weekday(c.date) }}</span>}{{ c.day }}</span>
-                <span class="do-m-logos" aria-hidden="true">@for (e of c.items.slice(0, isWeek() ? 3 : 2); track e.ticker) {<pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="isWeek() ? 18 : 14" />}</span>
-                @if (c.items.length + c.macro.length; as n) {<span class="do-m-n">{{ n }}</span>}
+        <ol class="do-m">
+          @for (e of phoneRows().slice(0, shown()); track key(e); let i = $index) {
+            @if (i === firstReported()) {<li class="do-m-sep">Already reported</li>}
+            <li class="do-m-item">
+              <button type="button" class="do-m-row" [class.do-unconf]="e.kind === 'earnings' && e.confirmed === false" [attr.aria-expanded]="opened()?.key === key(e)" (click)="toggle(e)">
+                @if (e.kind === 'macro') {<span class="pt-cal-macro">{{ e.label }}</span><span class="do-m-who"><b>{{ e.event }}</b></span>}
+                @else {<pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="32" /><span class="do-m-who">@if (plain(e.name).toUpperCase() !== e.ticker) {<b>{{ plain(e.name) }}</b>{{ ' ' }}}<span class="do-m-t">{{ e.ticker }}</span></span>}
+                <b [class]="cueClass(e) + ' do-m-cue'">{{ cueOf(e).text }}</b>
+                <span class="do-m-when">{{ whenLine(e) }}</span>
+                @if (miniBars(e); as mb) {
+                  <svg class="do-m-bars" [attr.viewBox]="'0 0 ' + mb.w + ' 16'" [attr.width]="mb.w" height="16" aria-hidden="true">
+                    <line x1="0" [attr.x2]="mb.w" y1="8" y2="8" class="do-m-zero" />
+                    @for (b of mb.bars; track $index) {<rect [attr.x]="b.x" [attr.y]="b.y" width="4" [attr.height]="b.h" rx="1" [class]="'do-m-b pt-t-' + b.tone" />}
+                  </svg>
+                }
+                <span class="do-m-hint">{{ hint(e, d.normal) }}</span>
               </button>
-            }
-          </div>
-          @if (picked(); as c) {
-            <p class="do-m-h">{{ heading(c, d.asOf) }}</p>
-            <ul class="do-m-tiles">
-              @for (e of entries(c); track key(e)) {
-                <li><button type="button" class="do-m-tile" [class.do-m-sel]="opened()?.key === key(e)" [class.do-unconf]="e.kind === 'earnings' && e.confirmed === false"
-                  [attr.aria-expanded]="opened()?.key === key(e)" (click)="toggle(e)">
-                  @if (e.kind === 'macro') {<span class="pt-cal-macro">{{ e.label }}</span><span class="do-m-name">{{ e.event }}</span>}
-                  @else {<pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="28" /><span class="do-m-sym">{{ e.ticker }}</span><span class="do-m-name">{{ plain(e.name) }}</span>}
-                  <b [class]="cueClass(e)">{{ cueOf(e).text }}</b>
-                  <span class="do-m-when">{{ whenShort(e) }}</span>
-                </button></li>
+              @if (opened()?.key === key(e)) {
+                <div class="do-m-more">
+                  <pt-outlook-card [event]="e" [normal]="d.normal" />
+                  <p class="do-say"><pt-say [parts]="say(e, d.normal)" [logos]="false" />@if (e.kind === 'earnings') {{{ ' ' }}<a [href]="stockHref(e.ticker)">{{ e.name }} earnings date&nbsp;→</a>}</p>
+                </div>
               }
-            </ul>
-            @if (opened(); as o) {<pt-outlook-card [event]="o.e" [normal]="d.normal" />}
+            </li>
           }
-        </div>
+          @if (phoneRows().length > shown()) {<li><button type="button" class="pt-abtn do-m-show" (click)="showMore()">Show {{ moreCount() }} more</button></li>}
+        </ol>
         <div class="do-agenda">
           @for (c of listed(); track c.date) {
             <h4 class="do-agenda-day">{{ heading(c, d.asOf) }}</h4>
@@ -440,28 +479,33 @@ export class PtCalOutlook {
       : `Earnings calendar — ${MONTHS[Number(d.from.slice(5, 7)) - 1]} ${d.from.slice(0, 4)}`;
   });
   protected readonly pop = signal<{ e: OutlookEvent; left: number; top: number; below: boolean } | null>(null);
-  /** On a phone: the day picked (today, the session after the data's night, or the next one with something on it, until the reader picks) and the event opened. */
-  private readonly chosen = signal<string | null>(null);
-  private readonly openKey = signal<string | null>(null);
-  protected readonly day = computed(() => {
-    const cs = this.cells(), asOf = this.data()?.asOf, busy = (c: Cell) => c.items.length + c.macro.length > 0;
-    const p = this.chosen();
-    if (p && cs.some((c) => c.date === p && busy(c))) return p;
-    const today = asOf ? nextWeekday(asOf) : '';
-    return (cs.find((c) => c.inMonth && c.date >= today && busy(c)) ?? cs.find(busy))?.date ?? null;
+  /**
+   * On a phone, a row per event and the hint people look for beyond the date: how much it may move, when and which session trades it,
+   * its record against the estimate. The market's dates first (they move every stock), then the companies still to report by market
+   * value, then those already reported; a week's all, a month's fifteen at first. A row opens the event's card and its sentence.
+   */
+  protected readonly phoneRows = computed(() => {
+    const all = this.cells().filter((c) => c.inMonth).flatMap((c) => [...c.macro, ...c.items]);
+    const size = (e: OutlookEvent) => (e.kind === 'macro' ? Infinity : e.mcap ?? 0);
+    const done = (e: OutlookEvent) => e.result != null;
+    const order = (a: OutlookEvent, b: OutlookEvent) => size(b) - size(a) || a.date.localeCompare(b.date);
+    return [...all.filter((e) => !done(e)).sort(order), ...all.filter(done).sort(order)];
   });
-  protected readonly picked = computed(() => this.cells().find((c) => c.date === this.day()) ?? null);
+  protected readonly firstReported = computed(() => { const i = this.phoneRows().findIndex((e) => e.result != null); return i < 0 ? -1 : i; });
+  /** A week's twenty or so all at once; a month's first fifteen, then more. */
+  protected readonly shown = linkedSignal(() => (this.isWeek() ? Infinity : PHONE_ROWS));
+  protected readonly moreCount = computed(() => Math.min(PHONE_ROWS, this.phoneRows().length - this.shown()));
+  protected showMore() { this.shown.update((n) => n + PHONE_ROWS); }
+  private readonly openKey = signal<string | null>(null);
   protected readonly opened = computed(() => {
-    const c = this.picked(), k = this.openKey();
-    const e = c && k ? this.entries(c).find((x) => this.key(x) === k) : undefined;
+    const k = this.openKey(), e = k ? this.phoneRows().find((x) => this.key(x) === k) : undefined;
     return e ? { key: k!, e } : null;
   });
-  protected pick(date: string) { this.chosen.set(date); this.openKey.set(null); }
   protected toggle(e: OutlookEvent) { const k = this.key(e); this.openKey.set(this.openKey() === k ? null : k); }
-  protected readonly weekday = (d: string) => WEEKDAY[weekdayOf(d)];
   protected readonly plain = plainName;
-  /** When it reports, in a few words; a date not confirmed says so. */
-  protected readonly whenShort = (e: OutlookEvent) => (e.kind === 'macro' ? '' : e.confirmed === false ? 'date not confirmed' : e.time ? TIME[e.time] : '');
+  protected readonly whenLine = phoneWhen;
+  protected readonly hint = phoneHint;
+  protected readonly miniBars = miniBars;
 
   protected readonly CAP = CAP;
   protected readonly DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];

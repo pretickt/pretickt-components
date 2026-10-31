@@ -236,37 +236,24 @@ button.do-ev { display: flex; width: 100%; align-items: center; justify-content:
 .do-row .do-card { max-width: 30rem; margin: .4rem 0 .7rem calc(.25rem + 3rem + .5rem); box-shadow: none; }
 .do-sum-name { min-width: 0; }
 @media (width < 40rem) { .do-grid { display: none; } }
-/* a phone, as Google Calendar does: the days on top (a week's five, or a small month) with their logos and a count, the picked day
-   below as tiles — logo, ticker, the forecast in large, when it reports; a tile opens the event's card under the tiles */
+/* a phone: a row per event, the market's dates and the largest companies first, and the hint beside the date — how much it may move
+   (large), when and which session trades it, its last eight moves, its record; a row opens the card and the sentence */
 .do-m { display: none; }
-@media (width < 40rem) { .do-m { display: grid; gap: .6rem; } }
-.do-m-days { display: grid; gap: .3rem; }
-.do-m-week { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-.do-m-month { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .2rem; }
-.do-m-dow { text-align: center; font-size: .65rem; font-weight: 600; color: var(--color-ink-soft); }
-.do-m-day { display: grid; justify-items: center; align-content: start; gap: .2rem; min-width: 0; padding: .35rem .1rem; border: 1px solid var(--color-border);
-  border-radius: .6rem; background: var(--color-surface); color: var(--color-ink); font: inherit; cursor: pointer; }
-.do-m-day[aria-pressed='true'] { border-color: var(--color-primary); background: color-mix(in oklab, var(--color-primary) 10%, var(--color-surface)); }
-.do-m-day:disabled { cursor: default; opacity: .4; }
-.do-m-out { visibility: hidden; }
-.do-m-date { display: grid; justify-items: center; font-size: .85rem; font-weight: 650; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.do-m-wd { font-size: .6rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--color-ink-soft); }
-.do-m-logos { display: flex; justify-content: center; gap: 2px; min-height: 14px; }
-.do-m-logos .pt-logo { border-radius: .25rem; }
-/* small and white logos (Visa, Nike) need a firmer outline than the site's own to be seen at this size */
-.do-m-logos img.pt-logo { filter: drop-shadow(0 0 .6px color-mix(in oklab, var(--color-ink) 85%, transparent)) drop-shadow(0 0 1px color-mix(in oklab, var(--color-ink) 35%, transparent)); }
-.do-m-n { font-size: .62rem; color: var(--color-ink-soft); font-variant-numeric: tabular-nums; }
-.do-m-h { margin: .2rem 0 0; font-size: .9rem; font-weight: 650; color: var(--color-ink); }
-.do-m-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; margin: 0; padding: 0; list-style: none; }
-.do-m-tile { display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: center; column-gap: .5rem; row-gap: .1rem; width: 100%; height: 100%;
-  padding: .55rem .6rem; border: 1px solid var(--color-border); border-radius: .7rem; background: var(--color-surface); color: var(--color-ink);
-  font: inherit; text-align: left; cursor: pointer; }
-/* pt-logo's host is display: contents: its image is the tile's grid item */
-.do-m-tile .pt-logo, .do-m-tile > .pt-cal-macro { grid-row: span 2; justify-self: center; }
-.do-m-tile .pt-logo { border-radius: .4rem; background: var(--color-surface-raised); }
-.do-m-sym { font-size: .95rem; font-weight: 700; }
-.do-m-name { overflow: hidden; font-size: .72rem; color: var(--color-ink-soft); text-overflow: ellipsis; white-space: nowrap; }
-.do-m-tile > .pt-cal-macro + .do-m-name { grid-row: span 2; white-space: normal; }
-.do-m-tile > .do-cue { grid-column: 1 / -1; margin-top: .2rem; font-family: var(--font-mono); font-size: 1.25rem; font-weight: 600; }
-.do-m-when { grid-column: 1 / -1; min-height: 1em; font-size: .68rem; color: var(--color-ink-soft); }
-.do-m-sel { border-color: var(--color-primary); box-shadow: 0 0 0 1px var(--color-primary); }
+@media (width < 40rem) { .do-m { display: grid; gap: .45rem; margin: .4rem 0 0; padding: 0; list-style: none; } .do-agenda { display: none; } }
+.do-m-sep { margin-top: .5rem; font-size: .7rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--color-ink-soft); }
+.do-m-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; grid-template-areas: 'logo who cue' 'logo when when' 'logo hint bars';
+  align-items: center; column-gap: .6rem; row-gap: .1rem; width: 100%; padding: .6rem .7rem; border: 1px solid var(--color-border); border-radius: .75rem;
+  background: var(--color-surface); color: var(--color-ink); font: inherit; text-align: left; cursor: pointer; }
+.do-m-row[aria-expanded='true'] { border-color: var(--color-primary); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.do-m-row .pt-logo, .do-m-row > .pt-cal-macro { grid-area: logo; align-self: start; justify-self: center; }
+.do-m-row .pt-logo { border-radius: .45rem; }
+.do-m-who { grid-area: who; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .92rem; }
+.do-m-t { font-weight: 650; color: var(--color-primary); }
+.do-m-cue { grid-area: cue; justify-self: end; font-family: var(--font-mono); font-size: 1.15rem; }
+.do-m-when { grid-area: when; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .72rem; color: var(--color-ink-soft); }
+.do-m-bars { grid-area: bars; justify-self: end; }
+.do-m-zero { stroke: var(--color-border); stroke-width: 1; }
+.do-m-b.pt-t-pos { fill: var(--color-pos); } .do-m-b.pt-t-neg { fill: var(--color-neg); } .do-m-b.pt-t-flat { fill: var(--color-ink-soft); }
+.do-m-hint { grid-area: hint; font-size: .78rem; font-weight: 550; color: var(--color-ink); }
+.do-m-more { display: grid; gap: .5rem; padding: .6rem .7rem; border: 1px solid var(--color-primary); border-top: 0; border-radius: 0 0 .75rem .75rem; }
+.do-m-more .do-say { margin: 0; padding: 0; }

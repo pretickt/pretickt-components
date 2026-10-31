@@ -132,33 +132,42 @@ describe('pt-cal-outlook (draft): the earnings calendar with each event\'s possi
     expect(el.querySelector('.pt-cal-asof .pt-cal-more')!.textContent).toContain('+1 more');
   });
 
-  it('on a phone, as Google Calendar does: the days on top with their logos and a count, the picked day below as tiles of logo, ticker and forecast', async () => {
+  it('on a phone: a row per company, the coming ones first and the largest first, each with the hint people look for beyond the date', async () => {
     const r = await render(PtCalOutlook, { data: WEEK, view: 'week' });
-    const days = [...r.el.querySelectorAll<HTMLButtonElement>('.do-m .do-m-day')];
-    expect(days.map((b) => b.querySelector('.do-m-date')!.textContent!.trim())).toEqual(['Mon26', 'Tue27', 'Wed28', 'Thu29', 'Fri30']);
-    expect(days[1]!.querySelectorAll('.do-m-logos .pt-logo')).toHaveLength(3); // the three largest of a busy day
-    expect(days[1]!.querySelector('.do-m-n')!.textContent).toBe('5');
-    // today first (the session after the data's night, as the agenda's "Earnings today"): each report a tile with its logo, ticker and forecast
-    expect(r.el.querySelector('.do-m-day[aria-pressed="true"]')).toBe(days[2]);
-    const tiles = () => [...r.el.querySelectorAll('.do-m-tiles .do-m-tile')];
-    expect(tiles().map((t) => (t.querySelector('.do-m-sym') ?? t.querySelector('.pt-cal-macro'))!.textContent)).toEqual(['Fed', 'MSFT', 'GOOGL']);
-    const msft = tiles()[1]!;
+    const rows = () => [...r.el.querySelectorAll('.do-m .do-m-row')];
+    const who = (el: Element) => (el.querySelector('.do-m-t') ?? el.querySelector('.pt-cal-macro'))!.textContent!.trim();
+    // the market's dates first (they move every stock), then the companies still to report by market value, then those already reported
+    const order = rows().map(who);
+    expect(order.slice(0, 3)).toEqual(['Fed', 'GDP', 'PCE']);
+    expect(order.indexOf('MSFT')).toBeLessThan(order.indexOf('MRK'));
+    expect(order.indexOf('MRK')).toBeLessThan(order.indexOf('VZ'));
+    expect(r.el.querySelector('.do-m-sep')!.textContent).toBe('Already reported');
+    const msft = rows().find((x) => who(x) === 'MSFT')!;
     expect(msft.querySelector('.pt-logo')).toBeTruthy();
-    expect(msft.querySelector('.do-cue')!.textContent).toBe('±4.7%');
-    expect(msft.querySelector('.do-m-when')!.textContent).toBe('after the close');
-    // another day; a tile opens the event's card under the tiles
-    days[3]!.click();
-    await settle(r.f);
-    expect(tiles().map((t) => (t.querySelector('.do-m-sym') ?? t.querySelector('.pt-cal-macro'))!.textContent)).toEqual(['GDP', 'AAPL', 'AMZN', 'LLY', 'CAT', 'MRK']);
-    (tiles()[1] as HTMLButtonElement).click();
-    await settle(r.f);
-    expect(r.el.querySelector('.do-m pt-outlook-card')!.textContent).toContain('Apple');
+    expect(msft.querySelector('.do-m-cue')!.textContent).toBe('±4.7%');                                                // how much it may move
+    expect(msft.querySelector('.do-m-when')!.textContent).toBe('Wed, Oct 28 · after the close · reacts Thu'); // when, and the session that trades it
+    expect(msft.querySelector('.do-m-hint')!.textContent).toBe('beat 7 of 8 · rose after 5 of 8');                     // will it beat: its record
+    expect(msft.querySelector('.do-m-who')!.textContent).toBe('Microsoft MSFT');
+    expect(rows()[0]!.querySelector('.do-m-hint')!.textContent).toMatch(/^[\d.]+× a normal day$/);                    // the Fed against an ordinary session
+    expect(msft.querySelectorAll('.do-m-bars rect')).toHaveLength(8);                                                 // its last eight moves
+    const ups = rows().find((x) => who(x) === 'UPS')!;
+    expect(ups.querySelector('.do-m-cue')!.textContent).toBe('-6.8%');
+    expect(ups.querySelector('.do-m-hint')!.textContent).toBe('a beat (+4%) · 1.2× its usual');
   });
-  it('a phone\'s month: a small grid of the days with their logos, the picked one below', async () => {
-    const r = await render(PtCalOutlook, { data: OCTOBER });
-    expect(r.el.querySelectorAll('.do-m-month .do-m-dow')).toHaveLength(7);
-    expect(r.el.querySelectorAll('.do-m-month .do-m-day').length % 7).toBe(0);
-    expect(r.el.querySelector('.do-m-day[aria-pressed="true"] .do-m-date')!.textContent!.trim()).toBe('28');
+  it('a row opens its card, with the deep dive and the sentence; a month shows its first fifteen, then more', async () => {
+    const r = await render(PtCalOutlook, { data: WEEK, view: 'week' });
+    const msft = [...r.el.querySelectorAll<HTMLButtonElement>('.do-m .do-m-row')].find((x) => x.querySelector('.do-m-t')?.textContent === 'MSFT')!;
+    msft.click();
+    await settle(r.f);
+    expect(msft.getAttribute('aria-expanded')).toBe('true');
+    const open = r.el.querySelector('.do-m .do-m-more')!;
+    expect(open.querySelector('pt-outlook-card')).toBeTruthy();
+    expect(open.textContent!.replace(/\s+/g, ' ')).toContain('Microsoft MSFT reports Wed, Oct 28 (confirmed), after the close');
+    const m = await render(PtCalOutlook, { data: OCTOBER });
+    expect(m.el.querySelectorAll('.do-m .do-m-row')).toHaveLength(15);
+    (m.el.querySelector('.do-m .do-m-show') as HTMLButtonElement).click();
+    await settle(m.f);
+    expect(m.el.querySelectorAll('.do-m .do-m-row').length).toBeGreaterThan(15);
   });
   it('names each company as a link with its logo (its card on hover): in the agenda\'s sentences and on the card', async () => {
     const { el } = await render(PtCalOutlook, { data: WEEK, view: 'week' });
