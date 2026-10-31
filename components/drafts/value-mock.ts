@@ -24,6 +24,10 @@ const customers = (tone: ValueCard['tone'], share: number | null, say: string, w
     { kind: 'split', parts: [{ label: 'no customer at 10%', share: 1 }] })
   : card(tone, 'biggest customers', `${share}%`, 'of sales from its 3 biggest customers', say, why, 'FMP financial-reports-json (10-K table: revenue by major customer)',
     { kind: 'split', parts: [{ label: `top 3 customers ${share}%`, share: share / 100 }, { label: 'everyone else', share: 1 - share / 100 }] });
+/** A record over time: quarters from fiscal `Q{q} FY{fy}` on, oldest first, each by how much it beat what was expected (`vs`). */
+const record = (vs: string, q: number, fy: number, by: number[]): ValueCard['viz'] => ({ kind: 'quarters', vs,
+  quarters: by.map((b, i) => ({ q: `Q${((q - 1 + i) % 4) + 1}`, fy: `FY${fy + Math.floor((q - 1 + i) / 4)}`, by: b })) });
+const ESTIMATE = 'the analysts\' estimate', FORECAST = 'its forecast';
 const PE_SOURCE = 'price over the last 12 months\' EPS, from FMP prices and income-statement (as pt-quality)';
 const BANKS_SOURCE = 'FMP grades (ratings) + price-target-news (targets)';
 const INSIDERS_SOURCE = 'FMP insider-trading/search (sales and buys at their price; awards and gifts left out)';
@@ -69,10 +73,12 @@ export const VALUE_NVDA: Value = { ...head('NVDA', 'Nvidia'), pe: { now: 41.2, m
   ] },
   { key: 'execution', tone: 'pos', verdict: 'delivers', cards: [
     card('pos', 'earnings vs estimates', '8 of 8', 'quarters above the analysts\' estimate', 'Nvidia beat the analysts\' profit estimate in each of its last 8 quarters, the latest on Aug 26, 2026.',
-      'A record of earning more than analysts expect.', 'FMP earnings (EPS estimated vs actual)', { kind: 'dots', hits: 8, total: 8 }),
+      'A record of earning more than analysts expect.', 'FMP earnings (EPS estimated vs actual)',
+      record(ESTIMATE, 3, 25, [0.091, 0.062, 0.048, 0.036, 0.042, 0.039, 0.031, 0.044])),
     card('pos', 'sales vs forecast', '8 of 8', 'quarters it reached the sales it forecast', 'In each of the last 8 quarters Nvidia reached the sales it had forecast on its earnings call.',
       'On each call management gives next quarter\'s sales; pretickt checks them against what it then reported.',
-      'earning-call-transcript (the forecast, read by an LLM) + FMP income-statement', { kind: 'dots', hits: 8, total: 8 }, { via: 'its earnings calls', term: 'guidance' }),
+      'earning-call-transcript (the forecast, read by an LLM) + FMP income-statement',
+      record(FORECAST, 3, 25, [0.052, 0.045, 0.038, 0.029, 0.031, 0.027, 0.022, 0.025]), { via: 'its earnings calls', term: 'guidance' }),
     card('flat', 'insider selling', '−$1.9B', 'sold, net, by its executives in 12 months',
       'Nvidia\'s executives sold a net $1.9B of shares in the 12 months to Oct 26, 2026, mostly in planned sales; none bought.',
       'Planned sales are set months ahead: they say little about the outlook.', INSIDERS_SOURCE, { kind: 'bars', values: [-0.3, -0.6, -0.4, -0.6] }),
@@ -147,9 +153,10 @@ export const VALUE_NKE: Value = { ...head('NKE', 'Nike'), pe: { now: 19.4, media
   ] },
   { key: 'execution', tone: 'flat', verdict: 'mixed', cards: [
     card('flat', 'earnings vs estimates', '5 of 8', 'quarters above the analysts\' estimate', 'Nike beat the analysts\' profit estimate in 5 of its last 8 quarters, the latest on Sep 30, 2026.',
-      'It beat lowered estimates more often than not.', 'FMP earnings', { kind: 'dots', hits: 5, total: 8 }),
+      'It beat lowered estimates more often than not.', 'FMP earnings', record(ESTIMATE, 2, 25, [0.21, -0.12, 0.35, -0.05, 0.18, 0.09, -0.08, 0.14])),
     card('neg', 'sales vs forecast', '3 of 8', 'quarters it reached the sales it forecast', 'Nike reached the sales it had forecast in 3 of the last 8 quarters.',
-      'Management promised more than it delivered.', 'earning-call-transcript (the forecast, read by an LLM) + FMP income-statement', { kind: 'dots', hits: 3, total: 8 },
+      'Management promised more than it delivered.', 'earning-call-transcript (the forecast, read by an LLM) + FMP income-statement',
+      record(FORECAST, 2, 25, [-0.02, -0.031, 0.004, -0.018, 0.012, -0.009, -0.024, 0.006]),
       { via: 'its earnings calls', term: 'guidance' }),
     card('pos', 'insider buying', '+$1.2M', 'bought, net, by its executives in 12 months',
       'Nike\'s executives bought a net $1.2M of shares in the 12 months to Oct 26, 2026, the new CEO among them.',
@@ -202,7 +209,7 @@ export const VALUE_INTC: Value = { ...head('INTC', 'Intel'), pe: { now: null, me
   ] },
   { key: 'execution', tone: 'neg', verdict: 'misses', cards: [
     card('neg', 'earnings vs estimates', '3 of 8', 'quarters above the analysts\' estimate', 'Intel beat the analysts\' profit estimate in 3 of its last 8 quarters, the latest on Oct 23, 2026.',
-      'More misses than beats.', 'FMP earnings', { kind: 'dots', hits: 3, total: 8 }),
+      'More misses than beats.', 'FMP earnings', record(ESTIMATE, 4, 24, [-0.4, 0.15, -0.6, -0.25, 0.3, -0.1, -0.35, 0.08])),
     card('neg', 'number of employees', '−15%', 'fewer people in a year', 'Intel had 92,000 employees at the end of 2025, 15% fewer than a year before.',
       'Deep cuts to save costs.', 'FMP historical-employee-count', { kind: 'bars', values: [131, 125, 108, 92] }),
   ] },

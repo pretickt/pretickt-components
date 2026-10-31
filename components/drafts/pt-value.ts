@@ -17,22 +17,28 @@
  * h2 with its answer, each searched question has an address of its own (`#value-<its words>`), so pt-people-ask links to it instead
  * of answering it again. The columns carry the words people search beside their own ("Price valuation", "Advantage moat").
  * A ticker of another company on a card is a link to its page: its card opens on hover, as on every ticker of the site.
- * @version 0.0.8
+ * A record over time (earnings against the estimate, sales against the forecast) is a bar per quarter, oldest first, on the line of
+ * what was expected: up by what it beat, down by what it missed, the latest in full colour; the quarter under each bar, the fiscal
+ * year once under its quarters, the number on hover (Romeo, 2026-10-31: the dots were periods with no time on them).
+ * @version 0.0.9
  */
 import { Component, computed, input } from '@angular/core';
 import { PtIcon, PtLogo } from '@pretickt/components/ds';
-import { date, faqId, num, plainName, stockHref, tip } from '@pretickt/components/format';
+import { date, faqId, num, pct, plainName, stockHref, tip } from '@pretickt/components/format';
 
 export type ValueKey = 'demand' | 'advantage' | 'economics' | 'execution' | 'fragility' | 'price';
 export type ValueTone = 'pos' | 'flat' | 'neg' | 'na';
 export type ValueViz =
   | { kind: 'bars'; values: number[]; labels?: string[] }          // a trend: years or quarters, the last one in its tone
   | { kind: 'vs'; value: number; peers: number; unit: '%' | '×' }  // the company against its peers' median
-  | { kind: 'dots'; hits: number; total: number }                  // so many of so many: beats, checks passed
+  | { kind: 'dots'; hits: number; total: number }                  // so many of so many, with no time: checks passed
+  | { kind: 'quarters'; quarters: ValueQuarter[]; vs: string }     // a record over time, oldest first, against `vs` (what was expected)
   | { kind: 'gauge'; value: number; min: number; max: number; zones: [number, number] } // a score with a red, amber, green zone
   | { kind: 'range'; low: number; high: number; value: number; mark?: number; labels?: [string, string] } // where it sits in a range
   | { kind: 'split'; parts: { label: string; share: number }[] }   // shares of a whole: segments, pay
   | { kind: 'companies'; rows: ValueCompany[]; bars: boolean };    // other companies: customers, rivals, holders, analysts' banks
+/** A quarter of a record, as the company names it (fiscal quarter and year), and by how much it beat what was expected: 0.06 is 6%, a miss below 0. */
+export interface ValueQuarter { q: string; fy: string; by: number }
 /** One company on a card that reads others: its logo, its value (the bar), its label; `self` is the company of the page. */
 export interface ValueCompany { ticker: string; logo: string | null; value: number | null; label: string; tone?: ValueTone; self?: boolean }
 /**
@@ -112,6 +118,28 @@ export function barGeom(values: number[]) {
       w: Math.round(w * 10) / 10, h: Math.round(h * 10) / 10, neg: v < 0, last: i === values.length - 1 };
   }) };
 }
+/** The quarters' track in px: 20 high (the first row of `.dv-qs`), the bars inside a 1.5 margin; a 5% beat or miss fills it at least, so small ones stay small. */
+export const QS_TRACK = 20;
+const PAD = 1.5, ROOM = QS_TRACK - 2 * PAD, MIN_H = 2, FILLS = 0.05;
+/**
+ * A record's bars on the line of what was expected: beats only, the line at the bottom; misses only, at the top; both, where they
+ * meet. Each bar's tone by its sign (in line: a mark on the line), the latest marked, its number for the hover; the fiscal years
+ * with how many of the quarters each spans.
+ */
+export function quarterGeom(quarters: ValueQuarter[], vs: string) {
+  const r1 = (n: number) => Math.round(n * 10) / 10;
+  const up = Math.max(0, ...quarters.map((x) => x.by)), down = Math.max(0, ...quarters.map((x) => -x.by)), span = Math.max(up + down, FILLS);
+  const base = r1(down === 0 ? QS_TRACK - PAD : up === 0 ? PAD : PAD + ((up + (span - up - down) / 2) / span) * ROOM);
+  const bars = quarters.map((x, i) => {
+    const tone = Math.abs(x.by) < 0.0005 ? 'flat' as const : x.by > 0 ? 'pos' as const : 'neg' as const;
+    const h = tone === 'flat' ? MIN_H : r1(Math.max(MIN_H, (Math.abs(x.by) / span) * ROOM));
+    const top = r1(tone === 'flat' ? base - MIN_H / 2 : tone === 'pos' ? base - h : base);
+    return { q: x.q, tone, h, top, last: i === quarters.length - 1, tip: tip({ [`${x.q} ${x.fy}`]: `${pct(x.by)} vs ${vs}` }) };
+  });
+  const years: { fy: string; span: number }[] = [];
+  for (const x of quarters) { const y = years.at(-1); if (y?.fy === x.fy) y.span++; else years.push({ fy: x.fy, span: 1 }); }
+  return { base, bars, years, cols: `repeat(${quarters.length}, minmax(0, 1fr))` };
+}
 /** A companies card's rows: each bar as a share of the largest value (none without bars or a value), its tone by its sign. */
 export function companyRows(rows: ValueCompany[], bars: boolean) {
   const max = Math.max(...rows.map((r) => Math.abs(r.value ?? 0)), 1e-9);
@@ -177,6 +205,15 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
                       <svg class="dv-viz" viewBox="0 0 120 32" aria-hidden="true">
                         @for (x of d; track $index) {<circle [class]="x.on ? 'dv-dot-' + c.tone : 'dv-dot'" [attr.cx]="x.cx" cy="16" r="4.2" />}
                       </svg>
+                    }
+                    @case ('quarters') {
+                      @let g = quarters(c);
+                      <div class="dv-qs" [style.grid-template-columns]="g.cols" aria-hidden="true">
+                        <i class="dv-qs-base" [style.top.px]="g.base"></i>
+                        @for (b of g.bars; track $index) {<span class="dv-qs-slot" [attr.data-tip]="b.tip"><i [class]="'dv-qs-bar dv-qs-' + b.tone" [class.dv-qs-last]="b.last" [style.top.px]="b.top" [style.height.px]="b.h"></i></span>}
+                        @for (b of g.bars; track $index) {<span class="dv-qs-q">{{ b.q }}</span>}
+                        @for (y of g.years; track $index) {<span class="dv-qs-y" [style.grid-column]="'span ' + y.span">{{ y.fy }}</span>}
+                      </div>
                     }
                     @case ('gauge') {
                       @let q = gauge(c);
@@ -245,6 +282,7 @@ export class PtValue {
   protected readonly cardTip = (c: ValueCard) => tip({ [c.big]: c.line, Why: c.why, 'pretickt analysis': c.via ?? null, Source: c.source });
   protected companies(c: ValueCard) { return c.viz.kind === 'companies' ? companyRows(c.viz.rows, c.viz.bars) : []; }
   protected bars(c: ValueCard) { return c.viz.kind === 'bars' ? barGeom(c.viz.values) : { base: 0, bars: [] }; }
+  protected quarters(c: ValueCard) { return c.viz.kind === 'quarters' ? quarterGeom(c.viz.quarters, c.viz.vs) : quarterGeom([], ''); }
   protected vs(c: ValueCard) {
     if (c.viz.kind !== 'vs') return { it: 0, peers: 0 };
     const max = Math.max(c.viz.value, c.viz.peers, 1e-9);

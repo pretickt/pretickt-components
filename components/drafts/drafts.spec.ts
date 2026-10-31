@@ -3,7 +3,7 @@ import { railMarks, splitBars } from './pt-asked';
 import { bubbleSize, etTime, heat, hotSentence, hotWhen, PtHot, ring } from './pt-hot';
 import { arc, oddsDays, oddsTone } from './pt-odds';
 import { boardColumns, boardSentence, boardWeek, PtQualityStrip } from './pt-quality-strip';
-import { arcPath, at, barGeom, companyRows, list, NOT_ADVICE, onArc, priceSentence, PtValue, valueAnswer, type Value } from './pt-value';
+import { arcPath, at, barGeom, companyRows, list, NOT_ADVICE, onArc, priceSentence, PtValue, QS_TRACK, quarterGeom, valueAnswer, type Value } from './pt-value';
 import { VALUE_INTC, VALUE_NKE, VALUE_NVDA } from './value-mock';
 import { render } from '../_spec';
 import { saidText } from '../../src/ds/format';
@@ -103,6 +103,37 @@ describe('pt-value (draft): the answer and the small pictures', () => {
   });
 });
 
+describe('pt-value (draft): the quarters, oldest first', () => {
+  const Q = (q: string, fy: string, by: number) => ({ q, fy, by });
+  it('a bar per quarter on one line: up by what it beat, down by what it missed, the latest marked', () => {
+    const g = quarterGeom([Q('Q3', 'FY25', 0.04), Q('Q4', 'FY25', -0.02), Q('Q1', 'FY26', 0.08)], 'the estimate');
+    expect(g.bars.map((b) => [b.q, b.tone, b.last])).toEqual([['Q3', 'pos', false], ['Q4', 'neg', false], ['Q1', 'pos', true]]);
+    expect(g.bars[0]!.top + g.bars[0]!.h).toBeCloseTo(g.base, 1);
+    expect(g.bars[1]!.top).toBe(g.base);
+    expect(g.bars[2]!.h / g.bars[0]!.h).toBeCloseTo(2, 1);
+  });
+  it('beats only: the line at the bottom, and small beats stay small (a 5% beat fills the height)', () => {
+    const g = quarterGeom([Q('Q1', 'FY26', 0.01), Q('Q2', 'FY26', 0.05)], 'the estimate');
+    expect(g.bars.every((b) => Math.abs(b.top + b.h - g.base) < 0.05)).toBe(true);
+    expect(g.base).toBeGreaterThan(QS_TRACK * 0.9);
+    expect(g.bars[1]!.h / g.bars[0]!.h).toBeCloseTo(5, 1);
+    expect(quarterGeom([Q('Q1', 'FY26', 0.4), Q('Q2', 'FY26', 0.05)], 'the estimate').bars[0]!.top).toBeLessThan(2);
+  });
+  it('misses only: the line at the top; in line with it: a mark on the line', () => {
+    const g = quarterGeom([Q('Q1', 'FY26', -0.03), Q('Q2', 'FY26', 0)], 'the estimate');
+    expect(g.base).toBeLessThan(4);
+    expect(g.bars.map((b) => b.tone)).toEqual(['neg', 'flat']);
+    expect(g.bars[1]!.top).toBeLessThan(g.base);
+    expect(g.bars[1]!.top + g.bars[1]!.h).toBeGreaterThan(g.base);
+  });
+  it('the fiscal year once, under its quarters; the number of each quarter on hover', () => {
+    const g = quarterGeom([Q('Q3', 'FY25', 0.04), Q('Q4', 'FY25', -0.02), Q('Q1', 'FY26', 0.08), Q('Q2', 'FY26', 0.01), Q('Q1', 'FY27', 0.02)], 'the estimate');
+    expect(g.years).toEqual([{ fy: 'FY25', span: 2 }, { fy: 'FY26', span: 2 }, { fy: 'FY27', span: 1 }]);
+    expect(JSON.parse(g.bars[1]!.tip)).toEqual({ 'Q4 FY25': '-2.0% vs the estimate' });
+    expect(JSON.parse(g.bars[2]!.tip)).toEqual({ 'Q1 FY26': '+8.0% vs the estimate' });
+  });
+});
+
 describe('pt-value (draft): the cards read across other companies', () => {
   it('bars as a share of the largest value, the tone from the sign unless given, the page\'s company marked; no bars without them', () => {
     const rows = companyRows([{ ticker: 'NVDA', logo: null, value: 78, label: '78%', self: true }, { ticker: 'INTC', logo: null, value: -2, label: '−2%' },
@@ -144,6 +175,16 @@ describe('pt-value (draft): every card', () => {
     const titles = VALUE_NVDA.sections.flatMap((s) => s.cards.map((c) => `${c.title}${c.term ? ` · ${c.term}` : ''}`));
     expect(titles).toEqual(expect.arrayContaining(['price vs profit · P/E ratio', 'competitors', 'number of employees', 'shareholders · institutional ownership', 'insider selling', 'CEO pay']));
   });
+  it('a record over time shows its quarters, and its "5 of 8" counts them: the beats are the bars above the line', () => {
+    const records = all.flatMap((v) => v.sections.flatMap((s) => s.cards)).filter((c) => /vs (estimates|forecast)$/.test(c.title));
+    expect(records.length).toBe(5);
+    for (const c of records) {
+      expect(c.viz.kind).toBe('quarters');
+      const [, hits, total] = /^(\d+) of (\d+)$/.exec(c.big)!.map(Number);
+      const qs = c.viz.kind === 'quarters' ? c.viz.quarters : [];
+      expect([qs.filter((x) => x.by > 0).length, qs.length]).toEqual([hits, total]);
+    }
+  });
 });
 
 describe('pt-value (draft): in the page\'s text', () => {
@@ -183,6 +224,15 @@ describe('pt-value (draft): in the page\'s text', () => {
     }
     const { el } = await render(PtValue, { data: VALUE_NVDA });
     expect(el.querySelector('.dv-title')!.textContent).toBe('NVDA sales growth revenue growth');
+  });
+  it('a quarters card: a bar for each quarter, the quarter under it, the fiscal year under its quarters', async () => {
+    const { el } = await render(PtValue, { data: VALUE_NVDA });
+    const card = [...el.querySelectorAll('.dv-card')].find((c) => c.querySelector('.dv-title')!.textContent!.includes('earnings vs estimates'))!;
+    expect(card.querySelectorAll('.dv-qs-slot')).toHaveLength(8);
+    expect(card.querySelectorAll('.dv-qs-bar.dv-qs-pos')).toHaveLength(8);
+    expect([...card.querySelectorAll('.dv-qs-q')].map((x) => x.textContent)).toEqual(['Q3', 'Q4', 'Q1', 'Q2', 'Q3', 'Q4', 'Q1', 'Q2']);
+    expect([...card.querySelectorAll('.dv-qs-y')].map((x) => x.textContent)).toEqual(['FY25', 'FY26', 'FY27']);
+    expect(JSON.parse(card.querySelectorAll('.dv-qs-slot')[7]!.getAttribute('data-tip')!)).toEqual({ 'Q2 FY27': '+4.4% vs the analysts\' estimate' });
   });
   it('each card\'s title is a heading, as the searched questions under the columns, with its searched term inside it', async () => {
     const { el } = await render(PtValue, { data: VALUE_NVDA });
