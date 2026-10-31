@@ -169,15 +169,18 @@ const FED = { date: '2026-10-28', kind: 'macro' as const, meta: { label: 'Fed', 
   moves: [0.011, -0.016, 0.009, 0.012, -0.007, 0.014, -0.021, 0.008], move: null, news: [story('The Fed is expected to cut again', 'Preview', '2026-10-26')] } };
 const CPI = { date: '2026-10-14', kind: 'macro' as const, meta: { label: 'CPI', event: 'Inflation Rate YoY (Sep) · Core Inflation Rate YoY (Sep)', impact: 'High',
   headline: { name: 'CPI YoY', unit: '%', expected: 2.8, previous: 2.9, actual: 2.9 }, moves: [0.01, -0.012, 0.008, 0.011, -0.009, 0.013, -0.01, 0.007], move: -0.012 } };
-const MSFT = co('MSFT', 'Microsoft Corporation', '2026-10-28', 'amc', 3.88e12, { epsEst: 3.68, revEst: 77.4e9,
-  moves: [0.042, -0.061, 0.018, 0.075, -0.039, 0.045, 0.083, -0.012], record: { beats: 7, of: 8 }, move: null,
+/** Each past report: its EPS surprise and the move after it, oldest first. */
+const past = (surprises: (number | null)[], moves: number[]) => moves.map((move, i) => ({ surprise: surprises[i] ?? null, move }));
+const MSFT = co('MSFT', 'Microsoft Corporation', '2026-10-28', 'amc', 3.88e12, { epsEst: 3.68, revEst: 77.4e9, move: null,
+  reports: past([0.05, 0.03, 0.04, 0.08, -0.04, 0.06, 0.09, 0.03], [0.042, -0.061, 0.018, 0.075, -0.039, 0.045, 0.083, -0.012]),
   news: [story('Microsoft earnings preview: Azure in focus', 'Preview', '2026-10-26'), story('Microsoft signs a cloud deal', null, '2026-10-22')] });
-const AAPL = co('AAPL', 'Apple Inc.', '2026-10-29', 'amc', 3.89e12, { epsEst: 1.77, moves: [0.03, -0.02, 0.05, 0.04, -0.03, 0.06, 0.02, -0.04], record: { beats: 8, of: 8 } });
+const AAPL = co('AAPL', 'Apple Inc.', '2026-10-29', 'amc', 3.89e12, { epsEst: 1.77,
+  reports: past([0.04, 0.05, 0.03, 0.06, 0.03, 0.04, 0.05, 0.07], [0.03, -0.02, 0.05, 0.04, -0.03, 0.06, 0.02, -0.04]) });
 const CVX = co('CVX', 'Chevron Corporation', '2026-10-30', 'bmo', 2.76e11, { confirmed: false, epsEst: 1.3 });
 const KO = co('KO', 'Coca-Cola', '2026-10-27', 'bmo', 3.03e11, { epsEst: 0.78, epsActual: 0.81, move: 0.011,
-  moves: [0.021, -0.018, 0.025, -0.02, 0.019, 0.023, -0.022, 0.02], record: { beats: 6, of: 8 } });
+  reports: past([0.03, 0.01, 0.04, 0.05, -0.03, 0.03, 0.04, 0.03], [0.021, -0.018, 0.025, -0.02, 0.019, 0.023, -0.022, 0.02]) });
 const V = co('V', 'Visa Inc.', '2026-10-27', 'amc', 6.7e11, { epsEst: 2.97, epsActual: 3.04, move: null,
-  moves: [0.03, -0.035, 0.028, 0.04, -0.031, 0.033, -0.029, 0.03], record: { beats: 7, of: 8 } });
+  reports: past([0.03, 0.04, 0.05, 0.03, -0.01, 0.04, 0.03, 0.05], [0.03, -0.035, 0.028, 0.04, -0.031, 0.033, -0.029, 0.03]) });
 const OCT27 = { asOf: '2026-10-27', normal: 0.0068, items: [CPI, KO, V, FED, MSFT, AAPL, CVX] };
 
 const rowsOf = async (ev: unknown, inputs: Record<string, unknown> = { month: '2026-10' }) => {
@@ -205,12 +208,17 @@ describe('pt-calendar rows: what to expect from each event', () => {
     expect(line(of('KO'), 'pt-cal-row-when')).toBe('Reported Tue, Oct 27 · before the open');
     expect(line(of('Visa'), 'pt-cal-row-when')).toBe('Reported Tue, Oct 27 · after the close · reacts Wed');
   });
-  it('before a report: its usual move, its record against the estimate and how often it rose after, its last moves as bars', async () => {
+  it('before a report: its usual move, its record against the estimate and how often it rose after, its last results as thumbs', async () => {
     const { of, line } = await rowsOf(OCT27);
     const msft = of('MSFT');
     expect(line(msft, 'pt-cal-row-cue')).toBe('±4.7%');
     expect(line(msft, 'pt-cal-row-hint')).toBe('beat 7 of 8 · rose after 5 of 8');
-    expect(msft.querySelectorAll('svg.pt-cal-row-bars rect')).toHaveLength(8);
+    // a thumb per report, oldest first: green up a beat, red down a miss (Romeo: "un thumb verde o rosso up o down se expected o meno")
+    const thumbs = msft.querySelector('.pt-cal-row-thumbs')!;
+    expect([...thumbs.querySelectorAll('.pt-cal-thumb')].map((t) => t.getAttribute('class')!.match(/pt-t-\w+/)![0]))
+      .toEqual(['pt-t-pos', 'pt-t-pos', 'pt-t-pos', 'pt-t-pos', 'pt-t-neg', 'pt-t-pos', 'pt-t-pos', 'pt-t-pos']);
+    expect(thumbs.getAttribute('aria-label')).toBe('EPS against the estimate in its last 8 reports: beat, beat, beat, beat, missed, beat, beat, beat');
+    expect(msft.querySelector('svg.pt-cal-row-bars')).toBeNull();
     expect(msft.querySelector('summary')!.querySelector('a')).toBeNull(); // one control: no link inside the summary
     expect(line(msft, 'pt-cal-row-who')).toBe('Microsoft MSFT');
     expect(msft.querySelector('summary [data-card="MSFT"]')!.textContent).toBe('MSFT'); // the symbol opens its card on hover
@@ -219,7 +227,12 @@ describe('pt-calendar rows: what to expect from each event', () => {
     const { of, line } = await rowsOf(OCT27);
     expect(line(of('CVX'), 'pt-cal-row-cue')).toBe('');
     expect(line(of('CVX'), 'pt-cal-row-hint')).toBe('EPS est. $1.30');
-    expect(of('CVX').querySelector('svg')).toBeNull();
+    expect(of('CVX').querySelector('.pt-cal-row-thumbs')).toBeNull();
+    // in line within 2% of the estimate: a grey thumb; no estimate: an empty mark
+    const few = co('ZZ', 'Few Inc.', '2026-10-29', 'amc', 1e9, { epsEst: 1, reports: past([0.01, null, -0.03], [0.02, -0.01, 0.03]) });
+    const z = (await rowsOf({ ...OCT27, items: [few] })).rows[0]!;
+    expect([...z.querySelectorAll('.pt-cal-thumb')].map((t) => t.getAttribute('class')!.match(/pt-t-\w+/)![0])).toEqual(['pt-t-flat', 'pt-t-na', 'pt-t-neg']);
+    expect(z.querySelector('.pt-cal-row-cue')!.textContent!.trim()).toBe(''); // three reports: too few for a usual move
   });
   it('after a report: the move it made against its usual size, and the verdict; until a session trades it, its usual move', async () => {
     const { of, line } = await rowsOf(OCT27);
@@ -342,7 +355,11 @@ describe('pt-calendar grid: the hint in the chip, a click opens the event', () =
     expect(pop.querySelector('.pt-cal-row-hint')!.textContent!.trim()).toBe('beat 7 of 8 · rose after 5 of 8');
     expect(pop.querySelector('.pt-cal-row-say')!.textContent!.replace(/\s+/g, ' ').trim()).toMatch(/^Microsoft MSFT reports Wed, Oct 28 \(confirmed\)/);
     expect(pop.querySelectorAll('.pt-news-item')).toHaveLength(2);
+    // the earnings summary card first, its history with each result; the company's usual card under it
+    const sum = pop.querySelector('.pt-cal-sum')!;
+    expect([...sum.querySelectorAll('.pt-cal-hist li')].map((li) => li.textContent!.trim())).toEqual(['+5%', '+3%', '+4%', '+8%', '-4%', '+6%', '+9%', '+3%']);
     expect(pop.querySelector('[data-card-slot]')!.getAttribute('data-card-slot')).toBe('MSFT');
+    expect(sum.compareDocumentPosition(pop.querySelector('[data-card-slot]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(document.activeElement).toBe(pop);
     await click(r, pop.querySelector('button.pt-cal-pop-x'));
     expect(r.el.querySelector('.pt-cal-pop')).toBeNull();

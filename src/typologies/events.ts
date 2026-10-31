@@ -19,10 +19,15 @@ export const EventsParams = z.object({
 });
 
 const Common = { date: IsoDate, ticker: Ticker, name: z.string(), logo: z.nullable(z.string()), mcap: Num };
-/** How many past moves and stories an event carries at most: a month of 300 reports stays small. */
+/** How many past reports (or releases) and stories an event carries at most: a month of 300 reports stays small. */
 export const EVENT_MOVES = 8, EVENT_NEWS = 5;
-/** The moves of the sessions that traded the last releases of the same kind, oldest first (fractions). */
+/** The market's (SPY) moves on the last releases of the same kind, oldest first (fractions). */
 const Moves = z.array(z.number()).check(z.maxLength(EVENT_MOVES));
+/**
+ * A company's last reports, oldest first: `surprise`, its EPS against the estimate ((actual − estimate) / |estimate|; null without an
+ * estimate); `move`, the stock's in the session that traded it (null without one).
+ */
+const Reports = z.array(z.object({ surprise: Num, move: Num })).check(z.maxLength(EVENT_MOVES));
 /**
  * A story about the event — the company's report, before or after it; the release — newest first. `tag` says what it is once a
  * classifier has read it (an LLM or a decision model: "Preview", "Results", "Guidance"…), null until then.
@@ -30,15 +35,15 @@ const Moves = z.array(z.number()).check(z.maxLength(EVENT_MOVES));
 const EventNews = z.object({ publishedAt: z.string(), title: z.string(), site: z.string(), url: HttpUrl, tag: z.optional(z.nullable(z.string())) });
 const News = z.array(EventNews).check(z.maxLength(EVENT_NEWS));
 /**
- * What to expect (added in 1.2, every field optional: a payload without them is a 1.1 one). For a report: `moves`, the stock's move in
- * the session that traded each of its last reports; `record`, how many of those with an EPS estimate beat it by more than 2% (`beats`
- * of `of`); `move`, this report's, once a session has traded it (null before, and on the evening of a report after the close).
+ * What to expect (added in 1.2, every field optional: a payload without them is a 1.1 one). For a report: `reports`, the company's
+ * last ones (each a beat or a miss, and the move after it); `move`, this report's, once a session has traded it (null before, and on
+ * the evening of a report after the close).
  */
-const Outlook = { moves: z.optional(Moves), move: z.optional(Num), news: z.optional(News) };
+const Outlook = { move: z.optional(Num), news: z.optional(News) };
 export const EventItem = z.discriminatedUnion('kind', [
   z.object({ ...Common, kind: z.literal('earnings'), meta: z.object({
     time: z.nullable(z.enum(['bmo', 'amc'])), confirmed: z.optional(z.nullable(z.boolean())), epsEst: Num, epsActual: Num, revEst: Num, revActual: Num,
-    ...Outlook, record: z.optional(z.nullable(z.object({ beats: z.int().check(z.minimum(0)), of: z.int().check(z.minimum(0)) }))) }) }),
+    ...Outlook, reports: z.optional(Reports) }) }),
   z.object({ ...Common, kind: z.literal('dividend'), meta: z.object({ amount: z.number(), payDate: z.nullable(IsoDate) }) }),
   z.object({ ...Common, kind: z.literal('split'), meta: z.object({ numerator: z.number(), denominator: z.number() }) }),
   z.object({ ...Common, kind: z.literal('analyst'), meta: z.object({
@@ -49,6 +54,7 @@ export const EventItem = z.discriminatedUnion('kind', [
    * market's (SPY) move on the last releases of this kind; `move`, the market's that session once released.
    */
   z.object({ date: IsoDate, kind: z.literal('macro'), meta: z.object({ label: z.string(), event: z.string(), impact: z.nullable(z.string()), ...Outlook,
+    moves: z.optional(Moves),
     headline: z.optional(z.nullable(z.object({ name: z.string(), unit: z.nullable(z.string()), expected: Num, previous: Num, actual: Num }))) }) }),
 ]);
 /**
@@ -99,17 +105,20 @@ function demoNews(seed: string, subject: string, date: string): EventStory[] | u
     url: `https://example.com/${slug}/${i + 1}`, tag: s.tag })) : undefined;
 }
 /**
- * A demo report's outlook (its own seed: the calendar's draws stay as they were): 3 to 8 reports on file, moves around a usual size,
- * a record against the estimate; once out, its EPS and the move (none yet on the evening of a report after the close).
+ * A demo report's outlook (its own seed: the calendar's draws stay as they were): 3 to 8 reports on file, mostly beats, each with a
+ * move around a usual size; once out, its EPS and the move (none yet on the evening of a report after the close).
  */
 function demoReport(ticker: string, date: string, time: 'bmo' | 'amc', epsEst: number, confirmed: boolean) {
-  const o = prng(`${ticker}:${date}:outlook`), n = 3 + Math.floor(o() * 6), usual = 0.02 + o() * 0.07;
-  const moves = Array.from({ length: n }, () => round((o() > 0.42 ? 1 : -1) * usual * (0.35 + o() * 1.3), 3));
+  const o = prng(`${ticker}:${date}:outlook`), n = 3 + Math.floor(o() * 6), usual = 0.02 + o() * 0.07, beats = 0.45 + o() * 0.5;
+  const reports = Array.from({ length: n }, () => {
+    const v = o();
+    return { surprise: round(v < beats ? 0.025 + o() * 0.1 : v < beats + 0.15 ? (o() - 0.5) * 0.03 : -0.025 - o() * 0.08, 3),
+      move: round((o() > 0.42 ? 1 : -1) * usual * (0.35 + o() * 1.3), 3) };
+  });
   const out = date <= DEMO_ASOF, traded = date < DEMO_ASOF || (date === DEMO_ASOF && time === 'bmo');
   return {
     time, confirmed: out || confirmed, epsEst, epsActual: out ? round(epsEst * (0.94 + o() * 0.16)) : null, revEst: null, revActual: null,
-    moves, record: { beats: Math.round(n * (0.45 + o() * 0.55)), of: n },
-    move: traded ? round((o() > 0.45 ? 1 : -1) * usual * (0.3 + o() * 1.4), 3) : null, news: demoNews(ticker, `${ticker} earnings`, date),
+    reports, move: traded ? round((o() > 0.45 ? 1 : -1) * usual * (0.3 + o() * 1.4), 3) : null, news: demoNews(ticker, `${ticker} earnings`, date),
   };
 }
 /** The demo's market dates: the release, its headline figure (expected, previous), the market's usual size on its releases. */

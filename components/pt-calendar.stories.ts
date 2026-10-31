@@ -30,16 +30,17 @@ const NEWS: Record<string, ReturnType<typeof told>[]> = {
   'macro:Fed': [told('2026-10-27', 'Markets price another quarter-point cut this week', 'Reuters', 'Preview'),
     told('2026-10-23', 'Fed officials signal patience on the pace of cuts', 'MarketWatch', null)],
 };
+/** A made-up EPS surprise for a draft's verdict: a beat 3–7% over the estimate, a miss 3–6% under it, in line within 1%. */
+const surprise = (v: 'beat' | 'inline' | 'miss' | null, i: number) =>
+  v === 'beat' ? 0.03 + ((i * 7) % 5) / 100 : v === 'miss' ? -(0.03 + ((i * 3) % 4) / 100) : v === 'inline' ? ((i % 3) - 1) / 100 : null;
 /** The draft's October (made-up numbers, real tickers and logos) as events@1.2 serves it: what the platform will fill. */
 function asEvents(d: CalOutlook): Events {
   return { asOf: d.asOf, normal: d.normal, items: d.items.map((e): EventItem => {
     if (e.kind === 'macro') return { date: e.date, kind: 'macro', meta: { label: e.label, event: e.event, impact: 'High', headline: headline(e),
       moves: e.moves.slice(-8).map((m) => m.move), move: e.result?.move ?? null, news: NEWS[`macro:${e.label}`] } };
-    const known = e.reactions.slice(-8).filter((r) => r.verdict != null);
     return { date: e.date, ticker: e.ticker, name: e.name, logo: e.logo, mcap: e.mcap, kind: 'earnings', meta: { time: e.time, confirmed: e.confirmed,
       epsEst: e.epsEst, epsActual: e.result?.epsActual ?? null, revEst: e.revEst, revActual: e.result?.revActual ?? null,
-      moves: e.reactions.slice(-8).map((r) => r.move), record: { beats: known.filter((r) => r.verdict === 'beat').length, of: known.length },
-      move: e.result?.move ?? null, news: NEWS[e.ticker] } };
+      reports: e.reactions.slice(-8).map((r, i) => ({ move: r.move, surprise: surprise(r.verdict, i) })), move: e.result?.move ?? null, news: NEWS[e.ticker] } };
   }) };
 }
 const october = asEvents(OCTOBER);
