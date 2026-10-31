@@ -4,7 +4,7 @@ import { PT_STORE } from '@pretickt/components/context';
 import { PtCompanyCard } from '../../components/pt-company-card';
 import { needPath } from '../api';
 import { demoFor } from '../typologies';
-import { attachCards, companyOf, panelPosition } from './cards';
+import { attachCards, CARD_TARGET, companyOf, panelPosition } from './cards';
 import { browserStore } from './store.browser';
 import { attachTips } from './tips';
 
@@ -105,6 +105,17 @@ describe('company cards on hover', () => {
     over('self');
     await vi.waitFor(() => expect(panel()?.querySelector('.pt-card-compact')).toBeTruthy());
   });
+  it('a symbol that is not a link (a calendar row: one control, no link inside) opens its card when it names the company in data-card', async () => {
+    page();
+    document.body.insertAdjacentHTML('beforeend', '<details><summary><span id="row" data-card="MSFT"><b>Microsoft</b> MSFT</span> ±4.7%</summary></details>' +
+      '<span id="junk" data-card="javascript:alert(1)">x</span>');
+    over('junk');
+    await wait(60);
+    expect(panel()).toBeNull();
+    document.querySelector('#row b')!.dispatchEvent(new Event('pointerover', { bubbles: true }));
+    await vi.waitFor(() => expect(panel()?.querySelector('.pt-card-compact')).toBeTruthy());
+    expect(api.mock.calls.some(([u]) => decodeURIComponent(String(u)).includes('"ticker":"MSFT"'))).toBe(true);
+  });
   it('the header\'s search results are company links too, but open no card (it would cover the list)', async () => {
     page();
     document.body.insertAdjacentHTML('afterbegin', '<header class="pt-header"><div class="pt-search-list"><a id="opt" role="option" href="/stocks/msft/">MSFT</a></div></header>');
@@ -122,6 +133,9 @@ describe('company cards on hover', () => {
     const a = (href: string) => Object.assign(document.createElement('a'), { href }) && (() => { const x = document.createElement('a'); x.setAttribute('href', href); return x; })();
     expect(['/stocks/nvda/', '/stocks/brk.b/#quality', '/stocks/nvda/#people-ask', '/stocks/nvda/news/', '/stocks/nvda', '/earnings-calendar/'].map((h) => companyOf(a(h))))
       .toEqual(['NVDA', 'BRK.B', 'NVDA', null, null, null]);
+    const named = (t: string) => { const x = document.createElement('span'); x.setAttribute('data-card', t); return x; };
+    expect(['MSFT', 'BRK.B', 'msft', '^GSPC', ''].map((t) => companyOf(named(t)))).toEqual(['MSFT', 'BRK.B', null, null, null]);
+    expect(CARD_TARGET).toBe('a[href], [data-card]');
   });
   it('panel position: below the link when it fits, above when it does not, else pinned and scrollable', () => {
     expect(panelPosition({ left: 100, top: 100, bottom: 120 }, 340, 300, 1200, 800)).toEqual({ x: 100, y: 128, maxHeight: null });

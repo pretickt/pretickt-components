@@ -1,16 +1,27 @@
 /**
- * Which companies report earnings (or go ex-dividend) this month — or in the coming week — and which market-wide dates (Fed, CPI,
- * jobs) fall around them?
- * @version 2.6.0
+ * Which companies report earnings (or go ex-dividend) this month — or in the coming week — which market-wide dates (Fed, CPI,
+ * jobs) fall around them, and what to expect from each?
+ * The grid gives the days (on a computer; a phone has no room for it). Under it a row per event, the market's dates first, then the
+ * companies still to report, the largest first, then those already reported (Romeo, 2026-10-31: "una riga per azienda, prima le più
+ * importanti, con logo e insight probabili"). Beyond the date, a row answers what people ask of a calendar: what is expected and how
+ * the price reacts — before a report the stock's usual move the session after one (the last 8, at least 4) and its record against the
+ * EPS estimate, after it the verdict and the move against that usual size; for a Fed, CPI or jobs date the figure expected and the
+ * market's (SPY) usual move on its releases. How big, not which way: past reactions do not say where the next one goes (FORECAST.md).
+ * A row opens to its sentence (the company a link that opens its card), the estimates and the news about the event, all in the page's
+ * HTML. The outlook fields are events@1.2's, optional: without them a row says the date and the EPS estimate, nothing made up.
+ * On a month, every date stays in the list by day under the rows.
+ * @version 3.0.0
  * @evidence DataForSEO: "earnings calendar" ~153k searches/month, SERP without AI overview (reports/Funzioni pretickt da tenere e aggiungere.md)
  * @evidence DataForSEO: "dividend calendar" in launch/data/08c-serp-dividend-calendar.json
+ * @evidence DataForSEO round 14 (2026-10-31, launch/data/14-summary.json): beyond the date, "who is expected to beat earnings this week?" (AI 574), "is it better to buy before or after earnings?" (357), "fed rate decision" 40,500, "important earnings this week" 590
  * @evidence beta: events-calendar month grid (pretickt-frontend/src/app/home/events-calendar.ts); stockanalysis.com earnings calendar
  */
 import { afterRenderEffect, Component, computed, type ElementRef, inject, input, linkedSignal, signal, viewChild } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
-import { PtLogo, PtMention } from '@pretickt/components/ds';
-import { amount, date, num, plainName, stockHref, tip } from '@pretickt/components/format';
-import { CALENDAR_MONTHS, type EventItem } from '@pretickt/components/typologies';
+import { MORE_STEP, PtLogo, PtMention, PtMore, PtSay } from '@pretickt/components/ds';
+import { amount, date, dayMonth, href, level, mention, money, named, num, pct, plainName, say, stockHref, tip, tone, usd, type Said, type Tone }
+  from '@pretickt/components/format';
+import { CALENDAR_MONTHS, cmp, type EventItem } from '@pretickt/components/typologies';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const iso = (y: number, m0: number, d: number) => new Date(Date.UTC(y, m0, d)).toISOString().slice(0, 10);
@@ -75,6 +86,8 @@ export { isCompany };
 
 type Kind = 'earnings' | 'dividend';
 const CAP = 4;
+/** The rows a week shows at first (the home page: a glance); a month shows MORE_STEP. */
+const WEEK_ROWS = 10;
 const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const time = (e: EventItem) => (e.kind === 'earnings' && e.meta.time ? e.meta.time.toUpperCase() : '');
 /** The provider's own flag: true = the company set the date, false = still an estimate, absent = not known (older data). */
@@ -87,17 +100,168 @@ const chipTip = (e: Company) => tip({
   'EPS est.': e.kind === 'earnings' && e.meta.epsEst != null ? num(e.meta.epsEst) : null,
   ...(e.kind === 'dividend' ? { Dividend: amount(e.meta.amount), 'Pay date': e.meta.payDate ? date(e.meta.payDate) : null } : {}),
 });
+type Earnings = Extract<EventItem, { kind: 'earnings' }>;
+type Dividend = Extract<EventItem, { kind: 'dividend' }>;
+type Story = NonNullable<Earnings['meta']['news']>[number];
+
+/** The usual move needs this many past ones of the last eight (the nightly feed's rule). */
+const REPORTS = 8, MIN_REPORTS = 4, SURPRISE = 0.02;
+/** The usual size of the move: the mean absolute move of the last eight, null with fewer than four. */
+export function usualMove(moves: readonly number[] | null | undefined): number | null {
+  const last = (moves ?? []).slice(-REPORTS);
+  return last.length >= MIN_REPORTS ? last.reduce((s, m) => s + Math.abs(m), 0) / last.length : null;
+}
+/** EPS against the estimate: a beat or a miss beyond 2% of it, in line within (a loss estimate reads on its size). */
+export function verdictOf(actual: number | null, est: number | null): 'beat' | 'inline' | 'miss' | null {
+  if (actual == null || est == null) return null;
+  const s = est === 0 ? actual : (actual - est) / Math.abs(est);
+  return s > SURPRISE ? 'beat' : s < -SURPRISE ? 'miss' : 'inline';
+}
+const verdictPhrase = (actual: number, est: number) => {
+  const v = verdictOf(actual, est)!;
+  return v === 'inline' ? 'in line' : `a ${v} (${pct(est === 0 ? 0 : (actual - est) / Math.abs(est), 0)})`;
+};
+const times = (v: number) => `${num(v, 1)}×`;
+const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const dayLabel = (d: string) => `${WEEKDAY[weekday(d)]}, ${dayMonth(d)}`;
+const TIME = { bmo: 'before the open', amc: 'after the close' } as const;
+/** The next session after `d`: a weekday the market is open (the calendar's own "Closed" dates are its holidays). */
+function nextSession(d: string, closed: ReadonlySet<string>): string {
+  let x = addDays(d, 1);
+  while (weekday(x) % 6 === 0 || closed.has(x)) x = addDays(x, 1);
+  return x;
+}
+/** The session that trades a report: its own before the open, the next one after the close; unknown without a time. */
+const reactsOn = (e: Earnings, closed: ReadonlySet<string>) => (e.meta.time === 'bmo' ? e.date : e.meta.time === 'amc' ? nextSession(e.date, closed) : null);
+
+/** A market date as a row names it (the words people search) and as a sentence does; an unknown label keeps the release's own name. */
+const MACRO_NAMES: Record<string, [row: string, sentence: string]> = {
+  Fed: ['Fed rate decision', 'The Fed\'s rate decision'], FOMC: ['FOMC minutes', 'The FOMC minutes'], CPI: ['CPI report', 'The CPI report'],
+  PCE: ['PCE report', 'The PCE report'], Jobs: ['Jobs report', 'The jobs report'], GDP: ['GDP report', 'The GDP report'],
+};
+const firstRelease = (m: Macro) => m.meta.event.split(' · ')[0]!;
+/** A headline figure in its unit, with the decimals it came with ("2.9%", "120K"); the Fed's rate always with two ("3.50%"). */
+function figure(v: number, unit: string | null, label: string): string {
+  const digits = label === 'Fed' ? 2 : Math.min(2, (String(v).split('.')[1] ?? '').length);
+  return `${num(v, digits)}${unit ?? ''}`;
+}
+/** The Fed's move: what the rate became against the one before ("cut to 3.50%"), or what is expected of it. */
+function fedChange(to: number, from: number | null, f: (v: number) => string, expected: boolean): string {
+  if (from == null) return `${expected ? 'a rate of ' : 'set at '}${f(to)}`;
+  if (to === from) return `held at ${f(to)}`;
+  return `${to < from ? (expected ? 'a cut to' : 'cut to') : expected ? 'a hike to' : 'raised to'} ${f(to)}`;
+}
+const upper = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** Its last eight moves as small bars around zero, in their tones: how big and which way, at a glance (none with fewer than four). */
+export function miniBars(moves: readonly number[] | null | undefined): { w: number; bars: { x: number; y: number; h: number; tone: Tone }[] } | null {
+  const last = (moves ?? []).slice(-REPORTS);
+  if (last.length < MIN_REPORTS) return null;
+  const max = Math.max(...last.map(Math.abs), 1e-9);
+  return { w: last.length * 6 - 2, bars: last.map((v, i) => { const h = Math.max(1.5, (Math.abs(v) / max) * 10); return { x: i * 6, y: v >= 0 ? 11 - h : 11, h, tone: tone(v) }; }) };
+}
+
+/** A row: everything it prints, as text, and the sentence (in parts: the company a link) its detail opens to. */
+export interface Row {
+  key: string; out: boolean;
+  /** A market date's label (Fed, CPI…); a company's row has its logo instead. */
+  label: string | null; title: string; ticker: string | null; logo: string | null; showTicker: boolean; unconfirmed: boolean;
+  cue: string; cueTone: Tone | 'est'; when: string; hint: string; bars: ReturnType<typeof miniBars>;
+  said: Said; facts: string; news: Story[];
+}
+
+function earningsRow(e: Earnings, asOf: string, closed: ReadonlySet<string>): Row {
+  const m = e.meta, out = e.date <= asOf, u = usualMove(m.moves), n = Math.min(REPORTS, m.moves?.length ?? 0), moved = out ? m.move ?? null : null;
+  const t = m.time ? TIME[m.time] : null, on = reactsOn(e, closed), usual = u == null ? null : `±${level(u)}`;
+  const record = m.record && m.record.of >= MIN_REPORTS ? m.record : null;
+  const who = mention(e.ticker, e.name, e.logo), name = plainName(e.name);
+  let when: string, hint: string, said: Said, facts: string;
+  if (out) {
+    const pending = moved == null && on != null && on > asOf;
+    when = `Reported ${dayLabel(e.date)}${t ? ` · ${t}` : ''}${pending ? ` · reacts ${WEEKDAY[weekday(on!)]}` : ''}`;
+    const eps = m.epsActual != null && m.epsEst != null ? verdictPhrase(m.epsActual, m.epsEst) : '';
+    hint = [eps, moved != null && u != null ? `${times(Math.abs(moved) / u)} its usual` : ''].filter(Boolean).join(' · ');
+    const fig = eps ? `: EPS ${money(m.epsActual)} vs ${money(m.epsEst)} expected, ${eps}` : '';
+    said = moved != null
+      ? say`${who} reported ${dayLabel(e.date)}${t ? `, ${t}` : ''}${fig}. The stock moved ${pct(moved)} in the session that traded it${u != null ? `, ${times(Math.abs(moved) / u)} its usual ${usual}` : ''}.`
+      : say`${who} reported ${dayLabel(e.date)}${t ? `, ${t}` : ''}${fig}${pending ? `; the stock reacts ${dayLabel(on!)}` : ''}.${usual ? ` Its usual move after a report: ${usual}.` : ''}`;
+    facts = m.revActual != null && m.revEst != null ? `Revenue ${usd(m.revActual, { compact: true })} vs ${usd(m.revEst, { compact: true })} expected` : '';
+  } else {
+    when = m.confirmed === false ? `Around ${dayLabel(e.date)}${t ? ` · ${t}` : ''} · not confirmed`
+      : `${dayLabel(e.date)}${t ? ` · ${t}` : ''}${on && on !== e.date ? ` · reacts ${WEEKDAY[weekday(on)]}` : ''}`;
+    const ups = (m.moves ?? []).slice(-REPORTS).filter((v) => v > 0).length;
+    hint = u == null ? (m.epsEst != null ? `EPS est. ${money(m.epsEst)}` : '')
+      : [record ? `beat ${record.beats} of ${record.of}` : '', `rose after ${ups} of ${n}`].filter(Boolean).join(' · ');
+    const tail = (usual ? ` In the session after each of its last ${n} reports it moved ${usual} on average.` : '') +
+      (record ? ` It beat the EPS estimate in ${record.beats} of its last ${record.of} reports.` : '') +
+      (u == null && m.epsEst != null ? ` The EPS estimate is ${money(m.epsEst)}.` : '');
+    said = m.confirmed === false
+      ? say`${who} is expected to report around ${dayLabel(e.date)} (date not confirmed)${t ? `, ${t}` : ''}.${tail}`
+      : say`${who} reports ${dayLabel(e.date)}${m.confirmed ? ' (confirmed)' : ''}${t ? `, ${t}` : ''}${on ? `; the stock reacts ${on === e.date ? 'the same day' : dayLabel(on)}` : ''}.${tail}`;
+    facts = [u != null && m.epsEst != null ? `EPS est. ${money(m.epsEst)}` : '', m.revEst != null ? `revenue est. ${usd(m.revEst, { compact: true })}` : '']
+      .filter(Boolean).join(' · ');
+    if (facts) facts = upper(facts);
+  }
+  return { key: `${e.kind}:${e.ticker}:${e.date}`, out, label: null, title: name, ticker: e.ticker, logo: e.logo, showTicker: named(e.name, e.ticker) !== name,
+    unconfirmed: !out && m.confirmed === false, cue: moved != null ? pct(moved) : usual ?? '', cueTone: moved != null ? tone(moved) : 'est',
+    when, hint, bars: miniBars(m.moves), said, facts, news: m.news ?? [] };
+}
+
+function macroRow(e: Macro, asOf: string, normal: number | null): Row {
+  const m = e.meta, out = e.date <= asOf, u = usualMove(m.moves), n = Math.min(REPORTS, m.moves?.length ?? 0), moved = out ? m.move ?? null : null;
+  const h = m.headline ?? null, f = (v: number) => figure(v, h?.unit ?? null, m.label), fed = m.label === 'Fed';
+  const [title, noun] = MACRO_NAMES[m.label] ?? [firstRelease(e), firstRelease(e)];
+  const vs = (actual: number) => (h?.expected == null ? '' : fed ? (actual === h.expected ? ', as expected' : `, ${f(h.expected)} expected`) : ` vs ${f(h.expected)} expected`);
+  let hint = '', said: string;
+  if (out) {
+    const fig = h?.actual == null ? '' : fed ? fedChange(h.actual, h.previous, f, false) + vs(h.actual) : `${f(h.actual)}${vs(h.actual)}`;
+    hint = upper(fig);
+    said = `${noun} came out ${dayLabel(e.date)}${fig ? `: ${fig}${!fed && h?.previous != null ? ` (previous ${f(h.previous)})` : ''}` : ''}.` +
+      (moved != null ? ` The market (SPY) moved ${pct(moved)} that session${normal ? `, ${times(Math.abs(moved) / normal)} a normal day` : ''}.` : '');
+  } else {
+    const exp = h?.expected == null ? '' : fed ? `${fedChange(h.expected, h.previous, f, true)}${h.previous != null && h.previous !== h.expected ? ` (from ${f(h.previous)})` : ''}`
+      : `${f(h.expected)}${h.previous != null ? ` (previous ${f(h.previous)})` : ''}`;
+    hint = !exp ? '' : fed ? `Expected: ${exp}` : `Expected ${f(h!.expected!)}${h!.previous != null ? ` · previous ${f(h!.previous)}` : ''}`;
+    said = `${noun} is due ${dayLabel(e.date)}${exp ? `: expected ${exp}` : ''}.` +
+      (u != null ? ` On its last ${n} ${fed ? 'decisions' : 'releases'} the market (SPY) moved ±${level(u)} on average${normal ? `, ${times(u / normal)} a normal day` : ''}.` : '');
+  }
+  return { key: `macro:${m.label}:${e.date}`, out, label: m.label, title, ticker: null, logo: null, showTicker: false, unconfirmed: false,
+    cue: moved != null ? pct(moved) : u == null ? '' : `±${level(u)}`, cueTone: moved != null ? tone(moved) : 'est',
+    when: `${out ? 'Released' : 'Due'} ${dayLabel(e.date)}`, hint, bars: miniBars(m.moves), said: [said], facts: '', news: m.news ?? [] };
+}
+
+function dividendRow(e: Dividend, asOf: string): Row {
+  const out = e.date <= asOf, who = mention(e.ticker, e.name, e.logo), name = plainName(e.name), paid = e.meta.payDate ? dayMonth(e.meta.payDate) : null;
+  return { key: `${e.kind}:${e.ticker}:${e.date}`, out, label: null, title: name, ticker: e.ticker, logo: e.logo, showTicker: named(e.name, e.ticker) !== name,
+    unconfirmed: false, cue: amount(e.meta.amount), cueTone: 'est', when: `Ex-dividend ${dayLabel(e.date)}`, hint: paid ? `paid ${paid}` : '', bars: null,
+    said: say`${who} ${out ? 'went' : 'goes'} ex-dividend ${dayLabel(e.date)}: ${amount(e.meta.amount)} a share${paid ? `, paid ${paid}` : ''}.`, facts: '', news: [] };
+}
+
+/**
+ * The rows in their order: the market's dates first (an earnings calendar only, holidays aside: they move every stock), then the
+ * companies by market value; those still ahead before those already out (`asOf`, the latest session, and before it).
+ */
+export function calendarRows(items: EventItem[], kind: Kind, asOf: string, normal: number | null): Row[] {
+  const closed = new Set(items.filter((e): e is Macro => e.kind === 'macro' && e.meta.label === 'Closed').map((e) => e.date));
+  const mine = items.filter((e) => (e.kind === 'macro' ? kind === 'earnings' && e.meta.label !== 'Closed' : isCompany(e) && e.kind === kind));
+  const size = (e: EventItem) => (e.kind === 'macro' ? Infinity : e.mcap ?? 0);
+  const order = (a: EventItem, b: EventItem) => size(b) - size(a) || cmp(a.date, b.date) || cmp(isCompany(a) ? a.ticker : '', isCompany(b) ? b.ticker : '');
+  const row = (e: EventItem) => (e.kind === 'macro' ? macroRow(e, asOf, normal) : e.kind === 'earnings' ? earningsRow(e, asOf, closed) : dividendRow(e as Dividend, asOf));
+  return [...mine.filter((e) => e.date > asOf).sort(order), ...mine.filter((e) => e.date <= asOf).sort(order)].map(row);
+}
+const LEGEND = '± is the usual move the session after a report (for a Fed, CPI or jobs date, the market’s, SPY): how big, not which way. The bars: the last 8.';
+
 type DatesScope = { scope: { by: 'dates'; from: string; to: string } };
 type MonthScope = { scope: { by: 'universe'; month: string } };
 
 /**
- * `month`: the month grid with every report listed below it. `week`: five sessions (Mon–Fri) starting at `start` — the home page
- * passes the coming week, from the market calendar; without it, the first week of `month`. What it names (the month, the week)
- * changes with its data, never before.
+ * `month`: the month grid, its rows (twenty at first) and every date listed by day below them. `week`: five sessions (Mon–Fri)
+ * starting at `start` and their rows (ten at first) — the home page passes the coming week, from the market calendar; without it,
+ * the first week of `month`. What it names (the month, the week) changes with its data, never before.
  */
 @Component({
   selector: 'pt-calendar',
-  imports: [PtLogo, PtMention],
+  imports: [PtLogo, PtMention, PtMore, PtSay],
   template: `
     @if (data() === null) {<p class="pt-na">Data not available</p>}
     @else if (data()) {
@@ -142,9 +306,53 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
             }
           </div>
         }
+        @if (rows().length) {
+          <div class="pt-cal-rows-head">
+            @if (isWeek()) {<h4 class="pt-cal-rows-title">{{ rowsTitle() }}</h4>} @else {<h3 class="pt-cal-rows-title">{{ rowsTitle() }}</h3>}
+            @if (hasOutlook()) {<p class="pt-meta">{{ LEGEND }}</p>}
+          </div>
+          <ol class="pt-cal-rows">
+            @for (row of visible(); track row.key; let i = $index) {
+              @if (i === firstOut()) {<li class="pt-cal-rows-sep">{{ kind() === 'dividend' ? 'Already ex-dividend' : 'Already reported' }}</li>}
+              <li>
+                <details class="pt-cal-row" [class.pt-cal-row-unconf]="row.unconfirmed" (toggle)="opened($event)">
+                  <summary>
+                    @if (row.label) {<span class="pt-cal-row-label">{{ row.label }}</span><span class="pt-cal-row-who"><b>{{ row.title }}</b></span>}
+                    @else {
+                      <pt-logo [ticker]="row.ticker!" [src]="row.logo" [size]="32" />
+                      <span class="pt-cal-row-who">@if (row.showTicker) {<b>{{ row.title }}</b>{{ ' ' }}<span class="pt-cal-row-t" [attr.data-card]="row.ticker">{{ row.ticker }}</span>} @else {<b [attr.data-card]="row.ticker">{{ row.title }}</b>}</span>
+                    }
+                    <b [class]="'pt-cal-row-cue ' + (row.cueTone === 'est' ? 'pt-cal-row-est' : 'pt-t-' + row.cueTone)">{{ row.cue }}</b>
+                    <span class="pt-cal-row-when">{{ row.when }}</span>
+                    @if (row.bars; as mb) {
+                      <svg class="pt-cal-row-bars" [attr.viewBox]="'0 0 ' + mb.w + ' 22'" [attr.width]="mb.w" height="22" aria-hidden="true">
+                        <line x1="0" [attr.x2]="mb.w" y1="11" y2="11" />
+                        @for (b of mb.bars; track $index) {<rect [attr.x]="b.x" [attr.y]="b.y" width="4" [attr.height]="b.h" rx="1" [class]="'pt-t-' + b.tone" />}
+                      </svg>
+                    }
+                    <span class="pt-cal-row-hint">{{ row.hint }}</span>
+                  </summary>
+                  <div class="pt-cal-row-more">
+                    <p class="pt-cal-row-say"><pt-say [parts]="row.said" /></p>
+                    @if (row.facts) {<p class="pt-meta">{{ row.facts }}</p>}
+                    @if (row.news.length) {
+                      <ul class="pt-news">
+                        @for (s of row.news; track s.url) {
+                          <li class="pt-news-item"><div>@if (s.tag) {<span class="pt-cal-row-tag">{{ s.tag }}</span>{{ ' ' }}}<a [href]="href(s.url)" target="_blank" rel="nofollow noopener noreferrer">{{ s.title }}</a><div class="pt-meta">{{ s.site }} · {{ dayMonth(s.publishedAt) }}</div></div></li>
+                        }
+                      </ul>
+                    }
+                  </div>
+                </details>
+              </li>
+            }
+          </ol>
+          @if (hasMore()) {<pt-more [step]="moreCount()" (more)="showMore()" />}
+        }
         @if (isWeek()) {
           @if (!hasCompanies()) {<p class="pt-lede">No {{ kind() === 'dividend' ? 'ex-dividend dates' : 'earnings reports' }} scheduled in the week of {{ date(shownWeek()) }} in the tracked universe yet.</p>}
         } @else if (listed().length) {
+          <h3 class="pt-cal-list-title">Every date in {{ cal().label }}, by day</h3>
           <ol class="pt-cal-list">
             @for (c of listed(); track c.date) {
               <li><span class="pt-cal-list-day">{{ date(c.date) }}</span>@for (e of entries(c); track $index; let i = $index) {<ng-container>{{ i ? ', ' : ' ' }}</ng-container>@if (e.kind === 'macro') {<strong>{{ e.meta.label }}</strong> ({{ e.meta.event }})} @else {<a ptMention [ticker]="e.ticker" [name]="e.name" [logo]="e.logo"></a>{{ tag(e) ? ' ' + tag(e) : '' }}}}</li>
@@ -184,6 +392,9 @@ export class PtCalendar {
   protected readonly macroTip = macroTip;
   protected readonly chipTip = chipTip;
   protected readonly weekdayOf = weekdayOf;
+  protected readonly LEGEND = LEGEND;
+  protected readonly href = href;
+  protected readonly dayMonth = dayMonth;
 
   private readonly weekItems = computed(() => (this.weekEvents.value()?.items ?? []).filter((e) => e.kind === 'macro' || e.kind === this.kind()));
   protected readonly week = computed(() => (this.isWeek() ? buildWeek(this.shownWeek(), this.weekItems(), this.weekEvents.value()?.asOf ?? '') : []));
@@ -204,6 +415,29 @@ export class PtCalendar {
   // the full list, from the same day groups as the grid: nothing hides behind the cap
   protected readonly listed = computed(() => this.cal().weeks.flat().filter((c) => c.inMonth && (c.macro.length || c.items.length)));
   protected entries = (c: Cell): EventItem[] => [...c.macro, ...c.items];
+
+  /** The rows of the days shown (the month's, the week's), in their order; a month's twenty at first, a week's ten, then twenty more. */
+  protected readonly rows = computed(() => {
+    const d = this.data();
+    return calendarRows(this.cells().filter((c) => c.inMonth).flatMap((c) => [...c.macro, ...c.items]), this.kind(), d?.asOf ?? '', d?.normal ?? null);
+  });
+  private readonly shown = linkedSignal({ source: () => this.rows(), computation: (): number => (this.isWeek() ? WEEK_ROWS : MORE_STEP) });
+  protected readonly visible = computed(() => this.rows().slice(0, this.shown()));
+  /** Some row has a usual move (its last moves, four at least): the legend says what ± and the bars are. */
+  protected readonly hasOutlook = computed(() => this.rows().some((r) => r.bars !== null));
+  protected readonly firstOut = computed(() => this.visible().findIndex((r) => r.out));
+  protected readonly hasMore = computed(() => this.rows().length > this.shown());
+  protected readonly moreCount = computed(() => Math.min(MORE_STEP, this.rows().length - this.shown()));
+  protected showMore() { this.shown.update((n) => n + MORE_STEP); }
+  protected readonly rowsTitle = computed(() => {
+    const what = this.kind() === 'dividend' ? 'The largest ex-dividend dates' : 'Important earnings and economic data';
+    return this.isWeek() ? `${what}, week of ${dayMonth(this.shownWeek())}` : `${what} in ${this.cal().label}`;
+  });
+  /** Opening a row is an interaction the page counts. */
+  protected opened(e: Event) {
+    const d = e.target as HTMLDetailsElement;
+    if (d.open) d.dispatchEvent(new CustomEvent('pt-interact', { bubbles: true, detail: { action: 'open' } }));
+  }
   protected dayClass = (c: Cell) => `pt-cal-day${c.inMonth ? '' : ' pt-cal-out'}${c.isAsOf ? ' pt-cal-asof' : ''}`;
 
   protected go(m: string) { this.close(); this.pickedMonth.set(m); this.monthEvents.retry(); }

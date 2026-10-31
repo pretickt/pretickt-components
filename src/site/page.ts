@@ -1,7 +1,7 @@
 import { afterNextRender, ApplicationRef, Component, inject, PLATFORM_ID, TransferState } from '@angular/core';
 import { isPlatformServer } from '@angular/common';
 import { sendBeacon, startBeacon } from './beacon';
-import { attachCards, companyOf } from './cards';
+import { attachCards, CARD_TARGET, companyOf } from './cards';
 import { attachCompanyBar } from './cobar';
 import { attachHeader } from './header';
 import { PAGE_KEY, PT_PAGE } from './model';
@@ -55,7 +55,7 @@ export class PtPage {
       }) : { active: () => false };
       // where a card opens on hover, a company link shows it instead of its text tooltip (the keyboard still gets the tooltip)
       const root = doc.querySelector<HTMLElement>('pt-page');
-      if (root) attachTips(root, (t) => cards.active() && companyOf(t.closest('a[href]')) !== null);
+      if (root) attachTips(root, (t) => cards.active() && companyOf(t.closest(CARD_TARGET)) !== null);
     });
   }
 }

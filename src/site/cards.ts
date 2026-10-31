@@ -3,8 +3,19 @@ import { Pt } from '@pretickt/components/context';
 
 const GAP = 8;
 
-/** The company a link points to — its page `/stocks/<t>/`, or a section of it (`#people-ask`) — as a ticker, or null. */
+/**
+ * What opens a card: a company link, or a symbol that names its company in `data-card` (a calendar row is one control, a
+ * `<summary>`, so it holds no link).
+ */
+export const CARD_TARGET = 'a[href], [data-card]';
+
+/**
+ * The company a link points to — its page `/stocks/<t>/`, or a section of it (`#people-ask`) — or the one an element names in
+ * `data-card` (a ticker as the platform stores it), as a ticker, or null.
+ */
 export function companyOf(el: Element | null): string | null {
+  const named = el?.getAttribute('data-card');
+  if (named != null) return /^[A-Z][A-Z0-9]{0,5}(\.[A-Z])?$/.test(named) ? named : null;
   const m = /^\/stocks\/([a-z0-9.]{1,12})\/(?:#[a-z0-9-]*)?$/.exec(el?.getAttribute('href') ?? '');
   return m ? m[1]!.toUpperCase() : null;
 }
@@ -63,7 +74,7 @@ export function attachCards(doc: Document, appRef: ApplicationRef, o: CardOption
   const paused = () => win.performance.now() < pausedUntil;
 
   const linkOf = (t: EventTarget | null): Element | null => {
-    const a = (t as Element | null)?.closest?.('a[href]') ?? null;
+    const a = (t as Element | null)?.closest?.(CARD_TARGET) ?? null;
     // the header's search results (a card would cover the list) and the sub-navigation ("Overview": a page, not a ticker) open none;
     // every other company link does, the page's own company too: hovering a ticker always shows its card
     if (a?.closest('.pt-header, .pt-subnav')) return null;

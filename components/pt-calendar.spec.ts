@@ -90,7 +90,8 @@ describe('pt-calendar', () => {
     const out = await html(events);
     const macro = events.items.filter((e) => e.kind === 'macro');
     expect(macro.length).toBeGreaterThan(0);
-    expect(out.match(/class="pt-cal-macro"/g)!.length).toBe(macro.length);
+    const grid = (await render(PtCalendar, { month: '2026-10' }, withData({ 'events@1': events }))).el.querySelector('.pt-cal-grid')!;
+    expect(grid.querySelectorAll('.pt-cal-macro').length).toBe(macro.length);
     expect(out).toContain('Fed');
     expect(out).not.toContain('/stocks//');
   });
@@ -150,5 +151,162 @@ describe('pt-calendar', () => {
     expect(r.text()).not.toContain('November 2026');
     expect(r.el.querySelector('.pt-cal-grid')!.innerHTML).toBe(before);
     expect(r.el.querySelector('.pt-cal')!.classList).toContain('pt-busy');
+  });
+});
+
+/**
+ * The evening of Tuesday Oct 27 (made-up numbers): the Fed tomorrow and CPI two weeks ago; Microsoft and Apple still to report,
+ * Chevron's date not confirmed and nothing on file but its estimate (as www's calendar reads before the platform fills the outlook);
+ * Coca-Cola reported this morning, Visa tonight (no session has traded it yet).
+ */
+const story = (title: string, tag: string | null, at: string) => ({ publishedAt: `${at}T14:00:00Z`, title, site: 'Reuters', url: `https://example.com/${at}`, tag });
+const co = (ticker: string, name: string, date: string, time: 'bmo' | 'amc', mcap: number, meta: Record<string, unknown>) =>
+  ({ date, ticker, name, logo: `/logos/${ticker.toLowerCase()}.webp`, mcap, kind: 'earnings' as const,
+    meta: { time, confirmed: true, epsEst: null, epsActual: null, revEst: null, revActual: null, ...meta } });
+const FED = { date: '2026-10-28', kind: 'macro' as const, meta: { label: 'Fed', event: 'Fed Interest Rate Decision', impact: 'High',
+  headline: { name: 'Fed funds rate', unit: '%', expected: 3.5, previous: 3.75, actual: null },
+  moves: [0.011, -0.016, 0.009, 0.012, -0.007, 0.014, -0.021, 0.008], move: null, news: [story('The Fed is expected to cut again', 'Preview', '2026-10-26')] } };
+const CPI = { date: '2026-10-14', kind: 'macro' as const, meta: { label: 'CPI', event: 'Inflation Rate YoY (Sep) · Core Inflation Rate YoY (Sep)', impact: 'High',
+  headline: { name: 'CPI YoY', unit: '%', expected: 2.8, previous: 2.9, actual: 2.9 }, moves: [0.01, -0.012, 0.008, 0.011, -0.009, 0.013, -0.01, 0.007], move: -0.012 } };
+const MSFT = co('MSFT', 'Microsoft Corporation', '2026-10-28', 'amc', 3.88e12, { epsEst: 3.68, revEst: 77.4e9,
+  moves: [0.042, -0.061, 0.018, 0.075, -0.039, 0.045, 0.083, -0.012], record: { beats: 7, of: 8 }, move: null,
+  news: [story('Microsoft earnings preview: Azure in focus', 'Preview', '2026-10-26'), story('Microsoft signs a cloud deal', null, '2026-10-22')] });
+const AAPL = co('AAPL', 'Apple Inc.', '2026-10-29', 'amc', 3.89e12, { epsEst: 1.77, moves: [0.03, -0.02, 0.05, 0.04, -0.03, 0.06, 0.02, -0.04], record: { beats: 8, of: 8 } });
+const CVX = co('CVX', 'Chevron Corporation', '2026-10-30', 'bmo', 2.76e11, { confirmed: false, epsEst: 1.3 });
+const KO = co('KO', 'Coca-Cola', '2026-10-27', 'bmo', 3.03e11, { epsEst: 0.78, epsActual: 0.81, move: 0.011,
+  moves: [0.021, -0.018, 0.025, -0.02, 0.019, 0.023, -0.022, 0.02], record: { beats: 6, of: 8 } });
+const V = co('V', 'Visa Inc.', '2026-10-27', 'amc', 6.7e11, { epsEst: 2.97, epsActual: 3.04, move: null,
+  moves: [0.03, -0.035, 0.028, 0.04, -0.031, 0.033, -0.029, 0.03], record: { beats: 7, of: 8 } });
+const OCT27 = { asOf: '2026-10-27', normal: 0.0068, items: [CPI, KO, V, FED, MSFT, AAPL, CVX] };
+
+const rowsOf = async (ev: unknown, inputs: Record<string, unknown> = { month: '2026-10' }) => {
+  const r = await render(PtCalendar, inputs, withData({ 'events@1': ev }));
+  const rows = [...r.el.querySelectorAll<HTMLElement>('.pt-cal-row')];
+  const of = (key: string) => rows.find((x) => x.querySelector('summary')!.textContent!.includes(key))!;
+  const line = (row: HTMLElement, cls: string) => row.querySelector(`.${cls}`)?.textContent!.replace(/\s+/g, ' ').trim() ?? null;
+  return { r, rows, of, line };
+};
+
+describe('pt-calendar rows: what to expect from each event', () => {
+  it('the market\'s dates first, then the companies still to report, the largest first, then those already reported', async () => {
+    const { r, rows } = await rowsOf(OCT27);
+    const keys = rows.map((x) => x.querySelector('[data-card]')?.getAttribute('data-card') ?? x.querySelector('.pt-cal-row-label')!.textContent!.trim());
+    expect(keys).toEqual(['Fed', 'AAPL', 'MSFT', 'CVX', 'CPI', 'V', 'KO']);
+    expect(r.el.querySelector('.pt-cal-rows-sep')!.textContent).toContain('Already reported');
+    expect(r.el.querySelector('h3.pt-cal-rows-title')!.textContent).toBe('Important earnings and economic data in October 2026');
+  });
+  it('a row says when, the session that trades a report, and whether the date is confirmed', async () => {
+    const { of, line } = await rowsOf(OCT27);
+    expect(line(of('Fed'), 'pt-cal-row-when')).toBe('Due Wed, Oct 28');
+    expect(line(of('MSFT'), 'pt-cal-row-when')).toBe('Wed, Oct 28 · after the close · reacts Thu');
+    expect(line(of('CVX'), 'pt-cal-row-when')).toBe('Around Fri, Oct 30 · before the open · not confirmed');
+    expect(line(of('CPI'), 'pt-cal-row-when')).toBe('Released Wed, Oct 14');
+    expect(line(of('KO'), 'pt-cal-row-when')).toBe('Reported Tue, Oct 27 · before the open');
+    expect(line(of('Visa'), 'pt-cal-row-when')).toBe('Reported Tue, Oct 27 · after the close · reacts Wed');
+  });
+  it('before a report: its usual move, its record against the estimate and how often it rose after, its last moves as bars', async () => {
+    const { of, line } = await rowsOf(OCT27);
+    const msft = of('MSFT');
+    expect(line(msft, 'pt-cal-row-cue')).toBe('±4.7%');
+    expect(line(msft, 'pt-cal-row-hint')).toBe('beat 7 of 8 · rose after 5 of 8');
+    expect(msft.querySelectorAll('svg.pt-cal-row-bars rect')).toHaveLength(8);
+    expect(msft.querySelector('summary')!.querySelector('a')).toBeNull(); // one control: no link inside the summary
+    expect(line(msft, 'pt-cal-row-who')).toBe('Microsoft MSFT');
+    expect(msft.querySelector('summary [data-card="MSFT"]')!.textContent).toBe('MSFT'); // the symbol opens its card on hover
+  });
+  it('with fewer than four reports on file, no usual move: the EPS estimate says what is expected', async () => {
+    const { of, line } = await rowsOf(OCT27);
+    expect(line(of('CVX'), 'pt-cal-row-cue')).toBe('');
+    expect(line(of('CVX'), 'pt-cal-row-hint')).toBe('EPS est. $1.30');
+    expect(of('CVX').querySelector('svg')).toBeNull();
+  });
+  it('after a report: the move it made against its usual size, and the verdict; until a session trades it, its usual move', async () => {
+    const { of, line } = await rowsOf(OCT27);
+    expect(line(of('KO'), 'pt-cal-row-cue')).toBe('+1.1%');
+    expect(of('KO').querySelector('.pt-cal-row-cue')!.classList).toContain('pt-t-pos');
+    expect(line(of('KO'), 'pt-cal-row-hint')).toBe('a beat (+4%) · 0.5× its usual');
+    expect(line(of('Visa'), 'pt-cal-row-cue')).toBe('±3.2%');
+    expect(line(of('Visa'), 'pt-cal-row-hint')).toBe('a beat (+2%)');
+  });
+  it('a market date: what is expected, the market\'s usual move on its releases; once out, the figure and the move', async () => {
+    const { of, line } = await rowsOf(OCT27);
+    expect(line(of('Fed'), 'pt-cal-row-cue')).toBe('±1.2%');
+    expect(line(of('Fed'), 'pt-cal-row-hint')).toBe('Expected: a cut to 3.50% (from 3.75%)');
+    expect(line(of('CPI'), 'pt-cal-row-cue')).toBe('-1.2%');
+    expect(line(of('CPI'), 'pt-cal-row-hint')).toBe('2.9% vs 2.8% expected');
+    const held = { ...FED, meta: { ...FED.meta, headline: { ...FED.meta.headline, expected: 3.75, actual: 3.75 } }, date: '2026-10-21' };
+    expect(line((await rowsOf({ ...OCT27, items: [held] })).rows[0]!, 'pt-cal-row-hint')).toBe('Held at 3.75%, as expected');
+  });
+  it('a row opens to the sentence, with the company as a link; the estimates; the news about the event', async () => {
+    const { of } = await rowsOf(OCT27);
+    const more = of('MSFT').querySelector('.pt-cal-row-more')!;
+    const said = more.querySelector('.pt-cal-row-say')!.textContent!.replace(/\s+/g, ' ').trim();
+    expect(said).toBe('Microsoft MSFT reports Wed, Oct 28 (confirmed), after the close; the stock reacts Thu, Oct 29. ' +
+      'In the session after each of its last 8 reports it moved ±4.7% on average. It beat the EPS estimate in 7 of its last 8 reports.');
+    expect(more.querySelector('a.pt-mention')!.getAttribute('href')).toBe('/stocks/msft/');
+    expect(more.textContent).toContain('EPS est. $3.68 · revenue est. $77.4B');
+    const news = [...more.querySelectorAll('.pt-news-item')];
+    expect(news.map((n) => [n.querySelector('.pt-cal-row-tag')?.textContent ?? null, n.querySelector('a')!.textContent, n.querySelector('.pt-meta')!.textContent]))
+      .toEqual([['Preview', 'Microsoft earnings preview: Azure in focus', 'Reuters · Oct 26'], [null, 'Microsoft signs a cloud deal', 'Reuters · Oct 22']]);
+    const a = news[0]!.querySelector('a')!;
+    expect([a.getAttribute('href'), a.getAttribute('target'), a.getAttribute('rel')]).toEqual(['https://example.com/2026-10-26', '_blank', 'nofollow noopener noreferrer']);
+  });
+  it('the sentences of the other cases: an unconfirmed date, a report traded and one not yet, the Fed, a release', async () => {
+    const { of } = await rowsOf(OCT27);
+    const said = (k: string) => of(k).querySelector('.pt-cal-row-say')!.textContent!.replace(/\s+/g, ' ').trim();
+    expect(said('CVX')).toBe('Chevron CVX is expected to report around Fri, Oct 30 (date not confirmed), before the open. The EPS estimate is $1.30.');
+    expect(said('KO')).toBe('Coca-Cola KO reported Tue, Oct 27, before the open: EPS $0.81 vs $0.78 expected, a beat (+4%). ' +
+      'The stock moved +1.1% in the session that traded it, 0.5× its usual ±2.1%.');
+    expect(said('Visa')).toBe('Visa V reported Tue, Oct 27, after the close: EPS $3.04 vs $2.97 expected, a beat (+2%); the stock reacts Wed, Oct 28. ' +
+      'Its usual move after a report: ±3.2%.');
+    expect(said('Fed')).toBe('The Fed\'s rate decision is due Wed, Oct 28: expected a cut to 3.50% (from 3.75%). ' +
+      'On its last 8 decisions the market (SPY) moved ±1.2% on average, 1.8× a normal day.');
+    expect(said('CPI')).toBe('The CPI report came out Wed, Oct 14: 2.9% vs 2.8% expected (previous 2.9%). The market (SPY) moved -1.2% that session, 1.8× a normal day.');
+  });
+  it('www\'s calendar before the platform fills the outlook: rows with the date and the estimate, nothing made up', async () => {
+    const bare = { asOf: '2026-10-27', items: [{ ...MSFT, meta: { time: 'amc', confirmed: true, epsEst: 3.68, epsActual: null, revEst: null, revActual: null } },
+      { date: '2026-10-28', kind: 'macro', meta: { label: 'Fed', event: 'Fed Interest Rate Decision', impact: 'High' } }] };
+    const { of, line } = await rowsOf(bare);
+    expect(line(of('MSFT'), 'pt-cal-row-cue')).toBe('');
+    expect(line(of('MSFT'), 'pt-cal-row-hint')).toBe('EPS est. $3.68');
+    expect(line(of('Fed'), 'pt-cal-row-hint')).toBe('');
+    expect(of('Fed').querySelector('.pt-cal-row-say')!.textContent!.trim()).toBe('The Fed\'s rate decision is due Wed, Oct 28.');
+    expect((await rowsOf(bare)).r.el.querySelector('.pt-cal-rows-head .pt-meta')).toBeNull(); // no ± on any row: no legend for it
+    expect((await rowsOf(OCT27)).r.el.querySelector('.pt-cal-rows-head .pt-meta')!.textContent).toContain('± is the usual move');
+  });
+  it('twenty rows at first on a month (ten on a week), then more; every report stays in the list by day', async () => {
+    const lots = { asOf: '2026-10-02', items: Array.from({ length: 25 }, (_, i) => co(`T${String.fromCharCode(65 + i)}`, `Co ${i}`, '2026-10-15', 'amc', 1e12 - i * 1e10, { epsEst: 1 })) };
+    const { r, rows } = await rowsOf(lots);
+    expect(rows).toHaveLength(20);
+    expect(r.el.querySelector('pt-more')!.textContent).toContain('Show 5 more');
+    await click(r, r.el.querySelector('pt-more button'));
+    expect(r.el.querySelectorAll('.pt-cal-row')).toHaveLength(25);
+    expect(r.el.querySelector('pt-more')).toBeNull();
+    expect(r.el.querySelectorAll('.pt-cal-list a.pt-mention')).toHaveLength(25);
+    const week = await rowsOf(lots, { month: '2026-10', view: 'week', start: '2026-10-12' });
+    expect(week.rows).toHaveLength(10);
+    expect(week.r.el.querySelector('h4.pt-cal-rows-title')!.textContent).toBe('Important earnings and economic data, week of Oct 12');
+  });
+  it('a dividend calendar: the amount and when it is paid, the largest first, no market dates; holidays are no rows', async () => {
+    const ko = { date: '2026-10-15', ticker: 'KO', name: 'Coca-Cola', logo: null, mcap: 3e11, kind: 'dividend' as const, meta: { amount: 0.51, payDate: '2026-10-30' } };
+    const closed = { date: '2026-10-12', kind: 'macro' as const, meta: { label: 'Closed', event: 'Columbus Day', impact: null } };
+    const { r, rows, line } = await rowsOf({ asOf: '2026-10-02', items: [ko, FED, closed] }, { month: '2026-10', kind: 'dividend' });
+    expect(rows).toHaveLength(1);
+    expect([line(rows[0]!, 'pt-cal-row-cue'), line(rows[0]!, 'pt-cal-row-when'), line(rows[0]!, 'pt-cal-row-hint')]).toEqual(['$0.51', 'Ex-dividend Thu, Oct 15', 'paid Oct 30']);
+    expect(r.el.querySelector('.pt-cal-rows-title')!.textContent).toBe('The largest ex-dividend dates in October 2026');
+    expect((await rowsOf({ asOf: '2026-10-02', items: [closed, CVX] })).rows).toHaveLength(1);
+  });
+  it('opening a row counts as an interaction', async () => {
+    const { of } = await rowsOf(OCT27);
+    const seen: string[] = [];
+    const d = of('MSFT') as HTMLDetailsElement;
+    d.addEventListener('pt-interact', (e) => seen.push((e as CustomEvent<{ action: string }>).detail.action));
+    const tick = () => new Promise((r) => setTimeout(r, 20));
+    d.open = true; // the browser fires toggle
+    await tick();
+    expect(seen).toEqual(['open']);
+    d.open = false; // closing it is not counted
+    await tick();
+    expect(seen).toEqual(['open']);
   });
 });
