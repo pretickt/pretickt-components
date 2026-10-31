@@ -28,14 +28,18 @@ export class PtMention {
   });
 }
 
-/** A sentence in parts (`say`): its text as text, each company it names as a PtMention. `<pt-say [parts]="said" />` */
+/**
+ * A sentence in parts (`say`): its text as text, each company it names as a PtMention. `<pt-say [parts]="said" />`; `logos` false
+ * where the company is already shown with its logo beside the sentence (a row's head).
+ */
 @Component({
   selector: 'pt-say',
   imports: [PtMention],
   host: { style: 'display: contents' },
-  template: `@for (p of parts(); track $index) {@if (asMention(p); as m) {<a ptMention [ticker]="m.ticker" [name]="m.name" [logo]="m.logo"></a>} @else {{{ p }}}}`,
+  template: `@for (p of parts(); track $index) {@if (asMention(p); as m) {<a ptMention [ticker]="m.ticker" [name]="m.name" [logo]="logos() ? m.logo : null"></a>} @else {{{ p }}}}`,
 })
 export class PtSay {
   readonly parts = input.required<Said>();
+  readonly logos = input(true);
   protected readonly asMention = (p: string | Mention): Mention | null => (isMention(p) ? p : null);
 }

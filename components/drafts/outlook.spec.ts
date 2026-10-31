@@ -1,5 +1,5 @@
 import { saidText } from '../../src/ds/format';
-import { render } from '../_spec';
+import { render, settle } from '../_spec';
 import { CPI, FED, MSFT, OCTOBER, UPS, V_TONIGHT, WEEK } from './outlook-mock';
 import { agendaSentence, card, cue, dayHeading, priceRange, PtCalOutlook, PtOutlookCard, rangeText, record, usualMove, verdictOf, when, type CoEvent } from './pt-cal-outlook';
 
@@ -132,6 +132,34 @@ describe('pt-cal-outlook (draft): the earnings calendar with each event\'s possi
     expect(el.querySelector('.pt-cal-asof .pt-cal-more')!.textContent).toContain('+1 more');
   });
 
+  it('on a phone, as Google Calendar does: the days on top with their logos and a count, the picked day below as tiles of logo, ticker and forecast', async () => {
+    const r = await render(PtCalOutlook, { data: WEEK, view: 'week' });
+    const days = [...r.el.querySelectorAll<HTMLButtonElement>('.do-m .do-m-day')];
+    expect(days.map((b) => b.querySelector('.do-m-date')!.textContent!.trim())).toEqual(['Mon26', 'Tue27', 'Wed28', 'Thu29', 'Fri30']);
+    expect(days[1]!.querySelectorAll('.do-m-logos .pt-logo')).toHaveLength(3); // the three largest of a busy day
+    expect(days[1]!.querySelector('.do-m-n')!.textContent).toBe('5');
+    // today first (the session after the data's night, as the agenda's "Earnings today"): each report a tile with its logo, ticker and forecast
+    expect(r.el.querySelector('.do-m-day[aria-pressed="true"]')).toBe(days[2]);
+    const tiles = () => [...r.el.querySelectorAll('.do-m-tiles .do-m-tile')];
+    expect(tiles().map((t) => (t.querySelector('.do-m-sym') ?? t.querySelector('.pt-cal-macro'))!.textContent)).toEqual(['Fed', 'MSFT', 'GOOGL']);
+    const msft = tiles()[1]!;
+    expect(msft.querySelector('.pt-logo')).toBeTruthy();
+    expect(msft.querySelector('.do-cue')!.textContent).toBe('±4.7%');
+    expect(msft.querySelector('.do-m-when')!.textContent).toBe('after the close');
+    // another day; a tile opens the event's card under the tiles
+    days[3]!.click();
+    await settle(r.f);
+    expect(tiles().map((t) => (t.querySelector('.do-m-sym') ?? t.querySelector('.pt-cal-macro'))!.textContent)).toEqual(['GDP', 'AAPL', 'AMZN', 'LLY', 'CAT', 'MRK']);
+    (tiles()[1] as HTMLButtonElement).click();
+    await settle(r.f);
+    expect(r.el.querySelector('.do-m pt-outlook-card')!.textContent).toContain('Apple');
+  });
+  it('a phone\'s month: a small grid of the days with their logos, the picked one below', async () => {
+    const r = await render(PtCalOutlook, { data: OCTOBER });
+    expect(r.el.querySelectorAll('.do-m-month .do-m-dow')).toHaveLength(7);
+    expect(r.el.querySelectorAll('.do-m-month .do-m-day').length % 7).toBe(0);
+    expect(r.el.querySelector('.do-m-day[aria-pressed="true"] .do-m-date')!.textContent!.trim()).toBe('28');
+  });
   it('names each company as a link with its logo (its card on hover): in the agenda\'s sentences and on the card', async () => {
     const { el } = await render(PtCalOutlook, { data: WEEK, view: 'week' });
     const said = el.querySelector('.do-agenda .do-say a.pt-mention')!;

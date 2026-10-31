@@ -11,6 +11,9 @@ class Host { parts = say`The target for ${nvda} is up; ${meta} and ${odd} too.`;
 @Component({ imports: [PtMention], template: `<a ptMention ticker="NVDA" name="NVIDIA Corporation" section="people-ask"></a>` })
 class Section {}
 
+@Component({ imports: [PtSay], template: `<pt-say [parts]="parts" [logos]="false" />` })
+class Bare { parts = say`${nvda} reports today.`; }
+
 describe('PtSay and PtMention: a sentence with the companies it names', () => {
   it('draws each company as a link to its page: the logo (the site\'s file only), the common name, the ticker', () => {
     const f = TestBed.createComponent(Host);
@@ -25,6 +28,12 @@ describe('PtSay and PtMention: a sentence with the companies it names', () => {
     expect(links[2]!.querySelector('img, .pt-logo-initials')).toBeNull();
     expect(p.textContent).toBe(saidText(f.componentInstance.parts));
     expect(p.textContent).toBe('The target for Nvidia NVDA is up; Meta and Xylo Zen XYZ too.');
+  });
+  it('leaves the logos out where the company is already shown with its own beside the sentence', () => {
+    const f = TestBed.createComponent(Bare);
+    f.detectChanges();
+    expect((f.nativeElement as HTMLElement).querySelector('a.pt-mention img')).toBeNull();
+    expect((f.nativeElement as HTMLElement).textContent).toBe('Nvidia NVDA reports today.');
   });
   it('can point at a section of the company\'s page (what people ask about it)', () => {
     const f = TestBed.createComponent(Section);

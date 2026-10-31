@@ -16,11 +16,12 @@
  * that reacts, the usual move — with a link that says where it goes ("Microsoft earnings date"). What others expect is said in
  * sentences too, and the Polymarket line says what its chance is. A date not yet confirmed is dotted in the grid.
  * Each company it names, in a sentence or on the card, is a link with its logo (PtMention): the card opens on any ticker.
- * @version 0.0.4
+ * On a phone, as Google Calendar does: the days on top with their logos and a count, the picked day below as tiles (logo, ticker, forecast).
+ * @version 0.0.5
  */
 import { Component, computed, input, signal } from '@angular/core';
 import { PtLogo, PtMention, PtSay } from '@pretickt/components/ds';
-import { dayMonth, level, mention, money, num, pct, say, stockHref, tone, usd, type Said, type Tone } from '@pretickt/components/format';
+import { dayMonth, level, mention, money, num, pct, plainName, say, stockHref, tone, usd, type Said, type Tone } from '@pretickt/components/format';
 import { addDays, mondayOf, weekdayOf } from '../pt-calendar';
 
 export type OutlookVariant = 'move' | 'dollars' | 'record' | 'range';
@@ -374,6 +375,34 @@ const ROOM_ABOVE = 560, CARD_W = 384;
         @if (pop(); as p) {
           <div [class]="p.below ? 'do-pop do-pop-below' : 'do-pop'" [style.left.px]="p.left" [style.top.px]="p.top"><pt-outlook-card [event]="p.e" [normal]="d.normal" /></div>
         }
+        <div class="do-m">
+          <div [class]="isWeek() ? 'do-m-days do-m-week' : 'do-m-days do-m-month'">
+            @if (!isWeek()) {@for (w of DOW; track w) {<span class="do-m-dow" aria-hidden="true">{{ w.slice(0, 1) }}</span>}}
+            @for (c of cells(); track c.date) {
+              <button type="button" class="do-m-day" [class.do-m-out]="!c.inMonth" [attr.aria-pressed]="c.date === day()"
+                [disabled]="!c.items.length && !c.macro.length" (click)="pick(c.date)">
+                <span class="do-m-date">@if (isWeek()) {<span class="do-m-wd">{{ weekday(c.date) }}</span>}{{ c.day }}</span>
+                <span class="do-m-logos" aria-hidden="true">@for (e of c.items.slice(0, isWeek() ? 3 : 2); track e.ticker) {<pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="isWeek() ? 18 : 14" />}</span>
+                @if (c.items.length + c.macro.length; as n) {<span class="do-m-n">{{ n }}</span>}
+              </button>
+            }
+          </div>
+          @if (picked(); as c) {
+            <p class="do-m-h">{{ heading(c, d.asOf) }}</p>
+            <ul class="do-m-tiles">
+              @for (e of entries(c); track key(e)) {
+                <li><button type="button" class="do-m-tile" [class.do-m-sel]="opened()?.key === key(e)" [class.do-unconf]="e.kind === 'earnings' && e.confirmed === false"
+                  [attr.aria-expanded]="opened()?.key === key(e)" (click)="toggle(e)">
+                  @if (e.kind === 'macro') {<span class="pt-cal-macro">{{ e.label }}</span><span class="do-m-name">{{ e.event }}</span>}
+                  @else {<pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="28" /><span class="do-m-sym">{{ e.ticker }}</span><span class="do-m-name">{{ plain(e.name) }}</span>}
+                  <b [class]="cueClass(e)">{{ cueOf(e).text }}</b>
+                  <span class="do-m-when">{{ whenShort(e) }}</span>
+                </button></li>
+              }
+            </ul>
+            @if (opened(); as o) {<pt-outlook-card [event]="o.e" [normal]="d.normal" />}
+          }
+        </div>
         <div class="do-agenda">
           @for (c of listed(); track c.date) {
             <h4 class="do-agenda-day">{{ heading(c, d.asOf) }}</h4>
@@ -387,7 +416,7 @@ const ROOM_ABOVE = 560, CARD_W = 384;
                   </summary>
                   <pt-outlook-card [event]="e" [normal]="d.normal" />
                 </details>
-                <p class="do-say"><pt-say [parts]="say(e, d.normal)" /> @if (e.kind === 'earnings') {<a [href]="stockHref(e.ticker)">{{ e.name }} earnings date&nbsp;→</a>}</p>
+                <p class="do-say"><pt-say [parts]="say(e, d.normal)" [logos]="false" />@if (e.kind === 'earnings') {{{ ' ' }}<a [href]="stockHref(e.ticker)">{{ e.name }} earnings date&nbsp;→</a>}</p>
               </div>
             }
           }
@@ -411,6 +440,28 @@ export class PtCalOutlook {
       : `Earnings calendar — ${MONTHS[Number(d.from.slice(5, 7)) - 1]} ${d.from.slice(0, 4)}`;
   });
   protected readonly pop = signal<{ e: OutlookEvent; left: number; top: number; below: boolean } | null>(null);
+  /** On a phone: the day picked (today, the session after the data's night, or the next one with something on it, until the reader picks) and the event opened. */
+  private readonly chosen = signal<string | null>(null);
+  private readonly openKey = signal<string | null>(null);
+  protected readonly day = computed(() => {
+    const cs = this.cells(), asOf = this.data()?.asOf, busy = (c: Cell) => c.items.length + c.macro.length > 0;
+    const p = this.chosen();
+    if (p && cs.some((c) => c.date === p && busy(c))) return p;
+    const today = asOf ? nextWeekday(asOf) : '';
+    return (cs.find((c) => c.inMonth && c.date >= today && busy(c)) ?? cs.find(busy))?.date ?? null;
+  });
+  protected readonly picked = computed(() => this.cells().find((c) => c.date === this.day()) ?? null);
+  protected readonly opened = computed(() => {
+    const c = this.picked(), k = this.openKey();
+    const e = c && k ? this.entries(c).find((x) => this.key(x) === k) : undefined;
+    return e ? { key: k!, e } : null;
+  });
+  protected pick(date: string) { this.chosen.set(date); this.openKey.set(null); }
+  protected toggle(e: OutlookEvent) { const k = this.key(e); this.openKey.set(this.openKey() === k ? null : k); }
+  protected readonly weekday = (d: string) => WEEKDAY[weekdayOf(d)];
+  protected readonly plain = plainName;
+  /** When it reports, in a few words; a date not confirmed says so. */
+  protected readonly whenShort = (e: OutlookEvent) => (e.kind === 'macro' ? '' : e.confirmed === false ? 'date not confirmed' : e.time ? TIME[e.time] : '');
 
   protected readonly CAP = CAP;
   protected readonly DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
