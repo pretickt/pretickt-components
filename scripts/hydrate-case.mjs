@@ -23,6 +23,9 @@ globalThis.IntersectionObserver = class { constructor(cb) { this.cb = cb; } obse
 const errors = [];
 console.error = (...a) => { errors.push(a.map((x) => (x instanceof Error ? `${x.message}${process.env.CHECK_DEV ? `\n${x.stack}` : ''}` : String(x))).join(' ').slice(0, process.env.CHECK_DEV ? 4000 : 300)); };
 console.warn = () => {};
+// an error nobody catches (Angular cleaning up after hydration, in a promise) is a problem of the page, not a crash of the check
+process.on('uncaughtException', (e) => console.error(e));
+process.on('unhandledRejection', (e) => console.error(e));
 document.open(); document.write(readFileSync(file, 'utf8')); document.close();
 const root = document.querySelector('pt-page');
 const before = [...root.querySelectorAll('*')];

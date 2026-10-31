@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { demoFor } from '../src/typologies';
+import { DEMO_ASOF } from '../src/typologies/common';
 
 const dist = resolve('dist');
 // Hydration is checked twice: with a development build (Angular validates every node it adopts: a structural mismatch is NG0500)
@@ -45,19 +46,29 @@ say(`concurrent renders: ${pages.length} pages, ${empties.length} empty`);
 const tmp = mkdtempSync(join(tmpdir(), 'pt-check-'));
 mains.production = pathToFileURL(`${dist}/${index.site.main}`).href;
 let n = 0;
-for (const c of index.components) {
-  for (const props of c.samples.slice(0, 2)) {
-    const label = `${c.tag} ${JSON.stringify(props)}`;
-    const r = await server.renderPage({ buildId: 'check', api: '', sections: [{ id: 's', items: [{ c: c.tag, props }] }] }, { document: server.BARE_DOCUMENT, resolve: demo });
-    const file = join(tmp, `${n++}.html`);
-    writeFileSync(file, r.html);
-    for (const [build, main] of Object.entries(mains)) {
-      const out = execFileSync(process.execPath, [resolve('scripts/hydrate-case.mjs'), file, main], { encoding: 'utf8', env: process.env });
-      const { problems: found } = JSON.parse(out.trim().split('\n').at(-1)!) as { problems: string[] };
-      problems.push(...found.map((p) => `${label} (${build}): ${p}`));
-    }
+/** A page's server HTML hydrated with both builds, its problems labelled. */
+const hydrate = (file: string, label: string, liveFile?: string) => {
+  for (const [build, main] of Object.entries(mains)) {
+    const out = execFileSync(process.execPath, [resolve('scripts/hydrate-case.mjs'), file, main, ...(liveFile ? [liveFile] : [])], { encoding: 'utf8', env: process.env });
+    problems.push(...(JSON.parse(out.trim().split('\n').at(-1)!) as { problems: string[] }).problems.map((p) => `${label} (${build}): ${p}`));
   }
-}
+};
+const page = async (label: string, items: { c: string; props: Record<string, unknown> }[]) => {
+  const r = await server.renderPage({ buildId: 'check', api: '', sections: [{ id: 's', items }] }, { document: server.BARE_DOCUMENT, resolve: demo });
+  const file = join(tmp, `${n++}.html`);
+  writeFileSync(file, r.html);
+  hydrate(file, label);
+};
+for (const c of index.components) for (const props of c.samples.slice(0, 2)) await page(`${c.tag} ${JSON.stringify(props)}`, [{ c: c.tag, props }]);
+// the generator's pages, where a component meets the inputs it is placed with (sampled props change one input at a time) and its
+// neighbours: pt-answer on each topic with the company, list or month it needs (sentences that name companies), the calendar pages
+// (the answer and the calendar on one call)
+const month = DEMO_ASOF.slice(0, 7);
+for (const topic of ['forecast', 'price-target', 'peers', 'financials', 'insiders'])
+  await page(`pt-answer ${topic} of NVDA`, [{ c: 'pt-answer', props: { topic, ticker: 'NVDA' } }]);
+await page('pt-answer list', [{ c: 'pt-answer', props: { topic: 'list', list: 'biggest_losers' } }, { c: 'pt-screen', props: { list: 'biggest_losers' } }]);
+await page('earnings calendar page', [{ c: 'pt-answer', props: { topic: 'earnings', month } }, { c: 'pt-calendar', props: { month } }]);
+await page('dividend calendar page', [{ c: 'pt-answer', props: { topic: 'dividends', month } }, { c: 'pt-calendar', props: { month, kind: 'dividend' } }]);
 // a company page while the market is open: the card hydrates at once and loads today's file, "why it moved" hydrates once the file
 // is in (every sign flipped against the demo, so a server class left beside today's shows)
 {
@@ -71,10 +82,7 @@ for (const c of index.components) {
   { document: server.BARE_DOCUMENT, resolve: demo });
   const file = join(tmp, 'live.html');
   writeFileSync(file, r.html);
-  for (const [build, main] of Object.entries(mains)) {
-    const out = execFileSync(process.execPath, [resolve('scripts/hydrate-case.mjs'), file, main, liveFile], { encoding: 'utf8', env: process.env });
-    problems.push(...(JSON.parse(out.trim().split('\n').at(-1)!) as { problems: string[] }).problems.map((p) => `company page with today's file (${build}): ${p}`));
-  }
+  hydrate(file, 'company page with today\'s file', liveFile);
   n++;
 }
 rmSync(tmp, { recursive: true, force: true });

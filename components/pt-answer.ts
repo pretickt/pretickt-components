@@ -3,7 +3,7 @@
  * price target, its peers, its latest quarter, its insiders; who leads a market list; a calendar month at a glance.
  * Company topics name the company as people search it, with its ticker ("Nvidia NVDA"): the sentence an answer engine quotes stands on its own.
  * Each company a sentence names is a link with its logo (PtSay, PtMention): on the site its card opens on hover, the page's own company too.
- * @version 1.3.1
+ * @version 1.3.2
  * @evidence DataForSEO: "<ticker> stock forecast" 151k/month, "<ticker> price target" 103k/month, "earnings calendar" 153k/month, list queries (launch/data/08c-serp-*.json)
  * @evidence SEO measurement 2026-10-09: list and company subpages of ~80–200 words; the answer belongs in the first lines, with its numbers
  */
@@ -59,10 +59,12 @@ const LISTS: Record<ScreenList, { say: (sec: string, d: string, top: Said) => Sa
 @Component({
   selector: 'pt-answer',
   imports: [PtSay],
+  // the sentence is a list (text and companies): an @if alias, never a @let — Angular stores a @let's value among its own views and,
+  // cleaning up after hydration, takes a list whose second part is a company for one of them (angular/angular#59504)
   template: `
-    @let s = sentence();
-    @if (s === null) {<p class="pt-na">Data not available</p>}
-    @else if (s.length) {<p class="pt-answer"><pt-say [parts]="s" /></p>}`,
+    @if (sentence(); as s) {
+      @if (s.length) {<p class="pt-answer"><pt-say [parts]="s" /></p>}
+    } @else {<p class="pt-na">Data not available</p>}`,
 })
 export class PtAnswer {
   private readonly pt = inject(Pt);

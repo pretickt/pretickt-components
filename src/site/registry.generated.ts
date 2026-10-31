@@ -20,7 +20,7 @@ import { PtWhyToday } from '../../components/pt-why-today';
 
 /** Every component: its version, and props it can render with (the build renders each once before any page, see warmUp). */
 export const REGISTRY: Record<string, { version: string; sample: Record<string, unknown> }> = {
-  'pt-answer': { version: '1.3.1', sample: {} },
+  'pt-answer': { version: '1.3.2', sample: {} },
   'pt-calendar': { version: '3.0.0', sample: { month: '2026-09' } },
   'pt-company-card': { version: '1.2.2', sample: { ticker: 'NVDA' } },
   'pt-feed': { version: '1.0.0', sample: {} },

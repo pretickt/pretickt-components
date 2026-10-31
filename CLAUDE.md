@@ -166,6 +166,10 @@ change in this repo, reviewed like any other).
   No `templateUrl`, `styles`, `styleUrl(s)`, `providers`, `viewProviders`, `encapsulation`, `standalone: false`.
 - **Deterministic**: no `Date.now()`, `new Date()` without argument, `Math.random()`, `Intl`, `toLocale*` — "today" is the `asOf`
   the payload carries. Server and browser must render the same HTML (hydration).
+- **A sentence's parts never go in a `@let`** (`Said`, or any list mixing text and objects): alias them, `@if (sentence(); as s)`.
+  Angular keeps a `@let`'s value among its own views and, cleaning up after hydration, takes a list whose second item is an object
+  for one of them: an error on load when its seventh is text (`Cannot create property 'i18nNodes' on string …`, angular/angular#59504;
+  pt-answer 1.3.1 broke the calendar, list and peers pages so). Lists of objects only (metric items, cards) survive it.
 - **Never write HTML**: no `[innerHTML]`/`[outerHTML]`. Angular escapes text and attributes; links from data go through `href(url)`
   (external ones get `target="_blank" rel="nofollow noopener noreferrer"`), company pages through `stockHref(ticker)`. No `<script>`,
   `<style>`, `<iframe>`, `<form>` in a template; no `ld+json` either (structured data is the generator's, in `<head>`).
@@ -220,7 +224,8 @@ bars they read. Fields named `*Pct` are in percent (2.5 = +2.5%), not fractions:
 - `npm run check` (after the build): for props sampled from the inputs' types, demo data renders with safe markup, missing data
   renders `pt-na`, unknown catalogue entries are tolerated; concurrent page renders are whole; each page **hydrates keeping every
   element of the server HTML** (development build: Angular validates every node; production build: as shipped) without one data
-  request.
+  request and without an error, an uncaught one included. Besides the samples (one input changed at a time), the generator's pages:
+  pt-answer on each topic with the company, list or month it needs, and the calendar pages (answer and calendar on one call).
 
 ## Stories (how a component is looked at)
 Every component has `components/pt-x.stories.ts`: the scenarios a reader can meet, each a `story()` from `src/stories/story.ts` (a
