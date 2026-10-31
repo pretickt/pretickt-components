@@ -1,13 +1,13 @@
 /**
  * Which companies are in a move that is still running, and which way did they go this week — the largest first?
- * @version 1.0.0
+ * @version 1.0.1
  * @evidence beta: the home's "Ongoing moves" chart (pretickt-frontend/src/app/home/ongoing-swings-page.*, ongoing-swings.logic.ts)
  * @evidence Romeo, 2026-10-17: "i market mover per cap come in beta … con una leggenda per le sfumature verde e rosso. nella home"
  */
 import { Component, computed, inject, input, linkedSignal } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
 import { PtToggles } from '@pretickt/components/ds';
-import { date, pct, stockHref, tip } from '@pretickt/components/format';
+import { date, pct, plainName, stockHref, tip } from '@pretickt/components/format';
 import { type MarketTrend, type MoveSort, type OngoingMoveRow } from '@pretickt/components/typologies';
 
 // beta's tornado (buildWeekChart), in fractions: the viewBox, the baseline, the top margin a bar may reach
@@ -86,7 +86,7 @@ export function buildMovers(rows: readonly OngoingMoveRow[]): MoversChart | null
       rects: [...rect('pt-mv-q', r.quarter, x, barW, null), ...rect('pt-mv-m', r.month, x, barW * 0.72, null), ...rect('pt-mv-w', w, x, barW / 2, 2)],
       logoY, labelY1, labelY2, pctLabel: pctShort(w), capLabel: capShort(r.marketCap),
       alert: !!r.industry, alertY, alertPath: `M${r1(x - 3.5)} ${alertY + 7} L${r1(x + 3.5)} ${alertY + 7} L${x} ${alertY} Z`,
-      tip: tipOf(r), label: `${r.name}, ${pct(w)} this week`,
+      tip: tipOf(r), label: `${plainName(r.name)}, ${pct(w)} this week`,
     };
   });
   return { w: W, h: H, zeroY: ZERO, bars, crop: side > 7 };

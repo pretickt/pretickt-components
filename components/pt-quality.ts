@@ -6,14 +6,14 @@
  * It opens with its answer in a sentence — the company's common name and ticker, the 12 months to the date of the data, how many
  * facts strengthened its quality and how many weakened it — and names the company, not the ticker, in the drop test: the text an
  * AI answer can quote with its date.
- * @version 0.2.0
+ * @version 0.2.1
  * @evidence Romeo 2026-10-24: "la qualità dell'azienda è intatta, a breve, medio e lungo termine?" — six sections, a card per new fact (brainstorming/scheda-qualita.html, proposals A + D)
  * @evidence pulse 19–25 Oct 2026: 89% of the real questions about a stock ask about quality or the decision (impact scorecard 7.5/10)
  * @evidence DataForSEO 2026-10-28 (round 13): "is {company} a good stock to buy" ≈64,000 searches a month on ~100 companies, AI Overview on 90%; the facts' own words ("pe ratio", "revenue growth", "gross margin", "guidance"…) 153,000 on 25 companies (launch/RESEARCH.md §9)
  */
 import { Component, computed, input, linkedSignal, inject } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
-import { cash, date, level, num, pct, plainName, tip } from '@pretickt/components/format';
+import { cash, date, level, named, num, pct, tip } from '@pretickt/components/format';
 import type { EventItem, Events, Fundamentals, PriceSeries } from '@pretickt/components/typologies';
 
 export type Pillar = 'demand' | 'advantage' | 'economics' | 'execution' | 'fragility' | 'price';
@@ -302,9 +302,8 @@ export class PtQuality {
   protected readonly asOf = computed(() => this.fund.value()?.asOf ?? '');
   /** "Nvidia (NVDA)": the name from the peers' list (the row with its ticker), the ticker alone until it is known */
   protected readonly who = computed(() => {
-    const t = this.ticker(), n = this.peers.value()?.rows.find((r) => r.ticker === t)?.name;
-    const plain = n ? plainName(n) : '';
-    return plain && plain.toUpperCase() !== t ? `${plain} (${t})` : t;
+    const t = this.ticker();
+    return named(this.peers.value()?.rows.find((r) => r.ticker === t)?.name, t);
   });
   protected readonly lead = computed(() => qualityLead(this.who(), this.cards(), this.asOf()));
   private readonly bars = computed(() => this.prices.value()?.find((s) => s.ticker === this.ticker())?.points ?? []);

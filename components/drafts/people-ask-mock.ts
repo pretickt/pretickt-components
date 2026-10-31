@@ -29,7 +29,7 @@ const NVDA_ITEMS: PeopleAskItem[] = [
     href: '/stocks/nvda/insiders/', link: 'Nvidia insider trading', viz: null },
 ];
 
-export const PA_NVDA: PeopleAsk = { ...co('NVDA'), asOf: '2026-10-23',
+export const PA_NVDA: PeopleAsk = { ...co('NVDA'), asOf: '2026-10-23', earnings: NVDA_ITEMS[1]!,
   chatter: { posts: 264, usual: 85, days: [22, 25, 31, 28, 61, 58, 39], bySource: { reddit: 201, x: 63 } },
   needs: [{ need: 'why_moving', share: 0.38 }, { need: 'earnings_events', share: 0.24 }, { need: 'buy_or_not', share: 0.18 },
     { need: 'when_sell', share: 0.09 }, { need: 'who_sells', share: 0.06 }],
@@ -53,6 +53,11 @@ export const PA_NVDA_ALL: PeopleAsk = { ...PA_NVDA, items: [...NVDA_ITEMS,
 ] };
 
 export const PA_MRNA: PeopleAsk = { ticker: 'MRNA', name: 'Moderna', logo: null, asOf: '2026-10-22',
+  // nobody asked about earnings on the day of the drop: the next report is answered all the same
+  earnings: { need: 'earnings_events', asked: null, question: 'When does Moderna report earnings?', big: 'Nov 5', tone: 'flat',
+    answer: 'Moderna is expected to report on Thu, Nov 5, 2026, before the open (date not confirmed); the stock reacts the same day. ' +
+      'After its last 4 reports it moved 9.4% on average in that session.',
+    href: '/stocks/mrna/#price', link: 'Moderna earnings history', viz: { kind: 'bars', values: [-12.4, 6.1, -9.8, 9.3], labels: ['Nov', 'Feb', 'May', 'Aug'] } },
   chatter: { posts: 143, usual: 12, days: [1, 2, 3, 2, 1, 6, 128], bySource: { reddit: 118, x: 25 } },
   needs: [{ need: 'why_moving', share: 0.61 }, { need: 'dip_pullback', share: 0.17 }, { need: 'buy_or_not', share: 0.14 }],
   items: [
@@ -69,7 +74,7 @@ export const PA_MRNA: PeopleAsk = { ticker: 'MRNA', name: 'Moderna', logo: null,
       href: '/stocks/mrna/price-target/', link: 'Moderna price target', viz: { kind: 'rail', price: 24.1, high: 57.4, target: 35 } },
   ] };
 
-export const PA_KO: PeopleAsk = { ...co('KO'), asOf: '2026-10-23',
+export const PA_KO: PeopleAsk = { ...co('KO'), asOf: '2026-10-23', earnings: null,
   chatter: { posts: 9, usual: 11, days: [1, 2, 0, 1, 3, 1, 1], bySource: { reddit: 7, x: 2 } },
   needs: [{ need: 'dividends_income', share: 0.44 }, { need: 'earnings_events', share: 0.33 }, { need: 'buy_or_not', share: 0.22 }],
   items: [
@@ -89,7 +94,7 @@ export const PA_KO: PeopleAsk = { ...co('KO'), asOf: '2026-10-23',
       href: '/stocks/ko/why-moving/', link: 'Why Coca-Cola moved', viz: { kind: 'split', market: 0.003, sector: 0.002, own: -0.001 } },
   ] };
 
-export const PA_ODFL: PeopleAsk = { ticker: 'ODFL', name: 'Old Dominion Freight Line', logo: null, asOf: '2026-10-23', chatter: null, needs: [],
+export const PA_ODFL: PeopleAsk = { ticker: 'ODFL', name: 'Old Dominion Freight Line', logo: null, asOf: '2026-10-23', chatter: null, needs: [], earnings: null,
   items: [
     { need: 'why_moving', asked: null, question: 'Why is Old Dominion Freight Line stock down today?', big: '−1.2%', tone: 'neg',
       answer: 'Old Dominion Freight Line fell 1.2% on Oct 23, 2026: 0.6 points from the market, 0.4 from industrials and 0.2 its own.',
@@ -101,3 +106,17 @@ export const PA_ODFL: PeopleAsk = { ticker: 'ODFL', name: 'Old Dominion Freight 
       answer: 'Old Dominion Freight Line is expected to report around Thu, Feb 4, 2027, before the open (date not confirmed); its last report was on Oct 22, 2026.',
       href: '/stocks/odfl/#price', link: 'Old Dominion Freight Line earnings history', viz: null },
   ] };
+
+PA_KO.earnings = PA_KO.items.find((a) => a.need === 'earnings_events')!;
+PA_ODFL.earnings = PA_ODFL.items.find((a) => a.need === 'earnings_events')!;
+
+/**
+ * NVDA on its company page next to pt-value, which answers three of the week's questions (the top one, who is selling, how it makes
+ * money): they stay, asked as they were, and link to pt-value's answers on the page; one answer per question.
+ */
+const onPage = (need: PeopleAskItem['need'], href: string, link: string) => ({ answer: null, href, link, viz: null, ...{ need } });
+export const PA_NVDA_HUB: PeopleAsk = { ...PA_NVDA_ALL, items: PA_NVDA_ALL.items.map((a) =>
+  a.need === 'buy_or_not' ? { ...a, ...onPage('buy_or_not', '#value', 'Nvidia’s six questions, from demand to price') }
+  : a.need === 'who_sells' ? { ...a, ...onPage('who_sells', '#value-who-is-dumping-nvidia-stock', 'Nvidia insiders and largest holders') }
+  : a.need === 'business' ? { ...a, ...onPage('business', '#value-how-does-nvidia-make-money', 'Nvidia sales by business') }
+  : a) };

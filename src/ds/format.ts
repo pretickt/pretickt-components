@@ -118,13 +118,85 @@ export function stockHref(ticker: string): string {
   return href(`/stocks/${String(ticker).toLowerCase()}/`);
 }
 
-// legal suffixes and share classes at the end of a provider name; "Company"/"Co." go with their "and"/"&" (the generator's shortName)
-const SUFFIX = /(?:(?:\s+(?:and|&))?,?\s+(?:Company|Co\.)|,?\s+(?:Inc\.?|Incorporated|Corporation|Corp\.?|plc|PLC|Ltd\.?|Limited|Public Limited Company|N\.V\.|S\.A\.|L\.P\.)|\s+Class [A-C](?: Common Stock)?|\s+Common Stock|\s+American Depositary Shares|\s+Ordinary Shares)$/;
-/** A company's name as people search it: "Apple Inc." → "Apple", "The Coca-Cola Company" → "Coca-Cola". */
+// legal suffixes and share classes at the end of a provider name; "Company"/"Co." go with their "and"/"&", "plc" with its "&"
+// ("Carnival Corporation & plc") (the generator's shortName)
+const SUFFIX = /(?:(?:\s+(?:and|&))?,?\s+(?:Company|Co\.)|,?\s+(?:&\s+)?(?:plc|Plc|PLC)|,?\s+(?:Inc\.?|Incorporated|Corporation|Corp\.?|Ltd\.?|Limited|Public Limited Company|N\.V\.|S\.A\.|L\.P\.)|\s+Class [A-C](?: Common Stock)?|\s+Common Stock|\s+American Depositary Shares|\s+Ordinary Shares)$/;
+
+/**
+ * The name the press and the AI answers use where the provider's, once its suffixes are gone, is not it: the case ("NVIDIA"), the
+ * brand ("Meta Platforms"), the short form ("Honeywell International"). Keyed by the name without its suffixes. Read against the 517
+ * companies of www on 2026-10-31; a company that is not here keeps the suffix rule's name.
+ */
+export const COMMON_NAMES: Readonly<Record<string, string>> = {
+  'Abbott Laboratories': 'Abbott', 'Advanced Micro Devices': 'AMD', 'Agilent Technologies': 'Agilent', 'Akamai Technologies': 'Akamai',
+  'Alnylam Pharmaceuticals': 'Alnylam', 'Altria Group': 'Altria', 'Amazon.com': 'Amazon', 'American International Group': 'AIG',
+  AMETEK: 'Ametek', 'Apollo Global Management': 'Apollo', 'Arch Capital Group': 'Arch Capital', 'Arm Holdings': 'Arm', 'ASML Holding': 'ASML',
+  'Automatic Data Processing': 'ADP', 'Axon Enterprise': 'Axon', 'Bank of New York Mellon': 'BNY', 'Baxter International': 'Baxter',
+  'Becton, Dickinson': 'Becton Dickinson', 'Broadridge Financial Solutions': 'Broadridge', 'Bunge Global': 'Bunge',
+  'C.H. Robinson Worldwide': 'C.H. Robinson', 'Cadence Design Systems': 'Cadence', 'Capital One Financial': 'Capital One',
+  'Carrier Global': 'Carrier', "Casey's General Stores": "Casey's", 'CBRE Group': 'CBRE', 'Cboe Global Markets': 'Cboe',
+  'CF Industries Holdings': 'CF Industries', 'Charles River Laboratories International': 'Charles River Laboratories',
+  'Charter Communications': 'Charter', 'Chipotle Mexican Grill': 'Chipotle', 'Cisco Systems': 'Cisco', 'Coinbase Global': 'Coinbase',
+  'Cognizant Technology Solutions': 'Cognizant', 'Consolidated Edison': 'Con Edison', 'Costco Wholesale': 'Costco', 'CrowdStrike Holdings': 'CrowdStrike',
+  'Darden Restaurants': 'Darden', 'Deckers Outdoor': 'Deckers', 'Dell Technologies': 'Dell', DexCom: 'Dexcom', 'Digital Realty Trust': 'Digital Realty',
+  'DuPont de Nemours': 'DuPont', 'EMCOR Group': 'Emcor', 'Estée Lauder Companies': 'Estée Lauder', 'Expedia Group': 'Expedia',
+  'Expeditors International of Washington': 'Expeditors', 'Exxonmobil Holdings': 'ExxonMobil', 'FactSet Research Systems': 'FactSet',
+  'FedEx Freight Holding': 'FedEx Freight', 'Fidelity National Information Services': 'FIS', 'Fifth Third Bancorp': 'Fifth Third',
+  'Ford Motor': 'Ford', 'GE HealthCare Technologies': 'GE HealthCare', 'Generac Holdings': 'Generac', 'Gilead Sciences': 'Gilead',
+  'Goldman Sachs Group': 'Goldman Sachs', 'Healthpeak Properties': 'Healthpeak', 'Hilton Worldwide Holdings': 'Hilton',
+  'Honeywell International': 'Honeywell', 'Huntington Ingalls Industries': 'Huntington Ingalls', 'IDEXX Laboratories': 'Idexx Laboratories',
+  'Interactive Brokers Group': 'Interactive Brokers', 'International Business Machines': 'IBM', 'International Flavors & Fragrances': 'IFF',
+  'IQVIA Holdings': 'IQVIA', 'J.B. Hunt Transport Services': 'J.B. Hunt', 'Jack Henry & Associates': 'Jack Henry', 'Jacobs Solutions': 'Jacobs',
+  'Johnson Controls International': 'Johnson Controls', 'Keysight Technologies': 'Keysight', 'L3Harris Technologies': 'L3Harris',
+  'Labcorp Holdings': 'Labcorp', 'Leidos Holdings': 'Leidos', 'Lennox International': 'Lennox', 'Live Nation Entertainment': 'Live Nation',
+  "Lowe's Companies": "Lowe's", 'Lululemon Athletica': 'Lululemon', 'Lumentum Holdings': 'Lumentum', 'LyondellBasell Industries': 'LyondellBasell',
+  'Marriott International': 'Marriott', 'Marsh & McLennan Companies': 'Marsh McLennan', 'Marvell Technology': 'Marvell', 'Meta Platforms': 'Meta',
+  'Mettler-Toledo International': 'Mettler-Toledo', 'MGM Resorts International': 'MGM Resorts', 'Micron Technology': 'Micron',
+  'Mondelez International': 'Mondelez', 'Nebius Group': 'Nebius', News: 'News Corp', NIKE: 'Nike', 'Norwegian Cruise Line Holdings': 'Norwegian Cruise Line',
+  NVIDIA: 'Nvidia', "O'Reilly Automotive": "O'Reilly", 'Occidental Petroleum': 'Occidental', 'Omnicom Group': 'Omnicom', ONEOK: 'Oneok',
+  'Otis Worldwide': 'Otis', PACCAR: 'Paccar', 'Palantir Technologies': 'Palantir', 'PayPal Holdings': 'PayPal', 'Philip Morris International': 'Philip Morris',
+  'PNC Financial Services Group': 'PNC', 'Principal Financial Group': 'Principal Financial', QUALCOMM: 'Qualcomm', 'Raymond James Financial': 'Raymond James',
+  'Regeneron Pharmaceuticals': 'Regeneron', 'Robinhood Markets': 'Robinhood', 'Rocket Lab USA': 'Rocket Lab', 'Roper Technologies': 'Roper',
+  'Ross Stores': 'Ross', 'Royal Caribbean Cruises': 'Royal Caribbean', 'Seagate Technology Holdings': 'Seagate', 'Skyworks Solutions': 'Skyworks',
+  Slb: 'SLB', Southern: 'Southern Company', 'Space Exploration Technologies': 'SpaceX', STERIS: 'Steris', 'T-Mobile US': 'T-Mobile',
+  'T. Rowe Price Group': 'T. Rowe Price', 'Take-Two Interactive Software': 'Take-Two', 'Teledyne Technologies': 'Teledyne',
+  'Thermo Fisher Scientific': 'Thermo Fisher', 'TJX Companies': 'TJX', 'TKO Group Holdings': 'TKO', 'Trane Technologies': 'Trane',
+  'TransDigm Group': 'TransDigm', 'Travelers Companies': 'Travelers', 'Uber Technologies': 'Uber', 'United Airlines Holdings': 'United Airlines',
+  'United Parcel Service': 'UPS', 'UnitedHealth Group': 'UnitedHealth', 'Valero Energy': 'Valero', 'Veeva Systems': 'Veeva',
+  'Verisk Analytics': 'Verisk', 'Verizon Communications': 'Verizon', 'Vertex Pharmaceuticals': 'Vertex', 'Vertiv Holdings Co': 'Vertiv',
+  'W.W. Grainger': 'Grainger', 'Walt Disney': 'Disney', 'Westinghouse Air Brake Technologies': 'Wabtec', 'Williams Companies': 'Williams',
+  'Zimmer Biomet Holdings': 'Zimmer Biomet',
+};
+
+/**
+ * A company's name as people search it and the press writes it: the legal suffixes go ("Apple Inc." → "Apple", "The Coca-Cola
+ * Company" → "Coca-Cola"), then the common name where the provider's is not it ("NVIDIA Corporation" → "Nvidia", "Meta Platforms,
+ * Inc." → "Meta"). Every name a component prints goes through it; the ticker stays beside it ("Nvidia (NVDA)").
+ */
 export function plainName(name: string): string {
+  const plain = withoutSuffixes(name);
+  return COMMON_NAMES[plain] ?? plain;
+}
+
+/** The provider's name without its legal suffixes, share classes and leading "The" ("NVIDIA Corporation" → "NVIDIA"): the first step of plainName. */
+export function withoutSuffixes(name: string): string {
   let n = name.trim();
   for (let prev = ''; prev !== n;) { prev = n; const next = n.replace(SUFFIX, ''); if (next) n = next; }
   return n.replace(/^The\s+/, '') || n;
+}
+
+/** "Nvidia (NVDA)": the common name with the ticker beside it; the ticker alone when it is the name, case and all ("RTX", "AMD"). */
+export function named(name: string | null | undefined, ticker: string): string {
+  const n = plainName(name || ticker);
+  return n === ticker ? ticker : `${n} (${ticker})`;
+}
+
+/**
+ * A question's address on the page, from its words: "Who is dumping Nvidia stock?" → "who-is-dumping-nvidia-stock". A component
+ * prefixes it with its own name (`value-…`), so another placement can link to the answer instead of giving a second one.
+ */
+export function faqId(question: string): string {
+  return question.toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60).replace(/-+$/, '');
 }
 
 /** The JSON a `data-tip` attribute carries; the island runtime shows it as a tooltip (label → value rows). */

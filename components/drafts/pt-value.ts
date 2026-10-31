@@ -13,11 +13,14 @@
  * or an AI. Under the columns, the questions people search that the cards answer ("Who is dumping Nvidia stock?"); the resolver
  * templates them, so the generator can put the same pairs in the page's structured data — one answer per question on a page.
  * The six columns share their rows (a subgrid): a question on one line or two, the verdicts and the first cards start level.
- * @version 0.0.6
+ * Its questions and answers are marked for the page's structured data (`data-faq`, `data-faq-q`, `data-faq-a`): the top question is an
+ * h2 with its answer, each searched question has an address of its own (`#value-<its words>`), so pt-people-ask links to it instead
+ * of answering it again. The columns carry the words people search beside their own ("Price valuation", "Advantage moat").
+ * @version 0.0.7
  */
 import { Component, computed, input } from '@angular/core';
 import { PtIcon, PtLogo } from '@pretickt/components/ds';
-import { date, num, tip } from '@pretickt/components/format';
+import { date, faqId, num, plainName, tip } from '@pretickt/components/format';
 
 export type ValueKey = 'demand' | 'advantage' | 'economics' | 'execution' | 'fragility' | 'price';
 export type ValueTone = 'pos' | 'flat' | 'neg' | 'na';
@@ -53,13 +56,14 @@ export interface Value {
   pe: { now: number | null; median: number | null } | null; faq: ValueFaq[];
 }
 
-export const QUESTIONS: Record<ValueKey, { name: string; ask: string; icon: string }> = {
+/** Each column: its word, its plain question, its icon, and the word people search for it when it differs (`term`, beside the word). */
+export const QUESTIONS: Record<ValueKey, { name: string; ask: string; icon: string; term?: string }> = {
   demand: { name: 'Demand', ask: 'Do people want more of what it sells?', icon: 'trend-up' },
-  advantage: { name: 'Advantage', ask: 'Is it hard to copy?', icon: 'target' },
+  advantage: { name: 'Advantage', ask: 'Is it hard to copy?', icon: 'target', term: 'moat' },
   economics: { name: 'Economics', ask: 'Does it make good money?', icon: 'bank' },
   execution: { name: 'Execution', ask: 'Does it deliver what it promises?', icon: 'bolt' },
-  fragility: { name: 'Fragility', ask: 'Could something break it?', icon: 'alert' },
-  price: { name: 'Price', ask: 'Is the price reasonable?', icon: 'gauge' },
+  fragility: { name: 'Fragility', ask: 'Could something break it?', icon: 'alert', term: 'risks' },
+  price: { name: 'Price', ask: 'Is the price reasonable?', icon: 'gauge', term: 'valuation' },
 };
 const BUSINESS: ValueKey[] = ['demand', 'advantage', 'economics', 'execution', 'fragility'];
 /** A P/E within 15% of its 3-year median is about usual (pt-quality's band). */
@@ -125,15 +129,15 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
   selector: 'pt-value',
   imports: [PtIcon, PtLogo],
   template: `
-    @let v = data();
+    @let v = value();
     @if (v === null) {<p class="pt-na">Data not available</p>}
     @else {
       <section class="dv">
         <div class="dv-top">
           <pt-logo [ticker]="v.ticker" [src]="v.logo" [size]="36" />
-          <div>
-            <p class="dv-q">Is {{ v.name }} a good stock to buy?</p>
-            <p class="dv-a"><b>{{ answer().lead }}</b> {{ answer().text }}</p>
+          <div data-faq>
+            <h2 class="dv-q" data-faq-q>Is {{ v.name }} a good stock to buy?</h2>
+            <p class="dv-a" data-faq-a><b>{{ answer().lead }}</b> {{ answer().text }}</p>
           </div>
         </div>
         <ol class="dv-strip" aria-label="The six questions at a glance">
@@ -143,7 +147,7 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
           @for (s of v.sections; track s.key) {
             <div [class]="'dv-col dv-' + s.tone">
               <div class="dv-col-h">
-                <span class="dv-name"><svg class="pt-icon" [ptIcon]="QUESTIONS[s.key].icon"></svg>{{ QUESTIONS[s.key].name }}</span>
+                <span class="dv-name"><svg class="pt-icon" [ptIcon]="QUESTIONS[s.key].icon"></svg>{{ QUESTIONS[s.key].name }}@if (QUESTIONS[s.key].term; as t) {<span class="dv-term">{{ ' ' + t }}</span>}</span>
                 <span class="dv-ask">{{ QUESTIONS[s.key].ask }}</span>
                 <span [class]="'dv-verdict dv-' + s.tone">{{ s.verdict }}</span>
               </div>
@@ -220,7 +224,7 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
         </div>
         @if (v.faq.length) {
           <div class="dv-faq">
-            @for (f of v.faq; track f.q) {<div class="dv-faq-i"><h3 class="dv-faq-q">{{ f.q }}</h3><p class="dv-faq-a">{{ f.a }}</p></div>}
+            @for (f of v.faq; track f.q) {<div class="dv-faq-i" data-faq [id]="'value-' + faqId(f.q)"><h3 class="dv-faq-q" data-faq-q>{{ f.q }}</h3><p class="dv-faq-a" data-faq-a>{{ f.a }}</p></div>}
           </div>
         }
         <p class="pt-note">Made-up numbers, to look at the design; real ones come from FMP and the filings. Each card says what a fact means for its
@@ -230,7 +234,10 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
 })
 export class PtValue {
   readonly data = input.required<Value | null>();
-  protected readonly answer = computed(() => { const v = this.data(); return v ? valueAnswer(v) : { lead: '', text: '' }; });
+  /** The payload with the company's common name ("Nvidia", whatever the provider calls it): every sentence names it so. */
+  protected readonly value = computed(() => { const v = this.data(); return v ? { ...v, name: plainName(v.name) } : null; });
+  protected readonly answer = computed(() => { const v = this.value(); return v ? valueAnswer(v) : { lead: '', text: '' }; });
+  protected readonly faqId = faqId;
   protected readonly QUESTIONS = QUESTIONS;
   protected readonly date = date;
   protected readonly cardTip = (c: ValueCard) => tip({ [c.big]: c.line, Why: c.why, 'pretickt analysis': c.via ?? null, Source: c.source });

@@ -22,12 +22,22 @@ describe('home drafts: the helpers their components will keep', () => {
   });
   it('H1 in the page: the heading says "today" only while the counts are today\'s; a bubble opens what people ask about the company', async () => {
     const fresh = await render(PtHot, { data: HOT });
-    expect(fresh.el.querySelector('.dr-head b')!.textContent).toBe('Most talked about stocks on Reddit and X today');
+    expect(fresh.el.querySelector('.dr-head h2')!.textContent).toBe('Trending stocks on Reddit and X today');
     expect(fresh.el.querySelector('.dr-bub')!.getAttribute('href')).toBe('/stocks/spcx/#people-ask');
     expect(fresh.el.querySelector('.dr-bub')!.getAttribute('aria-label')).toBe('What people ask about SpaceX: 220 posts in 24 hours, 3.1 times its usual');
     const stale = await render(PtHot, { data: { ...HOT, asOf: '2026-10-23', stale: true } });
-    expect(stale.el.querySelector('.dr-head b')!.textContent).toBe('Most talked about stocks on Reddit and X');
+    expect(stale.el.querySelector('.dr-head h2')!.textContent).toBe('Trending stocks on Reddit and X');
     expect(stale.text()).toContain('last updated 10:30 a.m. ET, Fri, Oct 23, 2026 — not today’s counts');
+  });
+  it('H1 on its own page (/trending): no heading (the page has it), the time kept, the most talked about as a list with their counts', async () => {
+    const { el, text } = await render(PtHot, { data: HOT, head: false, rank: 5 });
+    expect(el.querySelector('.dr-head h2')).toBeNull();
+    expect(text()).toContain('last 24 hours · as of 10:30 a.m. ET, Mon, Oct 26, 2026');
+    const rows = [...el.querySelectorAll('ol.dr-rank li')].map((li) => li.textContent!.replace(/\s+/g, ' ').trim());
+    expect(rows).toHaveLength(5);
+    expect(rows[0]).toBe('SpaceX (SPCX) 220 posts in 24 hours, 3.1× its usual day');
+    expect(el.querySelector('ol.dr-rank a')!.getAttribute('href')).toBe('/stocks/spcx/#people-ask');
+    expect((await render(PtHot, { data: HOT })).el.querySelector('ol.dr-rank')).toBeNull();
   });
   it('H2: a move split into three bars in proportion; a rail with price, high and target on it', () => {
     const b = splitBars({ market: -0.004, sector: -0.003, own: -0.087 });
@@ -136,11 +146,24 @@ describe('pt-value (draft): every card', () => {
 describe('pt-value (draft): in the page\'s text', () => {
   it('the searched question on top, each card\'s sentence and the searched questions with their answers as headings', async () => {
     const { el, text } = await render(PtValue, { data: VALUE_NVDA });
-    expect(el.querySelector('.dv-q')!.textContent).toBe('Is Nvidia a good stock to buy?');
+    expect(el.querySelector('h2.dv-q')!.textContent).toBe('Is Nvidia a good stock to buy?');
     expect(text()).toContain('Nvidia\'s P/E ratio is 41.2 (Oct 26, 2026), above its 3-year median of 33.4.');
     expect([...el.querySelectorAll('.dv-faq h3')].map((h) => h.textContent)).toEqual(VALUE_NVDA.faq.map((f) => f.q));
     expect(text()).toContain(VALUE_NVDA.faq[0]!.a);
     for (const v of [VALUE_NVDA, VALUE_NKE, VALUE_INTC]) expect(v.faq.every((f) => f.q.endsWith('?') && f.a.includes(v.name))).toBe(true);
+  });
+  it('the columns carry the words people search beside their own: valuation (the most searched), moat, risks', async () => {
+    const { el } = await render(PtValue, { data: VALUE_NVDA });
+    expect([...el.querySelectorAll('.dv-col-h .dv-term')].map((t) => t.textContent)).toEqual([' moat', ' risks', ' valuation']);
+    expect(el.querySelector('.dv-col:last-child .dv-name')!.textContent).toBe('Price valuation');
+  });
+  it('marks each question and its answer for the page\'s structured data, each question with an address of its own', async () => {
+    const { el } = await render(PtValue, { data: VALUE_NVDA });
+    const pairs = [...el.querySelectorAll('[data-faq]')].map((w) => [w.querySelector('[data-faq-q]')!.textContent!.trim(), w.querySelector('[data-faq-a]')!.textContent!.trim()]);
+    const { lead, text } = valueAnswer(VALUE_NVDA);
+    expect(pairs[0]).toEqual(['Is Nvidia a good stock to buy?', `${lead} ${text}`]);
+    expect(pairs.slice(1)).toEqual(VALUE_NVDA.faq.map((f) => [f.q, f.a]));
+    expect(el.querySelector('#value-who-is-dumping-nvidia-stock h3')!.textContent).toBe('Who is dumping Nvidia stock?');
   });
   it('each card\'s title starts with the company\'s ticker, the searched term after it', async () => {
     for (const v of [VALUE_NVDA, VALUE_NKE, VALUE_INTC]) {

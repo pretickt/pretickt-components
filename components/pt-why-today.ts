@@ -1,14 +1,14 @@
 /**
  * Why did this stock move today: the whole market, its sector, or something specific to the company? While the market is open, today's
  * move so far (prices 15 minutes late), the news since the last close and the results just reported.
- * @version 2.2.0
+ * @version 2.2.1
  * @evidence DataForSEO: "why is <ticker> stock down today" family (launch/data/08c-serp-why-is-stock-down-today.json, 10a-why-moving-ticker.json)
  * @evidence beta: news spike detector (market-relative story spikes, validated 1.92x abnormal move)
  */
 import { Component, computed, inject, input, linkedSignal } from '@angular/core';
 import { Pt, PtLive } from '@pretickt/components/context';
 import { PtToggles } from '@pretickt/components/ds';
-import { date, href, level, money, num, pct, tone, usd } from '@pretickt/components/format';
+import { date, href, level, money, named, num, pct, tone, usd } from '@pretickt/components/format';
 import { SENTIMENT_FLAT, type MoveBreakdown } from '@pretickt/components/typologies';
 
 type Window = '1d' | '5d' | '1m';
@@ -96,8 +96,8 @@ export class PtWhyToday {
 
   protected readonly lead = computed(() => {
     const m = this.move.value(), t = this.today();
-    if (m && t) return `${m.name} (${m.ticker}) ${t.d.closed ? `${verb(t.q.r)} today` : `${verbNow(t.q.r)} today, as of ${t.d.time}`}.`;
-    return m ? `${m.name} (${m.ticker}) ${verb(m.ret)} ${when(m)}.` : '';
+    if (m && t) return `${named(m.name, m.ticker)} ${t.d.closed ? `${verb(t.q.r)} today` : `${verbNow(t.q.r)} today, as of ${t.d.time}`}.`;
+    return m ? `${named(m.name, m.ticker)} ${verb(m.ret)} ${when(m)}.` : '';
   });
   /** One market / sector / specific reading, from the last session's breakdown or from today's. */
   private readonly parts = computed(() => {

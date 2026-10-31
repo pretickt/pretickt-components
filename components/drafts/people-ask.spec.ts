@@ -1,5 +1,5 @@
 import { render } from '../_spec';
-import { PA_KO, PA_MRNA, PA_NVDA, PA_NVDA_ALL, PA_ODFL } from './people-ask-mock';
+import { PA_KO, PA_MRNA, PA_NVDA, PA_NVDA_ALL, PA_NVDA_HUB, PA_ODFL } from './people-ask-mock';
 import { askLede, needBar, PtPeopleAsk } from './pt-people-ask';
 
 describe('pt-people-ask (draft): what people ask about a company, answered', () => {
@@ -41,6 +41,32 @@ describe('pt-people-ask (draft): what people ask about a company, answered', () 
       'Who owns Nvidia?', 'Does Nvidia pay dividends?']));
     for (const a of all.filter((x) => x.need === 'earnings_events')) expect(a.answer).toMatch(/\((confirmed date|date not confirmed)\)/);
     expect(new Set(PA_NVDA_ALL.items.map((a) => a.question)).size).toBe(PA_NVDA_ALL.items.length);
+  });
+
+  it('answers when the company reports, asked or not: the next report is always one of its questions, never twice', async () => {
+    const qs = (el: HTMLElement) => [...el.querySelectorAll('h3')].map((h) => h.textContent!.trim());
+    expect(PA_MRNA.items.some((a) => a.need === 'earnings_events')).toBe(false);
+    const mrna = await render(PtPeopleAsk, { data: PA_MRNA });
+    expect(qs(mrna.el).at(-1)).toBe('When does Moderna report earnings?');
+    expect(mrna.text()).toContain(PA_MRNA.earnings!.answer!);
+    const nvda = await render(PtPeopleAsk, { data: PA_NVDA });
+    expect(qs(nvda.el).filter((q) => q === 'When does Nvidia report earnings?')).toHaveLength(1);
+  });
+
+  it('a question another placement answers (pt-value\'s): the question stays, with a link to that answer and no second one', async () => {
+    const { el, text } = await render(PtPeopleAsk, { data: PA_NVDA_HUB });
+    const buy = [...el.querySelectorAll('article')].find((a) => a.querySelector('h3')!.textContent === 'Is Nvidia a good stock to buy?')!;
+    expect(buy.querySelector('.dp-a')).toBeNull();
+    expect(buy.querySelector('a')!.getAttribute('href')).toBe('#value');
+    expect(buy.textContent).toContain('asked 23 times this week · answered on this page:');
+    expect(text()).not.toContain('The analysts’ average price target for Nvidia');
+  });
+
+  it('marks each question it answers, and only those, for the page\'s structured data', async () => {
+    const { el } = await render(PtPeopleAsk, { data: PA_NVDA_HUB });
+    const marked = [...el.querySelectorAll('[data-faq]')].map((w) => w.querySelector('[data-faq-q]')!.textContent!.trim());
+    expect(marked).toEqual(PA_NVDA_HUB.items.filter((a) => a.answer).map((a) => a.question));
+    for (const w of el.querySelectorAll('[data-faq]')) expect(w.querySelector('[data-faq-a]')!.textContent!.trim()).not.toBe('');
   });
 
   it('cards show the same questions and answers (the text a search engine reads does not change)', async () => {

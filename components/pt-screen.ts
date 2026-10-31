@@ -1,13 +1,13 @@
 /**
  * Which companies are on this list today (biggest movers, 52-week extremes, undervalued, insider buying, peers)?
- * @version 2.4.0
+ * @version 2.4.1
  * @evidence DataForSEO: "biggest stock losers today", "52 week low stocks", "undervalued stocks" (launch/data/08c-serp-undervalued-stocks.json)
  * @evidence stockanalysis.com / finviz market-mover tables; beta: peers table on the company page
  */
 import { Component, computed, inject, input, linkedSignal } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
 import { MORE_STEP, PtLogo, PtMore, PtSortTh, useSort } from '@pretickt/components/ds';
-import { date, money, num, pct, stockHref, tone, usd } from '@pretickt/components/format';
+import { date, money, num, pct, plainName, stockHref, tone, usd } from '@pretickt/components/format';
 import { SCREEN_MAX, type ScreenList, type ScreenRow, type Sector } from '@pretickt/components/typologies';
 
 type Cell = { text: string; tone?: string };
@@ -55,7 +55,7 @@ type Row = { r: ScreenRow; rank: number; chg: Cell; extra: Cell[]; spark: Return
             @for (x of sort.sorted(); track x.r.ticker) {
               <tr [class]="x.r.self ? 'pt-scr-row pt-scr-self' : 'pt-scr-row'">
                 <td class="pt-scr-rank">{{ x.rank }}</td>
-                <td><a class="pt-scr-co" [href]="stockHref(x.r.ticker)"><pt-logo [ticker]="x.r.ticker" [src]="x.r.logo" /> <strong>{{ x.r.ticker }}</strong> <span>{{ x.r.name }}</span></a></td>
+                <td><a class="pt-scr-co" [href]="stockHref(x.r.ticker)"><pt-logo [ticker]="x.r.ticker" [src]="x.r.logo" /> <strong>{{ x.r.ticker }}</strong>@let nm = plainName(x.r.name); @if (nm !== x.r.ticker) { <span>{{ nm }}</span>}</a></td>
                 <td class="pt-num">{{ money(x.r.close) }}</td>
                 <td class="pt-num"><span [class]="x.chg.tone">{{ x.chg.text }}</span></td>
                 @for (c of x.extra; track $index) {<td class="pt-num">@if (c.tone) {<span [class]="c.tone">{{ c.text }}</span>} @else {<ng-container>{{ c.text }}</ng-container>}</td>}
@@ -102,6 +102,7 @@ export class PtScreen {
     cap: (x) => x.r.marketCap, x0: (x) => this.extra()[0]?.value(x.r) ?? null, x1: (x) => this.extra()[1]?.value(x.r) ?? null,
   });
   protected readonly stockHref = stockHref;
+  protected readonly plainName = plainName;
   protected readonly money = money;
   protected readonly num = num;
   protected readonly usd = usd;

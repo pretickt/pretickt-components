@@ -1,6 +1,40 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { amount, badgeValue, cash, compact, currencyName, date, dayMonth, href, level, money, month, num, pct, stockHref, tip, tone, usd } from './format';
+import { amount, badgeValue, cash, COMMON_NAMES, compact, currencyName, date, dayMonth, faqId, href, level, money, month, named, num, pct, plainName, stockHref, tip, tone, usd, withoutSuffixes } from './format';
+
+describe('company names as people, the press and the AI answers write them (plainName)', () => {
+  it('drops the legal suffixes and share classes, whatever their case', () => {
+    expect(['Apple Inc.', 'Eli Lilly and Company', 'The Coca-Cola Company', 'Merck & Co., Inc.', 'Alphabet Inc. Class A', 'Medtronic Plc',
+      'Carnival Corporation & plc', 'Arm Holdings plc American Depositary Shares'].map(plainName))
+      .toEqual(['Apple', 'Eli Lilly', 'Coca-Cola', 'Merck', 'Alphabet', 'Medtronic', 'Carnival', 'Arm']);
+  });
+  it('the suffix rule alone is what the site printed before the common names (the generator\'s shortName)', () => {
+    expect(['NVIDIA Corporation', 'Meta Platforms, Inc.', 'Carnival Corporation & plc'].map(withoutSuffixes)).toEqual(['NVIDIA', 'Meta Platforms', 'Carnival']);
+  });
+  it('then the common name where the provider\'s is not it: the case, the brand, the short form', () => {
+    expect(['NVIDIA Corporation', 'Meta Platforms, Inc.', 'Amazon.com, Inc.', 'Advanced Micro Devices, Inc.', 'QUALCOMM Incorporated', 'NIKE, Inc.',
+      'International Business Machines Corporation', 'The Walt Disney Company', 'Space Exploration Technologies Corp.', 'News Corporation',
+      'The Southern Company', 'Becton, Dickinson and Company', 'Vertiv Holdings Co', 'Slb N.V.'].map(plainName))
+      .toEqual(['Nvidia', 'Meta', 'Amazon', 'AMD', 'Qualcomm', 'Nike', 'IBM', 'Disney', 'SpaceX', 'News Corp', 'Southern Company',
+        'Becton Dickinson', 'Vertiv', 'SLB']);
+  });
+  it('leaves the names already common as they are, and a name it does not know to the suffix rule', () => {
+    expect(['Microsoft Corporation', 'JPMorgan Chase & Co.', 'Johnson & Johnson', 'AT&T Inc.', '3M Company', 'Alphabet Inc.', 'Acme Widgets Holdings, Inc.']
+      .map(plainName)).toEqual(['Microsoft', 'JPMorgan Chase', 'Johnson & Johnson', 'AT&T', '3M', 'Alphabet', 'Acme Widgets Holdings']);
+  });
+  it('names a company with its ticker beside it, or the ticker alone when the name is the ticker (same case)', () => {
+    expect([named('NVIDIA Corporation', 'NVDA'), named('Meta Platforms, Inc.', 'META'), named('RTX Corporation', 'RTX'), named('Advanced Micro Devices, Inc.', 'AMD'),
+      named('Dow Inc.', 'DOW'), named(null, 'XYZ'), named('', 'XYZ')]).toEqual(['Nvidia (NVDA)', 'Meta (META)', 'RTX', 'AMD', 'Dow (DOW)', 'XYZ', 'XYZ']);
+  });
+  it('maps a suffix-free name to another one, which stays itself: no chain, no name that changes twice', () => {
+    for (const [from, to] of Object.entries(COMMON_NAMES)) {
+      expect(to, from).not.toBe(from);
+      expect(plainName(from), from).toBe(to);
+      expect(Object.hasOwn(COMMON_NAMES, to), to).toBe(false);
+      expect(plainName(to), to).toBe(to);
+    }
+  });
+});
 
 describe('format (the design system\'s numbers and dates; Angular escapes what it prints, so nothing here escapes)', () => {
   it('numbers', () => {
@@ -17,6 +51,11 @@ describe('format (the design system\'s numbers and dates; Angular escapes what i
     expect([href('https://x.com/a?b=1&c=2'), href('/stocks/nvda/'), href('javascript:alert(1)'), href('//evil.com'), href(null), href('/\\evil.com'), href('https://x.com/a\\b')])
       .toEqual(['https://x.com/a?b=1&c=2', '/stocks/nvda/', '#', '#', '#', '#', '#']); // a backslash reads as a slash
     expect(stockHref('BRK.B')).toBe('/stocks/brk.b/');
+  });
+  it('faqId: a question\'s address on the page, from its words', () => {
+    expect([faqId('Who is dumping Nvidia stock?'), faqId('What is Nvidia\u2019s P/E ratio?'), faqId('What if I invested $10,000 in Nvidia 5 years ago?')])
+      .toEqual(['who-is-dumping-nvidia-stock', 'what-is-nvidias-p-e-ratio', 'what-if-i-invested-10-000-in-nvidia-5-years-ago']);
+    expect(faqId("Is Moderna's stock a buy after the drop? ".repeat(4)).length).toBeLessThanOrEqual(60);
   });
   it('tip is the JSON a data-tip attribute carries', () => expect(JSON.parse(tip({ Sentiment: 'positive', N: 3 }))).toEqual({ Sentiment: 'positive', N: 3 }));
   it('badgeValue', () => expect([badgeValue({ text: null, value: 21.5, unit: 'x' }), badgeValue({ text: 'Strong buy', value: null, unit: '' })]).toEqual(['21.5x', 'Strong buy']));

@@ -10,7 +10,7 @@ describe('pt-why-today', () => {
   basics(PtWhyToday, { ticker: 'NVDA' });
   it('answers first, in one templated sentence, with the three parts', async () => {
     const out = await html(base());
-    expect(out).toMatch(/NVIDIA \(NVDA\) fell 3\.1% on Sep 30, 2026\./);
+    expect(out).toMatch(/Nvidia \(NVDA\) fell 3\.1% on Sep 30, 2026\./);
     expect(out).toContain('The market (SPY) fell 1.2%');
     expect(out).toContain('Technology stocks fell 2.0%');
     expect(out.match(/class="pt-bd-row"/g)).toHaveLength(3);
@@ -53,7 +53,7 @@ describe('pt-why-today', () => {
     it('tells today\'s move so far, split, with the results just reported and the news since the close', async () => {
       const r = await live();
       const out = r.html();
-      expect(out).toContain('NVIDIA (NVDA) is down 6.0% today, as of 11:30 AM ET.');
+      expect(out).toContain('Nvidia (NVDA) is down 6.0% today, as of 11:30 AM ET.');
       expect(out).toContain('The market (SPY) is up 0.4%; Technology stocks are up 0.2%. Most of the move is specific to NVDA.');
       expect(out).toContain('NVDA reported after the close on Sep 30, 2026: EPS $7.40 vs $6.54 expected (+13.1%); revenue $64.6B vs $63.34B (+2.0%).');
       expect(out).toContain('12 stories since the close on Sep 30, 2026.');
@@ -71,13 +71,13 @@ describe('pt-why-today', () => {
     it('5D and 1M stay on the end-of-day breakdown', async () => {
       const r = await live();
       await press(r.f, r.el, '5D');
-      expect(r.el.querySelector('.pt-why-lead')!.textContent).toBe('NVIDIA (NVDA) fell 3.1% on Sep 30, 2026.'); // the fixed 1D answer: what matters is "not today"
+      expect(r.el.querySelector('.pt-why-lead')!.textContent).toBe('Nvidia (NVDA) fell 3.1% on Sep 30, 2026.'); // the fixed 1D answer: what matters is "not today"
       expect(r.html()).not.toContain('since the close');
       expect(r.html()).not.toContain('reported');
     });
     it('a file no newer than the page\'s data, or without the company, changes nothing', async () => {
-      expect((await live({ ...LIVE, session: '2026-09-30' })).html()).toContain('NVIDIA (NVDA) fell 3.1% on Sep 30, 2026.');
-      expect((await live({ q: {} })).html()).toContain('NVIDIA (NVDA) fell 3.1% on Sep 30, 2026.');
+      expect((await live({ ...LIVE, session: '2026-09-30' })).html()).toContain('Nvidia (NVDA) fell 3.1% on Sep 30, 2026.');
+      expect((await live({ q: {} })).html()).toContain('Nvidia (NVDA) fell 3.1% on Sep 30, 2026.');
     });
   });
 });

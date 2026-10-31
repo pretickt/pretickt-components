@@ -13,6 +13,16 @@ describe('pt-screen', () => {
     expect(out).toContain('href="/stocks/brk.b/"');
     expect(out.match(/<polyline/g)).toHaveLength(data.rows.length);
   });
+  it('names each company as people search it, its ticker beside it', async () => {
+    const data = screenDemo({ scope: { list: 'biggest_losers' }, limit: 3 });
+    data.rows[0] = { ...data.rows[0]!, ticker: 'NVDA', name: 'NVIDIA Corporation' };
+    data.rows[1] = { ...data.rows[1]!, ticker: 'META', name: 'Meta Platforms, Inc.' };
+    data.rows[2] = { ...data.rows[2]!, ticker: 'AMD', name: 'Advanced Micro Devices, Inc.' };
+    const { el } = await render(PtScreen, { list: 'biggest_losers', limit: 3 }, withData({ 'screen@1': data }));
+    // the name beside the ticker, never the ticker twice ("AMD", not "AMD AMD")
+    expect([...el.querySelectorAll('.pt-scr-co')].map((a) => [a.querySelector('strong')!.textContent, a.querySelector(':scope > span')?.textContent ?? null]))
+      .toEqual([['NVDA', 'Nvidia'], ['META', 'Meta'], ['AMD', null]]);
+  });
   it('shows each company\'s logo from the site (initials when there is none)', async () => {
     const data = screenDemo({ scope: { list: 'biggest_losers' }, limit: 3 });
     data.rows[0]!.logo = `/logos/${data.rows[0]!.ticker.toLowerCase()}`;

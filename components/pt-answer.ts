@@ -1,13 +1,14 @@
 /**
  * The page's question answered first, in a sentence or two, from the data the page shows below it: a stock's analyst forecast and
  * price target, its peers, its latest quarter, its insiders; who leads a market list; a calendar month at a glance.
- * @version 1.1.0
+ * Company topics name the company as people search it, with its ticker ("Nvidia (NVDA)"): the sentence an answer engine quotes stands on its own.
+ * @version 1.2.0
  * @evidence DataForSEO: "<ticker> stock forecast" 151k/month, "<ticker> price target" 103k/month, "earnings calendar" 153k/month, list queries (launch/data/08c-serp-*.json)
  * @evidence SEO measurement 2026-10-09: list and company subpages of ~80–200 words; the answer belongs in the first lines, with its numbers
  */
 import { Component, computed, inject, input } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
-import { amount, cash, date, level, money, num, pct, plainName, usd } from '@pretickt/components/format';
+import { amount, cash, date, level, money, named, num, pct, usd } from '@pretickt/components/format';
 import { INSIDER_WINDOW_DAYS, type EventItem, type ScreenList, type ScreenRow, type Sector } from '@pretickt/components/typologies';
 
 export { plainName } from '@pretickt/components/format';
@@ -16,7 +17,7 @@ type Topic = 'forecast' | 'price-target' | 'peers' | 'financials' | 'insiders' |
 type Named = { ticker: string; name: string };
 
 /** "Apple (AAPL)", or the ticker alone when it is the name. */
-const who = (c: Named) => { const n = plainName(c.name); return n.toUpperCase() === c.ticker ? c.ticker : `${n} (${c.ticker})`; };
+const who = (c: Named) => named(c.name, c.ticker);
 const and = (parts: string[]) => (parts.length < 2 ? parts.join('') : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`);
 const many = (n: number, one: string, more = `${one}s`) => `${n} ${n === 1 ? one : more}`;
 const ordinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
@@ -70,6 +71,8 @@ export class PtAnswer {
 
   /** The company of a company topic, or null: each call below is made only for the topic that reads it (the page asked for the same). */
   private readonly of = (...topics: Topic[]) => (topics.includes(this.topic()) ? this.ticker() ?? null : null);
+  /** The company's name for the company topics: the card at the top of every company page asks for it too (the same call). */
+  protected readonly company = this.pt.company(() => { const t = this.of('forecast', 'price-target', 'peers', 'financials', 'insiders'); return t ? { ticker: t } : null; });
   protected readonly analysts = this.pt.analysts(() => { const t = this.of('forecast', 'price-target'); return t ? { ticker: t, window: '1y' } : null; });
   protected readonly rating = this.pt.metric(() => { const t = this.of('forecast', 'price-target'); return t ? { ticker: t, metrics: ['pt_upside', 'consensus'] } : null; });
   protected readonly peers = this.pt.screen(() => { const t = this.of('peers'); return t ? { scope: { peersOf: t }, limit: 12 } : null; });
@@ -97,20 +100,28 @@ export class PtAnswer {
     }
   });
 
+  /** "Nvidia (NVDA)": the company's common name with its ticker (the ticker alone without a name); undefined while it is on its way. */
+  private named(t: string): string | undefined {
+    const c = this.company.value();
+    return c === undefined ? undefined : named(c?.name, t);
+  }
+
   private target(): string | null {
     const a = this.analysts.value(), t = this.ticker();
     if (!t) return null;
     if (a === undefined) return PENDING;
     if (a === null) return null;
+    const n = this.named(t);
+    if (n === undefined) return PENDING;
     const text = this.rating.value()?.find((m) => m.key === 'consensus')?.text;
     const rating = text ? ` Rating consensus: ${text}.` : '';
     const s = a.summary;
-    if (!s || !finite(a.price) || a.price <= 0) return `No analyst published a price target for ${t} in the last 12 months.${rating}`;
+    if (!s || !finite(a.price) || a.price <= 0) return `No analyst published a price target for ${n} in the last 12 months.${rating}`;
     const vs = `${versus(s.mean / a.price - 1)} the last close of ${money(a.price)} on ${date(a.asOf)}`;
     if (this.topic() === 'forecast')
-      return `The average 12-month analyst price target for ${t} is ${money(s.mean)}, ${vs}; targets range from ${money(s.low)} to ${money(s.high)}.${rating}`;
+      return `The average 12-month analyst price target for ${n} is ${money(s.mean)}, ${vs}; targets range from ${money(s.low)} to ${money(s.high)}.${rating}`;
     const firms = s.n === 1 ? 'the one analyst firm that published one' : `the ${s.n} analyst firms that published one`;
-    return `The average price target of ${firms} in the last 12 months is ${money(s.mean)} for ${t}, ${vs}. ` +
+    return `The average price target of ${firms} in the last 12 months is ${money(s.mean)} for ${n}, ${vs}. ` +
       `Targets range from ${money(s.low)} to ${money(s.high)}, with a median of ${money(s.median)}.${rating}`;
   }
 
@@ -119,10 +130,12 @@ export class PtAnswer {
     if (!t) return null;
     if (p === undefined) return PENDING;
     if (p === null) return null;
+    const n = this.named(t);
+    if (n === undefined) return PENDING;
     const self = p.rows.find((r) => r.self || r.ticker === t);
     const others = p.rows.filter((r) => r !== self);
-    if (!others.length) return `${t} has no tracked peer in its industry or sector.`;
-    let s = `${t}’s peers by industry and size include ${and(others.slice(0, 3).map(who))}.`;
+    if (!others.length) return `${n} has no tracked peer in its industry or sector.`;
+    let s = `The peers of ${n} by industry and size include ${and(others.slice(0, 3).map(who))}.`;
     if (self && finite(self.marketCap)) {
       const rank = p.rows.filter((r) => finite(r.marketCap) && r.marketCap > self.marketCap!).length + 1;
       const pes = others.map((r) => r.pe).filter((v): v is number => finite(v) && v > 0);
@@ -137,14 +150,16 @@ export class PtAnswer {
     if (!t) return null;
     if (f === undefined) return PENDING;
     if (f === null) return null;
+    const n = this.named(t);
+    if (n === undefined) return PENDING;
     const q = f.periods.at(-1);
-    if (!q) return `No quarterly results are available for ${t}.`;
+    if (!q) return `No quarterly results are available for ${n}.`;
     const per = f.periodsPerYear ?? 4, cur = f.currency, span = per === 2 ? 'half-year' : 'quarter';
     const ago = f.periods.length > per ? f.periods.at(-1 - per)! : null;
     const yoy = finite(q.revenue) && finite(ago?.revenue) && ago.revenue > 0 ? `, ${growth(q.revenue / ago.revenue - 1)} from a year earlier` : '';
     const lead = finite(q.revenue)
-      ? `${t} reported revenue of ${cash(q.revenue, cur, { compact: true })} for the ${span} ended ${date(q.period)} (${q.fiscal})${yoy}.`
-      : `${t}’s latest reported ${span} ended ${date(q.period)} (${q.fiscal}).`;
+      ? `${n} reported revenue of ${cash(q.revenue, cur, { compact: true })} for the ${span} ended ${date(q.period)} (${q.fiscal})${yoy}.`
+      : `The latest reported ${span} of ${n} ended ${date(q.period)} (${q.fiscal}).`;
     const parts = [finite(q.eps) ? `diluted EPS of ${cash(q.eps, cur, { digits: 2 })}` : '', finite(q.fcf) ? `free cash flow of ${cash(q.fcf, cur, { compact: true })}` : '',
       finite(q.netMargin) ? `a net margin of ${level(q.netMargin)}` : ''].filter(Boolean);
     return parts.length ? `${lead} It posted ${and(parts)}.` : lead;
@@ -155,15 +170,17 @@ export class PtAnswer {
     if (!t) return null;
     if (ins === undefined) return PENDING;
     if (ins === null) return null;
+    const n = this.named(t);
+    if (n === undefined) return PENDING;
     const trades = ins.items.filter((i) => i.type === 'buy' || i.type === 'sell');
-    if (!trades.length) return `No open-market purchase or sale of ${t} stock by its officers and directors was reported in the last 12 months.`;
+    if (!trades.length) return `No open-market purchase or sale of ${n} stock by its officers and directors was reported in the last 12 months.`;
     const side = (type: 'buy' | 'sell', one: string) => {
       const list = trades.filter((i) => i.type === type);
       const value = list.reduce((s, i) => s + (i.value ?? 0), 0);
       return `${many(list.length, one)}${value > 0 ? ` worth ${usd(value, { compact: true })}` : ''}`;
     };
     const last = [...trades].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))[0]!;
-    return `In the last 12 months ${t} insiders made ${side('buy', 'open-market purchase')} and ${side('sell', 'sale')}, as reported on SEC Form 4. ` +
+    return `In the last 12 months ${n} insiders made ${side('buy', 'open-market purchase')} and ${side('sell', 'sale')}, as reported on SEC Form 4. ` +
       `The latest: ${last.name}${last.title ? ` (${last.title})` : ''} ${last.type === 'buy' ? 'bought' : 'sold'} ${num(last.shares, 0)} shares` +
       `${finite(last.price) && last.price > 0 ? ` at ${money(last.price)}` : ''} on ${date(last.date)}.`;
   }

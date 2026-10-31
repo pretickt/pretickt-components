@@ -52,7 +52,7 @@ describe('the map', () => {
       + 'The three largest, AAA, BBB and CCC, moved +3.1%, -0.4% and -3.0%; the biggest moves were AAA +3.1% and CCC -3.0%.');
     const named = [{ ...rows[0]!, ticker: 'NVDA', name: 'NVIDIA Corporation' }, { ...rows[1]!, ticker: 'AAPL', name: 'Apple Inc.' }];
     expect(mapSentence(named, buildMap(named, 1000, 560).blocks, '2026-10-23')).toBe('As of Oct 23, 2026: Technology moved +1.9%, and 1 of its 2 largest companies rose. '
-      + 'The two largest, NVIDIA (NVDA) and Apple (AAPL), moved +3.1% and -0.4%; the biggest moves were NVIDIA (NVDA) +3.1% and Apple (AAPL) -0.4%.');
+      + 'The two largest, Nvidia (NVDA) and Apple (AAPL), moved +3.1% and -0.4%; the biggest moves were Nvidia (NVDA) +3.1% and Apple (AAPL) -0.4%.');
   });
 });
 
@@ -64,7 +64,8 @@ describe('pt-logo-map', () => {
     const r = await view({ asOf: '2026-10-23', rows });
     const wide = r.el.querySelector('svg.pt-lm-wide')!;
     expect([...wide.querySelectorAll('a')].map((a) => a.getAttribute('href'))).toEqual(['/stocks/aaa/', '/stocks/bbb/', '/stocks/ccc/', '/stocks/eee/', '/stocks/ddd/']);
-    expect(JSON.parse(wide.querySelector('a')!.getAttribute('data-tip')!)).toEqual({ AAA: 'AAA Inc.', Today: '+3.1%', 'Market value': '$4T' });
+    expect(JSON.parse(wide.querySelector('a')!.getAttribute('data-tip')!)).toEqual({ AAA: 'AAA', Today: '+3.1%', 'Market value': '$4T' });
+    expect(wide.querySelector('a')!.getAttribute('aria-label')).toBe('AAA, +3.1% today');
     expect(r.el.querySelector('svg.pt-lm-narrow')).toBeTruthy();
     expect(r.text()).toContain('size = market value · as of Oct 23, 2026');
     expect(wide.getAttribute('aria-label')).toBe('Stock market heat map: the 5 largest companies by sector, Oct 23, 2026');

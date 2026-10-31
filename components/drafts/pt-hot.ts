@@ -4,16 +4,17 @@
  * 30 minutes against a usual day, from the pulse) has no pipeline yet, so it comes as an input; once it has one, this becomes a
  * component in components/ that asks its typology for it.
  * In the words people use (DataForSEO, 2026-10-28): Google searches are few ("trending stocks"), but the AI answers to "which stocks
- * are people talking about on Reddit today" cite trackers that give the time, the counts and the sources — so the heading is "Most
- * talked about stocks on Reddit and X today", the sentence names each company with its ticker, its posts and its usual day, the
- * time (ET) and where the posts come from, and a bubble opens what people ask on the company's page (`#people-ask`, the section
- * of pt-people-ask). A "today" that is not today loses trust: with `stale` (the resolver's call, at build time: the pulse runs on a
- * Mac and can stop) the heading drops "today" and says when the counts are from.
- * @version 0.0.2
+ * are people talking about on Reddit today" cite trackers that give the time, the counts and the sources — so the heading (an h2)
+ * says the searched words, "Trending stocks on Reddit and X today", the sentence names each company with its ticker, its posts and
+ * its usual day, the time (ET) and where the posts come from, and a bubble opens what people ask on the company's page
+ * (`#people-ask`, the section of pt-people-ask). A "today" that is not today loses trust: with `stale` (the resolver's call, at
+ * build time: the pulse runs on a Mac and can stop) the heading drops "today" and says when the counts are from. On its own page
+ * (/trending) the page's h1 is the heading (`head` false) and `rank` lists the most talked about with their counts, as text.
+ * @version 0.0.3
  */
 import { Component, computed, input } from '@angular/core';
 import { PtLogo } from '@pretickt/components/ds';
-import { dayMonth, num, pct, stockHref, tip } from '@pretickt/components/format';
+import { dayMonth, named, num, pct, plainName, stockHref, tip } from '@pretickt/components/format';
 import { weekdayOf } from '../pt-calendar';
 
 export interface HotRow { ticker: string; name: string; logo: string | null; mentions: number; usual: number; move: number | null; theme: string | null }
@@ -35,7 +36,7 @@ export function etTime(hhmm: string): string {
 /** "10:30 a.m. ET, Mon, Oct 26, 2026" — or the date alone without a time. */
 export const hotWhen = (d: Pick<Hot, 'asOf' | 'time'>) =>
   `${d.time ? `${etTime(d.time)}, ` : ''}${WEEKDAY[weekdayOf(d.asOf)]}, ${dayMonth(d.asOf)}, ${d.asOf.slice(0, 4)}`;
-const nameOf = (r: HotRow) => (r.name && r.name !== r.ticker ? r.name : r.ticker);
+const nameOf = (r: HotRow) => (r.name && r.name !== r.ticker ? plainName(r.name) : r.ticker);
 const listed = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
 
 /**
@@ -62,7 +63,7 @@ export function hotSentence(rows: HotRow[], when = '', sources: string[] = []): 
     @if (d === null) {<p class="pt-na">Data not available</p>}
     @else {
       <figure class="dr-fig">
-        <div class="dr-head"><b>{{ d.stale ? 'Most talked about stocks on Reddit and X' : 'Most talked about stocks on Reddit and X today' }}</b>
+        <div class="dr-head">@if (head()) {<h2 class="dr-head-t">{{ d.stale ? 'Trending stocks on Reddit and X' : 'Trending stocks on Reddit and X today' }}</h2>}
           <span class="pt-meta">{{ d.stale ? 'last updated ' + when() + ' — not today’s counts' : 'last 24 hours · as of ' + when() }}</span></div>
         @if (bubbles().length) {
           <p class="pt-lede">{{ sentence() }}</p>
@@ -75,6 +76,11 @@ export function hotSentence(rows: HotRow[], when = '', sources: string[] = []): 
               </li>
             }
           </ul>
+          @if (ranked().length) {
+            <ol class="dr-rank">
+              @for (r of ranked(); track r.ticker) {<li><a [href]="r.href">{{ r.who }}</a> {{ r.say }}</li>}
+            </ol>
+          }
           <figcaption class="pt-legend">
             <span class="pt-key"><i class="dr-sw dr-hot"></i>2× its usual or more</span>
             <span class="pt-key"><i class="dr-sw dr-usual"></i>around its usual</span>
@@ -87,6 +93,15 @@ export function hotSentence(rows: HotRow[], when = '', sources: string[] = []): 
 })
 export class PtHot {
   readonly data = input.required<Hot | null>();
+  /** The heading: off on the /trending page, whose h1 says it. */
+  readonly head = input(true);
+  /** How many of the most talked about to list as text under the bubbles (the /trending page); 0: none. */
+  readonly rank = input(0);
+  protected readonly ranked = computed(() => [...(this.data()?.rows ?? [])].sort((a, b) => b.mentions - a.mentions).slice(0, this.rank()).map((r) => {
+    const x = heat(r);
+    return { ticker: r.ticker, href: `${stockHref(r.ticker)}#people-ask`, who: named(r.name, r.ticker),
+      say: `${r.mentions} posts in 24 hours${x === null ? '' : `, ${num(x, 1)}× its usual day`}` };
+  }));
   protected readonly when = computed(() => { const d = this.data(); return d ? hotWhen(d) : ''; });
   protected readonly bubbles = computed(() => [...(this.data()?.rows ?? [])].sort((a, b) => b.mentions - a.mentions).map((r) => {
     const x = heat(r), size = bubbleSize(r.mentions);

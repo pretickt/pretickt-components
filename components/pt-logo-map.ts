@@ -3,14 +3,14 @@
  * market value and coloured by today's move — where the market's weight is and which way it went today. Under the map a line says
  * how to read it, the way the AI answers describe a heat map; above it, the day in a dated sentence (sectors up, the three largest,
  * the biggest moves) — the text that changes every day and that an answer can quote with its date.
- * @version 0.2.0
+ * @version 0.2.1
  * @evidence Romeo 2026-10-25: home components "con i loghi delle aziende" for the overview — H3 · The market at a glance, ★ sector map (brainstorming/mappa-componenti.html)
  * @evidence DataForSEO 2026-10-28 (round 13): the "stock market heat map" family ≈33,400 searches a month, keyword difficulty 25–30, AI Overview on 2%, no dominant site (apps, guides, brokers); "largest companies by market cap" 22,200 (launch/RESEARCH.md §9)
  * @evidence AI answers (ChatGPT, Claude, Gemini, Perplexity, AI Mode, 2026-10-28) to "where can I see a stock market heat map today" list TradingView, Finviz, Investing.com, Barchart, MarketBeat, each with one line on how the map reads (launch/AI-SEARCH.md)
  */
 import { Component, computed, inject, input } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
-import { date, pct, plainName, stockHref, tip, usd } from '@pretickt/components/format';
+import { date, named, pct, plainName, stockHref, tip, usd } from '@pretickt/components/format';
 import type { ScreenRow } from '@pretickt/components/typologies';
 
 type Sector = 'Technology' | 'Industrials' | 'Financial Services' | 'Healthcare' | 'Consumer Cyclical' | 'Consumer Defensive' | 'Utilities'
@@ -92,7 +92,7 @@ export function buildMap(rows: readonly ScreenRow[], w: number, h: number): { bl
 }
 
 /** "Nvidia (NVDA)", or the ticker alone when it is the name. */
-const who = (r: ScreenRow) => { const n = plainName(r.name || r.ticker); return n.toUpperCase() === r.ticker ? r.ticker : `${n} (${r.ticker})`; };
+const who = (r: ScreenRow) => named(r.name, r.ticker);
 const and = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
 
 /**
@@ -138,7 +138,7 @@ const NARROW = { w: 400, h: 600, n: 40 } as const;
               }
               @for (t of m.tiles; track t.ticker) {
                 @let big = t.w >= m.big && t.h >= m.big * 0.8;
-                <a [attr.href]="stockHref(t.ticker)" [attr.aria-label]="t.name + ', ' + (t.move === null ? 'no move' : pct(t.move)) + ' today'"
+                <a [attr.href]="stockHref(t.ticker)" [attr.aria-label]="plainName(t.name) + ', ' + (t.move === null ? 'no move' : pct(t.move)) + ' today'"
                   [attr.data-tip]="tileTip(t)">
                   <rect [class]="'pt-lm-tile pt-lm-' + t.step" [attr.x]="t.x + 1" [attr.y]="t.y + 1" [attr.width]="t.w - 2" [attr.height]="t.h - 2" rx="3" />
                   @if (big && t.logo) {<image class="pt-lm-logo" [attr.href]="t.logo" [attr.x]="t.x + t.w / 2 - logoSize(t, m) / 2" [attr.y]="t.y + t.h / 2 - logoSize(t, m) * 0.9" [attr.width]="logoSize(t, m)" [attr.height]="logoSize(t, m)" />}
@@ -178,6 +178,7 @@ export class PtLogoMap {
   protected readonly pct = pct;
   protected readonly date = date;
   protected readonly stockHref = stockHref;
-  protected readonly tileTip = (t: Tile) => tip({ [t.ticker]: t.name, Today: t.move === null ? null : pct(t.move), 'Market value': usd(t.cap, { compact: true }) });
+  protected readonly plainName = plainName;
+  protected readonly tileTip = (t: Tile) => tip({ [t.ticker]: plainName(t.name), Today: t.move === null ? null : pct(t.move), 'Market value': usd(t.cap, { compact: true }) });
   protected readonly logoSize = (t: Tile, m: { big: number }) => Math.round(Math.min(t.w, t.h, m.big * 1.6) * 0.42);
 }

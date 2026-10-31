@@ -177,13 +177,21 @@ them too, quoting the sites that write the exact number with its date. What a co
   ±6.8% on average in the session after its last 8 reports (as of Oct 27, 2026)". A `data-tip`, an SVG or a hover card is not text to
   them: the fact is in the template's text too (a `pt-sr` span when it must not show).
 - **The question in the words people search, then the answer in its first sentence**: "Is Nvidia a good stock to buy?", "When does
-  Nvidia report earnings?", "Earnings calendar this week", "Stock market heat map". Common names, as people and the press write them
-  ("Nvidia", "Meta"; `plainName` drops "Inc." and the like).
+  Nvidia report earnings?", "Earnings calendar this week", "Stock market heat map".
+- **Common names, as people and the press write them**: every company name a component prints goes through `plainName` (format):
+  the legal suffixes go, then `COMMON_NAMES` gives the name the press uses where the provider's is not it ("NVIDIA Corporation" →
+  "Nvidia", "Meta Platforms, Inc." → "Meta", "Advanced Micro Devices" → "AMD"; read against www's 517 companies on 2026-10-31: a new
+  company with an odd name gets its line there). `named(name, ticker)` is the usual form, "Nvidia (NVDA)", the ticker alone when it
+  is the name ("RTX", "AMD"); a table shows the name beside the ticker only when it differs.
 - **The date in the text**, and in a heading when the data is today's ("Earnings today · Wed, Oct 28"), always with the explicit date:
   a page built at night is read the next day. Say what is an estimate (a date not confirmed, a forecast).
 - **Links say where they go** ("Nvidia earnings date", "Why Meta is down this week"), never "more" or "the answer on pretickt".
-- **Questions with their answers come in the payload**, templated by the resolver, so the generator puts the same pairs in the page's
-  structured data; one answer per question on a page. A question about buying is answered with facts, never a yes or a no.
+- **Questions with their answers come in the payload**, templated by the resolver; one answer per question on a page. A question about
+  buying is answered with facts, never a yes or a no. The template marks each one it answers: `data-faq` around it, `data-faq-q` on the
+  question, `data-faq-a` on the answer (visible text both). renderPage returns them (`faq`, src/site/faq.ts, in page order; a second
+  answer to the same question further down comes back in `faqRepeated`) and the generator writes them as the page's FAQPage JSON-LD:
+  components never write ld+json. A question another placement answers keeps its place with a link to that answer (`faqId` gives a
+  question its address: pt-value's `#value-who-is-dumping-nvidia-stock`).
 The evidence (the questions searched for each component, who the AI answers cite) is in the private repo: `launch/RESEARCH.md` §9
 and `launch/AI-SEARCH.md`.
 
@@ -228,6 +236,11 @@ export const stories = [
   media queries apply; `/visual/pt-x/<n>`: one alone). The platform's experiments (`admin/experiments`, next to this checkout)
   show up too, their bench presets as stories. In the console, `copy(storyOf($0))` copies what a story shows as a new story.
 - `src/stories/stories.spec.ts` fails a component without stories, a fixture its typology rejects and a story that does not render.
+- **Pages before they are published** (`src/stories/pages.stories.ts`, group "Pages · before publishing"): a page as the platform's
+  `pages.ts` builds it (crumbs, h1, lede, sub-navigation, sections), its parts the components on www's data and the drafts on their
+  made-up data, what changes marked new; above it what search engines read first (address, title, description, JSON-LD with the
+  FAQPage read from the questions the page shows). `/visual/pt-preview-company`, `-home`, `-sector`, `-market-map`, `-trending`, and
+  `/visual/pt-preview-names` (every company's name today and its common name). They mirror pages.ts by hand: change them with it.
 - **Drafts** (`components/drafts/`): a component whose data has no pipeline yet, to be looked at before it has one. It takes its
   payload as an input (the shape its typology will have), its made-up data is in `mock.ts`, its classes in `drafts.css` (loaded by
   the stories app only) and its stories in `home.stories.ts`. The build never sees it (not in the registry, never on a page). To

@@ -1,4 +1,5 @@
 import { InjectionToken, makeStateKey } from '@angular/core';
+import type { FaqPair } from './faq';
 
 /** One component on a page: its tag and props; `off` = shown as "not available" without the component (a placement the build refused). */
 export interface PagePlacement { c: string; props: Record<string, unknown>; off?: boolean }
@@ -31,6 +32,10 @@ export interface RenderResult {
   empty: string[];
   /** Placements (`tag@version`) with a call that took longer than the timeout (answered null). */
   timeouts: string[];
+  /** The questions the page answers, marked by its placements (`data-faq`, see faq.ts), in page order: its FAQPage JSON-LD. */
+  faq: FaqPair[];
+  /** Questions answered a second time further down the page (one answer per question: the first is kept). */
+  faqRepeated: string[];
 }
 
 /** What `dist/site/server/main.server.mjs` gives the generator and the admin (after its polyfills are loaded). */

@@ -35,7 +35,8 @@ describe('company cards on hover', () => {
     over('aapl');
     expect(panel()).toBeNull();
     await vi.waitFor(() => expect(panel()?.querySelector('.pt-card-compact')).toBeTruthy());
-    expect(panel()!.textContent).toContain('Apple Inc.');
+    expect(panel()!.textContent).toContain('Apple');
+    expect(panel()!.textContent).not.toContain('Apple Inc.');
     expect(panel()!.querySelector('.pt-card-foot')!.textContent).toBe('Earnings Oct 28, 2026');
     expect(api.mock.calls.map((c) => c[0])).toContain(needPath({ t: 'company@1', params: { ticker: 'AAPL' } }, 'b1'));
   });
@@ -50,7 +51,7 @@ describe('company cards on hover', () => {
     panel()!.dispatchEvent(new Event('pointerleave'));
     await vi.waitFor(() => expect(panel()).toBeNull());
     over('nvda');
-    await vi.waitFor(() => expect(panel()?.textContent).toContain('NVIDIA'));
+    await vi.waitFor(() => expect(panel()?.textContent).toContain('Nvidia'));
     over('aapl');
     await vi.waitFor(() => expect(panel()?.textContent).toContain('Apple'));
     expect(document.querySelectorAll('.pt-hovercard')).toHaveLength(1);

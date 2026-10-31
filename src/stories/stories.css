@@ -18,3 +18,28 @@
 .sb-index a { font: 600 .9rem/1.3 var(--font-mono); color: var(--color-primary); }
 .sb-names { display: block; margin-top: .15rem; color: var(--color-ink-soft); font-size: .8rem; line-height: 1.4; }
 .sb-index .pt-meta { margin-left: .4rem; }
+
+/* Page previews (pages.stories.ts): the head search engines read, above the page as the site lays it out */
+.pv { display: grid; gap: 1rem; }
+.pv-head { padding: .75rem 1rem; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-surface-raised);
+  font-size: .8rem; color: var(--color-ink); }
+.pv-h { margin: .25rem 0 .4rem; font: 600 .7rem/1.3 var(--font-mono); letter-spacing: .04em; text-transform: uppercase; color: var(--color-ink-soft); }
+.pv-meta { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .2rem .9rem; margin: 0 0 .5rem; }
+.pv-meta dt { color: var(--color-ink-soft); }
+.pv-meta dd { margin: 0; overflow-wrap: anywhere; }
+.pv-title { font-weight: 600; color: var(--color-primary); }
+.pv-ld { max-height: 16rem; overflow: auto; margin: .3rem 0 0; padding: .5rem .6rem; border-radius: 6px; background: var(--color-surface);
+  font: .7rem/1.4 var(--font-mono); white-space: pre-wrap; }
+.pv-warn { margin: .3rem 0; color: var(--color-neg); font-weight: 600; }
+.pv-page { border: 1px solid var(--color-border); border-radius: var(--radius-control); min-height: 0; }
+.pv-new { position: relative; padding: .5rem .75rem .75rem; border: 2px dashed var(--color-primary); border-radius: var(--radius-control); }
+.pv-badge { margin: 0 0 .5rem; font: 600 .68rem/1.3 var(--font-mono); color: var(--color-primary); text-transform: uppercase; letter-spacing: .04em; }
+.pv-new-link { outline: 1px dashed var(--color-primary); }
+.pv-qa { margin-top: .8rem; }
+.pv-qa h3 { margin: 0; font-size: .95rem; font-weight: 650; }
+.pv-qa p { margin: .2rem 0 0; }
+.pv-toggle { display: inline-flex; gap: .4rem; align-items: center; margin: .5rem 0; font-size: .85rem; }
+.pv-names { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.pv-names th, .pv-names td { padding: .25rem .5rem; border-bottom: 1px solid var(--color-border); text-align: left; }
+.pv-names th { color: var(--color-ink-soft); font-weight: 600; }
+.pv-changed td:last-child { color: var(--color-primary); }

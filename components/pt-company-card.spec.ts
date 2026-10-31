@@ -14,7 +14,7 @@ describe('pt-company-card', () => {
 
   it('shows the company, its price over 60 sessions, the 52-week range, the consensus and the price target', async () => {
     const out = (await render(PtCompanyCard, { ticker: 'NVDA' })).html();
-    expect(out).toContain('NVIDIA Corporation');
+    expect(out).toContain('<div class="pt-card-name">Nvidia</div>');
     expect(out).toContain(`NVDA · ${usd(item('market_cap').value!, { compact: true })}`);
     expect(out).toContain(money(close));
     expect(out).toContain(pct(close / last60[0]!.c - 1));

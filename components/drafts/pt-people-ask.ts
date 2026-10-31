@@ -11,13 +11,15 @@
  * a reference (the distance from the high) and the split into market, sector and its own part — the piece the AI answers lack.
  * Next to the pulse's needs, the questions Google keeps asking that pretickt's data answers: what $10,000 invested 5 years ago is
  * worth, who is selling (insiders and the largest funds), how it makes money, who owns it (both readings: a parent company or its
- * shareholders). A question another placement of the page answers (pt-value's) is left out by the resolver: one answer per question
- * on a page.
- * @version 0.0.2
+ * shareholders). The next report is always one of its questions ("When does Nvidia report earnings?", the most searched about any
+ * stock): the resolver fills `earnings` whenever a date is known, shown when the week did not ask it. A question another placement of
+ * the page answers (pt-value's) keeps its place, as asked, with a link to that answer and no answer of its own: one answer per
+ * question on a page. Each question it answers is marked for the page's structured data (`data-faq`, `data-faq-q`, `data-faq-a`).
+ * @version 0.0.3
  */
-import { Component, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { PtLogo } from '@pretickt/components/ds';
-import { date, level, num } from '@pretickt/components/format';
+import { date, level, num, plainName } from '@pretickt/components/format';
 import { railMarks, splitBars, type AskViz } from './pt-asked';
 
 /**
@@ -27,7 +29,8 @@ import { railMarks, splitBars, type AskViz } from './pt-asked';
 export type AskNeed = 'why_moving' | 'buy_or_not' | 'when_sell' | 'dip_pullback' | 'earnings_events' | 'dividends_income' | 'trust_track_record'
   | 'past_return' | 'who_sells' | 'business' | 'ownership';
 export interface PeopleAskItem {
-  need: AskNeed; question: string; answer: string; big: string; tone: 'pos' | 'neg' | 'flat';
+  /** `answer` null: another placement of the page answers it (pt-value's); `href` is that answer's address, `link` its words */
+  need: AskNeed; question: string; answer: string | null; big: string; tone: 'pos' | 'neg' | 'flat';
   /** the page that explains the answer, and the link's words (descriptive: they are an internal link) */
   href: string; link: string;
   /** questions of this kind about the company this week; null when nobody asked it (the usual question) */
@@ -40,6 +43,11 @@ export interface PeopleAskChatter {
 export interface PeopleAsk {
   ticker: string; name: string; logo: string | null; asOf: string;
   chatter: PeopleAskChatter | null; needs: { need: AskNeed; share: number }[]; items: PeopleAskItem[];
+  /**
+   * The company's next report as a question ("When does Nvidia report earnings?", the most searched about any stock), filled by the
+   * resolver whenever a date is known; null without one. Shown when the week's questions do not already ask it.
+   */
+  earnings: PeopleAskItem | null;
 }
 
 export const NEEDS: Record<AskNeed, { label: string; phrase: string }> = {
@@ -85,7 +93,7 @@ export function needBar(needs: PeopleAsk['needs']): { key: string; label: string
   selector: 'pt-people-ask',
   imports: [PtLogo],
   template: `
-    @let d = data();
+    @let d = ask();
     @if (d === null) {<p class="pt-na">Data not available</p>}
     @else {
       <div class="dp">
@@ -116,12 +124,12 @@ export function needBar(needs: PeopleAsk['needs']): { key: string; label: string
         }
         <div [class]="variant() === 'cards' ? 'dp-cards' : 'dp-faq'">
           @for (a of d.items; track a.question) {
-            <article class="dp-qa">
-              <span [class]="'dp-big pt-t-' + a.tone" aria-hidden="true">{{ a.big }}</span>
+            <article class="dp-qa" [attr.data-faq]="a.answer ? '' : null">
+              <span [class]="a.answer ? 'dp-big pt-t-' + a.tone : 'dp-big'" aria-hidden="true">{{ a.answer ? a.big : '' }}</span>
               <div class="dp-body">
-                <h3 class="dp-q">{{ a.question }}</h3>
-                <p class="dp-a">{{ a.answer }}</p>
-                @if (a.viz; as v) {
+                <h3 class="dp-q" [attr.data-faq-q]="a.answer ? '' : null">{{ a.question }}</h3>
+                @if (a.answer) {<p class="dp-a" data-faq-a>{{ a.answer }}</p>}
+                @if (a.answer && a.viz; as v) {
                   <svg class="dr-ask-viz" viewBox="0 0 200 30" preserveAspectRatio="xMinYMid meet" aria-hidden="true">
                     @switch (v.kind) {
                       @case ('split') {
@@ -147,7 +155,7 @@ export function needBar(needs: PeopleAsk['needs']): { key: string; label: string
                     }
                   </svg>
                 }
-                <p class="pt-meta">@if (a.asked) {asked {{ a.asked }} {{ a.asked === 1 ? 'time' : 'times' }} this week · }<a [href]="a.href">{{ a.link }}&nbsp;→</a></p>
+                <p class="pt-meta">@if (a.asked) {asked {{ a.asked }} {{ a.asked === 1 ? 'time' : 'times' }} this week · }@if (!a.answer) {answered on this page: }<a [href]="a.href">{{ a.link }}&nbsp;→</a></p>
               </div>
             </article>
           }
@@ -158,6 +166,13 @@ export function needBar(needs: PeopleAsk['needs']): { key: string; label: string
 export class PtPeopleAsk {
   readonly data = input.required<PeopleAsk | null>();
   readonly variant = input<'faq' | 'cards'>('faq');
+  /** The payload as the page shows it: the company's common name, the next report among the questions when the week did not ask it. */
+  protected readonly ask = computed(() => {
+    const d = this.data();
+    if (!d) return null;
+    const items = d.earnings && !d.items.some((a) => a.need === 'earnings_events') ? [...d.items, d.earnings] : d.items;
+    return { ...d, name: plainName(d.name), items };
+  });
   protected readonly lede = askLede;
   protected readonly heat = weekHeat;
   protected readonly hot = HOT;

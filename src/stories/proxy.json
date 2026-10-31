@@ -1,5 +1,6 @@
 {
   "/v1": { "target": "https://www.pretickt.com", "secure": true, "changeOrigin": true },
   "/build.json": { "target": "https://www.pretickt.com", "secure": true, "changeOrigin": true },
-  "/logos": { "target": "https://www.pretickt.com", "secure": true, "changeOrigin": true }
+  "/logos": { "target": "https://www.pretickt.com", "secure": true, "changeOrigin": true },
+  "/search.json": { "target": "https://www.pretickt.com", "secure": true, "changeOrigin": true }
 }

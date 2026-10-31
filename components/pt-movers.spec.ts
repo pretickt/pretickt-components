@@ -63,10 +63,10 @@ describe('pt-movers', () => {
   basics(PtMovers, { sort: 'cap' });
 
   it('every company is a link to its page, its numbers in the tooltip, its move spoken', async () => {
-    const r = await view(payload([row('NVDA', -0.066, { industry: { median: -0.05, peers: [{ ticker: 'AMD', move: -0.09 }] } }), row('AAPL', 0.02)]));
+    const r = await view(payload([row('NVDA', -0.066, { name: 'NVIDIA Corporation', industry: { median: -0.05, peers: [{ ticker: 'AMD', move: -0.09 }] } }), row('AAPL', 0.02)]));
     const links = [...r.el.querySelectorAll('a.pt-mv-co')];
     expect(links.map((a) => a.getAttribute('href'))).toEqual(['/stocks/nvda/', '/stocks/aapl/']);
-    expect(links[0]!.getAttribute('aria-label')).toBe('NVDA Inc., -6.6% this week');
+    expect(links[0]!.getAttribute('aria-label')).toBe('Nvidia, -6.6% this week');
     const rows = JSON.parse(links[0]!.getAttribute('data-tip')!) as Record<string, string>;
     expect(rows).toEqual({ 'This week': '-6.6%', 'Last 30 days': '-13.2%', 'Last 90 days': '-19.8%', Drawdown: '-8.0% since Sep 1, 2026 (29 days)',
       'Industry moving too': 'median -5.0%', Peers: 'AMD -9.0%' });

@@ -3,6 +3,7 @@ import { bootstrapApplication } from '@angular/platform-browser';
 import { BEFORE_APP_SERIALIZED, provideServerRendering, renderApplication } from '@angular/platform-server';
 import { PT_STORE, PtStore, validateParams } from '@pretickt/components/context';
 import { checkMarkup } from '../checks/markup';
+import { readFaq, type FaqPair } from './faq';
 import { demoFor, getTypology } from '../typologies';
 import { appConfig } from './app.config';
 import { CALLS_KEY, PT_PAGE, type PageModel, type RenderOptions, type RenderResult } from './model';
@@ -30,6 +31,7 @@ export async function renderPage(model: PageModel, o: RenderOptions): Promise<Re
   const errors: unknown[] = [];
   const markup: Record<string, string[]> = {};
   const empty: string[] = [];
+  let faq: FaqPair[] = [], faqRepeated: string[] = [];
   const ms = o.timeoutMs ?? CALL_TIMEOUT_MS;
   const resolve = (t: string, params: unknown, who?: string) => {
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -57,13 +59,15 @@ export async function renderPage(model: PageModel, o: RenderOptions): Promise<Re
             if (lines.length) markup[id] = lines;
             if (!el.querySelector('*')) empty.push(id);
           });
+          // the questions the page answers, its placements' and the generator's own: the page's FAQPage
+          ({ pairs: faq, repeated: faqRepeated } = readFaq(doc.body ?? doc));
         };
       } },
     ],
   });
   const html = await renderApplication((context) => bootstrapApplication(PtPage, config, context), { document: o.document, url: 'http://localhost/', allowedHosts: ['localhost'] });
   if (errors.length) throw errors[0];
-  return { html, calls: record, failed: Object.keys(record).filter((k) => record[k] === null), markup, empty, timeouts: [...timeouts] };
+  return { html, calls: record, failed: Object.keys(record).filter((k) => record[k] === null), markup, empty, timeouts: [...timeouts], faq, faqRepeated };
 }
 
 /**
