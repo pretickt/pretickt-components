@@ -7,7 +7,7 @@
  * facts strengthened its quality and how many weakened it — and names the company, not the ticker, in the drop test: the text an
  * AI answer can quote with its date.
  * The company is named as a link with its logo (PtSay): its card opens on hover, on its own page too.
- * @version 0.3.0
+ * @version 0.3.1
  * @evidence Romeo 2026-10-24: "la qualità dell'azienda è intatta, a breve, medio e lungo termine?" — six sections, a card per new fact (brainstorming/scheda-qualita.html, proposals A + D)
  * @evidence pulse 19–25 Oct 2026: 89% of the real questions about a stock ask about quality or the decision (impact scorecard 7.5/10)
  * @evidence DataForSEO 2026-10-28 (round 13): "is {company} a good stock to buy" ≈64,000 searches a month on ~100 companies, AI Overview on 90%; the facts' own words ("pe ratio", "revenue growth", "gross margin", "guidance"…) 153,000 on 25 companies (launch/RESEARCH.md §9)
@@ -49,6 +49,16 @@ const BAND = 0.02;            // a change smaller than 2 points is steady
 const DAY = 86400000;
 const days = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / DAY);
 const toneOf = (d: number, band = BAND): QTone => (d >= band ? 'pos' : d <= -band ? 'neg' : 'flat');
+/** The operating margin against a year earlier: up from, down from, or little changed from it. */
+export const marginFact = (now: number, before: number, tone: QTone = toneOf(now - before)) =>
+  `Operating margin ${level(now)}, ${tone === 'flat' ? 'little changed from' : tone === 'pos' ? 'up from' : 'down from'} ${level(before)} a year earlier`;
+/** A drop's own part in words: the points the stock lost on its own, or that the market and its peers explain all of it (or none). */
+export function ownPart(d: { ret: number; own: number }): string {
+  const own = -d.own * 100, total = -d.ret * 100;
+  if (own <= 0.05) return 'the market and its peers explain all of it.';
+  if (own >= total - 0.05) return 'all of it is its own.';
+  return `${num(own, 1)} of the ${num(total, 1)} points are its own.`;
+}
 const median = (xs: number[]) => { const s = [...xs].sort((a, b) => a - b); const m = s.length >> 1; return s.length % 2 ? s[m]! : (s[m - 1]! + s[m]!) / 2; };
 
 type Bars = { t: string; c: number }[];
@@ -89,7 +99,7 @@ export function qualityCards(ticker: string, f: Fundamentals | null | undefined,
     if (p.operatingMargin != null && a.operatingMargin != null) {
       const tone = toneOf(p.operatingMargin - a.operatingMargin);
       out.push({ pillar: 'economics', tone, date: when, horizon: 'years', href: fin, source: 'Quarterly results', reaction,
-        fact: `Operating margin ${level(p.operatingMargin)}, ${tone === 'flat' ? 'about' : tone === 'pos' ? 'up from' : 'down from'} ${level(a.operatingMargin)} a year earlier`,
+        fact: marginFact(p.operatingMargin, a.operatingMargin, tone),
         why: tone === 'pos' ? 'More of each dollar of sales is left as profit.' : tone === 'neg' ? 'Less of each dollar of sales is left as profit.'
           : 'Margins held where they were a year earlier.',
         viz: { kind: 'change', from: a.operatingMargin, to: p.operatingMargin } });
@@ -208,7 +218,7 @@ export function slope(from: number, to: number) {
             <p class="pt-q-drop-lead"><pt-say [parts]="[who()]" /> is {{ level(-d.ret) }} below its high of {{ date(d.high) }}.
               @if (d.peers !== null && d.own !== null && d.market !== null) {
                 Over the same sessions the market (SPY) moved {{ pct(d.market) }} and its peers {{ pct(d.peers) }}:
-                {{ num(-d.own * 100, 1) }} of the {{ num(-d.ret * 100, 1) }} points are its own.
+                {{ ownPart({ ret: d.ret, own: d.own }) }}
               } @else if (d.market !== null) {Over the same sessions the market (SPY) moved {{ pct(d.market) }}.}
             </p>
             <p class="pt-q-drop-since">Since the high:
@@ -355,6 +365,7 @@ export class PtQuality {
   };
   protected readonly date = date;
   protected readonly level = level;
+  protected readonly ownPart = ownPart;
   protected readonly num = num;
   protected readonly pct = pct;
   protected readonly tip = tip;

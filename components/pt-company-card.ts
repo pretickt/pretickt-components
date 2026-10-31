@@ -1,7 +1,7 @@
 /**
  * How does this company look at a glance: price over the last 60 sessions (today's, 15 minutes late, while the market is open),
  * 52-week range, analysts, and its key numbers?
- * @version 1.2.1
+ * @version 1.2.2
  * @evidence beta: the company page header and the hover mini-card (CompanyHoverCard), asked back by Romeo on 2026-10-06
  */
 import { Component, computed, inject, input, signal } from '@angular/core';
@@ -28,8 +28,9 @@ const SPARK_W = 120, SPARK_H = 32;
         <div class="pt-card-id">
           <pt-logo [ticker]="ticker()" [src]="co.value()?.logo ?? null" [size]="size() === 'wide' ? 40 : 32" />
           <div class="pt-card-who">
-            <div class="pt-card-name">{{ co.value()?.name ? plainName(co.value()!.name) : ticker() }}</div>
-            <div class="pt-meta">{{ ticker() }}{{ mcap() != null ? ' · ' + usd(mcap(), { compact: true }) : '' }}</div>
+            @let title = co.value()?.name ? plainName(co.value()!.name) : ticker();
+            <div class="pt-card-name">{{ title }}</div>
+            <div class="pt-meta">{{ subLine(title) }}</div>
           </div>
         </div>
         @if (close() != null) {
@@ -90,6 +91,9 @@ export class PtCompanyCard {
   protected readonly SPARK_H = SPARK_H;
   protected readonly money = money;
   protected readonly plainName = plainName;
+  /** Under the name, the ticker (not when the name is the ticker in other letters: "AMD", or no profile) and the market value. */
+  protected subLine = (title: string) => [title.toUpperCase() === this.ticker().toUpperCase() ? '' : this.ticker(),
+    this.mcap() != null ? usd(this.mcap(), { compact: true }) : ''].filter(Boolean).join(' · ');
   protected readonly pct = pct;
   protected readonly tone = tone;
   protected readonly usd = usd;

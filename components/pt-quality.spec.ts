@@ -1,6 +1,6 @@
 import type { Events, Fundamentals, PriceSeries } from '../src/typologies';
 import { mention, saidText } from '../src/ds/format';
-import { dropTest, PtQuality, qualityCards, qualityLead, reactionAfter, rowSentence, slope, verdict, type QCard } from './pt-quality';
+import { dropTest, marginFact, ownPart, PtQuality, qualityCards, qualityLead, reactionAfter, rowSentence, slope, verdict, type QCard } from './pt-quality';
 import { basics, render, withData } from './_spec';
 
 type Period = Fundamentals['periods'][number];
@@ -125,6 +125,15 @@ describe('pt-quality', () => {
     const r = await view();
     expect(r.el.querySelector('.pt-q-drop-lead')!.textContent!.replace(/\s+/g, ' ').trim()).toMatch(/^XYZ is 19\.9% below its high of .+ Over the same sessions the market \(SPY\) moved -1\.2% and its peers -3\.4%: 16\.6 of the 19\.9 points are its own\.$/);
     expect(r.el.querySelector('.pt-q-drop-since')!.textContent!.replace(/\s+/g, ' ')).toContain('Price weakened: P/E 14.0×');
+  });
+  it('the drop\'s own part in words when the market and its peers explain all of it, or none of it', () => {
+    expect(ownPart({ ret: -0.1, own: 0.01 })).toBe('the market and its peers explain all of it.');
+    expect(ownPart({ ret: -0.1, own: -0.12 })).toBe('all of it is its own.');
+    expect(ownPart({ ret: -0.199, own: -0.166 })).toBe('16.6 of the 19.9 points are its own.');
+  });
+  it('a margin that barely moved is "little changed", never "about"', () => {
+    expect(marginFact(0.304, 0.305)).toBe('Operating margin 30.4%, little changed from 30.5% a year earlier');
+    expect(marginFact(0.33, 0.3)).toBe('Operating margin 33.0%, up from 30.0% a year earlier');
   });
   it('opens with its answer in a sentence and names the company (from its own row in the peers\' list) instead of the ticker', async () => {
     const self = { ticker: 'XYZ', name: 'Xylo Zen Corporation', sector: 'Technology', logo: null, close: 96, chg1d: 0, offHigh: -0.2, pe: 14, ptUpside: 0.1,

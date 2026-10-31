@@ -134,11 +134,17 @@ function nextSession(d: string, closed: ReadonlySet<string>): string {
 /** The session that trades a report: its own before the open, the next one after the close; unknown without a time. */
 const reactsOn = (e: Earnings, closed: ReadonlySet<string>) => (e.meta.time === 'bmo' ? e.date : e.meta.time === 'amc' ? nextSession(e.date, closed) : null);
 
-/** A market date as a row names it (the words people search) and as a sentence does; an unknown label keeps the release's own name. */
-const MACRO_NAMES: Record<string, [row: string, sentence: string]> = {
-  Fed: ['Fed rate decision', 'The Fed\'s rate decision'], FOMC: ['FOMC minutes', 'The FOMC minutes'], CPI: ['CPI report', 'The CPI report'],
-  PCE: ['PCE report', 'The PCE report'], Jobs: ['Jobs report', 'The jobs report'], GDP: ['GDP report', 'The GDP report'],
+/**
+ * A market date as a row names it beside its label (not "CPI CPI report"), as the list by day names it (the words people search) and as
+ * a sentence does; an unknown label keeps the release's own name.
+ */
+const MACRO_NAMES: Record<string, [row: string, list: string, sentence: string]> = {
+  Fed: ['Rate decision', 'Fed rate decision', 'The Fed\'s rate decision'], FOMC: ['Meeting minutes', 'FOMC minutes', 'The FOMC minutes'],
+  CPI: ['Consumer prices', 'CPI report', 'The CPI report'], PCE: ['Inflation', 'PCE report', 'The PCE report'],
+  Jobs: ['Payrolls', 'Jobs report', 'The jobs report'], GDP: ['Growth', 'GDP report', 'The GDP report'],
 };
+/** A market date in the list by day: the report's name ("CPI report"), a holiday as the market closed. */
+export const listName = (m: Macro) => MACRO_NAMES[m.meta.label]?.[1] ?? (m.meta.label === 'Closed' ? `Market closed: ${m.meta.event}` : `${m.meta.label}: ${firstRelease(m)}`);
 const firstRelease = (m: Macro) => m.meta.event.split(' · ')[0]!;
 /** A headline figure in its unit, with the decimals it came with ("2.9%", "120K"); the Fed's rate always with two ("3.50%"). */
 function figure(v: number, unit: string | null, label: string): string {
@@ -188,7 +194,7 @@ function earningsRow(e: Earnings, asOf: string, closed: ReadonlySet<string>): Ro
     const pending = moved == null && on != null && on > asOf;
     when = `Reported ${dayLabel(e.date)}${t ? ` · ${t}` : ''}${pending ? ` · reacts ${WEEKDAY[weekday(on!)]}` : ''}`;
     const eps = m.epsActual != null && m.epsEst != null ? verdictPhrase(m.epsActual, m.epsEst) : '';
-    hint = [eps, moved != null && u != null ? `${times(Math.abs(moved) / u)} its usual` : ''].filter(Boolean).join(' · ');
+    hint = upper([eps, moved != null && u != null ? `${times(Math.abs(moved) / u)} its usual` : ''].filter(Boolean).join(' · '));
     const fig = eps ? `: EPS ${money(m.epsActual)} vs ${money(m.epsEst)} expected, ${eps}` : '';
     said = moved != null
       ? say`${who} reported ${dayLabel(e.date)}${t ? `, ${t}` : ''}${fig}. The stock moved ${pct(moved)} in the session that traded it${u != null ? `, ${times(Math.abs(moved) / u)} its usual ${usual}` : ''}.`
@@ -199,7 +205,7 @@ function earningsRow(e: Earnings, asOf: string, closed: ReadonlySet<string>): Ro
       : `${dayLabel(e.date)}${t ? ` · ${t}` : ''}${on && on !== e.date ? ` · reacts ${WEEKDAY[weekday(on)]}` : ''}`;
     const ups = moves.filter((v) => v > 0).length;
     hint = u == null ? (m.epsEst != null ? `EPS est. ${money(m.epsEst)}` : '')
-      : [record ? `beat ${record.beats} of ${record.of}` : '', `rose after ${ups} of ${n}`].filter(Boolean).join(' · ');
+      : upper([record ? `beat ${record.beats} of ${record.of}` : '', `rose after ${ups} of ${n}`].filter(Boolean).join(' · '));
     const tail = (usual ? ` In the session after each of its last ${n} reports it moved ${usual} on average.` : '') +
       (record ? ` It beat the EPS estimate in ${record.beats} of its last ${record.of} reports.` : '') +
       (u == null && m.epsEst != null ? ` The EPS estimate is ${money(m.epsEst)}.` : '');
@@ -218,7 +224,7 @@ function earningsRow(e: Earnings, asOf: string, closed: ReadonlySet<string>): Ro
 function macroRow(e: Macro, asOf: string, normal: number | null): Row {
   const m = e.meta, out = e.date <= asOf, u = usualMove(m.moves), n = Math.min(REPORTS, m.moves?.length ?? 0), moved = out ? m.move ?? null : null;
   const h = m.headline ?? null, f = (v: number) => figure(v, h?.unit ?? null, m.label), fed = m.label === 'Fed';
-  const [title, noun] = MACRO_NAMES[m.label] ?? [firstRelease(e), firstRelease(e)];
+  const [title, , noun] = MACRO_NAMES[m.label] ?? [firstRelease(e), '', firstRelease(e)];
   const vs = (actual: number) => (h?.expected == null ? '' : fed ? (actual === h.expected ? ', as expected' : `, ${f(h.expected)} expected`) : ` vs ${f(h.expected)} expected`);
   let hint = '', said: string;
   if (out) {
@@ -241,7 +247,7 @@ function macroRow(e: Macro, asOf: string, normal: number | null): Row {
 function dividendRow(e: Dividend, asOf: string): Row {
   const out = e.date <= asOf, who = mention(e.ticker, e.name, e.logo), name = plainName(e.name), paid = e.meta.payDate ? dayMonth(e.meta.payDate) : null;
   return { key: rowKey(e), out, label: null, title: name, ticker: e.ticker, logo: e.logo, showTicker: named(e.name, e.ticker) !== name,
-    unconfirmed: false, cue: amount(e.meta.amount), cueTone: 'est', when: `Ex-dividend ${dayLabel(e.date)}`, hint: paid ? `paid ${paid}` : '', bars: null,
+    unconfirmed: false, cue: amount(e.meta.amount), cueTone: 'est', when: `Ex-dividend ${dayLabel(e.date)}`, hint: paid ? `Paid ${paid}` : '', bars: null,
     said: say`${who} ${out ? 'went' : 'goes'} ex-dividend ${dayLabel(e.date)}: ${amount(e.meta.amount)} a share${paid ? `, paid ${paid}` : ''}.`, facts: '', news: [] };
 }
 
@@ -415,7 +421,7 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
           <h3 class="pt-cal-list-title">Every date in {{ cal().label }}, by day</h3>
           <ol class="pt-cal-list">
             @for (c of listed(); track c.date) {
-              <li><span class="pt-cal-list-day">{{ date(c.date) }}</span>@for (e of entries(c); track $index; let i = $index) {<ng-container>{{ i ? ', ' : ' ' }}</ng-container>@if (e.kind === 'macro') {<strong>{{ e.meta.label }}</strong> ({{ e.meta.event }})} @else {<a ptMention [ticker]="e.ticker" [name]="e.name" [logo]="e.logo"></a>{{ tag(e) ? ' ' + tag(e) : '' }}}}</li>
+              <li><span class="pt-cal-list-day">{{ date(c.date) }}</span>@for (e of entries(c); track $index; let i = $index) {<ng-container>{{ i ? ', ' : ' ' }}</ng-container>@if (e.kind === 'macro') {<strong>{{ listName(e) }}</strong>} @else {<a ptMention [ticker]="e.ticker" [name]="e.name" [logo]="e.logo"></a>{{ tag(e) ? ' ' + tag(e) : '' }}}}</li>
             }
           </ol>
         } @else {<p class="pt-lede">No {{ kind() === 'dividend' ? 'ex-dividend dates' : 'earnings reports' }} scheduled for {{ cal().label }} in the tracked universe yet.</p>}
@@ -452,6 +458,7 @@ export class PtCalendar {
   protected readonly chipTip = chipTip;
   protected readonly weekdayOf = weekdayOf;
   protected readonly LEGEND = LEGEND;
+  protected readonly listName = listName;
   protected readonly href = href;
   protected readonly dayMonth = dayMonth;
 

@@ -94,6 +94,9 @@ describe('pt-calendar', () => {
     expect(grid.querySelectorAll('.pt-cal-macro').length).toBe(macro.length);
     expect(out).toContain('Fed');
     expect(out).not.toContain('/stocks//');
+    const list = (await render(PtCalendar, { month: '2026-10' }, withData({ 'events@1': events }))).el.querySelector('.pt-cal-list')!.textContent!;
+    expect(list).toContain('Fed rate decision');
+    expect(list).not.toMatch(/\(Fed Interest Rate Decision\)/);
   });
   it('marks an estimated earnings date with ~ and says so in the tip; a confirmed one is plain', async () => {
     const base = { date: '2026-10-15', ticker: 'NVDA', name: 'NVIDIA', logo: null, mcap: 5e12, kind: 'earnings' as const };
@@ -212,7 +215,7 @@ describe('pt-calendar rows: what to expect from each event', () => {
     const { of, line } = await rowsOf(OCT27);
     const msft = of('MSFT');
     expect(line(msft, 'pt-cal-row-cue')).toBe('±4.7%');
-    expect(line(msft, 'pt-cal-row-hint')).toBe('beat 7 of 8 · rose after 5 of 8');
+    expect(line(msft, 'pt-cal-row-hint')).toBe('Beat 7 of 8 · rose after 5 of 8');
     // the bars stay (Romeo: "le barrette restano, erano meglio"): the move after each of its last reports, up green, down red
     expect([...msft.querySelectorAll('svg.pt-cal-row-bars rect')].map((r) => r.getAttribute('class')))
       .toEqual(['pt-t-pos', 'pt-t-neg', 'pt-t-pos', 'pt-t-pos', 'pt-t-neg', 'pt-t-pos', 'pt-t-pos', 'pt-t-neg']);
@@ -237,12 +240,14 @@ describe('pt-calendar rows: what to expect from each event', () => {
     const { of, line } = await rowsOf(OCT27);
     expect(line(of('KO'), 'pt-cal-row-cue')).toBe('+1.1%');
     expect(of('KO').querySelector('.pt-cal-row-cue')!.classList).toContain('pt-t-pos');
-    expect(line(of('KO'), 'pt-cal-row-hint')).toBe('a beat (+4%) · 0.5× its usual');
+    expect(line(of('KO'), 'pt-cal-row-hint')).toBe('A beat (+4%) · 0.5× its usual');
     expect(line(of('Visa'), 'pt-cal-row-cue')).toBe('±3.2%');
-    expect(line(of('Visa'), 'pt-cal-row-hint')).toBe('a beat (+2%)');
+    expect(line(of('Visa'), 'pt-cal-row-hint')).toBe('A beat (+2%)');
   });
   it('a market date: what is expected, the market\'s usual move on its releases; once out, the figure and the move', async () => {
     const { of, line } = await rowsOf(OCT27);
+    // the label beside a title that does not repeat it (not "CPI CPI report"); the list by day names the report
+    expect([line(of('Fed'), 'pt-cal-row-who'), line(of('CPI'), 'pt-cal-row-who')]).toEqual(['Rate decision', 'Consumer prices']);
     expect(line(of('Fed'), 'pt-cal-row-cue')).toBe('±1.2%');
     expect(line(of('Fed'), 'pt-cal-row-hint')).toBe('Expected: a cut to 3.50% (from 3.75%)');
     expect(line(of('CPI'), 'pt-cal-row-cue')).toBe('-1.2%');
@@ -305,7 +310,7 @@ describe('pt-calendar rows: what to expect from each event', () => {
     const closed = { date: '2026-10-12', kind: 'macro' as const, meta: { label: 'Closed', event: 'Columbus Day', impact: null } };
     const { r, rows, line } = await rowsOf({ asOf: '2026-10-02', items: [ko, FED, closed] }, { month: '2026-10', kind: 'dividend' });
     expect(rows).toHaveLength(1);
-    expect([line(rows[0]!, 'pt-cal-row-cue'), line(rows[0]!, 'pt-cal-row-when'), line(rows[0]!, 'pt-cal-row-hint')]).toEqual(['$0.51', 'Ex-dividend Thu, Oct 15', 'paid Oct 30']);
+    expect([line(rows[0]!, 'pt-cal-row-cue'), line(rows[0]!, 'pt-cal-row-when'), line(rows[0]!, 'pt-cal-row-hint')]).toEqual(['$0.51', 'Ex-dividend Thu, Oct 15', 'Paid Oct 30']);
     expect(r.el.querySelector('.pt-cal-rows-title')!.textContent).toBe('The largest ex-dividend dates in October 2026');
     expect((await rowsOf({ asOf: '2026-10-02', items: [closed, CVX] })).rows).toHaveLength(1);
   });
@@ -351,7 +356,7 @@ describe('pt-calendar grid: the hint in the chip, a click opens the event', () =
     const pop = r.el.querySelector('.pt-cal-pop')!;
     expect(pop.getAttribute('role')).toBe('dialog');
     expect(pop.querySelector('.pt-cal-row-cue')!.textContent!.trim()).toBe('±4.7%');
-    expect(pop.querySelector('.pt-cal-row-hint')!.textContent!.trim()).toBe('beat 7 of 8 · rose after 5 of 8');
+    expect(pop.querySelector('.pt-cal-row-hint')!.textContent!.trim()).toBe('Beat 7 of 8 · rose after 5 of 8');
     expect(pop.querySelector('.pt-cal-row-say')!.textContent!.replace(/\s+/g, ' ').trim()).toMatch(/^Microsoft MSFT reports Wed, Oct 28 \(confirmed\)/);
     expect(pop.querySelectorAll('.pt-news-item')).toHaveLength(2);
     // the earnings summary card first (its row, with the bars), the company's usual card under it

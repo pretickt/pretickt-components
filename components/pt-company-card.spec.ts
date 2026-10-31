@@ -23,6 +23,15 @@ describe('pt-company-card', () => {
     expect(out).toContain(`PT ${money(close * (1 + item('pt_upside').value!))}`);
     expect(out).toMatch(/class="pt-card-range"/);
   });
+  it('names the company once: no ticker under a name that is the ticker in other letters (AMD), or under the ticker itself (no profile)', async () => {
+    const who = async (ticker: string, company: unknown) => {
+      const { el } = await render(PtCompanyCard, { ticker }, withData({ 'company@1': company }));
+      return [el.querySelector('.pt-card-name')!.textContent, el.querySelector('.pt-card-who .pt-meta')!.textContent];
+    };
+    // the market value alone under it ("$542B"), the ticker not repeated
+    expect(await who('AMD', { ticker: 'AMD', name: 'Advanced Micro Devices, Inc.', sector: 'Technology', industry: null, logo: null })).toEqual(['AMD', expect.stringMatching(/^\$[\d.]+[TBM]$/)]);
+    expect(await who('NVDA', null)).toEqual(['NVDA', usd(item('market_cap').value!, { compact: true })]);
+  });
   it('tags: the default set first, every other catalogue item behind "Show all" (in the HTML, hidden), unknown keys too', async () => {
     const extra = { key: 'zeta_score', label: 'Zeta', value: 2, text: null, unit: '', delta: null, tone: 'flat', range: null, icon: null, hint: 'h', asOf: '2026-10-02' };
     const out = (await render(PtCompanyCard, { ticker: 'NVDA' }, withData({ 'metric@1': [...metrics, extra] }))).html();
