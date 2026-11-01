@@ -183,6 +183,7 @@ export function marketMapPage(): PreviewPage {
     sections: [
       { id: 'map', items: [{ c: PtLogoMap, inputs: {} }] },
       { id: 'mega-caps', title: 'Mega-cap stocks heat map', isNew: true, items: [{ c: PtLogoMap, inputs: { lens: 'mega' } }] },
+      { id: 'news', title: 'News heat map', isNew: true, items: [{ c: PtLogoMap, inputs: { lens: 'news' } }] },
       { id: 'sectors', title: 'Sector heat maps', isNew: true, strip: true,
         items: SECTORS_BY_SIZE.map((s) => ({ c: PtLogoMap, inputs: { sector: s, form: 'card' } })) },
       { id: 'largest', title: 'Largest companies by market value', more: { href: '/stocks/', label: 'All stocks' }, items: [{ c: PtScreen, inputs: { list: 'largest', limit: 20 } }] },

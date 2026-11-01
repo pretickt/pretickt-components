@@ -8,7 +8,9 @@
  * The map takes its wide or its phone form by its own width, not the screen's: it stays readable inside a narrow column or a strip.
  * `form` "card": one landscape map of the 20 largest, its dated sentence under it (every card of a strip starts level), no legend —
  * a card in a strip of sectors.
- * @version 0.4.0
+ * `lens` "news": the 40 companies with the most news stories on the session's day (attention@1), each tile as large as its stories
+ * and coloured by the day's move; the sentence names the most covered and how that compares with its usual day.
+ * @version 0.5.0
  * @evidence Romeo 2026-10-25: home components "con i loghi delle aziende" for the overview — H3 · The market at a glance, ★ sector map (brainstorming/mappa-componenti.html)
  * @evidence DataForSEO 2026-10-28 (round 13): the "stock market heat map" family ≈33,400 searches a month, keyword difficulty 25–30, AI Overview on 2%, no dominant site (apps, guides, brokers); "largest companies by market cap" 22,200 (launch/RESEARCH.md §9)
  * @evidence Romeo 2026-11-01: "mettiamo alla fine della home la heat map del mercato delle mega caps", and a page of the heat maps
@@ -18,7 +20,10 @@ import { Component, computed, inject, input } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
 import { PtSay } from '@pretickt/components/ds';
 import { andSaid, date, mention, pct, plainName, say, stockHref, tip, usd, type Said } from '@pretickt/components/format';
-import type { ScreenRow } from '@pretickt/components/typologies';
+import type { AttentionRow, ScreenRow } from '@pretickt/components/typologies';
+
+/** What a map needs of a company: the market's list (screen@1) and the day's attention (attention@1) both have it. */
+type MapRow = Pick<ScreenRow, 'ticker' | 'name' | 'sector' | 'logo' | 'chg1d' | 'marketCap'>;
 
 type Sector = 'Technology' | 'Industrials' | 'Financial Services' | 'Healthcare' | 'Consumer Cyclical' | 'Consumer Defensive' | 'Utilities'
   | 'Real Estate' | 'Basic Materials' | 'Energy' | 'Communication Services';
@@ -58,10 +63,12 @@ export function squarify<T extends { value: number }>(items: readonly T[], r: Bo
 
 /** The mega caps: the companies worth $200 billion or more. */
 export const MEGA = 200e9;
-export const megaCaps = (rows: readonly ScreenRow[]) => rows.filter((r) => (r.marketCap ?? 0) >= MEGA);
-/** What the map shows: the largest companies, or the mega caps among them. */
-export type Lens = 'market' | 'mega';
-const NOUN: Record<Lens, string> = { market: 'largest companies', mega: 'companies worth $200 billion or more' };
+export const megaCaps = <R extends Pick<MapRow, 'marketCap'>>(rows: readonly R[]) => rows.filter((r) => (r.marketCap ?? 0) >= MEGA);
+/** What the map shows: the largest companies, the mega caps among them, or the companies most in the day's news. */
+export type Lens = 'market' | 'mega' | 'news';
+const NOUN: Record<'market' | 'mega', string> = { market: 'largest companies', mega: 'companies worth $200 billion or more' };
+/** The news map's size: its 40 most covered companies. */
+const NEWS_N = 40;
 
 /** The colour step of a day's move: two shades each way, and flat within ±0.25%. */
 export const stepOf = (m: number | null) =>
@@ -78,18 +85,21 @@ export function sectorLabel(sector: string, move: number | null, w: number): str
 const round = (v: number) => Math.round(v * 10) / 10;
 /** Only the site's own logo files (as pt-logo): anything else draws no image. */
 const site = (s: string | null) => (s && /^\/logos\/[a-z0-9.-]{1,40}$/.test(s) ? s : null);
-const capMove = (rows: ScreenRow[]) => {
+const capMove = (rows: MapRow[]) => {
   const known = rows.filter((r) => r.chg1d != null && r.marketCap);
   const w = known.reduce((s, r) => s + r.marketCap!, 0);
   return w ? known.reduce((s, r) => s + r.chg1d! * r.marketCap!, 0) / w : null;
 };
 
-/** The map of `rows` (the largest first) in a w × h box: sectors by their total value, companies inside, rounded to 0.1 unit. */
-export function buildMap(rows: readonly ScreenRow[], w: number, h: number): { blocks: Block[]; tiles: Tile[] } {
-  const known = rows.filter((r) => (r.marketCap ?? 0) > 0);
-  const bySector = new Map<string, ScreenRow[]>();
+/**
+ * The map of `rows` (the largest first) in a w × h box: sectors by their total `size` (market value, unless said), companies inside,
+ * rounded to 0.1 unit.
+ */
+export function buildMap<R extends MapRow>(rows: readonly R[], w: number, h: number, size: (r: R) => number | null = (r) => r.marketCap): { blocks: Block[]; tiles: Tile[] } {
+  const known = rows.filter((r) => (size(r) ?? 0) > 0);
+  const bySector = new Map<string, R[]>();
   for (const r of known) bySector.set(r.sector ?? 'Other', [...(bySector.get(r.sector ?? 'Other') ?? []), r]);
-  const sectors = [...bySector].map(([sector, list]) => ({ sector, list, value: list.reduce((s, r) => s + r.marketCap!, 0) }))
+  const sectors = [...bySector].map(([sector, list]) => ({ sector, list, value: list.reduce((s, r) => s + size(r)!, 0) }))
     .sort((a, b) => b.value - a.value || (a.sector < b.sector ? -1 : 1));
   const blocks: Block[] = [], tiles: Tile[] = [];
   for (const s of squarify(sectors, { x: 0, y: 0, w, h })) {
@@ -97,8 +107,8 @@ export function buildMap(rows: readonly ScreenRow[], w: number, h: number): { bl
     const head = s.h > HEAD * 2.5 && label !== null;
     blocks.push({ sector: s.sector, move, head, label, x: round(s.x), y: round(s.y), w: round(s.w), h: round(s.h) });
     const inner = { x: s.x, y: s.y + (head ? HEAD : 0), w: s.w, h: s.h - (head ? HEAD : 0) };
-    for (const t of squarify(s.list.map((r) => ({ r, value: r.marketCap! })), inner)) {
-      tiles.push({ ticker: t.r.ticker, name: t.r.name, logo: site(t.r.logo), move: t.r.chg1d, cap: t.r.marketCap!, step: stepOf(t.r.chg1d),
+    for (const t of squarify(s.list.map((r) => ({ r, value: size(r)! })), inner)) {
+      tiles.push({ ticker: t.r.ticker, name: t.r.name, logo: site(t.r.logo), move: t.r.chg1d, cap: t.r.marketCap ?? 0, step: stepOf(t.r.chg1d),
         sector: s.sector, x: round(t.x), y: round(t.y), w: round(t.w), h: round(t.h) });
     }
   }
@@ -106,7 +116,7 @@ export function buildMap(rows: readonly ScreenRow[], w: number, h: number): { bl
 }
 
 /** A company the sentence names: a link with its logo ("Nvidia NVDA"), its card on hover. */
-const who = (r: ScreenRow) => mention(r.ticker, r.name, r.logo);
+const who = (r: MapRow) => mention(r.ticker, r.name, r.logo);
 const and = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
 
 /**
@@ -114,7 +124,7 @@ const and = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).
  * 11 sectors rose, and 61 of the 100 largest companies. The three largest, Nvidia NVDA, Apple AAPL and Microsoft MSFT, moved
  * +1.2%, -0.4% and +0.8%; the biggest moves were …".
  */
-export function mapSentence(rows: readonly ScreenRow[], blocks: Block[], asOf: string, lens: Lens = 'market'): Said {
+export function mapSentence(rows: readonly MapRow[], blocks: Block[], asOf: string, lens: 'market' | 'mega' = 'market'): Said {
   const moved = rows.filter((r) => r.chg1d != null);
   if (!moved.length) return [];
   const up = moved.filter((r) => r.chg1d! > 0).length;
@@ -129,8 +139,28 @@ export function mapSentence(rows: readonly ScreenRow[], blocks: Block[], asOf: s
   const lead = say`As of ${date(asOf)}: ${first}. The ${['largest', 'largest', 'two largest', 'three largest'][largest.length]}, ${andSaid(largest.map((r) => [who(r)]))}, `;
   return say`${lead}moved ${and(largest.map((r) => pct(r.chg1d)))}${extremes}`;
 }
+/** "5×", "2.3×": how many times its usual day. */
+const times = (x: number) => `${Math.round(x * 10) / 10}×`;
+/** A company's stories, against its usual day when it has one: "46, 5× its usual day". */
+export const storiesOf = (r: Pick<AttentionRow, 'count' | 'usual'>) => (r.usual ? `${r.count}, ${times(r.count / r.usual)} its usual day` : `${r.count}`);
+
+/**
+ * The day's news in a sentence, from the map's own numbers: "On Oct 30, 2026, the companies most in the news were Intel INTC, with 46
+ * stories (5× its usual day), Apple AAPL, 30, and Nvidia NVDA, 28."
+ */
+export function newsSentence(rows: readonly AttentionRow[], asOf: string): Said {
+  const top = rows.filter((r) => r.count > 0).slice(0, 3);
+  if (!top.length) return [];
+  const [first, ...rest] = top as [AttentionRow, ...AttentionRow[]];
+  const items = [say`${who(first)}, with ${first.count} ${first.count === 1 ? 'story' : 'stories'}${first.usual ? ` (${times(first.count / first.usual)} its usual day)` : ''}`,
+    ...rest.map((r) => say`${who(r)}, ${r.count}`)];
+  const list = items.length === 1 ? items[0]! : items.length === 2 ? say`${items[0]!} and ${items[1]!}` : say`${items[0]!}, ${items[1]!}, and ${items[2]!}`;
+  return say`On ${date(asOf)}, the ${top.length > 1 ? 'companies' : 'company'} most in the news ${top.length > 1 ? 'were' : 'was'} ${list}.`;
+}
+
 /** How to read the map, in the words the AI answers use for a heat map. */
 export const HOW_TO_READ = 'Each tile is a company, sized by its market value and colored by the day’s move, grouped by sector.';
+const HOW_TO_READ_NEWS = 'Each tile is a company, sized by its news stories that day and colored by the day’s move, grouped by sector.';
 
 const WIDE = { w: 1000, h: 560, n: 100 } as const;
 const NARROW = { w: 400, h: 600, n: 40 } as const;
@@ -171,9 +201,9 @@ const CARD = { w: 360, h: 270, n: 20 } as const;
           @else {
             <figcaption class="pt-legend pt-lm-legend">
               @for (k of LEGEND; track k[0]) {<span class="pt-key"><i [class]="'pt-lm-sw pt-lm-' + k[0]"></i>{{ k[1] }}</span>}
-              <span class="pt-meta">size = market value · as of {{ date(s.asOf) }}</span>
+              <span class="pt-meta">size = {{ lens() === 'news' ? 'news stories that day' : 'market value' }} · as of {{ date(s.asOf) }}</span>
             </figcaption>
-            <p class="pt-note">{{ HOW_TO_READ }}</p>
+            <p class="pt-note">{{ lens() === 'news' ? HOW_TO_READ_NEWS : HOW_TO_READ }}</p>
           }
         </figure>
       }
@@ -186,29 +216,55 @@ export class PtLogoMap {
   /** "card": one small landscape map under the sentence, for a strip of sectors. */
   readonly form = input<'full' | 'card'>('full');
 
-  protected readonly data = this.pt.screen(() => {
+  private readonly screen = this.pt.screen(() => {
+    if (this.lens() === 'news') return null;
     const s = this.sector();
     return { scope: s ? { list: 'largest' as const, sector: s } : { list: 'largest' as const }, limit: WIDE.n };
   });
-  private readonly rows = computed(() => { const rows = this.data.value()?.rows ?? []; return this.lens() === 'mega' ? megaCaps(rows) : rows; });
-  protected readonly maps = computed(() => this.form() === 'card'
-    ? [{ key: 'card', ...CARD, big: 64, label: 30, ...buildMap(this.rows().slice(0, CARD.n), CARD.w, CARD.h) }]
-    : [
-      { key: 'wide', ...WIDE, big: 70, label: 34, ...buildMap(this.rows(), WIDE.w, WIDE.h) },
-      { key: 'narrow', ...NARROW, big: 64, label: 30, ...buildMap(this.rows().slice(0, NARROW.n), NARROW.w, NARROW.h) },
-    ]);
-  protected readonly sentence = computed(() => mapSentence(this.rows(), this.maps()[0]!.blocks, this.data.value()?.asOf ?? '', this.lens()));
+  private readonly attention = this.pt.attention(() => (this.lens() === 'news' ? { lens: 'news' as const, limit: NEWS_N } : null));
+  /** What the map shows: the market's list, or the day's news. */
+  protected readonly data = {
+    value: computed(() => (this.lens() === 'news' ? this.attention.value() : this.screen.value())),
+    loading: computed(() => (this.lens() === 'news' ? this.attention.loading() : this.screen.loading())),
+  };
+  private readonly rows = computed<MapRow[]>(() => {
+    const rows: MapRow[] = this.data.value()?.rows ?? [];
+    return this.lens() === 'mega' ? megaCaps(rows) : rows;
+  });
+  /** A tile's size: its stories on the news map, its market value on the others. */
+  private readonly size = computed(() => (this.lens() === 'news' ? (r: MapRow) => (r as AttentionRow).count : (r: MapRow) => r.marketCap));
+  private readonly byTicker = computed(() => new Map((this.attention.value()?.rows ?? []).map((r) => [r.ticker, r])));
+  protected readonly maps = computed(() => {
+    const size = this.size(), rows = this.rows();
+    return this.form() === 'card'
+      ? [{ key: 'card', ...CARD, big: 64, label: 30, ...buildMap(rows.slice(0, CARD.n), CARD.w, CARD.h, size) }]
+      : [
+        { key: 'wide', ...WIDE, big: 70, label: 34, ...buildMap(rows, WIDE.w, WIDE.h, size) },
+        { key: 'narrow', ...NARROW, big: 64, label: 30, ...buildMap(rows.slice(0, NARROW.n), NARROW.w, NARROW.h, size) },
+      ];
+  });
+  protected readonly sentence = computed(() => {
+    const asOf = this.data.value()?.asOf ?? '', lens = this.lens();
+    return lens === 'news' ? newsSentence(this.attention.value()?.rows ?? [], asOf) : mapSentence(this.rows(), this.maps()[0]!.blocks, asOf, lens);
+  });
   /** The map's name for a screen reader: what it shows, how many, the date. */
   protected mapLabel(n: number, asOf: string) {
-    return this.lens() === 'mega' ? `Mega-cap stocks heat map: the ${n} ${NOUN.mega}, by sector, ${date(asOf)}`
+    const lens = this.lens();
+    return lens === 'news' ? `News heat map: the ${n} companies with the most news stories on ${date(asOf)}, by sector`
+      : lens === 'mega' ? `Mega-cap stocks heat map: the ${n} ${NOUN.mega}, by sector, ${date(asOf)}`
       : `Stock market heat map: the ${n} ${NOUN.market} by sector, ${date(asOf)}`;
   }
   protected readonly HOW_TO_READ = HOW_TO_READ;
+  protected readonly HOW_TO_READ_NEWS = HOW_TO_READ_NEWS;
   protected readonly LEGEND = [['dn2', '−2.5% or more'], ['dn1', 'down'], ['flat', 'flat'], ['up1', 'up'], ['up2', '+2.5% or more']] as const;
   protected readonly pct = pct;
   protected readonly date = date;
   protected readonly stockHref = stockHref;
   protected readonly plainName = plainName;
-  protected readonly tileTip = (t: Tile) => tip({ [t.ticker]: plainName(t.name), Today: t.move === null ? null : pct(t.move), 'Market value': usd(t.cap, { compact: true }) });
+  protected readonly tileTip = (t: Tile) => {
+    const r = this.lens() === 'news' ? this.byTicker().get(t.ticker) : undefined;
+    return r ? tip({ [t.ticker]: plainName(t.name), ...(t.move === null ? {} : { Today: pct(t.move) }), Stories: storiesOf(r) })
+      : tip({ [t.ticker]: plainName(t.name), Today: t.move === null ? null : pct(t.move), 'Market value': usd(t.cap, { compact: true }) });
+  };
   protected readonly logoSize = (t: Tile, m: { big: number }) => Math.round(Math.min(t.w, t.h, m.big * 1.6) * 0.42);
 }

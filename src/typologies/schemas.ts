@@ -1,6 +1,7 @@
 import { toJSONSchema } from 'zod/mini';
 import type * as z from 'zod/mini';
 import { AnalystsParams, AnalystsPayload } from './analysts';
+import { AttentionParams, AttentionPayload } from './attention';
 import { CompanyParams, CompanyPayload } from './company';
 import { EventsParams, EventsPayload } from './events';
 import { FeedParams, FeedPayload } from './feed';
@@ -42,6 +43,7 @@ export const TYPOLOGY_SCHEMAS = /* @__PURE__ */ withIds({
   'ongoing-moves@1': { params: OngoingMovesParams, payload: OngoingMovesPayload },
   'feed@1': { params: FeedParams, payload: FeedPayload },
   'value@1': { params: ValueParams, payload: ValuePayload },
+  'attention@1': { params: AttentionParams, payload: AttentionPayload },
 });
 export type TypologyKey = keyof typeof TYPOLOGY_SCHEMAS;
 

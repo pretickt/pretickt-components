@@ -4,6 +4,7 @@
  */
 export * from './values';
 export type * from './analysts';
+export type * from './attention';
 export type * from './common';
 export type * from './company';
 export type * from './events';

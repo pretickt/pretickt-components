@@ -107,6 +107,24 @@ describe('pt-logo-map', () => {
     expect(r.el.querySelector('.pt-lede')!.textContent).toMatch(/^As of Oct 23, 2026: Technology moved/);
     expect(r.el.querySelector('.pt-lm-legend')).toBeNull();
   });
+  it('news: tiles sized by the day\'s stories and colored by its move, without asking for the market\'s list (Romeo, 2026-11-01)', async () => {
+    const att = { asOf: '2026-10-23', lens: 'news', rows: [
+      { ticker: 'AAA', name: 'AAA Inc.', sector: 'Technology', logo: null, count: 46, usual: 9.2, chg1d: -0.286, marketCap: 2e11 },
+      { ticker: 'BBB', name: 'BBB Inc.', sector: 'Technology', logo: null, count: 30, usual: 30, chg1d: 0.01, marketCap: 4e12 },
+      { ticker: 'CCC', name: 'CCC Inc.', sector: 'Energy', logo: null, count: 12, usual: null, chg1d: null, marketCap: 1e11 }] };
+    const r = await render(PtLogoMap, { lens: 'news' }, withData({ 'attention@1': att }));
+    expect(Object.keys(r.record)).toEqual(['attention@1|{"lens":"news","limit":40}']);
+    const wide = r.el.querySelector('svg.pt-lm-wide')!;
+    expect(wide.getAttribute('aria-label')).toBe('News heat map: the 3 companies with the most news stories on Oct 23, 2026, by sector');
+    const tile = (t: string) => wide.querySelector(`a[href="/stocks/${t}/"] rect`)!;
+    const area = (t: string) => Number(tile(t).getAttribute('width')) * Number(tile(t).getAttribute('height'));
+    expect(area('aaa')).toBeGreaterThan(area('bbb'));   // the most covered is the largest tile, whatever its market value
+    expect(JSON.parse(wide.querySelector('a[href="/stocks/aaa/"]')!.getAttribute('data-tip')!)).toEqual({ AAA: 'AAA', Today: '-28.6%', Stories: '46, 5× its usual day' });
+    expect(JSON.parse(wide.querySelector('a[href="/stocks/ccc/"]')!.getAttribute('data-tip')!)).toEqual({ CCC: 'CCC', Stories: '12' });
+    expect(r.el.querySelector('.pt-lede')!.textContent).toBe('On Oct 23, 2026, the companies most in the news were AAA, with 46 stories (5× its usual day), BBB, 30, and CCC, 12.');
+    expect(r.text()).toContain('size = news stories that day · as of Oct 23, 2026');
+    expect(r.text()).toContain('Each tile is a company, sized by its news stories that day and colored by the day’s move, grouped by sector.');
+  });
   it('an empty list says so', async () => {
     expect((await view({ asOf: '2026-10-23', rows: [] })).text()).toContain('No companies to show');
   });
