@@ -18,13 +18,14 @@
  * structured data (one answer per question on the site: the full page carries it).
  * A row of companies or holders has one set of columns for the card (the bars start level): a name whole, never "Vangu…"; in a narrow
  * card (six columns on a desktop) a row takes two lines, the name above its bar and its value.
- * Each verdict is a link to its question: on the company page the value page at that question (`#value-demand`), on the value page
- * its column.
- * @version 1.0.2
+ * Each verdict is a link to its question, an arrow on its right: on the company page the value page at that question
+ * (`#value-demand`), on the value page its column.
+ * @version 1.0.3
  * @evidence Romeo 2026-10-27: "questa azienda è di valore? con 6 sezioni verticali e, dentro ogni sezione, delle card schematiche e visuali"
  * @evidence Romeo 2026-10-31: "per ptvalue, singola pagina ma presente anche nella Company page"
  * @evidence Holder names cut at phone width, "Vangu…" (the 40-company check, 2026-11-01)
- * @evidence Romeo 2026-11-01, on the company page: "quando clicco su una sezione rimandata alla pagina"
+ * @evidence Romeo 2026-11-01, on the company page: "quando clicco su una sezione rimandata alla pagina"; then "metti una freccia o
+ * qualcosa per indicare che si può cliccare"
  * @evidence DataForSEO 2026-10-28 (round 13): "is {company} a good stock to buy" ≈64,000 searches a month on ~100 companies, AI Overview on 90%; the facts' own words ("pe ratio", "revenue growth", "gross margin"…) 153,000 on 25 companies
  */
 import { Component, computed, inject, input } from '@angular/core';
@@ -170,7 +171,7 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
           }
         </div>
         <ol class="dv-strip" aria-label="The questions at a glance">
-          @for (s of v.sections; track s.key) {<li [class]="'dv-chip dv-' + s.tone"><a [href]="chipHref(s.key)"><span>{{ QUESTIONS[s.key].name }}</span>{{ ' ' }}<b>{{ s.verdict }}</b></a></li>}
+          @for (s of v.sections; track s.key) {<li [class]="'dv-chip dv-' + s.tone"><a [href]="chipHref(s.key)"><span>{{ QUESTIONS[s.key].name }}</span>{{ ' ' }}<b>{{ s.verdict }}</b><svg class="dv-chip-go" ptIcon="chevron"></svg></a></li>}
         </ol>
         @if (compact()) {
           <a class="dv-more" [href]="valueHref()">{{ v.ticker }}: the {{ v.sections.length }} questions, card by card</a>

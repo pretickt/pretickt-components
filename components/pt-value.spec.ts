@@ -228,6 +228,9 @@ describe('pt-value: on its own page and on the company page', () => {
     // the page's own address with the anchor: on that page a jump, whatever <base> a page carries (the stories' "/")
     expect([...full.querySelectorAll('.dv-chip a')].map((a) => a.getAttribute('href'))).toEqual(NVDA.sections.map((s) => `/stocks/nvda/value/#value-${s.key}`));
     expect([...full.querySelectorAll('.dv-col')].map((c) => c.id)).toEqual(NVDA.sections.map((s) => `value-${s.key}`));
+    // an arrow says it opens something (Romeo, 2026-11-01: "metti una freccia … per indicare che si può cliccare"), no words added
+    expect([...compact.querySelectorAll('.dv-chip a')].every((a) => a.querySelector('svg.dv-chip-go path'))).toBe(true);
+    expect(compact.querySelector('.dv-chip a')!.textContent!.replace(/\s+/g, ' ').trim()).toBe(`Demand ${NVDA.sections[0]!.verdict}`);
   });
   it('a question without cards is left out: as many columns as questions (a bank answers three)', async () => {
     const bank: Value = { ...NVDA, sections: NVDA.sections.filter((s) => ['economics', 'execution', 'price'].includes(s.key)) };

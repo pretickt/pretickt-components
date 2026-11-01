@@ -26,6 +26,8 @@ export const ICON_PATHS: Record<string, string> = {
   // marks: a check passed, a check missed
   check: P('M3 8.5l3.2 3.2L13 4.5'),
   x: P('M4 4l8 8M12 4l-8 8'),
+  // a link that opens something (pt-value's verdicts)
+  chevron: P('M6 3l5 5-5 5'),
 };
 
 /** Legacy markup of the same icons (string renderers). */

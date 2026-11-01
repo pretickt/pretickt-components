@@ -595,8 +595,14 @@
   .dv-strip { display: grid; grid-template-columns: repeat(var(--dv-n, 6), minmax(0, 1fr)); gap: .35rem; margin: 0; padding: 0; list-style: none; }
   .dv-chip { border-radius: var(--radius-control); font-size: .7rem; color: var(--color-ink); }
   /* each verdict links to its question (the value page's column): the whole chip is the link */
-  .dv-chip a { display: grid; gap: .1rem; padding: .35rem .5rem; border-radius: inherit; color: inherit; text-decoration: none; }
+  .dv-chip a { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: .25rem; row-gap: .1rem; align-items: center;
+    padding: .35rem .4rem .35rem .5rem; border-radius: inherit; color: inherit; text-decoration: none; }
+  .dv-chip a > span, .dv-chip a > b { grid-column: 1; }
   .dv-chip a:hover b, .dv-chip a:focus-visible b { text-decoration: underline; }
+  /* the arrow: it opens the question (the whole chip is the link) */
+  .dv-chip-go { grid-column: 2; grid-row: 1 / 3; width: .8rem; height: .8rem; fill: none; stroke: currentColor; stroke-width: 2;
+    stroke-linecap: round; stroke-linejoin: round; color: var(--color-ink-soft); }
+  .dv-chip a:hover .dv-chip-go, .dv-chip a:focus-visible .dv-chip-go { color: var(--color-primary); }
   /* the column a verdict links to lands below the fixed header, as an anchored section does */
   .dv-col { scroll-margin-top: 6rem; }
   .dv-chip span { font-size: .62rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--color-ink-soft); }
