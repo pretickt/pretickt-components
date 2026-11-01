@@ -55,7 +55,7 @@ const LIST_NAV = [
 const sectorPath = (s: Sector) => `/sectors/${s.toLowerCase().replace(/\s+/g, '-')}/`;
 const hub = (t: string) => `/stocks/${t.toLowerCase()}/`;
 const metric = (ticker: string, metrics: readonly MetricKey[]) => ({ c: PtMetric, inputs: { ticker, metrics } });
-const SUBPAGES = [['why-moving', 'Why it moved'], ['price-target', 'Price target'], ['peers', 'Peers'], ['financials', 'Financials'],
+const SUBPAGES = [['value', 'Value'], ['why-moving', 'Why it moved'], ['price-target', 'Price target'], ['peers', 'Peers'], ['financials', 'Financials'],
   ['news', 'News'], ['insiders', 'Insiders']] as const;
 
 /** The NYSE week the home looks forward to: the first weekday from today (the generator's nextSession of the last close). */
@@ -74,6 +74,27 @@ const prose = (title: string, body: string) => `<section class="pt-section pt-pr
  * two new sections, when the drafts have data for the company: "is it a good stock to buy" (pt-value) after the targets and what
  * people ask (pt-people-ask) at the end, whose questions pt-value answers link to pt-value's answers.
  */
+/**
+ * pt-value's own page (the platform's pages.ts, subpage 'value'): the searched question in the title and the h1 (with the ticker; the
+ * component asks it with the common name), the company card, the whole component; its questions as FAQPage data (the generator's faqLd).
+ */
+export function valuePage(t: string, legal: string, sector: Sector): PreviewPage {
+  const name = plainName(legal), n = named(legal, t);
+  return {
+    path: `${hub(t)}value/`,
+    title: fitTitle(`Is ${name} (${t}) a good stock to buy?`, `Is ${t} a good stock to buy?`),
+    description: `Is ${name} a good stock to buy? Six questions — demand, moat, profits, delivery, risks and valuation — answered with ${name}'s numbers and its competitors', each with its date. As of {date}.`,
+    h1: `Is ${t} a good stock to buy?`,
+    lede: `${legal} · end-of-day data as of {date}`,
+    crumbs: [HOME, { label: sector, href: sectorPath(sector) }, { label: n, href: hub(t) }, { label: 'Value' }],
+    nav: [{ href: hub(t), label: 'Overview' }, ...SUBPAGES.map(([s, label]) => ({ href: `${hub(t)}${s}/`, label }))],
+    sections: [
+      { id: 'card', items: [{ c: PtCompanyCard, inputs: { ticker: t } }] },
+      { id: 'value', isNew: true, note: 'pt-value, its own page', items: [{ c: PtValue, inputs: { ticker: t } }] },
+    ],
+  };
+}
+
 export function companyPage(t: string, legal: string, sector: Sector, drafts: { value?: boolean; ask?: PeopleAsk } = {}): PreviewPage {
   const n = named(legal, t);
   return {
@@ -199,6 +220,8 @@ export class PtPreviewTrending { readonly page = input.required<PreviewPage>(); 
 export const stories = [
   story(PtPreviewCompany, { name: 'NVDA: common name, pt-value and what people ask, FAQPage (www data, made-up drafts)', live: true, group: GROUP,
     data: NVDA_VALUE, inputs: { page: companyPage('NVDA', 'NVIDIA Corporation', 'Technology', NVDA_DRAFTS) } }),
+  story(PtPreviewCompany, { name: 'NVDA: pt-value\'s own page, /stocks/nvda/value/ (made-up pt-value, www data for the rest)', live: true, group: GROUP,
+    data: NVDA_VALUE, inputs: { page: valuePage('NVDA', 'NVIDIA Corporation', 'Technology') } }),
   story(PtPreviewCompany, { name: 'META: today\'s page with the common name only (www data)', live: true, group: GROUP,
     inputs: { page: companyPage('META', 'Meta Platforms, Inc.', 'Communication Services') } }),
   story(PtPreviewCompany, { name: 'NVDA on the demo data (the check)', inputs: { page: companyPage('NVDA', 'NVIDIA Corporation', 'Technology', NVDA_DRAFTS) }, group: GROUP }),
