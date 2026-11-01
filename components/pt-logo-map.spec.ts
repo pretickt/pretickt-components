@@ -125,6 +125,19 @@ describe('pt-logo-map', () => {
     expect(r.text()).toContain('size = news stories that day · as of Oct 23, 2026');
     expect(r.text()).toContain('Each tile is a company, sized by its news stories that day and colored by the day’s move, grouped by sector.');
   });
+  it('social: tiles sized by the day\'s posts on Reddit and X, said so in the sentence, the details and the legend (Romeo, 2026-11-01)', async () => {
+    const att = { asOf: '2026-10-23', lens: 'social', rows: [
+      { ticker: 'AAA', name: 'AAA Inc.', sector: 'Technology', logo: null, count: 412, usual: 137.3, chg1d: 0.031, marketCap: 4e12 },
+      { ticker: 'BBB', name: 'BBB Inc.', sector: 'Technology', logo: null, count: 90, usual: null, chg1d: -0.01, marketCap: 2e12 }] };
+    const r = await render(PtLogoMap, { lens: 'social' }, withData({ 'attention@1': att }));
+    expect(Object.keys(r.record)).toEqual(['attention@1|{"lens":"social","limit":40}']);
+    const wide = r.el.querySelector('svg.pt-lm-wide')!;
+    expect(wide.getAttribute('aria-label')).toBe('Social heat map: the 2 companies most talked about on Reddit and X on Oct 23, 2026, by sector');
+    expect(JSON.parse(wide.querySelector('a[href="/stocks/aaa/"]')!.getAttribute('data-tip')!)).toEqual({ AAA: 'AAA', Today: '+3.1%', Posts: '412, 3× its usual day' });
+    expect(r.el.querySelector('.pt-lede')!.textContent).toBe('On Oct 23, 2026, the companies most talked about on Reddit and X were AAA, with 412 posts (3× its usual day) and BBB, 90.');
+    expect(r.text()).toContain('size = posts on Reddit and X that day · as of Oct 23, 2026');
+    expect(r.text()).toContain('Each tile is a company, sized by its posts on Reddit and X that day and colored by the day’s move, grouped by sector.');
+  });
   it('an empty list says so', async () => {
     expect((await view({ asOf: '2026-10-23', rows: [] })).text()).toContain('No companies to show');
   });

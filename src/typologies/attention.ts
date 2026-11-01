@@ -4,15 +4,16 @@ import { DEMO_ASOF, DEMO_COMPANIES, intParam, IsoDate, Num as n, prng, round, Ti
 /**
  * How much a company was talked about on the session's day, against its usual day, with the day's move and its size: a heat map's
  * tiles sized by attention instead of market value (pt-logo-map). "news": its news stories on the session's day (New York time)
- * against its average over the 20 weekdays before.
+ * against its average over the 20 weekdays before. "social": its posts and comments on Reddit and X that day (pretickt-pulse counts
+ * them every 30 minutes in ten investing subreddits and twelve market accounts on X) against its average day over the 7 days before.
  */
-export const ATTENTION_LENSES = ['news'] as const;
+export const ATTENTION_LENSES = ['news', 'social'] as const;
 export type AttentionLens = (typeof ATTENTION_LENSES)[number];
 
 export const AttentionParams = z.object({ lens: z.enum(ATTENTION_LENSES), limit: intParam(1, 100, 40) });
 export const AttentionRow = z.object({
   ticker: Ticker, name: z.string(), sector: z.nullable(z.string()), logo: z.nullable(z.string()),
-  /** Its stories on the day. */
+  /** Its stories, or its posts, on the day. */
   count: z.int(),
   /** Its average day over the weekdays before; null without one. */
   usual: n,
@@ -24,7 +25,7 @@ export type AttentionRow = z.infer<typeof AttentionRow>;
 export type AttentionParams = z.output<typeof AttentionParams>;
 export type Attention = z.infer<typeof AttentionPayload>;
 
-export const attentionSamples: z.input<typeof AttentionParams>[] = [{ lens: 'news' }, { lens: 'news', limit: 10 }];
+export const attentionSamples: z.input<typeof AttentionParams>[] = [{ lens: 'news' }, { lens: 'news', limit: 10 }, { lens: 'social' }];
 
 export function attentionDemo(p: AttentionParams): Attention {
   const r = prng(`attention:${p.lens}`);

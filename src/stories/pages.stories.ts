@@ -183,6 +183,7 @@ export function marketMapPage(): PreviewPage {
     sections: [
       { id: 'map', items: [{ c: PtLogoMap, inputs: {} }] },
       { id: 'mega-caps', title: 'Mega-cap stocks heat map', isNew: true, items: [{ c: PtLogoMap, inputs: { lens: 'mega' } }] },
+      { id: 'social', title: 'Social heat map', isNew: true, note: 'the pulse\'s counts, from the nightly after its release', items: [{ c: PtLogoMap, inputs: { lens: 'social' } }] },
       { id: 'news', title: 'News heat map', isNew: true, items: [{ c: PtLogoMap, inputs: { lens: 'news' } }] },
       { id: 'sectors', title: 'Sector heat maps', isNew: true, strip: true,
         items: SECTORS_BY_SIZE.map((s) => ({ c: PtLogoMap, inputs: { sector: s, form: 'card' } })) },

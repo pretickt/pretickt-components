@@ -13,6 +13,7 @@ export const stories = [
   story(PtLogoMap, { name: 'www: mega caps (worth $200B or more)', inputs: { lens: 'mega' }, live: true }),
   story(PtLogoMap, { name: 'News: the most covered companies of the day (demo)', inputs: { lens: 'news' } }),
   story(PtLogoMap, { name: 'www: news', inputs: { lens: 'news' }, live: true }),
+  story(PtLogoMap, { name: 'Social: the most talked about on Reddit and X (demo)', inputs: { lens: 'social' } }),
   story(PtLogoMap, { name: 'www: Energy (a small sector)', inputs: { sector: 'Energy' }, live: true }),
   story(PtLogoMap, { name: 'A red day', inputs: {}, data: { 'screen@1': red } }),
   story(PtLogoMap, { name: 'No companies', inputs: {}, data: { 'screen@1': { ...base, rows: [] } } }),

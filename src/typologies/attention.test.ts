@@ -6,6 +6,7 @@ import { getTypology } from './index';
 describe('attention@1: how much a company was in the news on the session\'s day, against its usual day', () => {
   it('asks for the news, up to 100 companies, 40 by default', () => {
     expect(AttentionParams.parse({ lens: 'news' })).toEqual({ lens: 'news', limit: 40 });
+    expect(AttentionParams.parse({ lens: 'social' })).toEqual({ lens: 'social', limit: 40 });
     expect(AttentionParams.safeParse({ lens: 'news', limit: 101 }).success).toBe(false);
     expect(AttentionParams.safeParse({ lens: 'tv' }).success).toBe(false);
     expect(needKey({ t: 'attention@1', params: { lens: 'news', limit: 40 } })).toBe('attention@1|{"lens":"news","limit":40}');

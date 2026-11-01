@@ -9,8 +9,9 @@
  * `form` "card": one landscape map of the 20 largest, its dated sentence under it (every card of a strip starts level), no legend —
  * a card in a strip of sectors.
  * `lens` "news": the 40 companies with the most news stories on the session's day (attention@1), each tile as large as its stories
- * and coloured by the day's move; the sentence names the most covered and how that compares with its usual day.
- * @version 0.5.0
+ * and coloured by the day's move; the sentence names the most covered and how that compares with its usual day. "social": the same
+ * with the day's posts on Reddit and X.
+ * @version 0.6.0
  * @evidence Romeo 2026-10-25: home components "con i loghi delle aziende" for the overview — H3 · The market at a glance, ★ sector map (brainstorming/mappa-componenti.html)
  * @evidence DataForSEO 2026-10-28 (round 13): the "stock market heat map" family ≈33,400 searches a month, keyword difficulty 25–30, AI Overview on 2%, no dominant site (apps, guides, brokers); "largest companies by market cap" 22,200 (launch/RESEARCH.md §9)
  * @evidence Romeo 2026-11-01: "mettiamo alla fine della home la heat map del mercato delle mega caps", and a page of the heat maps
@@ -64,11 +65,18 @@ export function squarify<T extends { value: number }>(items: readonly T[], r: Bo
 /** The mega caps: the companies worth $200 billion or more. */
 export const MEGA = 200e9;
 export const megaCaps = <R extends Pick<MapRow, 'marketCap'>>(rows: readonly R[]) => rows.filter((r) => (r.marketCap ?? 0) >= MEGA);
-/** What the map shows: the largest companies, the mega caps among them, or the companies most in the day's news. */
-export type Lens = 'market' | 'mega' | 'news';
+/** What the map shows: the largest companies, the mega caps among them, or the companies most in the day's news or posts. */
+export type Lens = 'market' | 'mega' | 'news' | 'social';
+type Talk = 'news' | 'social';
+const isTalk = (l: Lens): l is Talk => l === 'news' || l === 'social';
+/** The words of each attention map: its tiles' unit, where it is counted, its sentence's verb. */
+const TALK: Record<Talk, { one: string; many: string; size: string; most: string; key: string }> = {
+  news: { one: 'story', many: 'stories', size: 'news stories that day', most: 'most in the news', key: 'Stories' },
+  social: { one: 'post', many: 'posts', size: 'posts on Reddit and X that day', most: 'most talked about on Reddit and X', key: 'Posts' },
+};
 const NOUN: Record<'market' | 'mega', string> = { market: 'largest companies', mega: 'companies worth $200 billion or more' };
-/** The news map's size: its 40 most covered companies. */
-const NEWS_N = 40;
+/** An attention map's size: its 40 most covered (or talked about) companies. */
+const TALK_N = 40;
 
 /** The colour step of a day's move: two shades each way, and flat within ±0.25%. */
 export const stepOf = (m: number | null) =>
@@ -141,26 +149,28 @@ export function mapSentence(rows: readonly MapRow[], blocks: Block[], asOf: stri
 }
 /** "5×", "2.3×": how many times its usual day. */
 const times = (x: number) => `${Math.round(x * 10) / 10}×`;
-/** A company's stories, against its usual day when it has one: "46, 5× its usual day". */
-export const storiesOf = (r: Pick<AttentionRow, 'count' | 'usual'>) => (r.usual ? `${r.count}, ${times(r.count / r.usual)} its usual day` : `${r.count}`);
+/** A company's stories or posts, against its usual day when it has one: "46, 5× its usual day". */
+export const countOf = (r: Pick<AttentionRow, 'count' | 'usual'>) => (r.usual ? `${r.count}, ${times(r.count / r.usual)} its usual day` : `${r.count}`);
 
 /**
- * The day's news in a sentence, from the map's own numbers: "On Oct 30, 2026, the companies most in the news were Intel INTC, with 46
- * stories (5× its usual day), Apple AAPL, 30, and Nvidia NVDA, 28."
+ * The day's attention in a sentence, from the map's own numbers: "On Oct 30, 2026, the companies most in the news were Intel INTC, with
+ * 46 stories (5× its usual day), Apple AAPL, 30, and Nvidia NVDA, 28." — or the most talked about on Reddit and X, with their posts.
  */
-export function newsSentence(rows: readonly AttentionRow[], asOf: string): Said {
-  const top = rows.filter((r) => r.count > 0).slice(0, 3);
+export function talkSentence(rows: readonly AttentionRow[], asOf: string, lens: Talk = 'news'): Said {
+  const w = TALK[lens], top = rows.filter((r) => r.count > 0).slice(0, 3);
   if (!top.length) return [];
   const [first, ...rest] = top as [AttentionRow, ...AttentionRow[]];
-  const items = [say`${who(first)}, with ${first.count} ${first.count === 1 ? 'story' : 'stories'}${first.usual ? ` (${times(first.count / first.usual)} its usual day)` : ''}`,
+  const items = [say`${who(first)}, with ${first.count} ${first.count === 1 ? w.one : w.many}${first.usual ? ` (${times(first.count / first.usual)} its usual day)` : ''}`,
     ...rest.map((r) => say`${who(r)}, ${r.count}`)];
   const list = items.length === 1 ? items[0]! : items.length === 2 ? say`${items[0]!} and ${items[1]!}` : say`${items[0]!}, ${items[1]!}, and ${items[2]!}`;
-  return say`On ${date(asOf)}, the ${top.length > 1 ? 'companies' : 'company'} most in the news ${top.length > 1 ? 'were' : 'was'} ${list}.`;
+  return say`On ${date(asOf)}, the ${top.length > 1 ? 'companies' : 'company'} ${w.most} ${top.length > 1 ? 'were' : 'was'} ${list}.`;
 }
 
 /** How to read the map, in the words the AI answers use for a heat map. */
 export const HOW_TO_READ = 'Each tile is a company, sized by its market value and colored by the day’s move, grouped by sector.';
-const HOW_TO_READ_NEWS = 'Each tile is a company, sized by its news stories that day and colored by the day’s move, grouped by sector.';
+/** The same for an attention map: sized by its stories or its posts. */
+const howToRead = (lens: Lens) => (isTalk(lens)
+  ? `Each tile is a company, sized by its ${TALK[lens].size} and colored by the day’s move, grouped by sector.` : HOW_TO_READ);
 
 const WIDE = { w: 1000, h: 560, n: 100 } as const;
 const NARROW = { w: 400, h: 600, n: 40 } as const;
@@ -201,9 +211,9 @@ const CARD = { w: 360, h: 270, n: 20 } as const;
           @else {
             <figcaption class="pt-legend pt-lm-legend">
               @for (k of LEGEND; track k[0]) {<span class="pt-key"><i [class]="'pt-lm-sw pt-lm-' + k[0]"></i>{{ k[1] }}</span>}
-              <span class="pt-meta">size = {{ lens() === 'news' ? 'news stories that day' : 'market value' }} · as of {{ date(s.asOf) }}</span>
+              <span class="pt-meta">size = {{ sizeWords() }} · as of {{ date(s.asOf) }}</span>
             </figcaption>
-            <p class="pt-note">{{ lens() === 'news' ? HOW_TO_READ_NEWS : HOW_TO_READ }}</p>
+            <p class="pt-note">{{ howToRead(lens()) }}</p>
           }
         </figure>
       }
@@ -217,22 +227,22 @@ export class PtLogoMap {
   readonly form = input<'full' | 'card'>('full');
 
   private readonly screen = this.pt.screen(() => {
-    if (this.lens() === 'news') return null;
+    if (isTalk(this.lens())) return null;
     const s = this.sector();
     return { scope: s ? { list: 'largest' as const, sector: s } : { list: 'largest' as const }, limit: WIDE.n };
   });
-  private readonly attention = this.pt.attention(() => (this.lens() === 'news' ? { lens: 'news' as const, limit: NEWS_N } : null));
-  /** What the map shows: the market's list, or the day's news. */
+  private readonly attention = this.pt.attention(() => { const l = this.lens(); return isTalk(l) ? { lens: l, limit: TALK_N } : null; });
+  /** What the map shows: the market's list, or the day's news or posts. */
   protected readonly data = {
-    value: computed(() => (this.lens() === 'news' ? this.attention.value() : this.screen.value())),
-    loading: computed(() => (this.lens() === 'news' ? this.attention.loading() : this.screen.loading())),
+    value: computed(() => (isTalk(this.lens()) ? this.attention.value() : this.screen.value())),
+    loading: computed(() => (isTalk(this.lens()) ? this.attention.loading() : this.screen.loading())),
   };
   private readonly rows = computed<MapRow[]>(() => {
     const rows: MapRow[] = this.data.value()?.rows ?? [];
     return this.lens() === 'mega' ? megaCaps(rows) : rows;
   });
-  /** A tile's size: its stories on the news map, its market value on the others. */
-  private readonly size = computed(() => (this.lens() === 'news' ? (r: MapRow) => (r as AttentionRow).count : (r: MapRow) => r.marketCap));
+  /** A tile's size: its stories or posts on an attention map, its market value on the others. */
+  private readonly size = computed(() => (isTalk(this.lens()) ? (r: MapRow) => (r as AttentionRow).count : (r: MapRow) => r.marketCap));
   private readonly byTicker = computed(() => new Map((this.attention.value()?.rows ?? []).map((r) => [r.ticker, r])));
   protected readonly maps = computed(() => {
     const size = this.size(), rows = this.rows();
@@ -245,25 +255,26 @@ export class PtLogoMap {
   });
   protected readonly sentence = computed(() => {
     const asOf = this.data.value()?.asOf ?? '', lens = this.lens();
-    return lens === 'news' ? newsSentence(this.attention.value()?.rows ?? [], asOf) : mapSentence(this.rows(), this.maps()[0]!.blocks, asOf, lens);
+    return isTalk(lens) ? talkSentence(this.attention.value()?.rows ?? [], asOf, lens) : mapSentence(this.rows(), this.maps()[0]!.blocks, asOf, lens);
   });
   /** The map's name for a screen reader: what it shows, how many, the date. */
   protected mapLabel(n: number, asOf: string) {
     const lens = this.lens();
     return lens === 'news' ? `News heat map: the ${n} companies with the most news stories on ${date(asOf)}, by sector`
+      : lens === 'social' ? `Social heat map: the ${n} companies most talked about on Reddit and X on ${date(asOf)}, by sector`
       : lens === 'mega' ? `Mega-cap stocks heat map: the ${n} ${NOUN.mega}, by sector, ${date(asOf)}`
       : `Stock market heat map: the ${n} ${NOUN.market} by sector, ${date(asOf)}`;
   }
-  protected readonly HOW_TO_READ = HOW_TO_READ;
-  protected readonly HOW_TO_READ_NEWS = HOW_TO_READ_NEWS;
+  protected readonly howToRead = howToRead;
+  protected readonly sizeWords = computed(() => { const l = this.lens(); return isTalk(l) ? TALK[l].size : 'market value'; });
   protected readonly LEGEND = [['dn2', '−2.5% or more'], ['dn1', 'down'], ['flat', 'flat'], ['up1', 'up'], ['up2', '+2.5% or more']] as const;
   protected readonly pct = pct;
   protected readonly date = date;
   protected readonly stockHref = stockHref;
   protected readonly plainName = plainName;
   protected readonly tileTip = (t: Tile) => {
-    const r = this.lens() === 'news' ? this.byTicker().get(t.ticker) : undefined;
-    return r ? tip({ [t.ticker]: plainName(t.name), ...(t.move === null ? {} : { Today: pct(t.move) }), Stories: storiesOf(r) })
+    const l = this.lens(), r = isTalk(l) ? this.byTicker().get(t.ticker) : undefined;
+    return r && isTalk(l) ? tip({ [t.ticker]: plainName(t.name), ...(t.move === null ? {} : { Today: pct(t.move) }), [TALK[l].key]: countOf(r) })
       : tip({ [t.ticker]: plainName(t.name), Today: t.move === null ? null : pct(t.move), 'Market value': usd(t.cap, { compact: true }) });
   };
   protected readonly logoSize = (t: Tile, m: { big: number }) => Math.round(Math.min(t.w, t.h, m.big * 1.6) * 0.42);
