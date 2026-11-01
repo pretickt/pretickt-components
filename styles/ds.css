@@ -586,11 +586,6 @@
   .pt-q-neg .pt-q-to, .pt-q-neg .pt-q-bar { fill: var(--color-neg); }
   .pt-q-flat .pt-q-to, .pt-q-flat .pt-q-bar { fill: var(--color-warn); }
   .pt-q-empty { @apply m-0 rounded-control border border-dashed border-border px-3 py-3 text-sm text-ink-soft; }
-}
-
-@keyframes pt-dash-flow { to { stroke-dashoffset: -7; } }
-@keyframes pt-orbit-spin { to { transform: rotate(360deg); } }
-@keyframes pt-mem-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } 
 
   /* value (pt-value): is it a good stock to buy? A column per question (--dv-n of them: a question without cards is left out), schematic cards inside */
   .dv { display: grid; gap: .8rem; --dv-pos: var(--color-pos); --dv-flat: var(--color-warn); --dv-neg: var(--color-neg); --dv-na: var(--color-ink-soft); }
@@ -691,3 +686,7 @@
   .dv-more { justify-self: start; font-weight: 600; color: var(--color-primary); }
   .dv-more:hover { text-decoration: underline; }
 }
+
+@keyframes pt-dash-flow { to { stroke-dashoffset: -7; } }
+@keyframes pt-orbit-spin { to { transform: rotate(360deg); } }
+@keyframes pt-mem-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
