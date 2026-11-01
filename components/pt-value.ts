@@ -228,10 +228,9 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
                         </svg>
                       }
                       @case ('split') {
-                        @let p = split(c);
                         <svg class="dv-viz" viewBox="0 0 120 32" aria-hidden="true">
-                          @for (x of p; track $index) {<rect [class]="$first ? 'dv-last-' + c.tone : 'dv-bar dv-bar-' + $index" [attr.x]="x.x" y="4" [attr.width]="x.w" height="12" rx="2" />}
-                          @if (p[0]; as f) {<text class="dv-t" x="0" y="28">{{ f.label }}</text>}
+                          @for (x of split(c); track $index) {<rect [class]="$first ? 'dv-last-' + c.tone : 'dv-bar dv-bar-' + $index" [attr.x]="x.x" y="4" [attr.width]="x.w" height="12" rx="2" />}
+                          @if (split(c)[0]; as f) {<text class="dv-t" x="0" y="28">{{ f.label }}</text>}
                         </svg>
                       }
                       @case ('companies') {
