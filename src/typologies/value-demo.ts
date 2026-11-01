@@ -1,7 +1,8 @@
 /**
- * value@1's demo: pt-value's made-up data (the draft's mock until now), three companies with different answers — real tickers,
- * invented numbers. Each card's `source` is what will feed it (FMP on the Display key, checked 2026-10-27; the agents' facts). Every
- * company is built inside a function, so code that only validates carries none of it (the tree-shaking test).
+ * value@1's demo: pt-value's made-up data (the draft's mock until now), three companies with different answers — real tickers, numbers
+ * made up for the stories, a few of them close to the companies' public figures (Nvidia's Altman Z of 58, its 16% fall in fiscal 2009)
+ * and never shown on the site as theirs. Each card's `source` is what will feed it (FMP on the Display key, checked 2026-10-27; the
+ * agents' facts). Every company is built inside a function, so code that only validates carries none of it (the tree-shaking test).
  */
 import { DEMO_COMPANIES, demoName } from './common';
 import { PIOTROSKI_CHECKS, type CheckKey, type Value, type ValueCard, type ValueCompany, type ValueParams } from './value';
@@ -92,7 +93,7 @@ const nvda = (): Value => ({ ...head('NVDA', 'Nvidia'), pe: { now: 41.2, median:
       'Planned sales are set months ahead: they say little about the outlook.', INSIDERS_SOURCE, { kind: 'bars', values: [-0.3, -0.6, -0.4, -0.6] }),
     card('pos', 'number of employees', '+21%', 'more people in a year', 'Nvidia had 36,000 employees at the end of fiscal 2026, 21% more than a year before.',
       'The team grows with the business.', 'FMP historical-employee-count', { kind: 'bars', values: [22.5, 26.2, 29.6, 36] }),
-    card('pos', 'CEO pay', '$34M', 'for 2025, 93% of it in stock', 'Nvidia paid its CEO $34M for 2025, 93% of it in stock.',
+    card('pos', 'CEO pay', '$34M', 'for 2025, 93% of it in stock and options', 'Nvidia paid its CEO $34M for 2025, 93% of it in stock and options.',
       'Pay mostly tied to what shareholders get.', 'FMP governance-executive-compensation', { kind: 'split', parts: [{ label: 'stock 93%', share: 0.93 }, { label: 'cash', share: 0.07 }] }),
   ] },
   { key: 'fragility', tone: 'flat', verdict: 'some risks', cards: [
@@ -104,8 +105,8 @@ const nvda = (): Value => ({ ...head('NVDA', 'Nvidia'), pe: { now: 41.2, median:
     card('neg', 'in past downturns', '−16%', 'its sales in the worst one', 'Nvidia\'s sales fell in 3 of the 4 past downturns, by as much as 16% in 2008.',
       'Its sales in the four past downturns (2001, 2008, 2020, 2023): a cyclical business.', 'FMP income-statement (quarterly, since 1999)',
       { kind: 'bars', values: [-12, -16, 7, -7] }, { via: '4 past downturns' }),
-    card('pos', 'shareholders', '2,980', 'funds hold it; the largest added shares',
-      '2,980 funds hold Nvidia; Vanguard (8.9%) and BlackRock (7.8%) added shares last quarter, State Street (3.9%) sold some.',
+    card('pos', 'shareholders', '2,980', 'institutions hold it; the largest added shares',
+      '2,980 institutions hold Nvidia; Vanguard (8.9%) and BlackRock (7.8%) added shares last quarter, State Street (3.9%) sold some.',
       'The biggest holders kept buying last quarter.', 'FMP institutional-ownership (13F: summary and holders)',
       cos('NVDA', [['VANGUARD', 8.9, '8.9% +0.2'], ['BLK', 7.8, '7.8% +0.1'], ['STT', 3.9, '3.9% −0.1', 'flat']]), { via: 'its biggest holders', term: 'institutional ownership' }),
   ] },

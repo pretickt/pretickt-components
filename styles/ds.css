@@ -662,17 +662,31 @@
   .dv-badge { justify-self: start; padding: 0 .35rem; border: 1px solid color-mix(in oklab, var(--color-primary) 35%, var(--color-border));
     border-radius: 999px; background: color-mix(in oklab, var(--color-primary) 8%, var(--color-surface-raised));
     font-size: .56rem; font-weight: 600; line-height: .95rem; letter-spacing: .02em; color: var(--color-primary); white-space: nowrap; }
-  .dv-cos { display: grid; gap: .2rem; margin: .1rem 0 .15rem; padding: 0; list-style: none; }
-  .dv-cos li { display: grid; grid-template-columns: 16px 2.6rem 1fr auto; align-items: center; gap: .3rem; padding: .05rem .15rem; border-radius: .3rem; }
+  /* one set of columns for every row (subgrid): the name as wide as the longest one ("Vanguard", not "Vangu…"), every bar from the same x;
+     in six narrow columns a long name takes two lines ("Berkshire / Hathaway"), never an ellipsis */
+  .dv-cos { display: grid; grid-template-columns: 16px minmax(0, max-content) minmax(1.5rem, 1fr) auto; gap: .2rem .3rem; margin: .1rem 0 .15rem; padding: 0;
+    list-style: none; }
+  .dv-cos li { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; padding: .05rem .15rem; border-radius: .3rem; }
   .dv-cos li.dv-self { background: color-mix(in oklab, var(--color-ink) 7%, transparent); font-weight: 700; }
-  .dv-co-t { font: 600 .62rem/1 var(--font-mono); color: var(--color-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dv-co-t { font: 600 .62rem/1.15 var(--font-mono); color: var(--color-ink); overflow-wrap: break-word; }
   .dv-co-track { height: 6px; border-radius: 3px; background: var(--color-surface); overflow: hidden; }
   .dv-co-bar { display: block; height: 100%; border-radius: 3px; }
   .dv-co-bar.dv-last-pos { background: var(--dv-pos); } .dv-co-bar.dv-last-flat { background: var(--dv-flat); }
   .dv-co-bar.dv-last-neg { background: var(--dv-neg); } .dv-co-bar.dv-last-na { background: var(--dv-na); }
   .dv-co-v { font: 600 .62rem/1 var(--font-mono); text-align: right; white-space: nowrap; }
   .dv-co-pos { color: var(--dv-pos); } .dv-co-neg { color: var(--dv-neg); } .dv-co-flat { color: color-mix(in oklab, var(--dv-flat) 70%, var(--color-ink)); } .dv-co-na { color: var(--color-ink-soft); }
-  .dv-cos li:not(:has(.dv-co-track)) { grid-template-columns: 16px 1fr auto; }
+  /* no bar (the ratings): the name has the bar's room too */
+  .dv-cos li:not(:has(.dv-co-track)) .dv-co-t { grid-column: 2 / 4; }
+  .dv-cos li:not(:has(.dv-co-track)) .dv-co-v { grid-column: 4; }
+  /* a narrow card (six columns on a desktop): each row in two lines, the name whole on the first, the bar and the value under it */
+  .dv-cos { container-type: inline-size; }
+  @container (width < 15rem) {
+    .dv-cos li { grid-template-columns: 16px minmax(0, 1fr) auto; grid-template-areas: "logo name name" ". track value"; row-gap: .15rem; }
+    .dv-cos li .pt-logo { grid-area: logo; }
+    .dv-cos li .dv-co-t, .dv-cos li:not(:has(.dv-co-track)) .dv-co-t { grid-area: name; }
+    .dv-cos li .dv-co-track { grid-area: track; }
+    .dv-cos li .dv-co-v, .dv-cos li:not(:has(.dv-co-track)) .dv-co-v { grid-area: value; }
+  }
 
   /* pt-value in the words people search: the term beside a title, each card's fact in a sentence, the questions the cards answer */
   .dv-term { display: block; font-weight: 500; color: var(--color-ink-soft); }
