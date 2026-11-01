@@ -5,3 +5,4 @@
  */
 export { rowsOf, type AlertRow, type AlertUniverse, type AlertUniverseRow, type LiveInput } from './rows';
 export { CONDITIONS, CONDITION_IDS, GROUPS, abs, pillText, sentence, type ChartKind, type Condition, type ConditionId, type Freq, type Group, type ParamSpec, type Params, type SayPart, type Test } from './catalog';
+export { condition, exampleOf, inUniverse, matches, nameOf, passCount, RULE_MAX, ruleProblem, type Rule, type RuleCondition, type RuleProblem } from './rule';

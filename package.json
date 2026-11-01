@@ -20,6 +20,7 @@
     "./dist/*": "./dist/*",
     "./indicators": "./src/indicators/index.ts",
     "./alerts": "./src/alerts/index.ts",
+    "./alerts/schema": "./src/alerts/schema.ts",
     "./api": "./src/api.ts",
     "./context": "./src/context/index.ts",
     "./ds": "./src/ds/index.ts",
