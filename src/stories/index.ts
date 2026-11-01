@@ -1,4 +1,5 @@
 /** Every component's stories, in the index's order. A component without stories fails stories.spec.ts. */
+import { stories as alertManage } from './alert-manage.stories';
 import { stories as answer } from '../../components/pt-answer.stories';
 import { stories as calendar } from '../../components/pt-calendar.stories';
 import { stories as companyCard } from '../../components/pt-company-card.stories';
@@ -24,5 +25,5 @@ import type { StoryConfiguration } from './story';
 
 export const STORIES: StoryConfiguration[] = [
   ...companyCard, ...answer, ...quality, ...whyToday, ...priceTarget, ...priceEvents, ...metric, ...financials, ...insiders, ...news,
-  ...screen, ...calendar, ...movers, ...logoMap, ...feed, ...value, ...peopleAsk, ...outlook, ...alertEvent, ...drafts, ...pages,
+  ...screen, ...calendar, ...movers, ...logoMap, ...feed, ...value, ...alertManage, ...peopleAsk, ...outlook, ...alertEvent, ...drafts, ...pages,
 ];
