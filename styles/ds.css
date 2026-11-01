@@ -120,6 +120,59 @@
   .pt-island-foot { @apply mt-1.5 flex justify-end; }
   .pt-share { @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs text-ink-soft hover:bg-surface hover:text-primary; }
   .pt-alert-bell { @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs text-ink-soft hover:bg-surface hover:text-primary; }   /* beside Share */
+  /* email alerts (src/site/alerts) — the condition card, version A (Romeo, 2026-11-01: mockup condizioni-A.png). Levels, labels and the
+     NOW pill are the price target's (.pt-lvl*); a card's colour is its group's (--al-c). */
+  .pt-al-card { --al-c: var(--color-primary); display: grid; gap: .2rem; padding: .55rem .65rem .6rem; border: 1px solid var(--color-border);
+    border-left: 3px solid var(--al-c); border-radius: .5rem; background: var(--color-surface-raised); min-width: 0; }
+  .pt-al-card[data-group='fundamental'] { --al-c: var(--color-fund); }
+  .pt-al-card[data-group='news'] { --al-c: oklch(0.62 0.14 65); }
+  .pt-al-card[data-group='social'] { --al-c: oklch(0.58 0.18 350); }
+  .pt-al-card[data-group='universe'] { --al-c: oklch(0.55 0.1 185); }
+  .pt-al-card-h { display: flex; align-items: center; justify-content: space-between; }
+  .pt-al-kind { font-size: .6rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--al-c); }
+  .pt-al-x { border: 0; background: none; padding: 0 .2rem; font-size: 1rem; line-height: 1; color: var(--color-ink-soft); cursor: pointer; }
+  .pt-al-x:hover { color: var(--color-neg); }
+  .pt-al-title { display: flex; align-items: center; gap: .35rem; margin: 0; font-size: .78rem; font-weight: 700; color: var(--color-primary); }
+  .pt-al-viz { display: block; width: 100%; height: auto; margin: .25rem 0 .15rem; overflow: visible; }
+  .pt-al-zone-neg { fill: color-mix(in oklab, var(--color-neg) 7%, transparent); }
+  .pt-al-zone-pos { fill: color-mix(in oklab, var(--color-pos) 8%, transparent); }
+  .pt-al-past { fill: none; stroke-width: 1.8; stroke-linejoin: round; }
+  .pt-al-past-neg { stroke: var(--color-neg); } .pt-al-past-pos { stroke: var(--color-pos); }
+  .pt-al-fire { fill: var(--color-surface-raised); stroke: var(--color-neg); stroke-width: 1.6; }
+  .pt-al-fire-t { font: 600 7px var(--font-sans); fill: var(--color-neg); }
+  .pt-al-ax { font: 500 7.5px var(--font-mono); fill: var(--color-ink-soft); }
+  .pt-al-bar-base { fill: color-mix(in oklab, var(--color-ink-soft) 30%, var(--color-surface-raised)); }
+  .pt-al-bar-hit { fill: var(--al-c); } .pt-al-bar-pos { fill: var(--color-pos); } .pt-al-bar-neg { fill: var(--color-neg); }
+  .pt-al-dot { fill: var(--color-ink); }
+  .pt-al-say { margin: 0; font-size: .84rem; line-height: 1.75; color: var(--color-ink); }
+  .pt-al-pill { padding: .05rem .45rem; border: 1px solid color-mix(in oklab, var(--al-c) 45%, var(--color-border)); border-radius: 999px;
+    background: color-mix(in oklab, var(--al-c) 9%, var(--color-surface-raised)); font: 600 .78rem/1.3 var(--font-mono); color: var(--color-ink);
+    white-space: nowrap; cursor: pointer; }
+  .pt-al-pill::after { content: ' ▾'; font-size: .55rem; color: var(--color-ink-soft); }
+  .pt-al-pill[aria-expanded='true'] { box-shadow: 0 0 0 2px var(--color-primary); }
+  .pt-al-step { justify-self: start; display: flex; align-items: center; gap: .6rem; padding: .3rem .4rem; border: 1px solid var(--color-border);
+    border-radius: .55rem; background: var(--color-surface-raised); box-shadow: 0 8px 18px -10px color-mix(in oklab, var(--color-ink) 45%, transparent);
+    font: 700 .95rem var(--font-mono); }
+  .pt-al-step button { width: 2rem; height: 2rem; border: 1px solid var(--color-border); border-radius: .45rem; background: var(--color-surface);
+    font: 600 1.05rem var(--font-sans); color: var(--color-ink); cursor: pointer; }
+  .pt-al-step button:disabled { opacity: .35; cursor: default; }
+  .pt-al-choices { display: flex; flex-wrap: wrap; gap: .3rem; }
+  .pt-al-choices button { padding: .2rem .5rem; border: 1px solid var(--color-border); border-radius: .45rem; background: var(--color-surface-raised);
+    font-size: .74rem; color: var(--color-ink); cursor: pointer; }
+  .pt-al-ticker { width: 6rem; padding: .25rem .45rem; border: 1px solid var(--color-border); border-radius: .45rem; font: 600 .85rem var(--font-mono);
+    text-transform: uppercase; }
+  .pt-al-count { margin: 0; font-size: .7rem; color: var(--color-ink-soft); }
+  .pt-al-count b { font-family: var(--font-mono); color: var(--color-ink); }
+  .pt-al-nodata { margin: .4rem 0; font-size: .78rem; color: var(--color-ink-soft); }
+  .pt-al-logos { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; padding: .35rem 0 .25rem; }
+  .pt-al-more { font: 600 .7rem var(--font-mono); color: var(--color-ink-soft); }
+  .pt-al-checks { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; padding: .3rem 0; font-size: .76rem; color: var(--color-ink-soft); }
+  .pt-al-checks b { font-family: var(--font-mono); color: var(--color-ink); }
+  .pt-al-marks { display: inline-flex; gap: 3px; }
+  .pt-al-mark { width: 14px; height: 14px; fill: none; stroke: var(--color-ink-soft); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .pt-al-mark-on { stroke: var(--color-pos); } .pt-al-mark-off { stroke: var(--color-neg); }
+  .pt-al-fact { margin: .3rem 0; font-size: .8rem; color: var(--color-ink); }
+  .pt-al-fact b { font-family: var(--font-mono); }
   .pt-share-icon { @apply inline-grid size-5 place-items-center rounded-md text-ink-soft hover:bg-surface hover:text-primary; }   /* a part's: the icon alone */
   .pt-share-menu { @apply fixed z-50 w-80 max-w-[calc(100vw-2rem)] rounded-control border border-border bg-surface-raised p-3 text-sm shadow-lg; }
   .pt-share-head { @apply mb-2 flex items-center justify-between gap-2 font-semibold text-ink; }
