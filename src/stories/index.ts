@@ -4,7 +4,7 @@ import { stories as calendar } from '../../components/pt-calendar.stories';
 import { stories as companyCard } from '../../components/pt-company-card.stories';
 import { stories as feed } from '../../components/pt-feed.stories';
 import { stories as drafts } from '../../components/drafts/home.stories';
-import { stories as value } from '../../components/drafts/value.stories';
+import { stories as value } from '../../components/pt-value.stories';
 import { stories as peopleAsk } from '../../components/drafts/people-ask.stories';
 import { stories as outlook } from '../../components/drafts/outlook.stories';
 import { stories as pages } from './pages.stories';

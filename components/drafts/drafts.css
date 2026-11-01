@@ -75,72 +75,6 @@
 .dr-sw-watch { border: 0; background: var(--color-warn); }
 @media (width < 40rem) { .dr-board { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
-/* pt-value: is this a company of value? Six columns of plain questions, schematic cards inside */
-.dv { display: grid; gap: .8rem; --dv-pos: var(--color-pos); --dv-flat: var(--color-warn); --dv-neg: var(--color-neg); --dv-na: var(--color-ink-soft); }
-.dv-top { display: flex; align-items: center; gap: .75rem; }
-.dv-q { margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--color-ink); }
-.dv-a { margin: .15rem 0 0; font-size: .95rem; line-height: 1.4; color: var(--color-ink); }
-.dv-strip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .35rem; margin: 0; padding: 0; list-style: none; }
-.dv-chip { display: grid; gap: .1rem; padding: .35rem .5rem; border-radius: var(--radius-control); font-size: .7rem; color: var(--color-ink); }
-.dv-chip span { font-size: .62rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--color-ink-soft); }
-/* each column spans the same four rows (name, question, verdict, cards): a subgrid keeps them level whatever a question's length */
-.dv-cols { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .5rem; }
-.dv-col { display: grid; grid-row: span 4; grid-template-rows: subgrid; row-gap: .25rem; align-content: start; padding: .55rem;
-  border-radius: var(--radius-control); border-top: 4px solid; }
-.dv-col-h { display: contents; }
-.dv-stack { display: grid; gap: .45rem; align-content: start; margin-top: .2rem; }
-.dv-name { display: flex; align-items: center; gap: .3rem; font-size: .66rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--color-ink); }
-.dv-ask { font-size: .8rem; font-weight: 600; line-height: 1.25; color: var(--color-ink); }
-.dv-verdict { justify-self: start; align-self: start; padding: .1rem .5rem; border-radius: 999px; font-size: .7rem; font-weight: 700; color: #fff; }
-.dv-card { display: grid; gap: .15rem; padding: .45rem .5rem; border: 1px solid var(--color-border); border-left: 3px solid; border-radius: .5rem; background: var(--color-surface-raised); }
-.dv-big { font: 700 1rem/1.1 var(--font-mono); color: var(--color-ink); }
-/* every card has the same skeleton (a two-line title, a 40px picture, a two-line label), so cards side by side read level */
-.dv-line { min-height: 2.5em; font-size: .7rem; line-height: 1.25; color: var(--color-ink-soft); }
-.dv-viz, .dv-viz-tall { display: block; width: 100%; height: 32px; margin-block: 4px; }
-/* a record over time: a bar per quarter on the line of what was expected (top and height in px from quarterGeom, its track 20px),
-   the quarter under it, the fiscal year under its quarters */
-.dv-qs { position: relative; display: grid; grid-template-rows: 20px 10px 10px; column-gap: 2px; height: 40px; }
-.dv-qs-base { position: absolute; inset-inline: 0; height: 1px; background: var(--color-border); }
-.dv-qs-slot { position: relative; }
-.dv-qs-bar { position: absolute; left: 50%; width: min(10px, 70%); translate: -50% 0; border-radius: 2px; }
-.dv-qs-pos { background: color-mix(in oklab, var(--dv-pos) 45%, var(--color-surface-raised)); } .dv-qs-pos.dv-qs-last { background: var(--dv-pos); }
-.dv-qs-neg { background: color-mix(in oklab, var(--dv-neg) 45%, var(--color-surface-raised)); } .dv-qs-neg.dv-qs-last { background: var(--dv-neg); }
-.dv-qs-flat { background: var(--color-ink-soft); }
-.dv-qs-q, .dv-qs-y { font: 600 8.5px/10px var(--font-mono); color: var(--color-ink-soft); text-align: center; white-space: nowrap; }
-.dv-qs-y { font-weight: 500; line-height: 9px; border-top: 1px solid var(--color-border); margin-inline: 2px; }
-/* the Piotroski checks: a row per group, its name and a mark per check — a green check when it passes, a red x when it misses */
-.dv-ck { display: grid; grid-template-columns: max-content max-content; grid-auto-rows: 12px; gap: 2px .5rem; place-content: center; align-items: center; height: 40px; }
-.dv-ck-g { font: 600 8.5px/12px var(--font-mono); letter-spacing: .03em; text-transform: uppercase; color: var(--color-ink-soft); white-space: nowrap; }
-.dv-ck-row { display: flex; gap: 4px; }
-.dv-ck .pt-icon { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-.dv-ck-on { color: var(--dv-pos); }
-.dv-ck-off { color: var(--dv-neg); }
-.dv-col.dv-pos, .dv-chip.dv-pos { background: color-mix(in oklab, var(--dv-pos) 8%, var(--color-surface-raised)); }
-.dv-col.dv-flat, .dv-chip.dv-flat { background: color-mix(in oklab, var(--dv-flat) 10%, var(--color-surface-raised)); }
-.dv-col.dv-neg, .dv-chip.dv-neg { background: color-mix(in oklab, var(--dv-neg) 8%, var(--color-surface-raised)); }
-.dv-col.dv-na, .dv-chip.dv-na { background: var(--color-surface); }
-.dv-col.dv-pos, .dv-card.dv-pos { border-color: var(--color-border); border-top-color: var(--dv-pos); border-left-color: var(--dv-pos); }
-.dv-col.dv-flat, .dv-card.dv-flat { border-top-color: var(--dv-flat); border-left-color: var(--dv-flat); }
-.dv-col.dv-neg, .dv-card.dv-neg { border-top-color: var(--dv-neg); border-left-color: var(--dv-neg); }
-.dv-col.dv-na, .dv-card.dv-na { border-top-color: var(--dv-na); border-left-color: var(--dv-na); }
-.dv-col { border-left: 0; border-right: 0; border-bottom: 0; }
-.dv-verdict.dv-pos { background: var(--dv-pos); } .dv-verdict.dv-flat { background: var(--dv-flat); } .dv-verdict.dv-neg { background: var(--dv-neg); } .dv-verdict.dv-na { background: var(--dv-na); }
-.dv-base { stroke: var(--color-border); }
-.dv-bar { fill: color-mix(in oklab, var(--color-ink-soft) 30%, var(--color-surface)); }
-.dv-bar.dv-bar-2 { fill: color-mix(in oklab, var(--color-ink-soft) 18%, var(--color-surface)); }
-.dv-bar.dv-bar-3 { fill: color-mix(in oklab, var(--color-ink-soft) 10%, var(--color-surface)); }
-.dv-bar-neg { fill: color-mix(in oklab, var(--dv-neg) 40%, var(--color-surface)); }
-.dv-last-pos, .dv-dot-pos { fill: var(--dv-pos); } .dv-last-flat, .dv-dot-flat { fill: var(--dv-flat); } .dv-last-neg, .dv-dot-neg { fill: var(--dv-neg); } .dv-last-na, .dv-dot-na { fill: var(--dv-na); }
-.dv-dot { fill: none; stroke: var(--color-border); stroke-width: 1.5; }
-.dv-zone-neg, .dv-zone-flat, .dv-zone-pos { fill: none; stroke-width: 7; }
-.dv-zone-neg { stroke: var(--dv-neg); } .dv-zone-flat { stroke: var(--dv-flat); } .dv-zone-pos { stroke: var(--dv-pos); }
-.dv-needle { stroke: var(--color-ink); stroke-width: 2.2; stroke-linecap: round; } .dv-needle-c { fill: var(--color-ink); }
-.dv-track { stroke: var(--color-border); stroke-width: 5; stroke-linecap: round; }
-.dv-mark { stroke: var(--color-ink-soft); stroke-width: 1.5; }
-.dv-t { font: 600 8.5px var(--font-mono); fill: var(--color-ink-soft); }
-@media (width >= 64rem) { .dv-strip { display: none; } }   /* the columns show the verdicts side by side */
-@media (width < 64rem) { .dv-cols { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (width < 40rem) { .dv-cols { grid-template-columns: 1fr; } .dv-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 /* pt-people-ask (draft): what people ask about a company, answered. .dp-faq: the number beside each answer; .dp-cards: in cards */
 .dp { display: grid; gap: .8rem; }
@@ -180,34 +114,6 @@
 .dp-cards .dp-big { font-size: 1.6rem; }
 @media (width < 40rem) { .dp-faq .dp-qa { grid-template-columns: 1fr; gap: .2rem; } .dp-faq .dp-big { text-align: left; } .dp-pulse { grid-template-columns: 1fr; } }
 
-/* pt-value: cards read across other companies (pretickt's own analysis), with their logos */
-.dv-card.dv-via { background: color-mix(in oklab, var(--color-primary) 4%, var(--color-surface-raised)); }
-.dv-title { min-height: 2.4em; font-size: .72rem; font-weight: 700; line-height: 1.2; color: var(--color-primary); }
-@media (width >= 64rem) { .dv-title { min-height: 3.6em; } }   /* six narrow columns: ticker, title and term take three lines */
-/* small on purpose: it marks the card, it is not a heading (a DS class when pt-value is promoted) */
-.dv-badge { justify-self: start; padding: 0 .35rem; border: 1px solid color-mix(in oklab, var(--color-primary) 35%, var(--color-border));
-  border-radius: 999px; background: color-mix(in oklab, var(--color-primary) 8%, var(--color-surface-raised));
-  font-size: .56rem; font-weight: 600; line-height: .95rem; letter-spacing: .02em; color: var(--color-primary); white-space: nowrap; }
-.dv-cos { display: grid; gap: .2rem; margin: .1rem 0 .15rem; padding: 0; list-style: none; }
-.dv-cos li { display: grid; grid-template-columns: 16px 2.6rem 1fr auto; align-items: center; gap: .3rem; padding: .05rem .15rem; border-radius: .3rem; }
-.dv-cos li.dv-self { background: color-mix(in oklab, var(--color-ink) 7%, transparent); font-weight: 700; }
-.dv-co-t { font: 600 .62rem/1 var(--font-mono); color: var(--color-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dv-co-track { height: 6px; border-radius: 3px; background: var(--color-surface); overflow: hidden; }
-.dv-co-bar { display: block; height: 100%; border-radius: 3px; }
-.dv-co-bar.dv-last-pos { background: var(--dv-pos); } .dv-co-bar.dv-last-flat { background: var(--dv-flat); }
-.dv-co-bar.dv-last-neg { background: var(--dv-neg); } .dv-co-bar.dv-last-na { background: var(--dv-na); }
-.dv-co-v { font: 600 .62rem/1 var(--font-mono); text-align: right; white-space: nowrap; }
-.dv-co-pos { color: var(--dv-pos); } .dv-co-neg { color: var(--dv-neg); } .dv-co-flat { color: color-mix(in oklab, var(--dv-flat) 70%, var(--color-ink)); } .dv-co-na { color: var(--color-ink-soft); }
-.dv-cos li:not(:has(.dv-co-track)) { grid-template-columns: 16px 1fr auto; }
-
-/* pt-value in the words people search: the term beside a title, each card's fact in a sentence, the questions the cards answer */
-.dv-term { display: block; font-weight: 500; color: var(--color-ink-soft); }
-.dv-name .dv-term { display: inline; }
-.dv-say { margin: .2rem 0 0; padding-top: .25rem; border-top: 1px solid var(--color-border); font-size: .68rem; line-height: 1.35; color: var(--color-ink); }
-.dv-faq { display: grid; gap: 0 1.5rem; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); }
-.dv-faq-i { padding: .6rem 0; border-top: 1px solid var(--color-border); }
-.dv-faq-q { margin: 0 0 .2rem; font-size: .9rem; font-weight: 650; color: var(--color-ink); }
-.dv-faq-a { margin: 0; font-size: .85rem; line-height: 1.45; color: var(--color-ink); }
 
 /* Earnings calendar with the possible outcome (pt-cal-outlook): the number in a row, the card over it, the agenda that opens it in place */
 .do-cue { font: 600 .7rem/1.2 var(--font-mono); white-space: nowrap; }

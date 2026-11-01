@@ -16,3 +16,4 @@ export type * from './news';
 export type * from './ongoing-moves';
 export type * from './price-series';
 export type * from './screen';
+export type * from './value';

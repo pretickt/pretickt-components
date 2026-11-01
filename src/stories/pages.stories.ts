@@ -12,8 +12,7 @@ import { HOT } from '../../components/drafts/mock';
 import { PA_NVDA_HUB } from '../../components/drafts/people-ask-mock';
 import { PtHot } from '../../components/drafts/pt-hot';
 import { PtPeopleAsk, type PeopleAsk } from '../../components/drafts/pt-people-ask';
-import { PtValue, type Value } from '../../components/drafts/pt-value';
-import { VALUE_NVDA } from '../../components/drafts/value-mock';
+import { PtValue } from '../../components/pt-value';
 import { PtAnswer } from '../../components/pt-answer';
 import { PtCalendar } from '../../components/pt-calendar';
 import { PtCompanyCard } from '../../components/pt-company-card';
@@ -27,12 +26,14 @@ import { PtPriceTarget } from '../../components/pt-price-target';
 import { PtScreen } from '../../components/pt-screen';
 import { PtWhyToday } from '../../components/pt-why-today';
 import { fitTitle, PtPagePreview, PtPreviewNames, type PreviewPage, type PreviewSection } from './page-preview';
-import { story } from './story';
+import { demo, story } from './story';
 
 const UNIVERSE = 'S&P 500 and Nasdaq-100';
 const HOME = { label: 'Home', href: '/' };
 const GROUP = 'Pages · before publishing (www not changed)';
-const NVDA_DRAFTS = { value: VALUE_NVDA, ask: PA_NVDA_HUB };
+const NVDA_DRAFTS = { value: true, ask: PA_NVDA_HUB };
+/** pt-value's made-up NVDA until www serves value@1 (the release of its nightly). */
+const NVDA_VALUE = { 'value@1': demo('value@1', { ticker: 'NVDA' }) };
 
 /** pages.ts MARKET_LISTS: slug, screen list, nav label, h1. */
 const MARKET_LISTS: [string, ScreenList, string, string][] = [
@@ -73,7 +74,7 @@ const prose = (title: string, body: string) => `<section class="pt-section pt-pr
  * two new sections, when the drafts have data for the company: "is it a good stock to buy" (pt-value) after the targets and what
  * people ask (pt-people-ask) at the end, whose questions pt-value answers link to pt-value's answers.
  */
-export function companyPage(t: string, legal: string, sector: Sector, drafts: { value?: Value; ask?: PeopleAsk } = {}): PreviewPage {
+export function companyPage(t: string, legal: string, sector: Sector, drafts: { value?: boolean; ask?: PeopleAsk } = {}): PreviewPage {
   const n = named(legal, t);
   return {
     path: hub(t),
@@ -87,7 +88,7 @@ export function companyPage(t: string, legal: string, sector: Sector, drafts: { 
       { id: 'card', items: [{ c: PtCompanyCard, inputs: { ticker: t } }] },
       { id: 'answer', items: [{ c: PtAnswer, inputs: { topic: 'forecast', ticker: t } }] },
       { id: 'targets', title: 'Analyst price targets', items: [{ c: PtPriceTarget, inputs: { ticker: t } }] },
-      ...(drafts.value ? [{ id: 'value', isNew: true, note: 'pt-value, made-up numbers until its data has a pipeline', items: [{ c: PtValue, inputs: { data: drafts.value } }] }] : []),
+      ...(drafts.value ? [{ id: 'value', isNew: true, note: 'pt-value in its compact form: the full one is its own page, /stocks/<t>/value/', items: [{ c: PtValue, inputs: { ticker: t, compact: true } }] }] : []),
       { id: 'snapshot', title: 'Snapshot', items: [metric(t, METRIC_GROUPS.snapshot)] },
       { id: 'why', title: 'Why it moved', items: [{ c: PtWhyToday, inputs: { ticker: t, window: '1d' } }] },
       { id: 'price', title: 'Price and events', items: [{ c: PtPriceEvents, inputs: { ticker: t, range: '1y' } }] },
@@ -197,7 +198,7 @@ export class PtPreviewTrending { readonly page = input.required<PreviewPage>(); 
 
 export const stories = [
   story(PtPreviewCompany, { name: 'NVDA: common name, pt-value and what people ask, FAQPage (www data, made-up drafts)', live: true, group: GROUP,
-    inputs: { page: companyPage('NVDA', 'NVIDIA Corporation', 'Technology', NVDA_DRAFTS) } }),
+    data: NVDA_VALUE, inputs: { page: companyPage('NVDA', 'NVIDIA Corporation', 'Technology', NVDA_DRAFTS) } }),
   story(PtPreviewCompany, { name: 'META: today\'s page with the common name only (www data)', live: true, group: GROUP,
     inputs: { page: companyPage('META', 'Meta Platforms, Inc.', 'Communication Services') } }),
   story(PtPreviewCompany, { name: 'NVDA on the demo data (the check)', inputs: { page: companyPage('NVDA', 'NVIDIA Corporation', 'Technology', NVDA_DRAFTS) }, group: GROUP }),
