@@ -1,5 +1,6 @@
 import type * as z from 'zod/mini';
 import { analystsDemo, analystsSamples } from './analysts';
+import { alertEventDemo, alertEventSamples, alertUniverseDemo, alertUniverseSamples } from './alerts';
 import { attentionDemo, attentionSamples } from './attention';
 import { companyDemo, companySamples } from './company';
 import { eventsDemo, eventsSamples, eventsUnknownVariant } from './events';
@@ -42,6 +43,8 @@ const EXTRAS: { [K in TypologyKey]: Extras<S[K]['params'], S[K]['payload']> } = 
   'feed@1': { demo: feedDemo, samples: feedSamples, unknownVariant: feedUnknownVariant },
   'value@1': { demo: valueDemo, samples: valueSamples },
   'attention@1': { demo: attentionDemo, samples: attentionSamples },
+  'alert-universe@1': { demo: alertUniverseDemo, samples: alertUniverseSamples },
+  'alert-event@1': { demo: alertEventDemo, samples: alertEventSamples },
 };
 
 function withExtras(): { [K in TypologyKey]: S[K] & Extras<S[K]['params'], S[K]['payload']> } {
@@ -72,6 +75,7 @@ export * from './fundamentals';
 export * from './company';
 export * from './insider';
 export * from './attention';
+export * from './alerts';
 export * from './news';
 export * from './move-breakdown';
 export * from './screen';

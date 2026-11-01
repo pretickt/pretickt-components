@@ -1,6 +1,7 @@
 import { toJSONSchema } from 'zod/mini';
 import type * as z from 'zod/mini';
 import { AnalystsParams, AnalystsPayload } from './analysts';
+import { AlertEventParams, AlertEventPayload, AlertUniverseParams, AlertUniversePayload } from './alerts';
 import { AttentionParams, AttentionPayload } from './attention';
 import { CompanyParams, CompanyPayload } from './company';
 import { EventsParams, EventsPayload } from './events';
@@ -44,6 +45,8 @@ export const TYPOLOGY_SCHEMAS = /* @__PURE__ */ withIds({
   'feed@1': { params: FeedParams, payload: FeedPayload },
   'value@1': { params: ValueParams, payload: ValuePayload },
   'attention@1': { params: AttentionParams, payload: AttentionPayload },
+  'alert-universe@1': { params: AlertUniverseParams, payload: AlertUniversePayload },
+  'alert-event@1': { params: AlertEventParams, payload: AlertEventPayload },
 });
 export type TypologyKey = keyof typeof TYPOLOGY_SCHEMAS;
 
