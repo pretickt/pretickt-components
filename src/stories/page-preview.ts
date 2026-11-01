@@ -7,10 +7,15 @@
  * are not on www yet. Stories only: no page ships this.
  */
 import { NgComponentOutlet } from '@angular/common';
-import { afterNextRender, Component, computed, DestroyRef, ElementRef, inject, input, signal, type Type } from '@angular/core';
+import { afterNextRender, ApplicationRef, Component, computed, DestroyRef, ElementRef, EnvironmentInjector, inject, Injector, input, reflectComponentType, signal, type Type } from '@angular/core';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { date, plainName, withoutSuffixes } from '@pretickt/components/format';
+import { alertSourceOf } from '../alerts/sources';
+import { ICON_PATHS } from '../ds/icons';
 import { faqLd, readFaq, type FaqPair } from '../site/faq';
+import { bellOf } from '../site/alerts/attach';
+import { openEditor } from '../site/alerts/editor';
+import { PtAlertEvent, type AlertEventPayload } from '../../components/drafts/pt-alert-event';
 
 export interface PreviewItem { c: Type<unknown>; inputs?: Record<string, unknown> }
 export interface PreviewSection {
@@ -31,6 +36,10 @@ export interface PreviewPage {
   sections: PreviewSection[];
   /** The home: the site's WebSite and Organization JSON-LD. */
   site?: boolean;
+  /** A page with alerts (plan 2): a bell under every placement that has a badge, the editor on a press (the story's made-up backend). */
+  alerts?: true;
+  /** The alert an email opened (`?alert=`): its card on top (the pt-alert-event draft). */
+  alertEvent?: AlertEventPayload;
 }
 
 export const BASE = 'https://www.pretickt.com';
@@ -55,7 +64,7 @@ const json = (v: unknown) => JSON.stringify(v, null, 2);
 
 @Component({
   selector: 'pt-page-preview',
-  imports: [NgComponentOutlet],
+  imports: [NgComponentOutlet, PtAlertEvent],
   template: `
     @let p = view();
     <div class="pv">
@@ -83,6 +92,7 @@ const json = (v: unknown) => JSON.stringify(v, null, 2);
           @if (p.nav?.length) {
             <nav class="pt-subnav">@for (l of p.nav; track l.href) {<a [href]="l.href" [attr.aria-current]="l.href === p.path ? 'page' : null" [class.pv-new-link]="l.isNew">{{ l.label }}</a>}</nav>
           }
+          @if (p.alertEvent; as ev) {<pt-alert-event [event]="ev" />}
           @if (p.intro) {<div [innerHTML]="trusted(p.intro)"></div>}
           @for (s of p.sections; track s.id) {
             <section class="pt-section" [id]="s.id" [class.pv-new]="s.isNew" [class.pt-strip]="s.strip">
@@ -95,10 +105,10 @@ const json = (v: unknown) => JSON.stringify(v, null, 2);
               } @else if (s.title) {<h2 class="pt-section-title">{{ s.title }}</h2>}
               @if (s.strip) {
                 <div class="pt-strip-row" tabindex="0" role="group" [attr.aria-label]="s.title ?? null">
-                  @for (it of s.items; track $index) {<div class="pt-island"><ng-container [ngComponentOutlet]="it.c" [ngComponentOutletInputs]="it.inputs ?? {}" /></div>}
+                  @for (it of s.items; track $index) {<div class="pt-island" [attr.data-island]="tagOf(it) + '@preview'"><ng-container [ngComponentOutlet]="it.c" [ngComponentOutletInputs]="it.inputs ?? {}" />@if (p.alerts && bell(it); as a) {<div class="pt-island-foot"><button type="button" class="pt-alert-bell" [attr.data-alert]="a" aria-haspopup="dialog" aria-label="Create an alert"><svg class="pt-icon" viewBox="0 0 16 16" aria-hidden="true"><path [attr.d]="BELL" /></svg>Alert</button></div>}</div>}
                 </div>
               } @else {
-                @for (it of s.items; track $index) {<div class="pt-island"><ng-container [ngComponentOutlet]="it.c" [ngComponentOutletInputs]="it.inputs ?? {}" /></div>}
+                @for (it of s.items; track $index) {<div class="pt-island" [attr.data-island]="tagOf(it) + '@preview'"><ng-container [ngComponentOutlet]="it.c" [ngComponentOutletInputs]="it.inputs ?? {}" />@if (p.alerts && bell(it); as a) {<div class="pt-island-foot"><button type="button" class="pt-alert-bell" [attr.data-alert]="a" aria-haspopup="dialog" aria-label="Create an alert"><svg class="pt-icon" viewBox="0 0 16 16" aria-hidden="true"><path [attr.d]="BELL" /></svg>Alert</button></div>}</div>}
               }
             </section>
           }
@@ -131,8 +141,24 @@ export class PtPagePreview {
     return [site, crumbs, faqLd(this.faq())].filter((x) => x !== null).map(json);
   });
   protected readonly trusted = (html: string): SafeHtml => this.san.bypassSecurityTrustHtml(html);
+  protected readonly BELL = ICON_PATHS['bell'];
+  /** A placement's tag (its component's selector) and the badge its bell adds, as renderPage computes them on the site. */
+  protected tagOf(it: PreviewItem): string { return reflectComponentType(it.c)?.selector ?? ''; }
+  protected bell(it: PreviewItem): string | null {
+    const src = alertSourceOf(this.tagOf(it), it.inputs ?? {});
+    return src ? JSON.stringify(src) : null;
+  }
 
   constructor() {
+    // a bell's press opens the editor on the story's made-up backend (the story's providers, through this injector)
+    const appRef = inject(ApplicationRef), env = inject(EnvironmentInjector), near = inject(Injector);
+    afterNextRender(() => {
+      this.host.nativeElement.addEventListener('click', (e) => {
+        const btn = (e.target as Element | null)?.closest?.('[data-alert]');
+        const b = btn ? bellOf(btn, document) : null;
+        if (b) openEditor(appRef, env, b.src, b.from, near);
+      });
+    });
     fetch('/build.json').then((r) => (r.ok ? r.json() as Promise<{ asOf: string }> : Promise.reject(new Error(String(r.status)))))
       .then((b) => this.asOf.set(b.asOf), () => this.asOf.set(new Date().toISOString().slice(0, 10)));
     // the page fills in as each component's answers arrive: read its questions again whenever it changes

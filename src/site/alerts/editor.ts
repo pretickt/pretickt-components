@@ -1,4 +1,4 @@
-import { type ApplicationRef, Component, computed, createComponent, effect, type ComponentRef, type EnvironmentInjector, inject, signal } from '@angular/core';
+import { type ApplicationRef, Component, computed, createComponent, effect, type ComponentRef, type EnvironmentInjector, inject, type Injector, signal } from '@angular/core';
 import { Pt, PtLive } from '@pretickt/components/context';
 import { PtAlerts } from '../../alerts/service';
 import type { AlertFrom, SaveResult } from '../../alerts/token';
@@ -190,15 +190,18 @@ export class PtAlertEditor {
 }
 
 let mounted: ComponentRef<PtAlertEditor> | null = null;
-/** A bell's press: mounts the editor once on the page, then adds the bell's badge to the draft (which opens it). */
-export function openEditor(appRef: ApplicationRef, env: EnvironmentInjector, src: AlertSource, from: AlertFrom): void {
+/**
+ * A bell's press: mounts the editor once on the page, then adds the bell's badge to the draft (which opens it). `near`: an injector
+ * whose providers the editor should see first (the stories' page previews provide their made-up backend in one).
+ */
+export function openEditor(appRef: ApplicationRef, env: EnvironmentInjector, src: AlertSource, from: AlertFrom, near?: Injector): void {
   if (!mounted) {
     const host = document.createElement('div');
     document.body.append(host);
-    mounted = createComponent(PtAlertEditor, { environmentInjector: env, hostElement: host });
+    mounted = createComponent(PtAlertEditor, { environmentInjector: env, hostElement: host, ...(near ? { elementInjector: near } : {}) });
     appRef.attachView(mounted.hostView);
   }
-  env.get(PtAlerts).add(src, from);
+  (near ?? env).get(PtAlerts).add(src, from);
 }
 
 /** The page's listener hands over a pressed bell: its badge joins the draft and the editor opens. */

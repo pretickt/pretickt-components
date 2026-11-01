@@ -43,3 +43,7 @@
 .pv-names th, .pv-names td { padding: .25rem .5rem; border-bottom: 1px solid var(--color-border); text-align: left; overflow-wrap: anywhere; }
 .pv-names th { color: var(--color-ink-soft); font-weight: 600; }
 .pv-changed td:last-child { color: var(--color-primary); }
+
+/* the alert editor in a story: in place, not a dialog over the page */
+.pt-al-inline .pt-al-editor { position: static; inset: auto; margin: 0; max-height: none; box-shadow: none; border: 1px solid var(--color-border); }
+.pt-al-inline .pt-al-backdrop { display: none; }

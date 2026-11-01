@@ -6,6 +6,10 @@
  * layout would write, the FAQPage read from the questions the page shows.
  */
 import { Component, input } from '@angular/core';
+import type { ManageState } from '../alerts/token';
+import { AE_AMD } from '../../components/drafts/alert-event-mock';
+import { PtAlertManage } from '../site/alerts/manage';
+import { fakeAlerts } from './fake-alerts';
 import { named, plainName } from '@pretickt/components/format';
 import { METRIC_GROUPS, type MetricKey, type ScreenList, type Sector } from '@pretickt/components/typologies';
 import { HOT } from '../../components/drafts/mock';
@@ -216,6 +220,15 @@ export function trendingPage(): PreviewPage {
   };
 }
 
+/** /alerts/: the alerts' page — confirm and manage from an email's link (noindex; the manage part is the page app's). */
+export function alertsPage(): PreviewPage {
+  return {
+    path: '/alerts/', title: 'Your alerts | pretickt', description: 'Confirm, pause, edit or delete the email alerts you set on pretickt.',
+    h1: 'Your alerts', lede: 'The email alerts you set on pretickt: confirm them, pause them, change them', crumbs: [HOME, { label: 'Your alerts' }],
+    sections: [{ id: 'alerts', isNew: true, note: 'made-up alerts until the platform has them', items: [{ c: PtAlertManage }] }],
+  };
+}
+
 @Component({ selector: 'pt-preview-company', imports: [PtPagePreview], template: '<pt-page-preview [page]="page()" />' })
 export class PtPreviewCompany { readonly page = input.required<PreviewPage>(); }
 @Component({ selector: 'pt-preview-home', imports: [PtPagePreview], template: '<pt-page-preview [page]="page()" />' })
@@ -227,7 +240,18 @@ export class PtPreviewMarketMap { readonly page = input.required<PreviewPage>();
 @Component({ selector: 'pt-preview-trending', imports: [PtPagePreview], template: '<pt-page-preview [page]="page()" />' })
 export class PtPreviewTrending { readonly page = input.required<PreviewPage>(); }
 
+@Component({ selector: 'pt-preview-alerts', imports: [PtPagePreview], template: '<pt-page-preview [page]="page()" />' })
+export class PtPreviewAlerts { readonly page = input.required<PreviewPage>(); }
+
+const ALERT_STATE = { email: 'r•••@example.com', status: 'active' as const, weekly: false, confirmed: { id: 'r1', now: ['AMD'] },
+  rules: [{ id: 'r1', name: 'Mega-cap drops', status: 'active' as const, rule: { v: 1 as const, all: [{ c: 'session-move' as const, p: { dir: 'down', pct: 5 } },
+    { c: 'below-average' as const, p: { dir: 'below', pct: 15, days: '50' } }, { c: 'mega-caps' as const, p: {} }] } }] } as ManageState;
+
 export const stories = [
+  story(PtPreviewCompany, { name: 'AMD with alerts: a bell under every section, the alert an email opened on top (www data, made-up alert)', live: true,
+    group: GROUP, providers: fakeAlerts(), inputs: { page: { ...companyPage('AMD', 'Advanced Micro Devices, Inc.', 'Technology'), alerts: true, alertEvent: AE_AMD } } }),
+  story(PtPreviewAlerts, { name: '/alerts/: the page a confirmation link opens (made-up alerts)', group: GROUP, inputs: { page: alertsPage() },
+    providers: fakeAlerts({ landing: { alert: null, token: 'demo', action: 'confirm' }, state: ALERT_STATE }) }),
   story(PtPreviewCompany, { name: 'NVDA: common name, pt-value and what people ask, FAQPage (www data, made-up drafts)', live: true, group: GROUP,
     data: NVDA_VALUE, inputs: { page: companyPage('NVDA', 'NVIDIA Corporation', 'Technology', NVDA_DRAFTS) } }),
   story(PtPreviewCompany, { name: 'NVDA: pt-value\'s own page, /stocks/nvda/value/ (made-up pt-value, www data for the rest)', live: true, group: GROUP,
