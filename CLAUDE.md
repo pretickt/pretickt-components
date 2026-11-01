@@ -181,6 +181,23 @@ change in this repo, reviewed like any other).
   you don't know (new metric keys, new event kinds, events **without ticker**): render them generically or skip them, never throw.
 - **Public copy is US English**, templated from data. **No LLM prose** on pages. Never show index symbols (`^…`); "the market" is SPY.
 
+## Alerts (`@pretickt/components/alerts`, `src/site/alerts/`)
+Email alerts (spec `pretickt/docs/superpowers/specs/2026-11-01-email-alerts-design.md`): on a page with alerts a bell under every
+placement adds the badge of its section to the alert being built; an alert is a rule — every condition true together — saved with an
+email, no account.
+- **The catalog** (`src/alerts/catalog.ts`): 18 conditions, each with its params, the card's sentence, a short name, the event's line
+  and `test(row, params)` — the same function counts in the editor and fires on the platform. Ids, params and defaults are stored in
+  rules: change them with a migration. `rowsOf` merges the nightly's universe with a newer live day; rules in `rule.ts`; the server's
+  schema is `@pretickt/components/alerts/schema` (never on a page); the badge each component's bell adds is `alertSourceOf`
+  (`sources.ts`); version A's charts are `chartOf` (`charts.ts`, the email's image draws the same models).
+- **`PtAlerts`** is the alerts entry's, not the context's: the draft, saving, the page's backend `PT_ALERTS` (`token.ts`). A component
+  imports it from `@pretickt/components/alerts`.
+- **The page app** owns the alerts' UI: renderPage computes each placement's badge on the server (`withAlerts`) when the page model has
+  `alerts`, the slot draws the bell beside Share, and one listener loads the editor's chunk on the first press (`pressBell`). The
+  manage page (`manage.ts`) and the alert at the top of a company page are mounted by the page app from chunks of their own.
+- **The main bundle is full** (239,897 of 240,000 bytes on 2026-11-02): a registry component costs it about 1 KB, so the alerts' parts
+  are not placeable components, and what they add to the main bundle stays a few bytes (the slot's input, the listener's line).
+
 ## Search engines and AI answers (SEO, AI search)
 Google shows an AI Overview on most questions about a stock, and the chat assistants (ChatGPT, Claude, Gemini, Perplexity) answer
 them too, quoting the sites that write the exact number with its date. What a component prints is that text:
