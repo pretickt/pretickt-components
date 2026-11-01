@@ -1,5 +1,6 @@
 import { CONDITIONS, type ConditionId, type Params } from './catalog';
 import type { AlertRow } from './rows';
+import type { AlertSource } from './sources';
 
 /** One badge of an alert: a condition and its values. */
 export interface RuleCondition { c: ConditionId; p: Params }
@@ -71,4 +72,14 @@ export function nameOf(r: Rule): string {
     name = next;
   }
   return name;
+}
+
+/** What a bell adds to the rule: its badge (seeded by the example), then mega caps, the sector and the stock it is tied to. */
+export function sourceConditions(src: AlertSource, seed?: AlertRow | null): RuleCondition[] {
+  return [
+    condition(src.c, src.p, seed),
+    ...(src.mega ? [condition('mega-caps')] : []),
+    ...(src.sector ? [condition('sector', { sector: src.sector })] : []),
+    ...(src.ticker ? [condition('one-stock', { ticker: src.ticker })] : []),
+  ];
 }
