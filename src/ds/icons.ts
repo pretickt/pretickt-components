@@ -30,6 +30,7 @@ export const ICON_PATHS: Record<string, string> = {
   chevron: P('M6 3l5 5-5 5'),
   // share as an image and a link — three circles joined by two lines, never the arrow up (Romeo, 2026-11-01): under each
   // placement with its word, alone on a part of one (a card)
+  bell: P('M4 6.5a4 4 0 0 1 8 0c0 2.6.8 4 1.5 4.75h-11C3.2 10.5 4 9.1 4 6.5zM6.5 13.5a1.6 1.6 0 0 0 3 0'),
   share: P('M12 1.5a2 2 0 1 0 0 4a2 2 0 1 0 0-4zM4 6a2 2 0 1 0 0 4a2 2 0 1 0 0-4zM12 10.5a2 2 0 1 0 0 4a2 2 0 1 0 0-4zM5.75 7l4.5 -2.5M5.75 9l4.5 2.5'),
 };
 

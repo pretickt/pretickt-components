@@ -27,7 +27,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
   'pt-feed': { version: '1.0.0', sample: {} },
   'pt-financials': { version: '2.4.0', sample: { ticker: 'NVDA' } },
   'pt-insiders': { version: '2.3.0', sample: { ticker: 'NVDA' } },
-  'pt-logo-map': { version: '0.6.0', sample: {} },
+  'pt-logo-map': { version: '0.6.1', sample: {} },
   'pt-metric': { version: '2.1.0', sample: { ticker: 'NVDA', metrics: ['pe', 'pe_vs_sector', 'pe_vs_own', 'pt_upside', 'consensus', 'market_cap', 'fcf_yield', 'insider_net', 'earnings_in', 'news'] } },
   'pt-movers': { version: '1.0.1', sample: {} },
   'pt-news': { version: '2.1.0', sample: { ticker: 'NVDA' } },
@@ -67,11 +67,14 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
       @case ('pt-value') { @defer (hydrate on viewport) {<pt-value [ticker]="$any(p()).ticker" [compact]="$any(p()).compact ?? false" />} }
       @case ('pt-why-today') { @defer (hydrate on viewport) {<pt-why-today [ticker]="$any(p()).ticker" [window]="$any(p()).window ?? '1d'" />} }
     }
-    <div class="pt-island-foot"><button type="button" class="pt-share" data-share aria-haspopup="dialog"><svg class="pt-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M12 1.5a2 2 0 1 0 0 4a2 2 0 1 0 0-4zM4 6a2 2 0 1 0 0 4a2 2 0 1 0 0-4zM12 10.5a2 2 0 1 0 0 4a2 2 0 1 0 0-4zM5.75 7l4.5 -2.5M5.75 9l4.5 2.5"/></svg>Share</button></div>`,
+    <div class="pt-island-foot"><button type="button" class="pt-share" data-share aria-haspopup="dialog"><svg class="pt-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M12 1.5a2 2 0 1 0 0 4a2 2 0 1 0 0-4zM4 6a2 2 0 1 0 0 4a2 2 0 1 0 0-4zM12 10.5a2 2 0 1 0 0 4a2 2 0 1 0 0-4zM5.75 7l4.5 -2.5M5.75 9l4.5 2.5"/></svg>Share</button>@if (a(); as alert) {<button type="button" class="pt-alert-bell" [attr.data-alert]="alert" aria-haspopup="dialog" aria-label="Create an alert"><svg class="pt-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6.5a4 4 0 0 1 8 0c0 2.6.8 4 1.5 4.75h-11C3.2 10.5 4 9.1 4 6.5zM6.5 13.5a1.6 1.6 0 0 0 3 0"/></svg>Alert</button>}</div>`,
 })
 export class PtSlot {
   readonly c = input.required<string>();
   readonly p = input.required<Record<string, unknown>>();
+  /** the badge its bell adds, as the bell's data (null: no bell) */
+  readonly a = input<string | null>(null);
   protected readonly pt = inject(Pt);
   readonly id = computed(() => `${this.c()}@${REGISTRY[this.c()]?.version ?? '0.0.0'}`);
+
 }

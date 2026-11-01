@@ -31,13 +31,13 @@ const CARD = 'pt-company-card';
           <div class="pt-strip-row" tabindex="0" role="group" [attr.aria-label]="s.title ?? null">
             @for (it of s.items; track $index) {
               @if (it.off || !known(it.c)) {<div class="pt-island"><p class="pt-na">Data not available</p></div>}
-              @else {<div ptSlot [c]="it.c" [p]="it.props"></div>}
+              @else {<div ptSlot [c]="it.c" [p]="it.props" [a]="it.alert ?? null"></div>}
             }
           </div>
         } @else {
           @for (it of s.items; track $index) {
             @if (it.off || !known(it.c)) {<div class="pt-island"><p class="pt-na">Data not available</p></div>}
-            @else {<div ptSlot [c]="it.c" [p]="it.props"></div>}
+            @else {<div ptSlot [c]="it.c" [p]="it.props" [a]="it.alert ?? null"></div>}
           }
         }
       </section>

@@ -119,6 +119,7 @@
   /* Share: a button under each placement (src/site/share.ts) and the menu it opens, with the placement drawn as an image */
   .pt-island-foot { @apply mt-1.5 flex justify-end; }
   .pt-share { @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs text-ink-soft hover:bg-surface hover:text-primary; }
+  .pt-alert-bell { @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs text-ink-soft hover:bg-surface hover:text-primary; }   /* beside Share */
   .pt-share-icon { @apply inline-grid size-5 place-items-center rounded-md text-ink-soft hover:bg-surface hover:text-primary; }   /* a part's: the icon alone */
   .pt-share-menu { @apply fixed z-50 w-80 max-w-[calc(100vw-2rem)] rounded-control border border-border bg-surface-raised p-3 text-sm shadow-lg; }
   .pt-share-head { @apply mb-2 flex items-center justify-between gap-2 font-semibold text-ink; }

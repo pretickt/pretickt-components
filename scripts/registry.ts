@@ -26,6 +26,12 @@ function jsLiteral(v: unknown): string {
 export const SHARE_FOOT = '<div class="pt-island-foot"><button type="button" class="pt-share" data-share aria-haspopup="dialog">' +
   `<svg class="pt-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="${ICON_PATHS['share']}"/></svg>Share</button></div>`;
 
+/** Beside Share, when the page has alerts and the placement's section has a badge — `a`, which renderPage computes on the server
+ *  (src/site/alerts/annotate.ts) so the mapping stays out of the browser's main bundle; src/site/alerts/attach.ts answers it. */
+export const BELL = '@if (a(); as alert) {<button type="button" class="pt-alert-bell" [attr.data-alert]="alert" aria-haspopup="dialog" ' +
+  `aria-label="Create an alert"><svg class="pt-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="${ICON_PATHS['bell']}"/></svg>Alert</button>}`;
+export const ISLAND_FOOT = SHARE_FOOT.replace(/<\/div>$/, `${BELL}</div>`);
+
 /** `src/site/registry.generated.ts`: PtSlot (one `@defer (hydrate on viewport)` case per component, literal defaults) and REGISTRY. */
 export function registrySource(entries: RegistryEntry[]): string {
   const list = [...entries].sort((a, b) => (a.tag < b.tag ? -1 : 1));
@@ -54,13 +60,16 @@ ${list.map((e) => `  '${e.tag}': { version: '${e.version}', sample: ${jsLiteral(
     @switch (c()) {
 ${list.map((e) => `      @case ('${e.tag}') { @defer (hydrate on viewport) {<${e.tag} ${e.inputs.map(binding).join(' ')} />} }`).join('\n')}
     }
-    ${SHARE_FOOT}\`,
+    ${ISLAND_FOOT}\`,
 })
 export class PtSlot {
   readonly c = input.required<string>();
   readonly p = input.required<Record<string, unknown>>();
+  /** the badge its bell adds, as the bell's data (null: no bell) */
+  readonly a = input<string | null>(null);
   protected readonly pt = inject(Pt);
   readonly id = computed(() => \`\${this.c()}@\${REGISTRY[this.c()]?.version ?? '0.0.0'}\`);
+
 }
 `;
 }

@@ -2,7 +2,8 @@ import { InjectionToken, makeStateKey } from '@angular/core';
 import type { FaqPair } from './faq';
 
 /** One component on a page: its tag and props; `off` = shown as "not available" without the component (a placement the build refused). */
-export interface PagePlacement { c: string; props: Record<string, unknown>; off?: boolean }
+/** `alert`: the badge its bell adds (JSON), set by renderPage on a page with alerts; none = no bell. */
+export interface PagePlacement { c: string; props: Record<string, unknown>; off?: boolean; alert?: string | null }
 /**
  * A section: its title (none on the company card's), the link to its full page, its placements; `strip`: side by side in one row
  * that scrolls sideways (the heat maps' sectors).
@@ -12,7 +13,8 @@ export interface PageSection { id: string; title?: string; more?: { href: string
  * What the generator gives a page app: its sections, the build, the API origin ('' = same origin), on a company's pages that company,
  * and the address of the intraday file (none: no live prices).
  */
-export interface PageModel { buildId: string; api: string; subject?: string; live?: string; sections: PageSection[] }
+/** `alerts`: the page draws a bell under each placement and answers it (the platform turns it on with the alerts' API). */
+export interface PageModel { buildId: string; api: string; subject?: string; live?: string; alerts?: true; sections: PageSection[] }
 
 export interface RenderOptions {
   /** The page document with a `<pt-page></pt-page>` root (the generator's layout). */

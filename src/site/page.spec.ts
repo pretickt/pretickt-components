@@ -59,6 +59,16 @@ describe('PtPage', () => {
     expect(one!.classList).not.toContain('pt-strip');
     expect(one!.querySelector('.pt-strip-row')).toBeNull();
   });
+  it('a placement with a bell shows it beside Share, its badge as data; without one only Share (2026-11-01, alerts)', async () => {
+    const el = await page({ buildId: 'b', api: '', alerts: true, sections: [{ id: 'why', items: [
+      { c: 'pt-why-today', props: { ticker: 'NVDA' }, alert: '{"c":"session-move","ticker":"NVDA"}' }, { c: 'pt-news', props: { ticker: 'NVDA' } }] }] });
+    const feet = [...el.querySelectorAll('.pt-island-foot')];
+    expect(feet[0]!.querySelector('.pt-alert-bell')!.getAttribute('data-alert')).toBe('{"c":"session-move","ticker":"NVDA"}');
+    expect(feet[0]!.querySelector('.pt-alert-bell')!.textContent).toContain('Alert');
+    expect(feet[1]!.querySelector('.pt-alert-bell')).toBeNull();
+    expect(feet[1]!.querySelector('.pt-share')).not.toBeNull();
+  });
+
   it('a placement switched off by the build, or a tag it does not know, is a static "not available"', async () => {
     const el = await page({ buildId: 'b', api: '', sections: [{ id: 's', items: [{ c: 'pt-news', props: { ticker: 'NVDA' }, off: true }, { c: 'pt-unknown', props: {} }] }] });
     expect(el.querySelectorAll('[data-island]')).toHaveLength(0);

@@ -7,6 +7,7 @@ import { readFaq, type FaqPair } from './faq';
 import { demoFor, getTypology } from '../typologies';
 import { appConfig } from './app.config';
 import { CALLS_KEY, PT_PAGE, type PageModel, type RenderOptions, type RenderResult } from './model';
+import { withAlerts } from './alerts/annotate';
 
 export type { RenderOptions, RenderResult } from './model';
 import { PtPage } from './page';
@@ -25,7 +26,8 @@ const slots = (m: PageModel) => m.sections.flatMap((s, i) => s.items.flatMap((it
  * browser, a slow call answered null after the timeout); the rendered DOM is checked per placement before it is serialized. A
  * component that throws fails the render.
  */
-export async function renderPage(model: PageModel, o: RenderOptions): Promise<RenderResult> {
+export async function renderPage(given: PageModel, o: RenderOptions): Promise<RenderResult> {
+  const model = withAlerts(given);   // the bells' badges, computed here so the browser never maps them
   const record: Record<string, unknown> = {};
   const timeouts = new Set<string>();
   const errors: unknown[] = [];
