@@ -108,3 +108,91 @@ describe('the catalog: technical and universe conditions', () => {
     expect(f('mega-caps', 310e9)).toBe('is a mega cap ($310B)');
   });
 });
+
+describe('the catalog: fundamental, news and social conditions', () => {
+  it('pe-vs-sector, undervalued and analyst-upside read the nightly numbers', () => {
+    expect(test('pe-vs-sector', { peVsSector: -0.2 }).pass).toBe(true);
+    expect(test('pe-vs-sector', { peVsSector: -0.19 }).pass).toBe(false);
+    expect(test('pe-vs-sector', { peVsSector: 0.25 }, { dir: 'above' }).pass).toBe(true);
+    expect(test('undervalued', { undervalued: true }).pass).toBe(true);
+    expect(test('undervalued', { undervalued: false }).pass).toBe(false);
+    expect(test('analyst-upside', { ptUpside: 0.2 }).pass).toBe(true);
+    expect(test('analyst-upside', { ptUpside: 0.19 }).pass).toBe(false);
+  });
+
+  it('piotroski or more / or less', () => {
+    expect(test('piotroski', { piotroski: 7 }).pass).toBe(true);
+    expect(test('piotroski', { piotroski: 6 }).pass).toBe(false);
+    expect(test('piotroski', { piotroski: 3 }, { side: 'low', score: 3 }).pass).toBe(true);
+    expect(test('piotroski', { piotroski: 4 }, { side: 'low', score: 3 }).pass).toBe(false);
+  });
+
+  it('earnings-surprise reads the latest report', () => {
+    expect(test('earnings-surprise', { surprises: [0.2, 0.01] }).pass).toBe(false);
+    expect(test('earnings-surprise', { surprises: [0.01, 0.06] }).pass).toBe(true);
+    expect(test('earnings-surprise', { surprises: [0.01, -0.06] }, { dir: 'miss' }).pass).toBe(true);
+    expect(test('earnings-surprise', { surprises: [] })).toEqual({ pass: false, value: null });
+  });
+
+  it('insider-buying needs the chosen net amount in 90 days', () => {
+    expect(test('insider-buying', { insiderNet90: 1e6 }).pass).toBe(true);
+    expect(test('insider-buying', { insiderNet90: 0.9e6 }).pass).toBe(false);
+  });
+
+  it('news-spike needs 4 stories at least', () => {
+    expect(test('news-spike', { news: 3, newsUsual: 0.5 }).pass).toBe(false);
+    expect(test('news-spike', { news: 4, newsUsual: 0.5 }).pass).toBe(true);
+    expect(test('news-spike', { news: 8, newsUsual: 3 }).pass).toBe(false);
+    expect(test('news-spike', { news: 9, newsUsual: 3 }).pass).toBe(true);
+    expect(test('news-spike', { news: 9, newsUsual: 3 }).value).toBeCloseTo(3, 10);
+  });
+
+  it('earnings-soon counts calendar days from the session', () => {
+    expect(test('earnings-soon', { session: '2026-10-30', earningsDate: '2026-11-02' }).pass).toBe(true);
+    expect(test('earnings-soon', { session: '2026-10-30', earningsDate: '2026-11-02' }, { days: 2 }).pass).toBe(false);
+    expect(test('earnings-soon', { session: '2026-10-30', earningsDate: '2026-10-29' }).pass).toBe(false);
+    expect(test('earnings-soon', { session: '2026-10-30', earningsDate: '2026-11-02' }).value).toBe(3);
+  });
+
+  it('grade-change fires on the session of the grade only', () => {
+    expect(test('grade-change', { session: '2026-10-30', grade: { dir: 'down', date: '2026-10-30', firm: 'F' } }).pass).toBe(true);
+    expect(test('grade-change', { session: '2026-10-31', grade: { dir: 'down', date: '2026-10-30', firm: 'F' } }).pass).toBe(false);
+    expect(test('grade-change', { session: '2026-10-30', grade: { dir: 'up', date: '2026-10-30', firm: 'F' } }).pass).toBe(false);
+    expect(test('grade-change', { session: '2026-10-30', grade: { dir: 'up', date: '2026-10-30', firm: 'F' } }, { dir: 'up' }).pass).toBe(true);
+  });
+
+  it('social-buzz needs 10 posts at least', () => {
+    expect(test('social-buzz', { social: 9, socialUsual: 1 }).pass).toBe(false);
+    expect(test('social-buzz', { social: 10, socialUsual: 1 }).pass).toBe(true);
+    expect(test('social-buzz', { social: 303, socialUsual: 64 }).pass).toBe(true);
+  });
+
+  it('null fields never pass (fundamental, news, social)', () => {
+    const cases: [ConditionId, Partial<AlertRow>][] = [
+      ['pe-vs-sector', { peVsSector: null }], ['analyst-upside', { ptUpside: null }], ['piotroski', { piotroski: null }],
+      ['earnings-surprise', { surprises: null }], ['insider-buying', { insiderNet90: null }], ['news-spike', { news: null }],
+      ['news-spike', { newsUsual: null }], ['earnings-soon', { earningsDate: null }], ['grade-change', { grade: null }],
+      ['social-buzz', { socialUsual: null }],
+    ];
+    for (const [id, o] of cases) expect(test(id, o), id).toEqual({ pass: false, value: null });
+  });
+
+  it('the catalog has 18 conditions in table order, each with a group, a chart and a short name', () => {
+    expect(CONDITION_IDS).toEqual(['session-move', 'price-crosses', 'below-average', 'near-52w', 'volume-spike', 'pe-vs-sector',
+      'undervalued', 'analyst-upside', 'piotroski', 'earnings-surprise', 'insider-buying', 'news-spike', 'earnings-soon',
+      'grade-change', 'social-buzz', 'mega-caps', 'sector', 'one-stock']);
+    for (const id of CONDITION_IDS) {
+      const c = CONDITIONS[id];
+      expect(c.group && c.chart && c.short(c.defaults), id).toBeTruthy();
+    }
+  });
+
+  it('their facts read as plain English', () => {
+    const f = (id: ConditionId, v: number | null, p: Params = {}) => CONDITIONS[id].fact({ ...CONDITIONS[id].defaults, ...p }, v);
+    expect(f('earnings-surprise', 0.062)).toBe('beat estimates by 6.2%');
+    expect(f('news-spike', 4.1)).toBe('had 4.1× its usual number of stories');
+    expect(f('earnings-soon', 2)).toBe('reports earnings in 2 days');
+    expect(f('grade-change', null)).toBe('was downgraded by an analyst');
+    expect(f('insider-buying', 2.4e6)).toBe('saw $2.4M of net insider buying in 90 days');
+  });
+});

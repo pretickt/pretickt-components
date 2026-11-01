@@ -117,6 +117,120 @@ const TECHNICAL: Condition[] = [
   },
 ];
 
+/** Calendar days from one ISO date to another (the session to an earnings date). */
+const daysBetween = (from: string, to: string) => {
+  const t = (d: string) => Date.UTC(Number(d.slice(0, 4)), Number(d.slice(5, 7)) - 1, Number(d.slice(8, 10)));
+  return Math.round((t(to) - t(from)) / 86400000);
+};
+/** Today's count against the usual day's, with a floor of stories or posts so a quiet stock's 1 against 0.2 does not fire. */
+const versus = (now: number | null, usual: number | null, times: number, floor: number): Test => {
+  if (now === null || usual === null) return NO;
+  return { pass: now >= Math.max(floor, times * usual) - 1e-12, value: usual > 0 ? now / usual : null };
+};
+
+const FUNDAMENTAL: Condition[] = [
+  {
+    id: 'pe-vs-sector', group: 'fundamental', name: 'P/E vs sector', freq: 'daily', chart: 'pe',
+    params: [pct('pct', 5, 80, 5), choice('dir', [['below', 'below'], ['above', 'above']])], defaults: { dir: 'below', pct: 20 },
+    say: () => ['P/E ', { key: 'pct' }, ' ', { key: 'dir' }, " its sector's"],
+    short: (p) => `P/E ${fixed(n(p, 'pct'))}% ${s(p, 'dir') === 'above' ? 'over' : 'under'} sector`,
+    fact: (_, v) => (v === null ? '' : `has a P/E ${abs(v)} ${v < 0 ? 'below' : 'above'} its sector's`),
+    test: (r, p) => {
+      if (r.peVsSector === null) return NO;
+      const t = n(p, 'pct') / 100;
+      return { pass: s(p, 'dir') === 'above' ? r.peVsSector >= t - 1e-12 : r.peVsSector <= -t + 1e-12, value: r.peVsSector };
+    },
+  },
+  {
+    id: 'undervalued', group: 'fundamental', name: 'Undervalued', freq: 'daily', chart: 'flag', params: [], defaults: {},
+    say: () => ['Is on the undervalued list'],
+    short: () => 'Undervalued',
+    fact: () => 'is on the undervalued list',
+    test: (r) => ({ pass: r.undervalued, value: null }),
+  },
+  {
+    id: 'analyst-upside', group: 'fundamental', name: 'Analyst upside', freq: 'daily', chart: 'target',
+    params: [pct('pct', 5, 100, 5)], defaults: { pct: 20 },
+    say: () => ['Average analyst target ', { key: 'pct' }, ' above the price'],
+    short: (p) => `Target +${fixed(n(p, 'pct'))}%`,
+    fact: (_, v) => (v === null ? '' : `has an average analyst target ${abs(v)} ${v < 0 ? 'below' : 'above'} the price`),
+    test: (r, p) => (r.ptUpside === null ? NO : { pass: r.ptUpside >= n(p, 'pct') / 100 - 1e-12, value: r.ptUpside }),
+  },
+  {
+    id: 'piotroski', group: 'fundamental', name: 'Piotroski score', freq: 'daily', chart: 'checks',
+    params: [{ key: 'score', kind: 'number', min: 0, max: 9, step: 1, unit: 'score' }, choice('side', [['high', 'or more'], ['low', 'or less']])],
+    defaults: { side: 'high', score: 7 },
+    say: () => ['Piotroski score ', { key: 'score' }, ' ', { key: 'side' }],
+    short: (p) => `Piotroski ${s(p, 'side') === 'low' ? '≤' : '≥'}${n(p, 'score')}`,
+    fact: (_, v) => (v === null ? '' : `has a Piotroski score of ${v}`),
+    test: (r, p) => (r.piotroski === null ? NO
+      : { pass: s(p, 'side') === 'low' ? r.piotroski <= n(p, 'score') : r.piotroski >= n(p, 'score'), value: r.piotroski }),
+  },
+  {
+    id: 'earnings-surprise', group: 'fundamental', name: 'Earnings surprise', freq: 'intraday', chart: 'surprises',
+    params: [choice('dir', [['beat', 'Beats'], ['miss', 'Misses']]), pct('pct', 1, 50, 1)], defaults: { dir: 'beat', pct: 5 },
+    say: () => [{ key: 'dir' }, ' estimates by ', { key: 'pct' }],
+    short: (p) => `${s(p, 'dir') === 'miss' ? 'Miss' : 'Beat'} ${fixed(n(p, 'pct'))}%+`,
+    fact: (_, v) => (v === null ? '' : `${v >= 0 ? 'beat' : 'missed'} estimates by ${abs(v)}`),
+    test: (r, p) => {
+      const last = r.surprises?.at(-1);
+      if (last === undefined) return NO;
+      const t = n(p, 'pct') / 100;
+      return { pass: s(p, 'dir') === 'miss' ? last <= -t + 1e-12 : last >= t - 1e-12, value: last };
+    },
+  },
+  {
+    id: 'insider-buying', group: 'fundamental', name: 'Insider buying', freq: 'daily', chart: 'insiders',
+    params: [{ key: 'usd', kind: 'number', min: 100000, max: 50000000, step: 100000, unit: 'usd' }], defaults: { usd: 1000000 },
+    say: () => ['Insiders bought more than ', { key: 'usd' }, ' net in 90 days'],
+    short: (p) => `Insiders ${dollars(n(p, 'usd'))}+`,
+    fact: (_, v) => (v === null ? '' : `saw ${dollars(v)} of net insider buying in 90 days`),
+    test: (r, p) => (r.insiderNet90 === null ? NO : { pass: r.insiderNet90 >= n(p, 'usd'), value: r.insiderNet90 }),
+  },
+];
+
+const NEWS: Condition[] = [
+  {
+    id: 'news-spike', group: 'news', name: 'News spike', freq: 'intraday', chart: 'versus',
+    params: [times('times')], defaults: { times: 3 },
+    say: () => [{ key: 'times' }, ' its usual number of stories'],
+    short: (p) => `News ${fixed(n(p, 'times'))}×`,
+    fact: (_, v) => (v === null ? 'had a burst of stories' : `had ${num(v, 1)}× its usual number of stories`),
+    test: (r, p) => versus(r.news, r.newsUsual, n(p, 'times'), 4),
+  },
+  {
+    id: 'earnings-soon', group: 'news', name: 'Earnings in N days', freq: 'daily', chart: 'countdown',
+    params: [{ key: 'days', kind: 'number', min: 1, max: 30, step: 1, unit: 'days' }], defaults: { days: 3 },
+    say: () => ['Reports earnings in ', { key: 'days' }, ' or less'],
+    short: (p) => `Earnings ≤${n(p, 'days')} days`,
+    fact: (_, v) => (v === null ? '' : v === 0 ? 'reports earnings today' : `reports earnings in ${v} ${v === 1 ? 'day' : 'days'}`),
+    test: (r, p) => {
+      if (!r.earningsDate) return NO;
+      const d = daysBetween(r.session, r.earningsDate);
+      return { pass: d >= 0 && d <= n(p, 'days'), value: d };
+    },
+  },
+  {
+    id: 'grade-change', group: 'news', name: 'Downgrade / Upgrade', freq: 'daily', chart: 'grade',
+    params: [choice('dir', [['down', 'downgrades'], ['up', 'upgrades']])], defaults: { dir: 'down' },
+    say: () => ['An analyst ', { key: 'dir' }, ' it'],
+    short: (p) => (s(p, 'dir') === 'up' ? 'Upgrade' : 'Downgrade'),
+    fact: (p) => `was ${s(p, 'dir') === 'up' ? 'upgraded' : 'downgraded'} by an analyst`,
+    test: (r, p) => (r.grade === null ? NO : { pass: r.grade.dir === s(p, 'dir') && r.grade.date === r.session, value: null }),
+  },
+];
+
+const SOCIAL: Condition[] = [
+  {
+    id: 'social-buzz', group: 'social', name: 'Talked about on Reddit/X', freq: 'daily', chart: 'versus',
+    params: [times('times')], defaults: { times: 3 },
+    say: () => [{ key: 'times' }, ' its usual posts on Reddit and X'],
+    short: (p) => `Social ${fixed(n(p, 'times'))}×`,
+    fact: (_, v) => (v === null ? 'was talked about on Reddit and X' : `was talked about ${num(v, 1)}× more than usual on Reddit and X`),
+    test: (r, p) => versus(r.social, r.socialUsual, n(p, 'times'), 10),
+  },
+];
+
 const UNIVERSE: Condition[] = [
   {
     id: 'mega-caps', group: 'universe', name: 'Mega caps', freq: 'daily', chart: 'logos', params: [], defaults: {},
@@ -148,7 +262,7 @@ function maOf(r: AlertRow, days: string): number | null {
   return ma && ma > 0 ? ma : null;
 }
 
-const ALL: Condition[] = [...TECHNICAL, ...UNIVERSE];
+const ALL: Condition[] = [...TECHNICAL, ...FUNDAMENTAL, ...NEWS, ...SOCIAL, ...UNIVERSE];
 export const CONDITIONS = Object.fromEntries(ALL.map((c) => [c.id, c])) as Record<ConditionId, Condition>;
 export const CONDITION_IDS: readonly ConditionId[] = ALL.map((c) => c.id);
 
