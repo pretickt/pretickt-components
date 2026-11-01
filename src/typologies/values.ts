@@ -29,6 +29,8 @@ export const CALENDAR_MONTHS = { back: 1, ahead: 3 } as const;
 export const SECTORS = ['Technology', 'Industrials', 'Financial Services', 'Healthcare', 'Consumer Cyclical', 'Consumer Defensive', 'Utilities',
   'Real Estate', 'Basic Materials', 'Energy', 'Communication Services'] as const;
 export type Sector = (typeof SECTORS)[number];
+/** A mega cap: a market value of $200 billion or more (pt-logo-map's mega lens, the alerts' Mega caps). */
+export const MEGA_CAP = 200e9;
 
 /** The most rows a list (`screen@1`) answers: the whole universe (518 today), so "Show 20 more" can reach every company. */
 export const SCREEN_MAX = 600;

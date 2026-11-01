@@ -11,7 +11,7 @@
  * `lens` "news": the 40 companies with the most news stories on the session's day (attention@1), each tile as large as its stories
  * and coloured by the day's move; the sentence names the most covered and how that compares with its usual day. "social": the same
  * with the day's posts on Reddit and X.
- * @version 0.6.0
+ * @version 0.6.1
  * @evidence Romeo 2026-10-25: home components "con i loghi delle aziende" for the overview — H3 · The market at a glance, ★ sector map (brainstorming/mappa-componenti.html)
  * @evidence DataForSEO 2026-10-28 (round 13): the "stock market heat map" family ≈33,400 searches a month, keyword difficulty 25–30, AI Overview on 2%, no dominant site (apps, guides, brokers); "largest companies by market cap" 22,200 (launch/RESEARCH.md §9)
  * @evidence Romeo 2026-11-01: "mettiamo alla fine della home la heat map del mercato delle mega caps", and a page of the heat maps
@@ -22,6 +22,7 @@ import { Pt } from '@pretickt/components/context';
 import { PtSay } from '@pretickt/components/ds';
 import { andSaid, date, mention, pct, plainName, say, stockHref, tip, usd, type Said } from '@pretickt/components/format';
 import type { AttentionRow, ScreenRow } from '@pretickt/components/typologies';
+import { MEGA_CAP } from '@pretickt/components/typologies';
 
 /** What a map needs of a company: the market's list (screen@1) and the day's attention (attention@1) both have it. */
 type MapRow = Pick<ScreenRow, 'ticker' | 'name' | 'sector' | 'logo' | 'chg1d' | 'marketCap'>;
@@ -63,7 +64,7 @@ export function squarify<T extends { value: number }>(items: readonly T[], r: Bo
 }
 
 /** The mega caps: the companies worth $200 billion or more. */
-export const MEGA = 200e9;
+export const MEGA = MEGA_CAP;
 export const megaCaps = <R extends Pick<MapRow, 'marketCap'>>(rows: readonly R[]) => rows.filter((r) => (r.marketCap ?? 0) >= MEGA);
 /** What the map shows: the largest companies, the mega caps among them, or the companies most in the day's news or posts. */
 export type Lens = 'market' | 'mega' | 'news' | 'social';
