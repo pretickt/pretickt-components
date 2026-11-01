@@ -28,8 +28,9 @@ export const ICON_PATHS: Record<string, string> = {
   x: P('M4 4l8 8M12 4l-8 8'),
   // a link that opens something (pt-value's verdicts)
   chevron: P('M6 3l5 5-5 5'),
-  // share as an image and a link: under each placement with its word, alone on a part of one (a card)
-  share: P('M8 10V2M5 5l3-3 3 3M3 9v5h10V9'),
+  // share as an image and a link — three circles joined by two lines, never the arrow up (Romeo, 2026-11-01): under each
+  // placement with its word, alone on a part of one (a card)
+  share: P('M12 1.5a2 2 0 1 0 0 4a2 2 0 1 0 0-4zM4 6a2 2 0 1 0 0 4a2 2 0 1 0 0-4zM12 10.5a2 2 0 1 0 0 4a2 2 0 1 0 0-4zM5.75 7l4.5 -2.5M5.75 9l4.5 2.5'),
 };
 
 /** Legacy markup of the same icons (string renderers). */

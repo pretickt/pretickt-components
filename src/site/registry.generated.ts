@@ -35,7 +35,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
   'pt-price-target': { version: '2.4.1', sample: { ticker: 'NVDA' } },
   'pt-quality': { version: '0.3.1', sample: { ticker: 'NVDA' } },
   'pt-screen': { version: '2.4.1', sample: {} },
-  'pt-value': { version: '1.1.0', sample: { ticker: 'NVDA' } },
+  'pt-value': { version: '1.1.1', sample: { ticker: 'NVDA' } },
   'pt-why-today': { version: '2.3.0', sample: { ticker: 'NVDA' } },
 };
 
@@ -67,7 +67,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
       @case ('pt-value') { @defer (hydrate on viewport) {<pt-value [ticker]="$any(p()).ticker" [compact]="$any(p()).compact ?? false" />} }
       @case ('pt-why-today') { @defer (hydrate on viewport) {<pt-why-today [ticker]="$any(p()).ticker" [window]="$any(p()).window ?? '1d'" />} }
     }
-    <div class="pt-island-foot"><button type="button" class="pt-share" data-share aria-haspopup="dialog"><svg class="pt-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 10V2M5 5l3-3 3 3M3 9v5h10V9"/></svg>Share</button></div>`,
+    <div class="pt-island-foot"><button type="button" class="pt-share" data-share aria-haspopup="dialog"><svg class="pt-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M12 1.5a2 2 0 1 0 0 4a2 2 0 1 0 0-4zM4 6a2 2 0 1 0 0 4a2 2 0 1 0 0-4zM12 10.5a2 2 0 1 0 0 4a2 2 0 1 0 0-4zM5.75 7l4.5 -2.5M5.75 9l4.5 2.5"/></svg>Share</button></div>`,
 })
 export class PtSlot {
   readonly c = input.required<string>();

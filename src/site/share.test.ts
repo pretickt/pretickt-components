@@ -2,6 +2,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { drawnWidth, FRAME, fit, frameSize, PART_WIDTH, partContext, shownUrl, standAlone } from './share-image';
 import { attachShare, postLinks, shareFile, shareLink, shareTarget, type DrawShare } from './share';
+import { ICON_PATHS } from '../ds/icons';
+import { SHARE_FOOT } from '../../scripts/registry';
 
 const page = (o: { canonical?: boolean } = {}) => {
   document.head.innerHTML = o.canonical === false ? '' : '<link rel="canonical" href="https://www.pretickt.com/stocks/nvda/">';
@@ -30,6 +32,15 @@ const settle = () => new Promise((r) => setTimeout(r, 0));
 let attached: { detach: () => void }[] = [];
 const attach = (o: Parameters<typeof attachShare>[1]) => { const a = attachShare(document, o); attached.push(a); return a; };
 afterEach(() => { for (const a of attached) a.detach(); attached = []; document.body.innerHTML = ''; });
+
+describe('the share icon', () => {
+  it('is the one with three circles joined by two lines, never the arrow up (Romeo, 2026-11-01): under every placement and on every card', () => {
+    const d = ICON_PATHS['share']!;
+    expect(d.match(/a2 2 0 1 0 0 4a2 2 0 1 0 0-4z/g)).toHaveLength(3); // three circles
+    expect(d.match(/M[\d.]+ [\d.]+l-?[\d.]+ -?[\d.]+/g)).toHaveLength(2); // the two lines between them
+    expect(SHARE_FOOT).toContain(`d="${d}"`);
+  });
+});
 
 describe('the link and the names of a share', () => {
   it('the page\'s own address, no query, the section\'s anchor', () => {

@@ -24,13 +24,14 @@
  * placement's own Share under the columns (which keeps its word) — below everything the cards line up by, so nothing moves; the
  * image is the card alone, framed with the page's question, and the link its own address on the value page
  * (`#value-demand-sales-growth`), where the card is outlined.
- * @version 1.1.0
+ * @version 1.1.1
  * @evidence Romeo 2026-10-27: "questa azienda è di valore? con 6 sezioni verticali e, dentro ogni sezione, delle card schematiche e visuali"
  * @evidence Romeo 2026-10-31: "per ptvalue, singola pagina ma presente anche nella Company page"
  * @evidence Holder names cut at phone width, "Vangu…" (the 40-company check, 2026-11-01)
  * @evidence Romeo 2026-11-01, on the company page: "quando clicco su una sezione rimandata alla pagina"; then "metti una freccia o
  * qualcosa per indicare che si può cliccare"
- * @evidence Romeo 2026-11-01: "aggiungere lo share ai nuovi componenti", a share on each card — "for smaller parts leave the share icon only"
+ * @evidence Romeo 2026-11-01: "aggiungere lo share ai nuovi componenti", a share on each card — "for smaller parts leave the share icon only";
+ * then "for the icon, use always the one with three circles, not the arrow up"
  * @evidence DataForSEO 2026-10-28 (round 13): "is {company} a good stock to buy" ≈64,000 searches a month on ~100 companies, AI Overview on 90%; the facts' own words ("pe ratio", "revenue growth", "gross margin"…) 153,000 on 25 companies
  */
 import { Component, computed, inject, input } from '@angular/core';
