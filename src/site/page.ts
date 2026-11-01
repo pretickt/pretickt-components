@@ -1,4 +1,4 @@
-import { afterNextRender, ApplicationRef, Component, inject, PLATFORM_ID, TransferState } from '@angular/core';
+import { afterNextRender, ApplicationRef, Component, EnvironmentInjector, inject, PLATFORM_ID, TransferState } from '@angular/core';
 import { isPlatformServer } from '@angular/common';
 import { sendBeacon, startBeacon } from './beacon';
 import { attachCards, attachCardSlots, CARD_TARGET, companyOf } from './cards';
@@ -50,12 +50,18 @@ export class PtPage {
   constructor() {
     if (isPlatformServer(inject(PLATFORM_ID))) inject(TransferState).set(PAGE_KEY, this.model);
     const appRef = inject(ApplicationRef);
+    const env = inject(EnvironmentInjector);
     afterNextRender(() => {
       const doc = document;
       startBeacon(doc, this.model.api, sendBeacon);
       attachHeader(doc, { buildId: this.model.buildId });
       attachCompanyBar(doc); // company pages: the company in the header once its card has scrolled away
       attachShare(doc); // each placement's "Share": the placement as an image, and the link back
+      // a page with alerts: each placement's bell opens the editor with its section's badge (a chunk of its own, loaded on the first press)
+      if (this.model.alerts) doc.addEventListener('click', (e) => {
+        const bell = (e.target as Element | null)?.closest?.('[data-alert]');
+        if (bell) void import('./alerts/editor').then((m) => m.pressBell(bell, appRef, env));
+      });
       const card = REGISTRY[CARD];
       const load = () => import('../../components/pt-company-card').then((m) => m.PtCompanyCard);
       const cards = card ? attachCards(doc, appRef, {

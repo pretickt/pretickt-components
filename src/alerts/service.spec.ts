@@ -1,7 +1,8 @@
 import { TestBed } from '@angular/core/testing';
-import { MOCK_UNIVERSE } from '../alerts/mock';
-import { RULE_MAX } from '../alerts/rule';
-import { PT_ALERTS, PtAlerts, type AlertFrom, type AlertsBackend, type SaveResult } from './index';
+import { MOCK_UNIVERSE } from './mock';
+import { RULE_MAX } from './rule';
+import { PtAlerts } from './service';
+import { PT_ALERTS, type AlertFrom, type AlertsBackend, type SaveResult } from './token';
 
 /** A backend in memory: what it was asked, and a save that answers when the test says. */
 function fake(save: () => Promise<SaveResult> = async () => ({ ok: true })) {

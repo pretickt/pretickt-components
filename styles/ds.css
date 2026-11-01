@@ -173,6 +173,60 @@
   .pt-al-mark-on { stroke: var(--color-pos); } .pt-al-mark-off { stroke: var(--color-neg); }
   .pt-al-fact { margin: .3rem 0; font-size: .8rem; color: var(--color-ink); }
   .pt-al-fact b { font-family: var(--font-mono); }
+  /* the alert editor (mockups editor-desktop.png, editor-telefono.png): a dialog; under 40rem the whole screen, the badges one row */
+  .pt-al-backdrop { position: fixed; inset: 0; z-index: 60; background: color-mix(in oklab, var(--color-ink) 35%, transparent); }
+  .pt-al-editor { position: fixed; inset: 2rem; z-index: 61; margin: auto; max-width: 62rem; max-height: calc(100vh - 4rem); overflow: auto;
+    border-radius: .75rem; background: var(--color-surface); box-shadow: 0 30px 60px -20px color-mix(in oklab, var(--color-ink) 50%, transparent); }
+  .pt-al-ed-h { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; padding: .7rem 1rem;
+    border-bottom: 1px solid var(--color-border); background: var(--color-surface-raised); }
+  .pt-al-ed-h h2 { margin: 0; font-size: 1rem; font-weight: 700; color: var(--color-ink); }
+  .pt-al-ed { display: grid; grid-template-columns: 15.5rem minmax(0, 28rem); justify-content: center; gap: 1rem; padding: 1rem; }
+  .pt-al-palette { display: grid; gap: .75rem; align-content: start; }
+  .pt-al-group { --al-c: var(--color-primary); }
+  .pt-al-group[data-group='fundamental'] { --al-c: var(--color-fund); }
+  .pt-al-group[data-group='news'] { --al-c: oklch(0.62 0.14 65); }
+  .pt-al-group[data-group='social'] { --al-c: oklch(0.58 0.18 350); }
+  .pt-al-group[data-group='universe'] { --al-c: oklch(0.55 0.1 185); }
+  .pt-al-group-t { margin: 0 0 .35rem; font-size: .62rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--al-c); }
+  .pt-al-badges { display: flex; flex-wrap: wrap; gap: .3rem; }
+  .pt-al-badge { display: inline-flex; align-items: center; gap: .35rem; padding: .2rem .5rem .2rem .35rem; border: 1px solid color-mix(in oklab, var(--al-c) 30%, var(--color-border));
+    border-radius: .45rem; background: color-mix(in oklab, var(--al-c) 6%, var(--color-surface-raised)); font-size: .74rem; color: var(--color-ink);
+    white-space: nowrap; cursor: grab; }
+  .pt-al-badge:hover { border-color: var(--al-c); }
+  .pt-al-badge svg { flex: none; width: 22px; height: 14px; fill: none; stroke: var(--al-c); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+  .pt-al-g-fill { fill: var(--al-c); stroke: none; }
+  .pt-al-g-dash { stroke-dasharray: 2 1.6; }
+  .pt-al-g-faint { opacity: .55; }
+  .pt-al-g-thick { stroke-width: 3; }
+  .pt-al-badge-used { opacity: .45; }
+  .pt-al-rule { display: grid; gap: .3rem; align-content: start; min-width: 0; padding: .7rem; border-radius: .6rem;
+    background: color-mix(in oklab, var(--color-primary) 3%, var(--color-surface)); }
+  .pt-al-rule-t { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; margin: 0 0 .1rem; font-size: .88rem; font-weight: 600; color: var(--color-ink); }
+  .pt-al-last { font-size: .7rem; font-weight: 500; color: var(--color-ink-soft); }
+  .pt-al-and { margin: 0; padding-left: 1rem; font-size: .6rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--color-ink-soft); }
+  .pt-al-empty, .pt-al-hint { margin: .3rem 0; font-size: .8rem; color: var(--color-ink-soft); }
+  .pt-al-foot { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .7rem 1rem;
+    border-top: 1px solid var(--color-border); background: var(--color-surface-raised); }
+  .pt-al-name, .pt-al-email { flex: 1 1 14rem; min-width: 0; padding: .4rem .6rem; border: 1px solid var(--color-border); border-radius: .5rem;
+    background: var(--color-surface); font-size: .85rem; color: var(--color-ink); }
+  .pt-al-when { flex: 1 1 100%; margin: 0; font-size: .74rem; color: var(--color-ink-soft); }
+  .pt-al-weekly { display: inline-flex; align-items: center; gap: .35rem; font-size: .78rem; color: var(--color-ink); }
+  .pt-al-error { flex: 1 1 100%; margin: 0; font-size: .8rem; color: var(--color-neg); }
+  .pt-al-save { margin-left: auto; padding: .45rem .9rem; border: 0; border-radius: .5rem; background: var(--color-primary); font: 600 .85rem var(--font-sans);
+    color: var(--color-primary-ink); cursor: pointer; }
+  .pt-al-save:hover { background: var(--color-primary-hover); }
+  .pt-al-save:disabled { opacity: .45; cursor: default; }
+  .pt-al-done { display: grid; gap: .6rem; justify-items: start; padding: 1.5rem 1rem; font-size: .9rem; color: var(--color-ink); }
+  .pt-al-done p { margin: 0; }
+  @media (width < 40rem) {
+    .pt-al-editor { inset: 0; max-height: 100vh; border-radius: 0; }
+    .pt-al-ed { grid-template-columns: minmax(0, 1fr); padding: .75rem; }
+    .pt-al-palette { display: flex; gap: .3rem; overflow-x: auto; padding-bottom: .3rem; }
+    .pt-al-group { display: flex; flex: none; gap: .3rem; }
+    .pt-al-group-t { display: none; }
+    .pt-al-badges { flex-wrap: nowrap; }
+    .pt-al-save { margin-left: 0; width: 100%; }
+  }
   .pt-share-icon { @apply inline-grid size-5 place-items-center rounded-md text-ink-soft hover:bg-surface hover:text-primary; }   /* a part's: the icon alone */
   .pt-share-menu { @apply fixed z-50 w-80 max-w-[calc(100vw-2rem)] rounded-control border border-border bg-surface-raised p-3 text-sm shadow-lg; }
   .pt-share-head { @apply mb-2 flex items-center justify-between gap-2 font-semibold text-ink; }

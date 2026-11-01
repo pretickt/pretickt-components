@@ -1,32 +1,9 @@
-import { inject, Injectable, InjectionToken, signal } from '@angular/core';
-import { CONDITIONS } from '../alerts/catalog';
-import { nameOf, RULE_MAX, sourceConditions, type Rule, type RuleCondition } from '../alerts/rule';
-import type { AlertRow, AlertUniverse } from '../alerts/rows';
-import type { AlertSource } from '../alerts/sources';
-
-/** Where an alert was started: the component, its section on the page and the page. */
-export interface AlertFrom { tag: string; section: string | null; path: string }
-export interface AlertDraft { rule: Rule; prefer: string | null; from: AlertFrom | null; name: string | null; editing: { id: string; token: string } | null }
-export type SaveResult = { ok: true } | { ok: false; reason: 'invalid' | 'limit' | 'network' };
-export interface ManagedRule { id: string; name: string; rule: Rule; status: 'active' | 'paused' }
-export interface ManageState {
-  email: string; status: 'pending' | 'active' | 'unsubscribed'; weekly: boolean; rules: ManagedRule[];
-  /** a rule just confirmed, and the companies meeting it right now (they fire only when they meet it again) */
-  confirmed?: { id: string; now: string[] };
-}
-export type ManageOp = { op: 'list' | 'confirm' | 'unsubscribe' } | { op: 'pause' | 'resume' | 'delete'; id: string }
-  | { op: 'update'; id: string; name: string; rule: Rule } | { op: 'weekly'; on: boolean };
-/** What the page's address says: the event an email opened, the token of a confirm or manage link, and what that link is for. */
-export interface AlertsLanding { alert: string | null; token: string | null; action: 'confirm' | 'manage' | 'weekly' | null }
-/** The page's side of the alerts (the site: `/v1/alerts`, the universe, the session's bars). Absent on the server and in the checks. */
-export interface AlertsBackend {
-  universe(): Promise<AlertUniverse | null>;
-  bars(ticker: string): Promise<number[] | null>;
-  save(req: { email: string; name: string; rule: Rule; from: AlertFrom | null; weekly: boolean }): Promise<SaveResult>;
-  manage(token: string, op: ManageOp): Promise<ManageState | null>;
-  landing(): AlertsLanding;
-}
-export const PT_ALERTS = new InjectionToken<AlertsBackend>('PT_ALERTS');
+import { inject, Injectable, signal } from '@angular/core';
+import { CONDITIONS } from './catalog';
+import { nameOf, RULE_MAX, sourceConditions, type Rule, type RuleCondition } from './rule';
+import type { AlertRow, AlertUniverse } from './rows';
+import type { AlertSource } from './sources';
+import { PT_ALERTS, type AlertDraft, type AlertFrom, type AlertsLanding, type ManagedRule, type ManageOp, type ManageState, type SaveResult } from './token';
 
 const NONE: AlertsLanding = { alert: null, token: null, action: null };
 const same = (a: RuleCondition, b: RuleCondition) => a.c === b.c && JSON.stringify(a.p) === JSON.stringify(b.p);
@@ -121,6 +98,11 @@ export class PtAlerts {
       return r;
     });
     return this.inflight;
+  }
+
+  /** The session's 5-minute closes of a stock, for the cards' line (null when the page has none). */
+  bars(ticker: string): Promise<number[] | null> {
+    return this.backend ? this.backend.bars(ticker).catch(() => null) : Promise.resolve(null);
   }
 
   manage(token: string, op: ManageOp): Promise<ManageState | null> {
