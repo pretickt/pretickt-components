@@ -4,12 +4,17 @@
  * html-to-image on the first press) and the ways to pass it on: the system's share sheet where it takes files, copy or download
  * the image, copy the link, post on X or Reddit. The link is the page's canonical address with the section's anchor and no
  * parameters, so a link back counts for the page itself. Each action is an interaction of its placement (`share`, `share-x`, …).
+ * A part of a placement can be shared on its own (pt-value's cards): an element with `data-share-part` (its name, e.g. the
+ * question a card answers) and an id, with a `[data-share]` icon inside it; the image is that part alone, the link its anchor, and
+ * the press a `share-part` of its placement.
  * The menu is one node in `<body>`, outside what Angular hydrates (as the tooltip is).
  */
 import type { ShareFrame } from './share-image';
 
-export interface ShareTarget extends ShareFrame { island: HTMLElement; file: string }
-export type DrawShare = (island: HTMLElement, f: ShareFrame) => Promise<{ blob: Blob; dataUrl: string }>;
+/** `part`: the part of the placement the button shares, or null for the whole placement. */
+export interface ShareTarget extends ShareFrame { island: HTMLElement; part: HTMLElement | null; file: string }
+/** Draws what is shared: the placement, or one of its parts. */
+export type DrawShare = (el: HTMLElement, f: ShareFrame) => Promise<{ blob: Blob; dataUrl: string }>;
 
 /** The address to share: the page's own (no query, no fragment), with the section's anchor. */
 export function shareLink(base: string, section?: string | null): string {
@@ -19,10 +24,11 @@ export function shareLink(base: string, section?: string | null): string {
   return u.toString();
 }
 
-/** `pretickt-nvda-price-target.png`: the page and the section, for a downloaded file. */
+/** `pretickt-nvda-price-target.png`: the page and the section, for a downloaded file; a word said twice in a row once (`/value/#value`). */
 export function shareFile(url: string): string {
   const u = new URL(url);
-  const slug = `${u.pathname} ${u.hash.slice(1)}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').replace(/^stocks-/, '');
+  const slug = `${u.pathname} ${u.hash.slice(1)}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').replace(/^stocks-/, '')
+    .split('-').filter((w, i, all) => w !== all[i - 1]).join('-');
   return `pretickt${slug ? `-${slug}` : ''}.png`;
 }
 
@@ -32,20 +38,26 @@ export const postLinks = (url: string, text: string) => ({
   reddit: `https://www.reddit.com/submit?url=${encodeURIComponent(url)}&title=${encodeURIComponent(text)}`,
 });
 
-/** What a share button shares: its placement, the page's title and the section's, the link. A placement may name its own (stories). */
+/**
+ * What a share button shares: its placement, the page's title and the section's, the link. A placement may name its own (stories).
+ * A button inside a part shares the part: the link to its anchor, its name in the section's place.
+ */
 export function shareTarget(button: Element): ShareTarget | null {
   const island = button.closest<HTMLElement>('.pt-island');
   if (!island) return null;
   const doc = island.ownerDocument;
+  const near = button.closest<HTMLElement>('[data-share-part]');
+  const part = near && near !== island && island.contains(near) ? near : null;
   const section = island.closest('section');
   const own = island.dataset['shareUrl'];
   const canonical = doc.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href;
-  const url = shareLink(own ?? (canonical || doc.location.href), own ? null : section?.id);
+  const url = shareLink(own ?? (canonical || doc.location.href), part?.id || (own ? null : section?.id));
   const title = island.dataset['shareTitle'] ?? doc.querySelector('h1')?.textContent?.trim() ?? doc.title;
-  return { island, title, section: section?.querySelector('.pt-section-title')?.textContent?.trim() ?? '', url, file: shareFile(url) };
+  const name = part ? part.dataset['sharePart'] ?? '' : section?.querySelector('.pt-section-title')?.textContent?.trim() ?? '';
+  return { island, part, title, section: name, url, file: shareFile(url) };
 }
 
-const drawWithLibrary: DrawShare = async (island, f) => (await import('./share-image')).drawShareImage(island, f);
+const drawWithLibrary: DrawShare = async (el, f) => (await import('./share-image')).drawShareImage(el, f);
 
 function el<K extends keyof HTMLElementTagNameMap>(doc: Document, tag: K, cls: string, text = '', attrs: Record<string, string> = {}) {
   const e = doc.createElement(tag);
@@ -73,7 +85,7 @@ export function attachShare(doc: Document, o: { draw?: DrawShare } = {}) {
     if (!t) return;
     opener = button;
     const count = (action: string) => t.island.dispatchEvent(new CustomEvent('pt-interact', { bubbles: true, detail: { action } }));
-    count('share');
+    count(t.part ? 'share-part' : 'share');
     const text = t.section ? `${t.title} · ${t.section}` : t.title;
     const posts = postLinks(t.url, text);
 
@@ -119,7 +131,7 @@ export function attachShare(doc: Document, o: { draw?: DrawShare } = {}) {
     place();
     m.focus();
 
-    draw(t.island, t).then(({ blob, dataUrl }) => {
+    draw(t.part ?? t.island, t).then(({ blob, dataUrl }) => {
       if (menu !== m) return;
       const img = el(doc, 'img', 'pt-share-preview', '', { alt: `The image to share: ${text}` });
       img.addEventListener('load', place);

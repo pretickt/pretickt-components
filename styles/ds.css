@@ -116,6 +116,7 @@
   /* Share: a button under each placement (src/site/share.ts) and the menu it opens, with the placement drawn as an image */
   .pt-island-foot { @apply mt-1.5 flex justify-end; }
   .pt-share { @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs text-ink-soft hover:bg-surface hover:text-primary; }
+  .pt-share-icon { @apply inline-grid size-5 place-items-center rounded-md text-ink-soft hover:bg-surface hover:text-primary; }   /* a part's: the icon alone */
   .pt-share-menu { @apply fixed z-50 w-80 max-w-[calc(100vw-2rem)] rounded-control border border-border bg-surface-raised p-3 text-sm shadow-lg; }
   .pt-share-head { @apply mb-2 flex items-center justify-between gap-2 font-semibold text-ink; }
   .pt-share-x { @apply rounded-md px-1.5 text-base leading-none text-ink-soft hover:bg-surface hover:text-ink; }
@@ -615,7 +616,8 @@
   .dv-name { display: flex; align-items: center; gap: .3rem; font-size: .66rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--color-ink); }
   .dv-ask { font-size: .8rem; font-weight: 600; line-height: 1.25; color: var(--color-ink); }
   .dv-verdict { justify-self: start; align-self: start; padding: .1rem .5rem; border-radius: 999px; font-size: .7rem; font-weight: 700; color: #fff; }
-  .dv-card { display: grid; gap: .15rem; padding: .45rem .5rem; border: 1px solid var(--color-border); border-left: 3px solid; border-radius: .5rem; background: var(--color-surface-raised); }
+  .dv-card { display: grid; gap: .15rem; padding: .45rem .5rem; border: 1px solid var(--color-border); border-left: 3px solid; border-radius: .5rem; background: var(--color-surface-raised); scroll-margin-top: 6rem; }
+  .dv-card:target { outline: 2px solid var(--color-primary); outline-offset: 2px; }   /* a shared card's link lands on it */
   .dv-big { font: 700 1rem/1.1 var(--font-mono); color: var(--color-ink); }
   /* every card has the same skeleton (a two-line title, a 40px picture, a two-line label), so cards side by side read level */
   .dv-line { min-height: 2.5em; font-size: .7rem; line-height: 1.25; color: var(--color-ink-soft); }
@@ -703,6 +705,7 @@
   .dv-term { display: block; font-weight: 500; color: var(--color-ink-soft); }
   .dv-name .dv-term { display: inline; }
   .dv-say { margin: .2rem 0 0; padding-top: .25rem; border-top: 1px solid var(--color-border); font-size: .68rem; line-height: 1.35; color: var(--color-ink); }
+  .dv-say > .pt-share-icon { float: right; margin: -.17rem -.3rem -.17rem .25rem; }   /* on the sentence's last line when it has room, else under it */
   .dv-faq { display: grid; gap: 0 1.5rem; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); }
   .dv-faq-i { padding: .6rem 0; border-top: 1px solid var(--color-border); }
   .dv-faq-q { margin: 0 0 .2rem; font-size: .9rem; font-weight: 650; color: var(--color-ink); }

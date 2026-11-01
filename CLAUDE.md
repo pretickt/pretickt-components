@@ -152,6 +152,10 @@ platform change (schema here + resolver in the private platform + a public-data 
   with the page's title above and its link below, and offers the share sheet, copy, download, X and Reddit; the link is the
   canonical page with the section's anchor. Nothing to write in a component; keep its look inside its island (no rule that
   depends on the page around it) and its images on the site (`/logos/…`), so the drawing matches the screen.
+  A **part** can be shared on its own (pt-value's cards): give it an `id` (its anchor) and `data-share-part="<its name>"`, and put
+  inside it the icon alone — `<button type="button" class="pt-share-icon" data-share aria-haspopup="dialog" aria-label="Share this
+  card"><svg ptIcon="share"></svg></button>` (Romeo: "for smaller parts leave the share icon only"), where it moves nothing the
+  part lines up by. The page draws the part alone, at least 360 px wide, in its place's rules; links to its anchor; counts `share-part`.
 
 ## CSS
 **Design-system classes only** — a component has no `styles`: Angular inserts component styles as `<style>` elements, which the

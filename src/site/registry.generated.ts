@@ -35,7 +35,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
   'pt-price-target': { version: '2.4.1', sample: { ticker: 'NVDA' } },
   'pt-quality': { version: '0.3.1', sample: { ticker: 'NVDA' } },
   'pt-screen': { version: '2.4.1', sample: {} },
-  'pt-value': { version: '1.0.3', sample: { ticker: 'NVDA' } },
+  'pt-value': { version: '1.1.0', sample: { ticker: 'NVDA' } },
   'pt-why-today': { version: '2.3.0', sample: { ticker: 'NVDA' } },
 };
 

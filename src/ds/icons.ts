@@ -28,6 +28,8 @@ export const ICON_PATHS: Record<string, string> = {
   x: P('M4 4l8 8M12 4l-8 8'),
   // a link that opens something (pt-value's verdicts)
   chevron: P('M6 3l5 5-5 5'),
+  // share as an image and a link: under each placement with its word, alone on a part of one (a card)
+  share: P('M8 10V2M5 5l3-3 3 3M3 9v5h10V9'),
 };
 
 /** Legacy markup of the same icons (string renderers). */

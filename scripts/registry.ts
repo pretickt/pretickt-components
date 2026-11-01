@@ -1,4 +1,5 @@
 import type { InputInfo } from '../src/checks/inputs';
+import { ICON_PATHS } from '../src/ds/icons';
 
 export interface RegistryEntry { tag: string; className: string; version: string; inputs: InputInfo[]; sample: Record<string, unknown> }
 
@@ -23,7 +24,7 @@ function jsLiteral(v: unknown): string {
 
 /** Under every placement: the button that shares it as an image and a link (src/site/share.ts answers it; static markup). */
 export const SHARE_FOOT = '<div class="pt-island-foot"><button type="button" class="pt-share" data-share aria-haspopup="dialog">' +
-  '<svg class="pt-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 10V2M5 5l3-3 3 3M3 9v5h10V9"/></svg>Share</button></div>';
+  `<svg class="pt-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="${ICON_PATHS['share']}"/></svg>Share</button></div>`;
 
 /** `src/site/registry.generated.ts`: PtSlot (one `@defer (hydrate on viewport)` case per component, literal defaults) and REGISTRY. */
 export function registrySource(entries: RegistryEntry[]): string {

@@ -9,6 +9,43 @@ export const FRAME = { pad: 24, head: 84, foot: 44 } as const;
 /** The image's size in CSS px for a placement of w × h: the placement whole, inside its frame. */
 export const frameSize = (w: number, h: number) => ({ w: Math.ceil(w) + 2 * FRAME.pad, h: Math.ceil(h) + FRAME.head + FRAME.foot });
 
+/** The address under the image, without its scheme: whole when it fits, else the page's without the anchor (the shared link keeps it). */
+export function shownUrl(ctx: Pick<CanvasRenderingContext2D, 'measureText'>, url: string, max: number): string {
+  const shown = url.replace(/^https?:\/\/(www\.)?/, '');
+  return ctx.measureText(shown).width <= max ? shown : fit(ctx, shown.replace(/#.*$/, ''), max);
+}
+
+/** A part of a placement (a card) is drawn at least this wide, in CSS px: a phone's card. A desktop's six columns make narrow cards. */
+export const PART_WIDTH = 360;
+
+/** The width to draw at: a placement as it is on screen, a part at least PART_WIDTH. Never narrower than on screen. */
+export const drawnWidth = (w: number, part: boolean) => (part ? Math.max(PART_WIDTH, Math.ceil(w)) : Math.ceil(w));
+
+// a part's places, flattened: their rules and inherited values still reach the part, their own boxes take no room
+const FLAT = 'display:block;position:static;width:auto;min-width:0;max-width:none;height:auto;min-height:0;max-height:none;margin:0;padding:0;border:0';
+
+/**
+ * Shallow copies of a part's ancestors up to its placement, outermost first. Drawn inside them, a copy of the part keeps what its
+ * place gives it (the component's rules and colour variables, the inherited font), while their own boxes are flattened — no
+ * columns, padding or border — so the part takes the whole width it is drawn at. No ids: the page keeps its anchors.
+ */
+export function partContext(part: HTMLElement, island: HTMLElement): HTMLElement[] {
+  const chain: HTMLElement[] = [];
+  for (let a = part.parentElement; a; a = a.parentElement) {
+    const c = a.cloneNode(false) as HTMLElement;
+    c.removeAttribute('id');
+    c.style.cssText += `;${FLAT}`;
+    chain.unshift(c);
+    if (a === island) break;
+  }
+  return chain;
+}
+
+/** Alone, a part has nothing to line up with: the min-heights that line it up with its neighbours (a title kept to three lines) go. */
+export function standAlone(copy: HTMLElement) {
+  for (const e of [copy, ...copy.querySelectorAll<HTMLElement>('*')]) e.style?.setProperty('min-height', '0px');
+}
+
 /** `text` cut with an ellipsis so it fits `max` px in the context's current font. */
 export function fit(ctx: Pick<CanvasRenderingContext2D, 'measureText'>, text: string, max: number): string {
   if (ctx.measureText(text).width <= max) return text;
@@ -53,17 +90,19 @@ const dataUrl = (b: Blob) => new Promise<string>((ok, ko) => {
 });
 
 /**
- * A copy of the placement to draw instead: each part of its charts carries its computed paint, each chart image (a logo) is
- * inlined, and it sits off screen at the placement's width, where html-to-image reads the computed style of the rest.
+ * A copy of the placement (or of a part, inside `context`) to draw instead: each part of its charts carries its computed paint,
+ * each chart image (a logo) is inlined, and it sits off screen at the width it is drawn at, where html-to-image reads the computed
+ * style of the rest.
  */
-async function paintedCopy(island: HTMLElement, width: number): Promise<{ copy: HTMLElement; holder: HTMLElement }> {
-  const doc = island.ownerDocument;
-  const copy = island.cloneNode(true) as HTMLElement;
+async function paintedCopy(source: HTMLElement, width: number, context: HTMLElement[]): Promise<{ copy: HTMLElement; holder: HTMLElement }> {
+  const doc = source.ownerDocument;
+  const copy = source.cloneNode(true) as HTMLElement;
   const to = copy.querySelectorAll<SVGElement>('svg *');
-  island.querySelectorAll('svg *').forEach((el, i) => {
+  source.querySelectorAll('svg *').forEach((el, i) => {
     const cs = getComputedStyle(el);
     to[i]?.setAttribute('style', SVG_PAINT.map((p) => `${p}:${cs.getPropertyValue(p)}`).join(';'));
   });
+  copy.querySelectorAll('[data-share]').forEach((b) => b.remove()); // the share buttons stay out: the placement's under it, a part's inside it
   await Promise.all([...copy.querySelectorAll('svg image')].map(async (img) => {
     const href = img.getAttribute('href') ?? img.getAttribute('xlink:href');
     if (!href || href.startsWith('data:')) return;
@@ -72,36 +111,43 @@ async function paintedCopy(island: HTMLElement, width: number): Promise<{ copy: 
   const holder = doc.createElement('div');
   holder.setAttribute('aria-hidden', 'true');
   holder.style.cssText = `position:fixed;left:-100000px;top:0;width:${width}px;pointer-events:none`;
-  holder.append(copy);
+  let into: HTMLElement = holder;
+  for (const c of context) { into.append(c); into = c; }
+  into.append(copy);
   doc.body.append(holder);
   return { copy, holder };
 }
 
 /**
  * A placement as a PNG to share: the brand and the page's title above it, the placement as it is on screen (html-to-image
- * draws a painted copy of its DOM with the page's fonts and logos; the share button under it stays out), the page's address
- * below it. Twice the CSS size, so the text stays sharp where it is shown.
+ * draws a painted copy of its DOM with the page's fonts and logos; the share buttons stay out), the page's address below it.
+ * A part of a placement (`el` inside a `.pt-island`) is drawn alone, in its place's rules, at least PART_WIDTH wide.
+ * Twice the CSS size, so the text stays sharp where it is shown.
  */
-export async function drawShareImage(island: HTMLElement, f: ShareFrame, ratio = 2): Promise<{ blob: Blob; dataUrl: string }> {
-  const doc = island.ownerDocument;
+export async function drawShareImage(el: HTMLElement, f: ShareFrame, ratio = 2): Promise<{ blob: Blob; dataUrl: string }> {
+  const doc = el.ownerDocument;
   const root = getComputedStyle(doc.documentElement);
   const token = (name: string, fallback: string) => root.getPropertyValue(name).trim() || fallback;
   const bg = getComputedStyle(doc.body).backgroundColor || '#fff';
   const ink = token('--color-ink', '#1f2430'), soft = token('--color-ink-soft', '#6b7280'), primary = token('--color-primary', '#007bb5');
   const sans = token('--font-sans', 'sans-serif'), mono = token('--font-mono', 'monospace');
 
-  const box = island.getBoundingClientRect();
-  const foot = island.querySelector('.pt-island-foot');
-  const height = Math.max(1, Math.round(foot ? foot.getBoundingClientRect().top - box.top : box.height));
-  const { copy, holder } = await paintedCopy(island, box.width);
-  let shot: HTMLCanvasElement;
+  const island = el.closest<HTMLElement>('.pt-island');
+  const part = !!island && island !== el;
+  const width = drawnWidth(el.getBoundingClientRect().width, part);
+  const { copy, holder } = await paintedCopy(el, width, part ? partContext(el, island) : []);
+  let shot: HTMLCanvasElement, height: number;
   try {
-    shot = await toCanvas(copy, { pixelRatio: ratio, backgroundColor: bg, width: Math.round(box.width), height,
+    if (part) standAlone(copy);
+    // measured where it is drawn: a part drawn wider than on screen takes fewer lines; the placement's foot stays out
+    const box = copy.getBoundingClientRect(), foot = copy.querySelector('.pt-island-foot');
+    height = Math.max(1, Math.round(foot ? foot.getBoundingClientRect().top - box.top : box.height));
+    shot = await toCanvas(copy, { pixelRatio: ratio, backgroundColor: bg, width, height,
       filter: (n) => !(n instanceof Element && n.classList.contains('pt-island-foot')) });
   } finally { holder.remove(); }
 
   await doc.fonts?.ready;
-  const size = frameSize(box.width, height);
+  const size = frameSize(width, height);
   const c = doc.createElement('canvas');
   c.width = size.w * ratio;
   c.height = size.h * ratio;
@@ -126,11 +172,11 @@ export async function drawShareImage(island: HTMLElement, f: ShareFrame, ratio =
   ctx.fillStyle = ink;
   ctx.fillText(fit(ctx, f.title, size.w - 2 * pad), pad, 68);
 
-  ctx.drawImage(shot, pad, FRAME.head, box.width, height);
+  ctx.drawImage(shot, pad, FRAME.head, width, height);
 
   ctx.font = `500 13px ${mono}`;
   ctx.fillStyle = primary;
-  ctx.fillText(fit(ctx, f.url.replace(/^https?:\/\/(www\.)?/, ''), size.w - 2 * pad), pad, size.h - 17);
+  ctx.fillText(shownUrl(ctx, f.url, size.w - 2 * pad), pad, size.h - 17);
 
   const blob = await new Promise<Blob>((ok, ko) => c.toBlob((b) => (b ? ok(b) : ko(new Error('no image'))), 'image/png'));
   return { blob, dataUrl: c.toDataURL('image/png') };

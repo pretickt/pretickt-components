@@ -1,7 +1,8 @@
 import type { Value } from '../src/typologies';
 import { valueDemo } from '../src/typologies/value-demo';
+import { faqId } from '../src/ds/format';
 import { iconPath } from '../src/ds/pt-icon';
-import { arcPath, at, barGeom, checkGroups, companyRows, list, NOT_ADVICE, onArc, priceSentence, PtValue, QS_TRACK, quarterGeom, valueAnswer } from './pt-value';
+import { arcPath, at, barGeom, checkGroups, companyRows, list, NOT_ADVICE, onArc, priceSentence, PtValue, QS_TRACK, QUESTIONS, quarterGeom, valueAnswer } from './pt-value';
 import { render, withData } from './_spec';
 
 /** value@1's demo: three made-up companies (a strong business at a high price, a weakening one at a low price, a fragile one). */
@@ -231,6 +232,28 @@ describe('pt-value: on its own page and on the company page', () => {
     // an arrow says it opens something (Romeo, 2026-11-01: "metti una freccia … per indicare che si può cliccare"), no words added
     expect([...compact.querySelectorAll('.dv-chip a')].every((a) => a.querySelector('svg.dv-chip-go path'))).toBe(true);
     expect(compact.querySelector('.dv-chip a')!.textContent!.replace(/\s+/g, ' ').trim()).toBe(`Demand ${NVDA.sections[0]!.verdict}`);
+  });
+  it('each card can be shared on its own: an address of its own, its question named, a share icon and no word (Romeo, 2026-11-01)', async () => {
+    const { el } = await render(PtValue, { ticker: 'NVDA' });
+    const cards = [...el.querySelectorAll<HTMLElement>('.dv-card')];
+    const ids = NVDA.sections.flatMap((s) => s.cards.map((c) => `value-${s.key}-${faqId(c.title)}`));
+    expect(cards.map((c) => c.id)).toEqual(ids);
+    expect(cards[0]!.id).toBe('value-demand-sales-growth');
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(cards.map((c) => c.dataset['sharePart'])).toEqual(NVDA.sections.flatMap((s) => s.cards.map(() => QUESTIONS[s.key].name)));
+    // "for smaller parts leave the share icon only": the icon, its name for a screen reader and the hover, no word on the card
+    const says = NVDA.sections.flatMap((s) => s.cards.map((c) => c.say));
+    cards.forEach((c, i) => {
+      const b = c.querySelector<HTMLButtonElement>('button[data-share]')!;
+      expect(b.getAttribute('aria-label')).toBe('Share this card');
+      expect(b.textContent!.trim()).toBe('');
+      expect(b.querySelector('svg path')!.getAttribute('d')).toBe(iconPath('share'));
+      // at the end of the card's sentence, below everything the cards line up by; the sentence's words unchanged
+      expect(c.querySelector('.dv-say')!.lastElementChild).toBe(b);
+      expect(c.querySelector('.dv-say')!.textContent).toBe(says[i]);
+    });
+    // the company page's form has no cards: the placement's own Share stays its only one
+    expect((await render(PtValue, { ticker: 'NVDA', compact: true })).el.querySelectorAll('[data-share]')).toHaveLength(0);
   });
   it('a question without cards is left out: as many columns as questions (a bank answers three)', async () => {
     const bank: Value = { ...NVDA, sections: NVDA.sections.filter((s) => ['economics', 'execution', 'price'].includes(s.key)) };

@@ -20,12 +20,17 @@
  * card (six columns on a desktop) a row takes two lines, the name above its bar and its value.
  * Each verdict is a link to its question, an arrow on its right: on the company page the value page at that question
  * (`#value-demand`), on the value page its column.
- * @version 1.0.3
+ * Each card can be shared on its own, as an image and a link: the share icon alone at the end of its sentence, bottom right as the
+ * placement's own Share under the columns (which keeps its word) — below everything the cards line up by, so nothing moves; the
+ * image is the card alone, framed with the page's question, and the link its own address on the value page
+ * (`#value-demand-sales-growth`), where the card is outlined.
+ * @version 1.1.0
  * @evidence Romeo 2026-10-27: "questa azienda è di valore? con 6 sezioni verticali e, dentro ogni sezione, delle card schematiche e visuali"
  * @evidence Romeo 2026-10-31: "per ptvalue, singola pagina ma presente anche nella Company page"
  * @evidence Holder names cut at phone width, "Vangu…" (the 40-company check, 2026-11-01)
  * @evidence Romeo 2026-11-01, on the company page: "quando clicco su una sezione rimandata alla pagina"; then "metti una freccia o
  * qualcosa per indicare che si può cliccare"
+ * @evidence Romeo 2026-11-01: "aggiungere lo share ai nuovi componenti", a share on each card — "for smaller parts leave the share icon only"
  * @evidence DataForSEO 2026-10-28 (round 13): "is {company} a good stock to buy" ≈64,000 searches a month on ~100 companies, AI Overview on 90%; the facts' own words ("pe ratio", "revenue growth", "gross margin"…) 153,000 on 25 companies
  */
 import { Component, computed, inject, input } from '@angular/core';
@@ -186,7 +191,7 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
                 </div>
                 <div class="dv-stack">
                 @for (c of s.cards; track $index) {
-                  <div [class]="'dv-card dv-' + c.tone" [class.dv-via]="!!c.via" [attr.data-tip]="cardTip(c)">
+                  <div [class]="'dv-card dv-' + c.tone" [class.dv-via]="!!c.via" [id]="cardId(s.key, c)" [attr.data-share-part]="QUESTIONS[s.key].name" [attr.data-tip]="cardTip(c)">
                     <h3 class="dv-title">{{ v.ticker }} {{ c.title }}@if (c.term) {<span class="dv-term">{{ ' ' + c.term }}</span>}</h3>
                     @if (c.via) {<span class="dv-badge">pretickt analysis</span>}
                     @switch (c.viz.kind) {
@@ -255,7 +260,7 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
                     }
                     <b class="dv-big">{{ c.big }}</b>
                     <span class="dv-line">{{ c.line }}</span>
-                    <p class="dv-say">{{ c.say }}</p>
+                    <p class="dv-say">{{ c.say }}<button type="button" class="pt-share-icon" data-share aria-haspopup="dialog" aria-label="Share this card" [attr.data-tip]="SHARE_TIP"><svg ptIcon="share"></svg></button></p>
                   </div>
                 }
                 </div>
@@ -285,6 +290,9 @@ export class PtValue {
   protected readonly valueHref = computed(() => `${stockHref(this.ticker())}value/`);
   /** A verdict's question: the value page at its column — from the company page a visit, on the value page itself a jump (its own address, whatever <base> a page carries). */
   protected chipHref(key: ValueKey) { return `${this.valueHref()}#value-${key}`; }
+  /** A card's own address on the value page (`value-demand-sales-growth`): where the link of a shared card lands. */
+  protected cardId(key: ValueKey, c: ValueCard) { return `value-${key}-${faqId(c.title)}`; }
+  protected readonly SHARE_TIP = tip({ Share: 'this card, as an image and a link' });
   protected readonly faqId = faqId;
   protected readonly stockHref = stockHref;
   protected readonly QUESTIONS = QUESTIONS;

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { FRAME, fit, frameSize } from './share-image';
+import { drawnWidth, FRAME, fit, frameSize, PART_WIDTH, partContext, shownUrl, standAlone } from './share-image';
 import { attachShare, postLinks, shareFile, shareLink, shareTarget, type DrawShare } from './share';
 
 const page = (o: { canonical?: boolean } = {}) => {
@@ -10,6 +10,19 @@ const page = (o: { canonical?: boolean } = {}) => {
     '<div class="pt-island" data-island="pt-price-target@2.4.1"><p>chart</p>' +
     '<div class="pt-island-foot"><button type="button" class="pt-share" data-share>Share</button></div></div></section></main>';
   return document.querySelector<HTMLButtonElement>('[data-share]')!;
+};
+/** A placement with parts of its own to share (pt-value's cards): each part's icon, and the placement's Share under it. */
+const partPage = () => {
+  document.head.innerHTML = '<link rel="canonical" href="https://www.pretickt.com/stocks/nvda/value/">';
+  document.body.innerHTML = '<main><h1 class="pt-h1">Is NVDA a good stock to buy?</h1>' +
+    '<section class="pt-section" id="value"><div class="pt-island" data-island="pt-value@1.1.0"><section class="dv" style="--dv-n: 6">' +
+    '<div class="dv-cols"><div class="dv-col dv-pos" id="value-demand"><div class="dv-stack">' +
+    '<div class="dv-card dv-pos" id="value-demand-sales-growth" data-share-part="Demand"><h3 class="dv-title" style="min-height: 3.6em">NVDA sales growth</h3>' +
+    '<button type="button" class="pt-share-icon" data-share aria-label="Share this card"></button><b>+89%</b></div>' +
+    '</div></div></div></section>' +
+    '<div class="pt-island-foot"><button type="button" class="pt-share" data-share>Share</button></div></div></section></main>';
+  return { part: document.querySelector<HTMLButtonElement>('[data-share-part] [data-share]')!,
+    whole: document.querySelector<HTMLButtonElement>('.pt-island-foot [data-share]')! };
 };
 const image = { blob: new Blob(['png'], { type: 'image/png' }), dataUrl: 'data:image/png;base64,AAAA' };
 const settle = () => new Promise((r) => setTimeout(r, 0));
@@ -27,6 +40,9 @@ describe('the link and the names of a share', () => {
     expect(shareFile('https://www.pretickt.com/stocks/nvda/#price-target')).toBe('pretickt-nvda-price-target.png');
     expect(shareFile('https://www.pretickt.com/')).toBe('pretickt.png');
     expect(shareFile('https://www.pretickt.com/earnings-calendar/#week')).toBe('pretickt-earnings-calendar-week.png');
+    // a section named as its page ends (the value page's "#value") is named once
+    expect(shareFile('https://www.pretickt.com/stocks/nvda/value/#value')).toBe('pretickt-nvda-value.png');
+    expect(shareFile('https://www.pretickt.com/stocks/nvda/value/#value-demand-sales-growth')).toBe('pretickt-nvda-value-demand-sales-growth.png');
   });
   it('X\'s and Reddit\'s forms carry the text and the link', () => {
     const p = postLinks('https://www.pretickt.com/stocks/nvda/#price-target', 'NVIDIA · Analyst price targets');
@@ -44,6 +60,15 @@ describe('the link and the names of a share', () => {
     Object.assign(b.closest<HTMLElement>('.pt-island')!.dataset, { shareTitle: 'Crowded at the bottom', shareUrl: 'https://www.pretickt.com/' });
     expect(shareTarget(b)).toMatchObject({ title: 'Crowded at the bottom', url: 'https://www.pretickt.com/' });
   });
+  it('a part\'s icon shares the part: the link to its own anchor, its name beside the page\'s title; the placement\'s Share the whole', () => {
+    const { part, whole } = partPage();
+    const t = shareTarget(part)!;
+    expect(t).toMatchObject({ title: 'Is NVDA a good stock to buy?', section: 'Demand',
+      url: 'https://www.pretickt.com/stocks/nvda/value/#value-demand-sales-growth', file: 'pretickt-nvda-value-demand-sales-growth.png' });
+    expect(t.part!.id).toBe('value-demand-sales-growth');
+    expect(t.island.getAttribute('data-island')).toBe('pt-value@1.1.0');
+    expect(shareTarget(whole)).toMatchObject({ part: null, section: '', url: 'https://www.pretickt.com/stocks/nvda/value/#value' });
+  });
 });
 
 describe('the image\'s frame', () => {
@@ -54,6 +79,27 @@ describe('the image\'s frame', () => {
     const ctx = { measureText: (s: string) => ({ width: s.length * 10 }) } as unknown as CanvasRenderingContext2D;
     expect(fit(ctx, 'short', 100)).toBe('short');
     expect(fit(ctx, 'a much longer title', 100)).toBe('a much lo…'); // 9 letters and the ellipsis: 100 px
+  });
+  it('the address under the image: whole when it fits, else the page\'s without the anchor, cut only when even that does not fit', () => {
+    const ctx = { measureText: (s: string) => ({ width: s.length * 10 }) } as unknown as CanvasRenderingContext2D;
+    expect(shownUrl(ctx, 'https://www.pretickt.com/stocks/nvda/#price-target', 400)).toBe('pretickt.com/stocks/nvda/#price-target');
+    expect(shownUrl(ctx, 'https://www.pretickt.com/stocks/nvda/value/#value-demand-sales-growth', 360)).toBe('pretickt.com/stocks/nvda/value/');
+    expect(shownUrl(ctx, 'https://www.pretickt.com/stocks/nvda/value/#value-demand-sales-growth', 200)).toBe('pretickt.com/stocks…');
+  });
+  it('a part is drawn at least a phone\'s card wide (a desktop\'s six columns make narrow cards); a placement as it is, never narrower', () => {
+    expect([drawnWidth(170.4, true), drawnWidth(420.2, true), drawnWidth(170.4, false)]).toEqual([PART_WIDTH, 421, 171]);
+  });
+  it('a part is drawn inside flat copies of its places: their classes and variables, none of their ids, children or boxes', () => {
+    partPage();
+    const card = document.getElementById('value-demand-sales-growth')!;
+    const chain = partContext(card, card.closest<HTMLElement>('.pt-island')!);
+    expect(chain.map((e) => e.className)).toEqual(['pt-island', 'dv', 'dv-cols', 'dv-col dv-pos', 'dv-stack']);
+    expect(chain.every((e) => !e.id && !e.children.length && e.style.getPropertyValue('display') === 'block')).toBe(true);
+    expect(chain[1]!.style.getPropertyValue('--dv-n')).toBe('6');
+    // alone, a part has nothing to line up with: what lines it up with its neighbours goes
+    const copy = card.cloneNode(true) as HTMLElement;
+    standAlone(copy);
+    expect(copy.querySelector<HTMLElement>('.dv-title')!.style.getPropertyValue('min-height')).toBe('0px');
   });
 });
 
@@ -96,6 +142,24 @@ describe('the share menu', () => {
     b.click();
     document.querySelector('h1')!.click();
     expect(document.querySelector('.pt-share-menu')).toBeNull();
+  });
+  it('a part\'s icon opens the same menu with the part drawn alone, counted as a part\'s share of its placement', async () => {
+    const { part } = partPage();
+    const sent: string[] = [];
+    const count = (e: Event) => sent.push(`${(e.target as Element).getAttribute('data-island')}|${(e as CustomEvent).detail.action}`);
+    document.addEventListener('pt-interact', count);
+    const draw = vi.fn<DrawShare>(async () => image);
+    attach({ draw });
+    part.click();
+    document.removeEventListener('pt-interact', count);
+    expect(draw.mock.calls[0]![0]).toBe(document.getElementById('value-demand-sales-growth'));
+    expect(draw.mock.calls[0]![1]).toMatchObject({ title: 'Is NVDA a good stock to buy?', section: 'Demand' });
+    expect(sent).toEqual(['pt-value@1.1.0|share-part']);
+    await settle();
+    const menu = document.querySelector('.pt-share-menu')!;
+    expect([...menu.querySelectorAll('a')].find((a) => a.textContent === 'Download')!.getAttribute('download')).toBe('pretickt-nvda-value-demand-sales-growth.png');
+    expect([...menu.querySelectorAll('a')].find((a) => a.textContent === 'Post on X')!.getAttribute('href'))
+      .toContain(`text=${encodeURIComponent('Is NVDA a good stock to buy? · Demand')}`);
   });
   it('an image that cannot be drawn leaves the link to share', async () => {
     page({ canonical: false });
