@@ -106,6 +106,6 @@ describe('lintCss (a style block alone, as a compiler sees it)', () => {
       expect.stringMatching(/^1: \.a ::ng-deep \.b — no global selectors/), expect.stringMatching(/^2: :host-context\(body\) \.c — no global selectors/)]);
   });
   it('the allowed imports are the package entry points a component may use', () => {
-    expect([...ALLOWED_IMPORTS].sort()).toEqual(['@angular/core', '@pretickt/components/context', '@pretickt/components/ds', '@pretickt/components/format', '@pretickt/components/indicators', '@pretickt/components/typologies']);
+    expect([...ALLOWED_IMPORTS].sort()).toEqual(['@angular/core', '@pretickt/components/alerts', '@pretickt/components/context', '@pretickt/components/ds', '@pretickt/components/format', '@pretickt/components/indicators', '@pretickt/components/typologies']);
   });
 });

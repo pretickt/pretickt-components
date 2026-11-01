@@ -21,7 +21,8 @@
       "@pretickt/components/ds": ["./src/ds/index.ts"],
       "@pretickt/components/format": ["./src/ds/format.ts"],
       "@pretickt/components/typologies": ["./src/typologies/browser.ts"],
-      "@pretickt/components/api": ["./src/api.ts"]
+      "@pretickt/components/api": ["./src/api.ts"],
+      "@pretickt/components/alerts": ["./src/alerts/index.ts"]
     }
   },
   "angularCompilerOptions": {

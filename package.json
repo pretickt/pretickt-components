@@ -19,6 +19,7 @@
     "./typologies": "./src/typologies/index.ts",
     "./dist/*": "./dist/*",
     "./indicators": "./src/indicators/index.ts",
+    "./alerts": "./src/alerts/index.ts",
     "./api": "./src/api.ts",
     "./context": "./src/context/index.ts",
     "./ds": "./src/ds/index.ts",
