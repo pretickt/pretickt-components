@@ -1,6 +1,6 @@
 import type { Screen, ScreenRow } from '../src/typologies';
 import { saidText } from '../src/ds/format';
-import { buildMap, mapSentence, PtLogoMap, sectorLabel, squarify, stepOf } from './pt-logo-map';
+import { buildMap, mapSentence, megaCaps, PtLogoMap, sectorLabel, squarify, stepOf } from './pt-logo-map';
 import { basics, render, withData } from './_spec';
 
 const row = (ticker: string, sector: string, marketCap: number, chg1d: number | null, logo: string | null = null): ScreenRow => ({
@@ -55,6 +55,11 @@ describe('the map', () => {
     expect(saidText(mapSentence(named, buildMap(named, 1000, 560).blocks, '2026-10-23'))).toBe('As of Oct 23, 2026: Technology moved +1.9%, and 1 of its 2 largest companies rose. '
       + 'The two largest, Nvidia NVDA and Apple AAPL, moved +3.1% and -0.4%; the biggest moves were Nvidia NVDA +3.1% and Apple AAPL -0.4%.');
   });
+  it('mega caps: the companies worth $200 billion or more, named so in the sentence (Romeo, 2026-11-01)', () => {
+    expect(megaCaps([...rows, row('FFF', 'Energy', 1.99e11, 0.01)]).map((r) => r.ticker)).toEqual(['AAA', 'BBB', 'CCC', 'DDD', 'EEE']);
+    expect(saidText(mapSentence(rows, buildMap(rows, 1000, 560).blocks, '2026-10-23', 'mega'))).toBe('As of Oct 23, 2026: 2 of 3 sectors rose, and 3 of the 5 '
+      + 'companies worth $200 billion or more. The three largest, AAA, BBB and CCC, moved +3.1%, -0.4% and -3.0%; the biggest moves were AAA +3.1% and CCC -3.0%.');
+  });
 });
 
 describe('pt-logo-map', () => {
@@ -81,6 +86,26 @@ describe('pt-logo-map', () => {
     expect(Object.keys(all.record)).toEqual(['screen@1|{"limit":100,"scope":{"list":"largest"}}']);
     const tech = await render(PtLogoMap, { sector: 'Technology' });
     expect(Object.keys(tech.record)).toEqual(['screen@1|{"limit":100,"scope":{"list":"largest","sector":"Technology"}}']);
+  });
+  it('mega caps: the same map of the companies worth $200 billion or more, from the same list (Romeo, 2026-11-01)', async () => {
+    const r = await render(PtLogoMap, { lens: 'mega' }, withData({ 'screen@1': { asOf: '2026-10-23', rows: [...rows, row('FFF', 'Energy', 1.99e11, 0.01)] } }));
+    const wide = r.el.querySelector('svg.pt-lm-wide')!;
+    expect([...wide.querySelectorAll('a')].map((a) => a.getAttribute('href'))).toEqual(['/stocks/aaa/', '/stocks/bbb/', '/stocks/ccc/', '/stocks/eee/', '/stocks/ddd/']);
+    expect(wide.getAttribute('aria-label')).toBe('Mega-cap stocks heat map: the 5 companies worth $200 billion or more, by sector, Oct 23, 2026');
+    expect(r.el.querySelector('.pt-lede')!.textContent).toContain('3 of the 5 companies worth $200 billion or more.');
+    expect(Object.keys((await render(PtLogoMap, { lens: 'mega' })).record)).toEqual(['screen@1|{"limit":100,"scope":{"list":"largest"}}']);
+  });
+  it('card: one landscape map of the 20 largest and its sentence, no legend — a card in a strip of sectors (Romeo, 2026-11-01)', async () => {
+    const many = Array.from({ length: 30 }, (_, i) => row(`T${String(i).padStart(2, '0')}`, 'Technology', (30 - i) * 1e11, 0.01));
+    const r = await render(PtLogoMap, { sector: 'Technology', form: 'card' }, withData({ 'screen@1': { asOf: '2026-10-23', rows: many } }));
+    const svgs = [...r.el.querySelectorAll('svg.pt-lm-svg')];
+    expect(svgs.map((x) => x.classList.contains('pt-lm-card'))).toEqual([true]);
+    expect(svgs[0]!.getAttribute('viewBox')).toBe('0 0 360 270');
+    // the map first, its sentence under it: in a strip every card's map starts level, whatever its sentence's length
+    expect([...r.el.querySelector('figure.pt-lm')!.children].map((c) => c.tagName.toLowerCase())).toEqual(['svg', 'p']);
+    expect(svgs[0]!.querySelectorAll('a')).toHaveLength(20);
+    expect(r.el.querySelector('.pt-lede')!.textContent).toMatch(/^As of Oct 23, 2026: Technology moved/);
+    expect(r.el.querySelector('.pt-lm-legend')).toBeNull();
   });
   it('an empty list says so', async () => {
     expect((await view({ asOf: '2026-10-23', rows: [] })).text()).toContain('No companies to show');

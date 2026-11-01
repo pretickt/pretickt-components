@@ -135,17 +135,22 @@ export function homePage(): PreviewPage {
     lede: `${UNIVERSE} · end-of-day data as of {date}`,
     nav: LIST_NAV,
     sections: [
-      { id: 'market-map', title: 'Stock market heat map', more: { href: '/market-map/', label: 'The full map' }, isNew: true, items: [{ c: PtLogoMap, inputs: {} }] },
-      { id: 'trending', more: { href: '/trending/', label: 'All trending stocks' }, isNew: true, note: 'pt-hot, made-up counts until the pulse feeds it',
-        items: [{ c: PtHot, inputs: { data: HOT } }] },
       { id: 'moves', title: 'Ongoing moves', items: [{ c: PtMovers, inputs: { sort: 'cap' } }] },
       { id: 'earnings', title: 'Earnings', more: { href: '/earnings-calendar/', label: 'Full calendar' }, items: [week('earnings')] },
       { id: 'dividends', title: 'Ex-dividend dates', more: { href: '/dividend-calendar/', label: 'Full calendar' }, items: [week('dividend')] },
       ...MARKET_LISTS.map(([slug, list, , h1]): PreviewSection => ({ id: slug, title: h1, more: { href: `/markets/${slug}/`, label: 'See all' },
         items: [{ c: PtScreen, inputs: { list, limit: 5 } }] })),
+      { id: 'all-stocks', title: `Every ${UNIVERSE} stock`, more: { href: '/stocks/', label: 'All stocks' }, items: [] },
+      // Romeo, 2026-11-01: "mettiamo alla fine della home la heat map del mercato delle mega caps"
+      { id: 'mega-caps', title: 'Mega-cap stocks heat map', more: { href: '/market-map/', label: 'All the heat maps' }, isNew: true,
+        items: [{ c: PtLogoMap, inputs: { lens: 'mega' } }] },
     ],
   };
 }
+
+/** The sectors by their weight in the market, the largest first (the strip of /market-map; the generator orders them by its data). */
+const SECTORS_BY_SIZE: Sector[] = ['Technology', 'Financial Services', 'Communication Services', 'Consumer Cyclical', 'Healthcare', 'Industrials',
+  'Consumer Defensive', 'Energy', 'Utilities', 'Real Estate', 'Basic Materials'];
 
 /** A sector (pages.ts sectorPage) with its own heat map after the answer. */
 export function sectorPage(s: Sector): PreviewPage {
@@ -177,6 +182,9 @@ export function marketMapPage(): PreviewPage {
     nav: LIST_NAV,
     sections: [
       { id: 'map', items: [{ c: PtLogoMap, inputs: {} }] },
+      { id: 'mega-caps', title: 'Mega-cap stocks heat map', isNew: true, items: [{ c: PtLogoMap, inputs: { lens: 'mega' } }] },
+      { id: 'sectors', title: 'Sector heat maps', isNew: true, strip: true,
+        items: SECTORS_BY_SIZE.map((s) => ({ c: PtLogoMap, inputs: { sector: s, form: 'card' } })) },
       { id: 'largest', title: 'Largest companies by market value', more: { href: '/stocks/', label: 'All stocks' }, items: [{ c: PtScreen, inputs: { list: 'largest', limit: 20 } }] },
     ],
     outro: prose('The heat map, explained',
@@ -225,9 +233,9 @@ export const stories = [
   story(PtPreviewCompany, { name: 'META: today\'s page with the common name only (www data)', live: true, group: GROUP,
     inputs: { page: companyPage('META', 'Meta Platforms, Inc.', 'Communication Services') } }),
   story(PtPreviewCompany, { name: 'NVDA on the demo data (the check)', inputs: { page: companyPage('NVDA', 'NVIDIA Corporation', 'Technology', NVDA_DRAFTS) }, group: GROUP }),
-  story(PtPreviewHome, { name: 'Home: heat map and trending first, common names (www data)', inputs: { page: homePage() }, live: true, group: GROUP }),
+  story(PtPreviewHome, { name: 'Home: the mega-cap heat map at the end (www data)', inputs: { page: homePage() }, live: true, group: GROUP }),
   story(PtPreviewSector, { name: 'Technology: its heat map, common names (www data)', inputs: { page: sectorPage('Technology') }, live: true, group: GROUP }),
-  story(PtPreviewMarketMap, { name: '/market-map: the new page (www data)', inputs: { page: marketMapPage() }, live: true, group: GROUP }),
+  story(PtPreviewMarketMap, { name: '/market-map: the heat maps — market, mega caps, the sectors in a strip (www data)', inputs: { page: marketMapPage() }, live: true, group: GROUP }),
   story(PtPreviewTrending, { name: '/trending: the new page (made-up counts)', inputs: { page: trendingPage() }, live: true, group: GROUP }),
   story(PtPreviewNames, { name: 'Every company: the name today and the common name (www list)', live: true, group: GROUP }),
 ];

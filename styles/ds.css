@@ -88,6 +88,9 @@
   .pt-section-head { @apply flex items-baseline justify-between gap-3; }
   .pt-section-more { @apply shrink-0 text-xs font-semibold text-primary no-underline hover:underline; }
   .pt-section-title { @apply mb-3 text-sm font-semibold uppercase tracking-wide text-ink-soft; }
+  /* a strip: the placements side by side, scrolling sideways; on a phone the next one shows at the edge */
+  .pt-strip-row { display: flex; gap: .75rem; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; padding-bottom: .5rem; }
+  .pt-strip-row > .pt-island { flex: 0 0 min(85%, 26rem); scroll-snap-align: start; }
   .pt-subnav { @apply mt-3 flex flex-wrap gap-1 border-b border-border pb-2 text-sm; }
   .pt-subnav a { @apply rounded-md px-2 py-1 text-ink-soft no-underline hover:bg-surface-raised hover:text-ink; }
   .pt-subnav a[aria-current='page'] { @apply bg-primary text-primary-ink; }
@@ -530,10 +533,10 @@
   .pt-ins-other .pt-ins-type { @apply bg-surface text-ink-soft; }
 
   /* the market map (pt-logo-map): a block per sector, a tile per company as large as its market value, coloured by today's move */
-  .pt-lm { @apply m-0 grid gap-2; }
+  .pt-lm { @apply m-0 grid gap-2; container-type: inline-size; }
   .pt-lm-svg { @apply block h-auto w-full; }
-  .pt-lm-wide { @apply hidden sm:block; }
-  .pt-lm-narrow { @apply sm:hidden; }
+  .pt-lm-wide { display: none; }   /* the wide map or the phone one by the map's own width: right in a column or a strip too */
+  @container (width >= 40rem) { .pt-lm-wide { display: block; } .pt-lm-narrow { display: none; } }
   .pt-lm-block { fill: var(--color-surface); }
   .pt-lm-sector { font: 600 10px var(--font-mono); letter-spacing: 0.04em; fill: var(--color-ink-soft); }
   .pt-lm-tile { stroke: var(--color-surface-raised); stroke-width: 1; }

@@ -14,7 +14,7 @@ import { faqLd, readFaq, type FaqPair } from '../site/faq';
 
 export interface PreviewItem { c: Type<unknown>; inputs?: Record<string, unknown> }
 export interface PreviewSection {
-  id: string; title?: string; more?: { href: string; label: string }; items: PreviewItem[];
+  id: string; title?: string; more?: { href: string; label: string }; items: PreviewItem[]; strip?: boolean;
   /** Not on www yet; `note` says what is still made up. */
   isNew?: boolean; note?: string;
 }
@@ -85,7 +85,7 @@ const json = (v: unknown) => JSON.stringify(v, null, 2);
           }
           @if (p.intro) {<div [innerHTML]="trusted(p.intro)"></div>}
           @for (s of p.sections; track s.id) {
-            <section class="pt-section" [id]="s.id" [class.pv-new]="s.isNew">
+            <section class="pt-section" [id]="s.id" [class.pv-new]="s.isNew" [class.pt-strip]="s.strip">
               @if (s.isNew) {<p class="pv-badge">New on this page{{ s.note ? ' · ' + s.note : '' }}</p>}
               @if (s.more; as more) {
                 <div class="pt-section-head">
@@ -93,7 +93,13 @@ const json = (v: unknown) => JSON.stringify(v, null, 2);
                   <a class="pt-section-more" [href]="more.href">{{ more.label }} →</a>
                 </div>
               } @else if (s.title) {<h2 class="pt-section-title">{{ s.title }}</h2>}
-              @for (it of s.items; track $index) {<div class="pt-island"><ng-container [ngComponentOutlet]="it.c" [ngComponentOutletInputs]="it.inputs ?? {}" /></div>}
+              @if (s.strip) {
+                <div class="pt-strip-row" tabindex="0" role="group" [attr.aria-label]="s.title ?? null">
+                  @for (it of s.items; track $index) {<div class="pt-island"><ng-container [ngComponentOutlet]="it.c" [ngComponentOutletInputs]="it.inputs ?? {}" /></div>}
+                </div>
+              } @else {
+                @for (it of s.items; track $index) {<div class="pt-island"><ng-container [ngComponentOutlet]="it.c" [ngComponentOutletInputs]="it.inputs ?? {}" /></div>}
+              }
             </section>
           }
           @if (p.outro) {<div [innerHTML]="trusted(p.outro)"></div>}

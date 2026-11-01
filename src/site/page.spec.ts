@@ -45,6 +45,20 @@ describe('PtPage', () => {
     expect([...el.querySelectorAll('[data-island]')].map((d) => `${d.className}|${d.getAttribute('data-island')}`))
       .toEqual([`pt-island|pt-company-card@${REGISTRY['pt-company-card']!.version}`, `pt-island|pt-financials@${REGISTRY['pt-financials']!.version}`]);
   });
+  it('a strip section lays its placements side by side, to scroll sideways, the row named for the keyboard (Romeo, 2026-11-01)', async () => {
+    const el = await page({ buildId: 'b', api: '', sections: [
+      { id: 'sectors', title: 'Sector heat maps', strip: true, items: [{ c: 'pt-logo-map', props: { sector: 'Technology', form: 'card' } },
+        { c: 'pt-logo-map', props: { sector: 'Energy', form: 'card' } }] },
+      { id: 'one', items: [{ c: 'pt-logo-map', props: {} }] },
+    ] });
+    const [strip, one] = [...el.querySelectorAll('section.pt-section')];
+    expect(strip!.classList).toContain('pt-strip');
+    const row = strip!.querySelector('.pt-strip-row')!;
+    expect(row.querySelectorAll(':scope > [data-island]')).toHaveLength(2);
+    expect([row.getAttribute('tabindex'), row.getAttribute('role'), row.getAttribute('aria-label')]).toEqual(['0', 'group', 'Sector heat maps']);
+    expect(one!.classList).not.toContain('pt-strip');
+    expect(one!.querySelector('.pt-strip-row')).toBeNull();
+  });
   it('a placement switched off by the build, or a tag it does not know, is a static "not available"', async () => {
     const el = await page({ buildId: 'b', api: '', sections: [{ id: 's', items: [{ c: 'pt-news', props: { ticker: 'NVDA' }, off: true }, { c: 'pt-unknown', props: {} }] }] });
     expect(el.querySelectorAll('[data-island]')).toHaveLength(0);

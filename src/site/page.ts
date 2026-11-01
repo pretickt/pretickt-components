@@ -20,16 +20,25 @@ const CARD = 'pt-company-card';
   imports: [PtSlot],
   template: `
     @for (s of model.sections; track s.id) {
-      <section class="pt-section" [id]="s.id">
+      <section class="pt-section" [class.pt-strip]="s.strip" [id]="s.id">
         @if (s.more; as more) {
           <div class="pt-section-head">
             @if (s.title) {<h2 class="pt-section-title">{{ s.title }}</h2>}
             <a class="pt-section-more" [href]="more.href" [attr.aria-label]="s.title ? more.label + ': ' + s.title : null">{{ more.label }} →</a>
           </div>
         } @else if (s.title) {<h2 class="pt-section-title">{{ s.title }}</h2>}
-        @for (it of s.items; track $index) {
-          @if (it.off || !known(it.c)) {<div class="pt-island"><p class="pt-na">Data not available</p></div>}
-          @else {<div ptSlot [c]="it.c" [p]="it.props"></div>}
+        @if (s.strip) {
+          <div class="pt-strip-row" tabindex="0" role="group" [attr.aria-label]="s.title ?? null">
+            @for (it of s.items; track $index) {
+              @if (it.off || !known(it.c)) {<div class="pt-island"><p class="pt-na">Data not available</p></div>}
+              @else {<div ptSlot [c]="it.c" [p]="it.props"></div>}
+            }
+          </div>
+        } @else {
+          @for (it of s.items; track $index) {
+            @if (it.off || !known(it.c)) {<div class="pt-island"><p class="pt-na">Data not available</p></div>}
+            @else {<div ptSlot [c]="it.c" [p]="it.props"></div>}
+          }
         }
       </section>
     }`,

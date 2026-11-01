@@ -27,7 +27,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
   'pt-feed': { version: '1.0.0', sample: {} },
   'pt-financials': { version: '2.4.0', sample: { ticker: 'NVDA' } },
   'pt-insiders': { version: '2.3.0', sample: { ticker: 'NVDA' } },
-  'pt-logo-map': { version: '0.3.0', sample: {} },
+  'pt-logo-map': { version: '0.4.0', sample: {} },
   'pt-metric': { version: '2.1.0', sample: { ticker: 'NVDA', metrics: ['pe', 'pe_vs_sector', 'pe_vs_own', 'pt_upside', 'consensus', 'market_cap', 'fcf_yield', 'insider_net', 'earnings_in', 'news'] } },
   'pt-movers': { version: '1.0.1', sample: {} },
   'pt-news': { version: '2.1.0', sample: { ticker: 'NVDA' } },
@@ -56,7 +56,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
       @case ('pt-feed') { @defer (hydrate on viewport) {<pt-feed [ticker]="$any(p()).ticker" [sector]="$any(p()).sector" />} }
       @case ('pt-financials') { @defer (hydrate on viewport) {<pt-financials [ticker]="$any(p()).ticker" [periods]="$any(p()).periods ?? 8" />} }
       @case ('pt-insiders') { @defer (hydrate on viewport) {<pt-insiders [ticker]="$any(p()).ticker" [days]="$any(p()).days ?? 365" />} }
-      @case ('pt-logo-map') { @defer (hydrate on viewport) {<pt-logo-map [sector]="$any(p()).sector" />} }
+      @case ('pt-logo-map') { @defer (hydrate on viewport) {<pt-logo-map [sector]="$any(p()).sector" [lens]="$any(p()).lens ?? 'market'" [form]="$any(p()).form ?? 'full'" />} }
       @case ('pt-metric') { @defer (hydrate on viewport) {<pt-metric [ticker]="$any(p()).ticker" [metrics]="$any(p()).metrics" />} }
       @case ('pt-movers') { @defer (hydrate on viewport) {<pt-movers [sort]="$any(p()).sort ?? 'cap'" />} }
       @case ('pt-news') { @defer (hydrate on viewport) {<pt-news [ticker]="$any(p()).ticker" [limit]="$any(p()).limit ?? 20" />} }

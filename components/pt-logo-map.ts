@@ -4,9 +4,14 @@
  * how to read it, the way the AI answers describe a heat map; above it, the day in a dated sentence (sectors up, the three largest,
  * the biggest moves) — the text that changes every day and that an answer can quote with its date.
  * Its sentence names the companies as links with their logos (PtSay): the card opens on hover, as on the tiles.
- * @version 0.3.0
+ * `lens` "mega": the same map of the mega caps, the companies worth $200 billion or more (from the same list of the largest).
+ * The map takes its wide or its phone form by its own width, not the screen's: it stays readable inside a narrow column or a strip.
+ * `form` "card": one landscape map of the 20 largest, its dated sentence under it (every card of a strip starts level), no legend —
+ * a card in a strip of sectors.
+ * @version 0.4.0
  * @evidence Romeo 2026-10-25: home components "con i loghi delle aziende" for the overview — H3 · The market at a glance, ★ sector map (brainstorming/mappa-componenti.html)
  * @evidence DataForSEO 2026-10-28 (round 13): the "stock market heat map" family ≈33,400 searches a month, keyword difficulty 25–30, AI Overview on 2%, no dominant site (apps, guides, brokers); "largest companies by market cap" 22,200 (launch/RESEARCH.md §9)
+ * @evidence Romeo 2026-11-01: "mettiamo alla fine della home la heat map del mercato delle mega caps", and a page of the heat maps
  * @evidence AI answers (ChatGPT, Claude, Gemini, Perplexity, AI Mode, 2026-10-28) to "where can I see a stock market heat map today" list TradingView, Finviz, Investing.com, Barchart, MarketBeat, each with one line on how the map reads (launch/AI-SEARCH.md)
  */
 import { Component, computed, inject, input } from '@angular/core';
@@ -50,6 +55,13 @@ export function squarify<T extends { value: number }>(items: readonly T[], r: Bo
   }
   return out;
 }
+
+/** The mega caps: the companies worth $200 billion or more. */
+export const MEGA = 200e9;
+export const megaCaps = (rows: readonly ScreenRow[]) => rows.filter((r) => (r.marketCap ?? 0) >= MEGA);
+/** What the map shows: the largest companies, or the mega caps among them. */
+export type Lens = 'market' | 'mega';
+const NOUN: Record<Lens, string> = { market: 'largest companies', mega: 'companies worth $200 billion or more' };
 
 /** The colour step of a day's move: two shades each way, and flat within ±0.25%. */
 export const stepOf = (m: number | null) =>
@@ -102,16 +114,17 @@ const and = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).
  * 11 sectors rose, and 61 of the 100 largest companies. The three largest, Nvidia NVDA, Apple AAPL and Microsoft MSFT, moved
  * +1.2%, -0.4% and +0.8%; the biggest moves were …".
  */
-export function mapSentence(rows: readonly ScreenRow[], blocks: Block[], asOf: string): Said {
+export function mapSentence(rows: readonly ScreenRow[], blocks: Block[], asOf: string, lens: Lens = 'market'): Said {
   const moved = rows.filter((r) => r.chg1d != null);
   if (!moved.length) return [];
   const up = moved.filter((r) => r.chg1d! > 0).length;
   const sec = blocks.filter((b) => b.move !== null), secUp = sec.filter((b) => b.move! > 0).length;
   const largest = [...moved].sort((a, b) => (b.marketCap ?? 0) - (a.marketCap ?? 0)).slice(0, 3);
   const best = moved.reduce((a, b) => (b.chg1d! > a.chg1d! ? b : a)), worst = moved.reduce((a, b) => (b.chg1d! < a.chg1d! ? b : a));
-  const first = sec.length > 1 ? `${secUp} of ${sec.length} sectors rose, and ${up} of the ${moved.length} largest companies`
-    : sec.length ? `${sec[0]!.sector} moved ${pct(sec[0]!.move)}, and ${up} of its ${moved.length} largest companies rose`
-    : `${up} of the ${moved.length} largest companies rose`;
+  const noun = NOUN[lens];
+  const first = sec.length > 1 ? `${secUp} of ${sec.length} sectors rose, and ${up} of the ${moved.length} ${noun}`
+    : sec.length ? `${sec[0]!.sector} moved ${pct(sec[0]!.move)}, and ${up} of its ${moved.length} ${noun} rose`
+    : `${up} of the ${moved.length} ${noun} rose`;
   const extremes = best !== worst ? say`; the biggest moves were ${who(best)} ${pct(best.chg1d)} and ${who(worst)} ${pct(worst.chg1d)}.` : ['.'];
   const lead = say`As of ${date(asOf)}: ${first}. The ${['largest', 'largest', 'two largest', 'three largest'][largest.length]}, ${andSaid(largest.map((r) => [who(r)]))}, `;
   return say`${lead}moved ${and(largest.map((r) => pct(r.chg1d)))}${extremes}`;
@@ -121,6 +134,7 @@ export const HOW_TO_READ = 'Each tile is a company, sized by its market value an
 
 const WIDE = { w: 1000, h: 560, n: 100 } as const;
 const NARROW = { w: 400, h: 600, n: 40 } as const;
+const CARD = { w: 360, h: 270, n: 20 } as const;
 
 @Component({
   selector: 'pt-logo-map',
@@ -132,9 +146,9 @@ const NARROW = { w: 400, h: 600, n: 40 } as const;
       @if (!s.rows.length) {<p class="pt-na">No companies to show</p>}
       @else {
         <figure class="pt-lm" [class.pt-busy]="data.loading()">
-          <p class="pt-lede"><pt-say [parts]="sentence()" /></p>
+          @if (form() === 'full') {<p class="pt-lede"><pt-say [parts]="sentence()" /></p>}
           @for (m of maps(); track m.key) {
-            <svg [class]="'pt-lm-svg pt-lm-' + m.key" [attr.viewBox]="'0 0 ' + m.w + ' ' + m.h" role="group" [attr.aria-label]="'Stock market heat map: the ' + m.tiles.length + ' largest companies by sector, ' + date(s.asOf)">
+            <svg [class]="'pt-lm-svg pt-lm-' + m.key" [attr.viewBox]="'0 0 ' + m.w + ' ' + m.h" role="group" [attr.aria-label]="mapLabel(m.tiles.length, s.asOf)">
               @for (b of m.blocks; track b.sector) {
                 <rect class="pt-lm-block" [attr.x]="b.x" [attr.y]="b.y" [attr.width]="b.w" [attr.height]="b.h" />
                 @if (b.head) {<text class="pt-lm-sector" [attr.x]="b.x + 6" [attr.y]="b.y + 13">{{ b.label }}</text>}
@@ -153,11 +167,14 @@ const NARROW = { w: 400, h: 600, n: 40 } as const;
               }
             </svg>
           }
-          <figcaption class="pt-legend pt-lm-legend">
-            @for (k of LEGEND; track k[0]) {<span class="pt-key"><i [class]="'pt-lm-sw pt-lm-' + k[0]"></i>{{ k[1] }}</span>}
-            <span class="pt-meta">size = market value · as of {{ date(s.asOf) }}</span>
-          </figcaption>
-          <p class="pt-note">{{ HOW_TO_READ }}</p>
+          @if (form() === 'card') {<p class="pt-lede"><pt-say [parts]="sentence()" /></p>}
+          @else {
+            <figcaption class="pt-legend pt-lm-legend">
+              @for (k of LEGEND; track k[0]) {<span class="pt-key"><i [class]="'pt-lm-sw pt-lm-' + k[0]"></i>{{ k[1] }}</span>}
+              <span class="pt-meta">size = market value · as of {{ date(s.asOf) }}</span>
+            </figcaption>
+            <p class="pt-note">{{ HOW_TO_READ }}</p>
+          }
         </figure>
       }
     }`,
@@ -165,17 +182,27 @@ const NARROW = { w: 400, h: 600, n: 40 } as const;
 export class PtLogoMap {
   private readonly pt = inject(Pt);
   readonly sector = input<Sector>();
+  readonly lens = input<Lens>('market');
+  /** "card": one small landscape map under the sentence, for a strip of sectors. */
+  readonly form = input<'full' | 'card'>('full');
 
   protected readonly data = this.pt.screen(() => {
     const s = this.sector();
     return { scope: s ? { list: 'largest' as const, sector: s } : { list: 'largest' as const }, limit: WIDE.n };
   });
-  private readonly rows = computed(() => this.data.value()?.rows ?? []);
-  protected readonly maps = computed(() => [
-    { key: 'wide', ...WIDE, big: 70, label: 34, ...buildMap(this.rows(), WIDE.w, WIDE.h) },
-    { key: 'narrow', ...NARROW, big: 64, label: 30, ...buildMap(this.rows().slice(0, NARROW.n), NARROW.w, NARROW.h) },
-  ]);
-  protected readonly sentence = computed(() => mapSentence(this.rows(), this.maps()[0]!.blocks, this.data.value()?.asOf ?? ''));
+  private readonly rows = computed(() => { const rows = this.data.value()?.rows ?? []; return this.lens() === 'mega' ? megaCaps(rows) : rows; });
+  protected readonly maps = computed(() => this.form() === 'card'
+    ? [{ key: 'card', ...CARD, big: 64, label: 30, ...buildMap(this.rows().slice(0, CARD.n), CARD.w, CARD.h) }]
+    : [
+      { key: 'wide', ...WIDE, big: 70, label: 34, ...buildMap(this.rows(), WIDE.w, WIDE.h) },
+      { key: 'narrow', ...NARROW, big: 64, label: 30, ...buildMap(this.rows().slice(0, NARROW.n), NARROW.w, NARROW.h) },
+    ]);
+  protected readonly sentence = computed(() => mapSentence(this.rows(), this.maps()[0]!.blocks, this.data.value()?.asOf ?? '', this.lens()));
+  /** The map's name for a screen reader: what it shows, how many, the date. */
+  protected mapLabel(n: number, asOf: string) {
+    return this.lens() === 'mega' ? `Mega-cap stocks heat map: the ${n} ${NOUN.mega}, by sector, ${date(asOf)}`
+      : `Stock market heat map: the ${n} ${NOUN.market} by sector, ${date(asOf)}`;
+  }
   protected readonly HOW_TO_READ = HOW_TO_READ;
   protected readonly LEGEND = [['dn2', '−2.5% or more'], ['dn1', 'down'], ['flat', 'flat'], ['up1', 'up'], ['up2', '+2.5% or more']] as const;
   protected readonly pct = pct;
