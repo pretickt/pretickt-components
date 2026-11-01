@@ -220,6 +220,15 @@ describe('pt-value: on its own page and on the company page', () => {
     expect(el.querySelector('a.dv-more')!.getAttribute('href')).toBe('/stocks/nvda/value/');
     expect(el.querySelectorAll('[data-faq], .dv-card')).toHaveLength(0);
   });
+  it('each verdict is a link to its question: on the company page to the value page at it, on the value page to its column (Romeo, 2026-11-01)', async () => {
+    const compact = (await render(PtValue, { ticker: 'NVDA', compact: true })).el;
+    expect([...compact.querySelectorAll('.dv-chip a')].map((a) => a.getAttribute('href'))).toEqual(NVDA.sections.map((s) => `/stocks/nvda/value/#value-${s.key}`));
+    expect(compact.querySelector('.dv-chip a')!.textContent!.replace(/\s+/g, ' ').trim()).toBe(`Demand ${NVDA.sections[0]!.verdict}`);
+    const full = (await render(PtValue, { ticker: 'NVDA' })).el;
+    // the page's own address with the anchor: on that page a jump, whatever <base> a page carries (the stories' "/")
+    expect([...full.querySelectorAll('.dv-chip a')].map((a) => a.getAttribute('href'))).toEqual(NVDA.sections.map((s) => `/stocks/nvda/value/#value-${s.key}`));
+    expect([...full.querySelectorAll('.dv-col')].map((c) => c.id)).toEqual(NVDA.sections.map((s) => `value-${s.key}`));
+  });
   it('a question without cards is left out: as many columns as questions (a bank answers three)', async () => {
     const bank: Value = { ...NVDA, sections: NVDA.sections.filter((s) => ['economics', 'execution', 'price'].includes(s.key)) };
     const { el } = await render(PtValue, { ticker: 'NVDA' }, withData({ 'value@1': bank }));

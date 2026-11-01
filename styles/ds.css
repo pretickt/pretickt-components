@@ -593,7 +593,12 @@
   .dv-q { margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--color-ink); }
   .dv-a { margin: .15rem 0 0; font-size: .95rem; line-height: 1.4; color: var(--color-ink); }
   .dv-strip { display: grid; grid-template-columns: repeat(var(--dv-n, 6), minmax(0, 1fr)); gap: .35rem; margin: 0; padding: 0; list-style: none; }
-  .dv-chip { display: grid; gap: .1rem; padding: .35rem .5rem; border-radius: var(--radius-control); font-size: .7rem; color: var(--color-ink); }
+  .dv-chip { border-radius: var(--radius-control); font-size: .7rem; color: var(--color-ink); }
+  /* each verdict links to its question (the value page's column): the whole chip is the link */
+  .dv-chip a { display: grid; gap: .1rem; padding: .35rem .5rem; border-radius: inherit; color: inherit; text-decoration: none; }
+  .dv-chip a:hover b, .dv-chip a:focus-visible b { text-decoration: underline; }
+  /* the column a verdict links to lands below the fixed header, as an anchored section does */
+  .dv-col { scroll-margin-top: 6rem; }
   .dv-chip span { font-size: .62rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--color-ink-soft); }
   /* each column spans the same four rows (name, question, verdict, cards): a subgrid keeps them level whatever a question's length */
   .dv-cols { display: grid; grid-template-columns: repeat(var(--dv-n, 6), minmax(0, 1fr)); gap: .5rem; }

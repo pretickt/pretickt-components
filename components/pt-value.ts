@@ -18,10 +18,13 @@
  * structured data (one answer per question on the site: the full page carries it).
  * A row of companies or holders has one set of columns for the card (the bars start level): a name whole, never "Vangu…"; in a narrow
  * card (six columns on a desktop) a row takes two lines, the name above its bar and its value.
- * @version 1.0.1
+ * Each verdict is a link to its question: on the company page the value page at that question (`#value-demand`), on the value page
+ * its column.
+ * @version 1.0.2
  * @evidence Romeo 2026-10-27: "questa azienda è di valore? con 6 sezioni verticali e, dentro ogni sezione, delle card schematiche e visuali"
  * @evidence Romeo 2026-10-31: "per ptvalue, singola pagina ma presente anche nella Company page"
  * @evidence Holder names cut at phone width, "Vangu…" (the 40-company check, 2026-11-01)
+ * @evidence Romeo 2026-11-01, on the company page: "quando clicco su una sezione rimandata alla pagina"
  * @evidence DataForSEO 2026-10-28 (round 13): "is {company} a good stock to buy" ≈64,000 searches a month on ~100 companies, AI Overview on 90%; the facts' own words ("pe ratio", "revenue growth", "gross margin"…) 153,000 on 25 companies
  */
 import { Component, computed, inject, input } from '@angular/core';
@@ -167,14 +170,14 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
           }
         </div>
         <ol class="dv-strip" aria-label="The questions at a glance">
-          @for (s of v.sections; track s.key) {<li [class]="'dv-chip dv-' + s.tone"><span>{{ QUESTIONS[s.key].name }}</span><b>{{ s.verdict }}</b></li>}
+          @for (s of v.sections; track s.key) {<li [class]="'dv-chip dv-' + s.tone"><a [href]="chipHref(s.key)"><span>{{ QUESTIONS[s.key].name }}</span>{{ ' ' }}<b>{{ s.verdict }}</b></a></li>}
         </ol>
         @if (compact()) {
           <a class="dv-more" [href]="valueHref()">{{ v.ticker }}: the {{ v.sections.length }} questions, card by card</a>
         } @else {
           <div class="dv-cols">
             @for (s of v.sections; track s.key) {
-              <div [class]="'dv-col dv-' + s.tone">
+              <div [class]="'dv-col dv-' + s.tone" [id]="'value-' + s.key">
                 <div class="dv-col-h">
                   <span class="dv-name"><svg class="pt-icon" [ptIcon]="QUESTIONS[s.key].icon"></svg>{{ QUESTIONS[s.key].name }}@if (QUESTIONS[s.key].term; as t) {<span class="dv-term">{{ ' ' + t }}</span>}</span>
                   <span class="dv-ask">{{ QUESTIONS[s.key].ask }}</span>
@@ -279,6 +282,8 @@ export class PtValue {
   protected readonly value = computed(() => { const v = this.res.value(); return v ? { ...v, name: plainName(v.name) } : v; });
   protected readonly answer = computed(() => { const v = this.value(); return v ? valueAnswer(v) : { lead: '', text: '' }; });
   protected readonly valueHref = computed(() => `${stockHref(this.ticker())}value/`);
+  /** A verdict's question: the value page at its column — from the company page a visit, on the value page itself a jump (its own address, whatever <base> a page carries). */
+  protected chipHref(key: ValueKey) { return `${this.valueHref()}#value-${key}`; }
   protected readonly faqId = faqId;
   protected readonly stockHref = stockHref;
   protected readonly QUESTIONS = QUESTIONS;
