@@ -83,6 +83,9 @@ describe("version A's charts", () => {
     expect(m.kind).toBe('level');
     if (m.kind !== 'level') return;
     expect(m.levels.map((l) => l.caption)).toEqual(['CROSS', 'NOW']);
+    // NOW is where the line ends (the same closes), not the row's averages when the two disagree
+    const last = (() => { const c = closes.map((x) => x.c), a = (k: number) => c.slice(-k).reduce((s, v) => s + v, 0) / k; return a(50) / a(200) - 1; })();
+    expect(m.levels.find((l) => l.caption === 'NOW')!.label).toBe(`+${Math.round(last * 100)}%`);   // sig: whole percents from 10%
     expect(m.zone?.tone).toBe('pos');
     expect(m.cross).not.toBeNull();
     expect(chartOf(condition('ma-cross', { dir: 'death' }), { row: amd, rows, closes })!.kind).toBe('level');

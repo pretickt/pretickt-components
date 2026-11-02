@@ -153,7 +153,9 @@ function crossChart(rc: RuleCondition, row: AlertRow, closes: { t: string; c: nu
     if (i >= 199 && i >= cs.length - 63) gaps.push({ t: cs[i]!.t, v: s50 / 50 / (s200 / 200) - 1 });
   }
   const pts = gaps.map((g, i) => ({ x: PLOT_L + (gaps.length > 1 ? i / (gaps.length - 1) : 1) * W, v: g.v, t: g.t }));
-  const ins: LevelIn[] = [{ v: 0, label: 'MA50 = MA200', caption: 'CROSS', tone }, { v: now, label: sig(now), caption: 'NOW', tone: 'ink', now: true }];
+  // NOW where the line ends when it is drawn (the same closes), else the nightly's averages
+  const at = pts.at(-1)?.v ?? now;
+  const ins: LevelIn[] = [{ v: 0, label: '0%', caption: 'CROSS', tone }, { v: at, label: sig(at), caption: 'NOW', tone: 'ink', now: true }];
   const y = scale([...pts.map((q) => q.v), ...ins.map((l) => l.v)], LINE);
   const ticks: LevelChart['ticks'] = [];
   pts.forEach((q, i) => {
