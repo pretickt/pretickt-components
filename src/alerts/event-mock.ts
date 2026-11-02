@@ -1,8 +1,8 @@
-// Made-up alert events for the pt-alert-event draft's stories and spec: never real data.
-import type { AlertEventPayload } from './pt-alert-event';
+// Made-up alert events for pt-alert-event's stories and spec: never real data.
+import type { AlertEvent } from '../typologies/alerts';
 
 /** Romeo's example (2026-11-01): a mega cap falls more than 5% in a session and trades far under its 50-day average. */
-export const AE_AMD: AlertEventPayload = {
+export const AE_AMD: AlertEvent = {
   id: 'e-demo-1', name: 'Mega-cap drops', ticker: 'AMD', companyName: 'Advanced Micro Devices, Inc.', logo: '/logos/amd.a8e17428.webp',
   session: '2026-10-30', firedAt: '3:45 PM ET',
   conditions: [
@@ -12,13 +12,13 @@ export const AE_AMD: AlertEventPayload = {
   ],
 };
 /** One condition: news. */
-export const AE_ONE: AlertEventPayload = {
+export const AE_ONE: AlertEvent = {
   id: 'e-demo-2', name: 'News 3× · NVDA', ticker: 'NVDA', companyName: 'NVIDIA Corporation', logo: '/logos/nvda.55199575.webp',
   session: '2026-10-29', firedAt: '11:20 AM ET',
   conditions: [{ c: 'news-spike', p: { times: 3 }, value: 4.1 }, { c: 'one-stock', p: { ticker: 'NVDA' }, value: null }],
 };
 /** Five conditions, one the company page does not show (social). */
-export const AE_FIVE: AlertEventPayload = {
+export const AE_FIVE: AlertEvent = {
   id: 'e-demo-3', name: 'Quality pullback', ticker: 'MU', companyName: 'Micron Technology, Inc.', logo: '/logos/mu.516495fd.webp',
   session: '2026-10-30', firedAt: '4:10 PM ET',
   conditions: [

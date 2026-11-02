@@ -7,7 +7,7 @@
  */
 import { Component, input } from '@angular/core';
 import type { ManageState } from '../alerts/token';
-import { AE_AMD } from '../../components/drafts/alert-event-mock';
+import { AE_AMD } from '../alerts/event-mock';
 import { PtAlertManage } from '../site/alerts/manage';
 import { fakeAlerts } from './fake-alerts';
 import { named, plainName } from '@pretickt/components/format';

@@ -15,7 +15,8 @@ import { ICON_PATHS } from '../ds/icons';
 import { faqLd, readFaq, type FaqPair } from '../site/faq';
 import { bellOf } from '../site/alerts/attach';
 import { openEditor } from '../site/alerts/editor';
-import { PtAlertEvent, type AlertEventPayload } from '../../components/drafts/pt-alert-event';
+import type { AlertEvent } from '../typologies/alerts';
+import { PtAlertEvent } from '../site/alerts/event';
 
 export interface PreviewItem { c: Type<unknown>; inputs?: Record<string, unknown> }
 export interface PreviewSection {
@@ -38,8 +39,8 @@ export interface PreviewPage {
   site?: boolean;
   /** A page with alerts (plan 2): a bell under every placement that has a badge, the editor on a press (the story's made-up backend). */
   alerts?: true;
-  /** The alert an email opened (`?alert=`): its card on top (the pt-alert-event draft). */
-  alertEvent?: AlertEventPayload;
+  /** The alert an email opened (`?alert=`): its card on top (pt-alert-event). */
+  alertEvent?: AlertEvent;
 }
 
 export const BASE = 'https://www.pretickt.com';

@@ -1,22 +1,11 @@
-/**
- * DRAFT · The alert that fired, at the top of the company page (Romeo, 2026-11-01: «l'email porta all'asset Company page su cui
- * quell'evento si è verificato»): the alert's name, what happened with the day and the time, then one line per condition with the
- * section of the page that shows it. Its data (`alert-event@1`) has no pipeline yet, so it comes as an input; on www the component will
- * read the event the page's address names (`?alert=`), and render nothing without one.
- * @version 0.0.1
- */
-import { Component, computed, input } from '@angular/core';
-import { CONDITIONS, SECTION_OF, type ConditionId, type Params } from '@pretickt/components/alerts';
+import { type ApplicationRef, Component, computed, createComponent, type EnvironmentInjector, input } from '@angular/core';
+import { FAILED, PT_STORE } from '@pretickt/components/context';
 import { PtIcon, PtLogo } from '@pretickt/components/ds';
 import { dayMonth, named } from '@pretickt/components/format';
-
-/** The shape `alert-event@1` will have: the alert, the company, when it fired, each condition's value at that moment. */
-export interface AlertEventPayload {
-  id: string; name: string; ticker: string; companyName: string; logo: string | null;
-  /** the New York session it fired in, and the time in the reader's words ("3:45 PM ET") */
-  session: string; firedAt: string;
-  conditions: { c: ConditionId; p: Params; value: number | null }[];
-}
+import { CONDITIONS } from '../../alerts/catalog';
+import { SECTION_OF } from '../../alerts/sources';
+import type { AlertEvent } from '../../typologies/alerts';
+import { landingOf } from './landing';
 
 /** The company page's sections, as the page titles them (plant/src/generate/pages.ts). */
 const SECTION_LABEL: Record<string, string> = {
@@ -24,6 +13,11 @@ const SECTION_LABEL: Record<string, string> = {
   value: 'Quality checks', financials: 'Revenue and free cash flow', news: 'Latest news', price: 'Price and events',
 };
 
+/**
+ * The alert that fired, at the top of the company page (Romeo, 2026-11-01: «l'email porta all'asset Company page su cui quell'evento si
+ * è verificato»): the alert's name, what happened with the day and the time, then one line per condition with the section of the
+ * page that shows it. A part of the page app (ruling I-11), mounted above the page by `showEvent` from the email link's `?alert=`.
+ */
 @Component({
   selector: 'pt-alert-event',
   imports: [PtIcon, PtLogo],
@@ -41,7 +35,7 @@ const SECTION_LABEL: Record<string, string> = {
     }`,
 })
 export class PtAlertEvent {
-  readonly event = input<AlertEventPayload | null>(null);
+  readonly event = input<AlertEvent | null>(null);
 
   /** the conditions that say what happened (the universe's only say which stocks were watched) */
   protected readonly lines = computed(() => (this.event()?.conditions ?? [])
@@ -57,4 +51,20 @@ export class PtAlertEvent {
     const first = this.lines()[0];
     return `${named(e.companyName, e.ticker)} ${first ? first.fact + ' ' : ''}on ${dayMonth(e.session)}, fired at ${e.firedAt}`;
   });
+}
+
+/**
+ * An alert email's link (`/stocks/amd/?alert=<id>`): the alert that fired (`alert-event@1`), above the company page. Nothing for a
+ * malformed link, an event the API does not have, or one about another company than the page's.
+ */
+export async function showEvent(doc: Document, appRef: ApplicationRef, env: EnvironmentInjector, search: string, subject?: string): Promise<void> {
+  const id = landingOf(search).alert, root = doc.querySelector('pt-page');
+  if (!id || !root) return;
+  const e = await env.get(PT_STORE).ask('alert-event@1', { id });
+  if (!e || e === FAILED || (subject && (e as AlertEvent).ticker !== subject)) return;
+  const host = doc.createElement('pt-alert-event');
+  root.before(host);
+  const ref = createComponent(PtAlertEvent, { environmentInjector: env, hostElement: host });
+  ref.setInput('event', e);
+  appRef.attachView(ref.hostView);
 }

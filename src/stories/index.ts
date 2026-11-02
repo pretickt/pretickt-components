@@ -9,7 +9,7 @@ import { stories as drafts } from '../../components/drafts/home.stories';
 import { stories as value } from '../../components/pt-value.stories';
 import { stories as peopleAsk } from '../../components/drafts/people-ask.stories';
 import { stories as outlook } from '../../components/drafts/outlook.stories';
-import { stories as alertEvent } from '../../components/drafts/alert-event.stories';
+import { stories as alertEvent } from './alert-event.stories';
 import { stories as pages } from './pages.stories';
 import { stories as financials } from '../../components/pt-financials.stories';
 import { stories as insiders } from '../../components/pt-insiders.stories';

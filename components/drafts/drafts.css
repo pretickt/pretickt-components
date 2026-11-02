@@ -182,15 +182,3 @@ button.do-ev { display: flex; width: 100%; align-items: center; justify-content:
 .do-m-more { display: grid; gap: .5rem; padding: .6rem .7rem; border: 1px solid var(--color-primary); border-top: 0; border-radius: 0 0 .75rem .75rem; }
 .do-m-more .do-say { margin: 0; padding: 0; }
 
-/* pt-alert-event (draft): the alert that fired, at the top of the company page */
-.pt-alev { display: grid; gap: .3rem; margin: 0 0 1rem; padding: .7rem .9rem; border: 1px solid color-mix(in oklab, var(--color-primary) 40%, var(--color-border));
-  border-radius: var(--radius-control); background: color-mix(in oklab, var(--color-primary) 6%, var(--color-surface-raised)); }
-.pt-alev-k { display: flex; align-items: center; gap: .35rem; margin: 0; font-size: .64rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
-  color: var(--color-primary); }
-.pt-alev-k svg { width: .9rem; height: .9rem; }
-.pt-alev-h { display: flex; align-items: center; gap: .5rem; margin: 0; font-size: .95rem; color: var(--color-ink); }
-.pt-alev-l { display: grid; gap: .2rem; margin: 0; padding: 0; list-style: none; font-size: .84rem; color: var(--color-ink); }
-.pt-alev-l li { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .2rem .8rem;
-  padding: .25rem 0; border-top: 1px solid var(--color-border); }
-.pt-alev-l a { color: var(--color-primary); font-weight: 600; text-decoration: none; white-space: nowrap; }
-.pt-alev-l a:hover { text-decoration: underline; }

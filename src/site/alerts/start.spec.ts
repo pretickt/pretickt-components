@@ -18,7 +18,7 @@ const until = async (ok: () => boolean) => {
 };
 
 describe('startAlerts: a page with alerts, once rendered', () => {
-  afterEach(() => { document.body.innerHTML = ''; });
+  afterEach(() => { document.body.innerHTML = ''; history.replaceState(null, '', '/'); });
 
   it("a bell's press opens the editor on the site's backend with its section's badge", async () => {
     const { appRef, env } = setup();
@@ -32,6 +32,25 @@ describe('startAlerts: a page with alerts, once rendered', () => {
     expect(alerts.draft()!.rule.all.map((rc) => rc.c)).toEqual(['session-move']);
     expect(alerts.draft()!.from).toEqual({ tag: 'pt-movers', section: 'moves', path: location.pathname });
     expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+  });
+
+  it("an alert email's link (?alert=) shows the alert above the company page", async () => {
+    const { appRef, env } = setup();
+    history.replaceState(null, '', '/stocks/amd/?alert=AbCdEf0123456789_-xy');
+    document.body.innerHTML = '<pt-page></pt-page>';
+    startAlerts(document, appRef, env, { ...page, subject: 'AMD' });
+    await until(() => !!document.querySelector('.pt-alev'));
+    expect(document.querySelector('pt-alert-event + pt-page')).not.toBeNull();
+    expect(document.querySelector('.pt-alev')!.textContent).toContain('Mega-cap drops');
+  });
+
+  it("the alerts' page mounts the manage page in its place", async () => {
+    const { appRef, env } = setup();
+    document.body.innerHTML = '<div data-pt-alerts><p class="pt-na">Open the link in one of our emails to confirm or manage your alerts.</p></div>';
+    startAlerts(document, appRef, env, page);
+    await until(() => !!document.querySelector('[data-pt-alerts] pt-alert-manage .pt-na'));
+    expect(document.querySelectorAll('[data-pt-alerts] .pt-na')).toHaveLength(1);
+    expect(document.querySelector('[data-pt-alerts]')!.textContent).toContain('Open the link in one of our emails');   // no token in the address
   });
 
   it('a click elsewhere loads nothing', async () => {

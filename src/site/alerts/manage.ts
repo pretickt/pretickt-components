@@ -1,4 +1,4 @@
-import { afterNextRender, ApplicationRef, Component, effect, EnvironmentInjector, inject, Injector, signal } from '@angular/core';
+import { afterNextRender, ApplicationRef, Component, createComponent, effect, EnvironmentInjector, inject, Injector, signal } from '@angular/core';
 import { CONDITIONS, sentence } from '../../alerts/catalog';
 import { PtAlerts } from '../../alerts/service';
 import type { ManagedRule, ManageOp, ManageState } from '../../alerts/token';
@@ -120,4 +120,11 @@ export class PtAlertManage {
       if (s && said) this.done.set(said);
     });
   }
+}
+
+/** The alerts' page (`[data-pt-alerts]`, its note for a browser without the page app): the manage page in its place. */
+export function mountManage(host: Element, appRef: ApplicationRef, env: EnvironmentInjector): void {
+  const el = host.ownerDocument.createElement('pt-alert-manage');
+  host.replaceChildren(el);
+  appRef.attachView(createComponent(PtAlertManage, { environmentInjector: env, hostElement: el }).hostView);
 }

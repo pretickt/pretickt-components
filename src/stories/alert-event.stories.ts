@@ -1,9 +1,9 @@
-/** The pt-alert-event draft on made-up data: the alert that fired, at the top of the company page, until alert-event@1 has a pipeline. */
-import { story } from '../../src/stories/story';
-import { AE_AMD, AE_FIVE, AE_ONE } from './alert-event-mock';
-import { PtAlertEvent } from './pt-alert-event';
+/** pt-alert-event on made-up data: the alert that fired, at the top of the company page (an email's `?alert=`). */
+import { AE_AMD, AE_FIVE, AE_ONE } from '../alerts/event-mock';
+import { PtAlertEvent } from '../site/alerts/event';
+import { story } from './story';
 
-const GROUP = 'Drafts · The alert on the company page (made-up data)';
+const GROUP = 'Alerts · The alert on the company page (made-up data)';
 
 export const stories = [
   story(PtAlertEvent, { name: "Romeo's example · AMD, a mega cap drops", inputs: { event: AE_AMD }, group: GROUP }),

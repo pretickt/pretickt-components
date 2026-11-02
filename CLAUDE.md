@@ -193,10 +193,13 @@ email, no account.
 - **`PtAlerts`** is the alerts entry's, not the context's: the draft, saving, the page's backend `PT_ALERTS` (`token.ts`). A component
   imports it from `@pretickt/components/alerts`.
 - **The page app** owns the alerts' UI: renderPage computes each placement's badge on the server (`withAlerts`) when the page model has
-  `alerts`, the slot draws the bell beside Share, and one listener loads the editor's chunk on the first press (`pressBell`). The
-  manage page (`manage.ts`) and the alert at the top of a company page are mounted by the page app from chunks of their own.
-- **The main bundle is full** (239,897 of 240,000 bytes on 2026-11-02): a registry component costs it about 1 KB, so the alerts' parts
-  are not placeable components, and what they add to the main bundle stays a few bytes (the slot's input, the listener's line).
+  `alerts`, the slot draws the bell beside Share, and the page app loads one small chunk (`start.ts`, about 500 B): a bell's press
+  loads the editor's chunk (`pressBell`), an email's `?alert=` shows the alert above the company page (`showEvent`, `event.ts`), the
+  alerts' page's `[data-pt-alerts]` gets the manage page (`mountManage`). PtAlerts runs on the site's backend (`backend.ts`: the
+  store's `alert-universe@1`, `live/bars-v1.json`, `/v1/alerts`) in an injector of its own (`env.ts`): main.ts provides nothing.
+- **The main bundle is full** (239,925 of 240,000 bytes on 2026-11-02): a registry component costs it about 1 KB, so the alerts' parts
+  are not placeable components, and what they add to the main bundle stays a few bytes. Two traps: a `document:` host listener puts
+  Angular's resolver in main (add such a listener by hand), and every symbol a chunk imports from main lengthens main's export list.
 
 ## Search engines and AI answers (SEO, AI search)
 Google shows an AI Overview on most questions about a stock, and the chat assistants (ChatGPT, Claude, Gemini, Perplexity) answer
