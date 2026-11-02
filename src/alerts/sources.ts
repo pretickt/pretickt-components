@@ -21,6 +21,17 @@ function ofList(list: unknown, sector: string | null): AlertSource | null {
   return s && sector ? { ...s, sector } : s;
 }
 
+/** A pt-metric strip's badge: the condition of the first kind of number it shows (the Technicals' averages, the context's news…). */
+const BY_METRICS: [readonly string[], ConditionId][] = [
+  [['trend_ma', 'ma_detail', 'ma_cross'], 'below-average'], [['news'], 'news-spike'], [['range_52w', 'off_high'], 'near-52w'],
+  [['volume_ratio'], 'volume-spike'], [['pe', 'pe_vs_sector', 'pe_vs_own'], 'pe-vs-sector'], [['pt_upside', 'consensus'], 'analyst-upside'],
+  [['insider_net'], 'insider-buying'], [['earnings_in'], 'earnings-soon'],
+];
+function metricBadge(metrics: unknown): ConditionId {
+  const keys = Array.isArray(metrics) ? metrics.filter((k): k is string => typeof k === 'string') : [];
+  return BY_METRICS.find(([ks]) => keys.some((k) => ks.includes(k)))?.[1] ?? 'pe-vs-sector';
+}
+
 /** The badge a placement's bell adds, from its component and props; null where no condition fits (no bell there). */
 export function alertSourceOf(tag: string, props: Record<string, unknown>): AlertSource | null {
   const t = str(props['ticker']), ticker = t && TICKER.test(t) ? t : null, sector = str(props['sector']);
@@ -37,7 +48,7 @@ export function alertSourceOf(tag: string, props: Record<string, unknown>): Aler
     }
     case 'pt-company-card': return of('price-crosses');
     case 'pt-why-today': return of('session-move');
-    case 'pt-metric': return of('pe-vs-sector');
+    case 'pt-metric': return of(metricBadge(props['metrics']));
     case 'pt-price-target': return of('analyst-upside');
     case 'pt-price-events': return of('earnings-soon');
     case 'pt-financials': return of('earnings-surprise');

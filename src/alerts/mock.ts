@@ -81,7 +81,7 @@ function build(): AlertUniverse {
         volumeRatio: ticker === 'AMD' ? 3.4 : round(between(0.6, 2.5), 2),
         peVsSector: round(between(-0.4, 0.6), 3), undervalued: r() < 0.15, ptUpside: round(between(-0.1, 0.45), 3),
         piotroski, checks: Array.from({ length: 9 }, (_, i) => i < piotroski),
-        surprises: Array.from({ length: 4 }, () => round(between(-0.05, 0.12), 3)),
+        surprises: Array.from({ length: 4 }, () => round(between(-0.05, 0.12), 3)), lastReport: '2026-08-04',
         insiderNet90: round(between(-5e6, 3e6), -3), earningsDate: r() < 0.3 ? `2026-11-${String(Math.floor(between(2, 28))).padStart(2, '0')}` : null,
         grade: r() < 0.08 ? { dir: r() < 0.5 ? 'down' : 'up', date: ASOF, firm: 'A made-up firm' } : null,
         news: ticker === 'AMD' ? 12 : Math.floor(between(0, 6)), newsUsual: usualNews,

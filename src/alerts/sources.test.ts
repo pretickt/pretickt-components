@@ -44,6 +44,17 @@ describe("the badge each component's bell adds (spec §2)", () => {
     for (const [tag, props, want] of cases) expect(alertSourceOf(tag, props), `${tag} ${JSON.stringify(props)}`).toEqual(want);
   });
 
+  it('a pt-metric bell adds the badge of the metrics it shows (the Technicals, the Snapshot)', () => {
+    expect(alertSourceOf('pt-metric', { ticker: 'NVDA', metrics: ['trend', 'trend_ma', 'ma_detail', 'rsi14', 'range_52w', 'volume_ratio'] }))
+      .toEqual({ c: 'below-average', ticker: 'NVDA' });
+    expect(alertSourceOf('pt-metric', { ticker: 'NVDA', metrics: ['off_high', 'range_52w'] })).toEqual({ c: 'near-52w', ticker: 'NVDA' });
+    expect(alertSourceOf('pt-metric', { ticker: 'NVDA', metrics: ['volume_ratio'] })).toEqual({ c: 'volume-spike', ticker: 'NVDA' });
+    expect(alertSourceOf('pt-metric', { ticker: 'NVDA', metrics: ['pt_upside', 'consensus'] })).toEqual({ c: 'analyst-upside', ticker: 'NVDA' });
+    expect(alertSourceOf('pt-metric', { ticker: 'NVDA', metrics: ['insider_net'] })).toEqual({ c: 'insider-buying', ticker: 'NVDA' });
+    expect(alertSourceOf('pt-metric', { ticker: 'NVDA', metrics: ['news', 'volume_ratio'] })).toEqual({ c: 'news-spike', ticker: 'NVDA' });
+    expect(alertSourceOf('pt-metric', { ticker: 'NVDA', metrics: ['pe', 'pe_vs_sector', 'market_cap'] })).toEqual({ c: 'pe-vs-sector', ticker: 'NVDA' });
+  });
+
   it('unknown props fall back', () => {
     expect(alertSourceOf('pt-screen', { list: 'new_list' })).toBeNull();
     expect(alertSourceOf('pt-logo-map', { lens: 'x' })).toEqual({ c: 'session-move' });

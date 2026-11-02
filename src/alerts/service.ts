@@ -1,6 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { CONDITIONS } from './catalog';
-import { nameOf, RULE_MAX, sourceConditions, type Rule, type RuleCondition } from './rule';
+import { condition, exampleOf, nameOf, RULE_MAX, sourceConditions, type Rule, type RuleCondition } from './rule';
+import { rowsOf } from './rows';
 import type { AlertRow, AlertUniverse } from './rows';
 import type { AlertSource } from './sources';
 import { PT_ALERTS, type AlertDraft, type AlertFrom, type AlertsLanding, type ManagedRule, type ManageOp, type ManageState, type SaveResult } from './token';
@@ -21,27 +22,37 @@ export class PtAlerts {
   private readonly openedSig = signal(false);
   private readonly savingSig = signal(false);
   private readonly universeSig = signal<AlertUniverse | null | undefined>(undefined);
+  private readonly managedSig = signal<ManageState | null>(null);
   readonly draft = this.draftSig.asReadonly();
   readonly opened = this.openedSig.asReadonly();
   readonly saving = this.savingSig.asReadonly();
   /** undefined until asked and answered, null when the page could not get it */
   readonly universe = this.universeSig.asReadonly();
+  /** the newest answer of the alerts' page calls, the editor's update included: the manage page shows it */
+  readonly managed = this.managedSig.asReadonly();
   private asked = false;
   private inflight: Promise<SaveResult> | null = null;
+  /** price levels waiting for the universe to start near the example's price (seeded once, never again) */
+  private unseeded: RuleCondition[] = [];
 
   /** A bell: its badge (and the stock, sector or mega caps it is tied to) joins the draft, which opens. */
   add(src: AlertSource, from: AlertFrom | null, seed?: AlertRow | null): void {
     if (!this.backend) return;
     const d = this.current();
-    this.draftSig.set({ ...d, rule: this.append(d.rule, sourceConditions(src, seed)), prefer: d.prefer ?? src.ticker ?? null, from: d.from ?? from });
+    const more = sourceConditions(src, seed);
+    if (!seed) this.unseeded.push(...more.filter((rc) => CONDITIONS[rc.c].seed));
+    this.draftSig.set({ ...d, rule: this.append(d.rule, more), prefer: d.prefer ?? src.ticker ?? null, from: d.from ?? from });
     this.open();
+    this.seed();
   }
 
   /** A badge of the editor's palette. */
-  addCondition(rc: RuleCondition): void {
+  addCondition(rc: RuleCondition, seedLater = false): void {
     if (!this.backend) return;
     const d = this.current();
+    if (seedLater && CONDITIONS[rc.c].seed) this.unseeded.push(rc);
     this.draftSig.set({ ...d, rule: this.append(d.rule, [rc]) });
+    this.seed();
   }
 
   setParam(i: number, key: string, value: string | number): void {
@@ -62,7 +73,7 @@ export class PtAlerts {
     this.openedSig.set(true);
     if (this.asked) return;
     this.asked = true;
-    this.backend.universe().then((u) => this.universeSig.set(u), () => this.universeSig.set(null));
+    this.backend.universe().then((u) => { this.universeSig.set(u); this.seed(); }, () => this.universeSig.set(null));
   }
 
   /** Hides the editor; the draft stays for the next bell. */
@@ -87,8 +98,8 @@ export class PtAlerts {
     if (!this.backend || !d) return Promise.resolve({ ok: false, reason: 'invalid' });
     const name = d.name?.trim() || nameOf(d.rule);
     const call: Promise<SaveResult> = d.editing
-      ? this.backend.manage(d.editing.token, { op: 'update', id: d.editing.id, name, rule: d.rule })
-        .then((s): SaveResult => (s ? { ok: true } : { ok: false, reason: 'network' }))
+      ? this.manage(d.editing.token, { op: 'update', id: d.editing.id, name, rule: d.rule })
+        .then((s): SaveResult => (s && s !== 'failed' ? { ok: true } : { ok: false, reason: 'network' }))
       : this.backend.save({ email, name, rule: d.rule, from: d.from, weekly });
     this.savingSig.set(true);
     this.inflight = call.catch((): SaveResult => ({ ok: false, reason: 'network' })).then((r) => {
@@ -105,8 +116,13 @@ export class PtAlerts {
     return this.backend ? this.backend.bars(ticker).catch(() => null) : Promise.resolve(null);
   }
 
-  manage(token: string, op: ManageOp): Promise<ManageState | null> {
-    return this.backend ? this.backend.manage(token, op).catch(() => null) : Promise.resolve(null);
+  /** null: the link no longer works; 'failed': the call did not get through (try again) */
+  manage(token: string, op: ManageOp): Promise<ManageState | null | 'failed'> {
+    if (!this.backend) return Promise.resolve(null);
+    return this.backend.manage(token, op).then((s) => {
+      if (s) this.managedSig.set(s);
+      return s;
+    }, () => 'failed' as const);
   }
 
   landing(): AlertsLanding {
@@ -117,15 +133,26 @@ export class PtAlerts {
     return this.draftSig() ?? { rule: { v: 1, all: [] }, prefer: null, from: null, name: null, editing: null };
   }
 
-  /** Adds conditions up to RULE_MAX, never a universe condition the rule already has. */
+  /** Adds conditions up to RULE_MAX, never one the rule already has with the same values (the same bell pressed again). */
   private append(rule: Rule, more: RuleCondition[]): Rule {
     const all = [...rule.all];
     for (const rc of more) {
       if (all.length >= RULE_MAX) break;
-      if (CONDITIONS[rc.c].group === 'universe' && all.some((x) => same(x, rc))) continue;
+      if (all.some((x) => same(x, rc))) continue;
       all.push(rc);
     }
     return { v: 1, all };
+  }
+
+  /** Once the universe is here, each price level added without one starts near the example's price — once: never a value chosen since. */
+  private seed(): void {
+    const u = this.universeSig(), d = this.draftSig();
+    if (!u || !d || !this.unseeded.length) return;
+    const ex = exampleOf(d.rule, rowsOf(u, null), d.prefer);
+    const waiting = new Set(this.unseeded);
+    this.unseeded = [];
+    if (!ex) return;
+    this.draftSig.set({ ...d, rule: { v: 1, all: d.rule.all.map((rc) => (waiting.has(rc) ? condition(rc.c, { ...rc.p, ...CONDITIONS[rc.c].seed!(ex) }) : rc)) } });
   }
 
   private update(f: (r: Rule) => Rule): void {

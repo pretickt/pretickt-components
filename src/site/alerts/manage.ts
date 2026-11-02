@@ -1,7 +1,8 @@
-import { afterNextRender, Component, inject, signal } from '@angular/core';
+import { afterNextRender, ApplicationRef, Component, effect, EnvironmentInjector, inject, Injector, signal } from '@angular/core';
 import { CONDITIONS, sentence } from '../../alerts/catalog';
 import { PtAlerts } from '../../alerts/service';
 import type { ManagedRule, ManageOp, ManageState } from '../../alerts/token';
+import { mountEditor } from './editor';
 
 /**
  * Your email alerts, from an email's link (Romeo, 2026-11-01: «email senza account»): confirm one, see them all, pause, resume,
@@ -13,7 +14,10 @@ import type { ManagedRule, ManageOp, ManageState } from '../../alerts/token';
   template: `
     @let s = state();
     @if (!asked()) {<p class="pt-na">Open the link in one of our emails to confirm or manage your alerts.</p>}
-    @else if (s === undefined) {<p class="pt-note pt-busy">Loading your alerts…</p>}
+    @else if (s === undefined) {
+      @if (failed()) {<p class="pt-alm-err" role="alert">Could not reach pretickt. <button type="button" (click)="retry()">Retry</button></p>}
+      @else {<p class="pt-note pt-busy">Loading your alerts…</p>}
+    }
     @else if (s === null) {<p class="pt-na">This link has expired: open the newest email we sent you.</p>}
     @else {
       <section class="pt-alm">
@@ -25,48 +29,59 @@ import type { ManagedRule, ManageOp, ManageState } from '../../alerts/token';
           }
         }
         @if (done(); as d) {<p class="pt-alm-ok">{{ d }}</p>}
+        @if (failed()) {<p class="pt-alm-err" role="alert">Could not reach pretickt: nothing changed. <button type="button" (click)="retry()">Retry</button></p>}
         @if (s.status === 'unsubscribed') {<p class="pt-note">You are unsubscribed: we will not email you again.</p>}
         @else {
           <p class="pt-meta">Alerts for {{ s.email }}</p>
           <ul class="pt-alm-list">
             @for (r of s.rules; track r.id) {
               <li class="pt-alm-rule" [class.pt-alm-paused]="r.status === 'paused'">
-                <p class="pt-alm-name">{{ r.name }}@if (r.status === 'paused') {<span class="pt-alm-tag">Paused</span>}</p>
+                <p class="pt-alm-name">{{ r.name }}@if (r.status === 'paused') {<span class="pt-alm-tag">Paused</span>}
+                  @else if (r.status === 'pending') {<span class="pt-alm-tag">Waiting for your confirmation</span>}</p>
                 <p class="pt-alm-say">{{ say(r) }}</p>
                 <div class="pt-alm-acts">
-                  @if (r.status === 'active') {<button type="button" (click)="act({ op: 'pause', id: r.id })">Pause</button>}
-                  @else {<button type="button" (click)="act({ op: 'resume', id: r.id })">Resume</button>}
-                  <button type="button" (click)="edit(r)">Edit</button>
-                  <button type="button" (click)="act({ op: 'delete', id: r.id })">Delete</button>
+                  @if (r.status === 'active') {<button type="button" [disabled]="busy()" (click)="act({ op: 'pause', id: r.id })">Pause</button>}
+                  @else if (r.status === 'paused') {<button type="button" [disabled]="busy()" (click)="act({ op: 'resume', id: r.id })">Resume</button>}
+                  <button type="button" [disabled]="busy()" (click)="edit(r)">Edit</button>
+                  <button type="button" [disabled]="busy()" (click)="act({ op: 'delete', id: r.id })">Delete</button>
                 </div>
               </li>
             } @empty {<li class="pt-note">No alerts yet: press the bell under any chart to create one.</li>}
           </ul>
           <p class="pt-alm-weekly">pretickt's weekly email: <b>{{ s.weekly ? 'on' : 'off' }}</b>
-            <button type="button" (click)="act({ op: 'weekly', on: !s.weekly })">{{ s.weekly ? 'Turn off' : 'Turn on' }}</button></p>
-          <button type="button" class="pt-alm-unsub" (click)="act({ op: 'unsubscribe' })">Unsubscribe from everything</button>
+            <button type="button" [disabled]="busy()" (click)="act({ op: 'weekly', on: !s.weekly })">{{ s.weekly ? 'Turn off' : 'Turn on' }}</button></p>
+          <button type="button" class="pt-alm-unsub" [disabled]="busy()" (click)="act({ op: 'unsubscribe' })">Unsubscribe from everything</button>
         }
       </section>
     }`,
 })
 export class PtAlertManage {
   private readonly alerts = inject(PtAlerts);
+  private readonly appRef = inject(ApplicationRef);
+  private readonly env = inject(EnvironmentInjector);
+  private readonly injector = inject(Injector);
   /** the link was read (a browser with the page's backend and a token): until then the server's note */
   protected readonly asked = signal(false);
   /** undefined while asking, null for a link that no longer works */
   protected readonly state = signal<ManageState | null | undefined>(undefined);
   protected readonly done = signal<string | null>(null);
+  /** a call is on its way: the buttons wait */
+  protected readonly busy = signal(false);
+  /** the call that did not get through, for Retry; the list shown stays as it was */
+  protected readonly failed = signal<{ op: ManageOp; said: string | null } | null>(null);
 
   constructor() {
+    // every answer, the editor's update of a rule included
+    effect(() => {
+      const m = this.alerts.managed();
+      if (m) this.state.set(m);
+    });
     afterNextRender(() => {
       const l = this.alerts.landing();
       if (!this.alerts.enabled || !l.token) return;
       this.asked.set(true);
       const op: ManageOp = l.action === 'confirm' ? { op: 'confirm' } : l.action === 'weekly' ? { op: 'weekly', on: true } : { op: 'list' };
-      void this.alerts.manage(l.token, op).then((s) => {
-        this.state.set(s);
-        if (s && l.action === 'weekly') this.done.set("You will get pretickt's weekly email.");
-      });
+      this.run(op, l.action === 'weekly' ? "You will get pretickt's weekly email." : null);
     });
   }
 
@@ -77,18 +92,32 @@ export class PtAlertManage {
   }
 
   protected act(op: ManageOp): void {
-    const t = this.alerts.landing().token;
-    if (!t) return;
-    this.done.set(null);
-    void this.alerts.manage(t, op).then((s) => {
-      this.state.set(s);
-      if (s && op.op === 'delete') this.done.set('Alert deleted.');
-      if (s && op.op === 'unsubscribe') this.done.set('Done: no more emails.');
-    });
+    this.run(op, op.op === 'delete' ? 'Alert deleted.' : op.op === 'unsubscribe' ? 'Done: no more emails.' : null);
   }
 
+  protected retry(): void {
+    const f = this.failed();
+    if (f) this.run(f.op, f.said);
+  }
+
+  /** The editor (mounted on the first Edit) opens on the rule; its saved change comes back through `managed`. */
   protected edit(r: ManagedRule): void {
     const t = this.alerts.landing().token;
-    if (t) this.alerts.edit(r, t);
+    if (t) mountEditor(this.appRef, this.env, this.injector).edit(r, t);
+  }
+
+  /** One call at a time: its answer replaces the list, a link that no longer works says so, a call that failed keeps the list. */
+  private run(op: ManageOp, said: string | null): void {
+    const t = this.alerts.landing().token;
+    if (!t || this.busy()) return;
+    this.busy.set(true);
+    this.done.set(null);
+    this.failed.set(null);
+    void this.alerts.manage(t, op).then((s) => {
+      this.busy.set(false);
+      if (s === 'failed') return this.failed.set({ op, said });
+      this.state.set(s);
+      if (s && said) this.done.set(said);
+    });
   }
 }

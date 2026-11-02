@@ -16,6 +16,8 @@ export interface AlertUniverseRow {
   checks: (boolean | null)[] | null;
   /** EPS surprise of the last ≤ 4 reports, oldest first, fractions */
   surprises: number[] | null;
+  /** the date of the newest of those reports: the live file's result counts only when it is newer */
+  lastReport: string | null;
   insiderNet90: number | null; earningsDate: string | null;
   grade: { dir: 'up' | 'down'; date: string; firm: string } | null;
   news: number | null; newsUsual: number | null; social: number | null; socialUsual: number | null;
@@ -35,9 +37,12 @@ export function rowsOf(u: AlertUniverse, live: LiveInput | null): AlertRow[] {
     if (!day || !q) {
       return { ...r, session: u.asOf, live: false, price: r.close, move: r.prevClose ? r.close / r.prevClose - 1 : null };
     }
+    // a result reported since the previous close, unless the nightly has it already (an after-close report, read the next morning)
     const e = day.earnings[r.ticker];
-    const surprises = e && e.eps != null && e.epsEst ? [...(r.surprises ?? []), (e.eps - e.epsEst) / Math.abs(e.epsEst)].slice(-SURPRISES)
-      : r.surprises;
-    return { ...r, session: day.session, live: true, price: q.p, move: q.r, news: day.news[r.ticker]?.n ?? 0, surprises };
+    const fresh = e && e.eps != null && e.epsEst && (!r.lastReport || e.date > r.lastReport);
+    const surprises = fresh ? [...(r.surprises ?? []), (e.eps! - e.epsEst!) / Math.abs(e.epsEst!)].slice(-SURPRISES) : r.surprises;
+    const lastReport = fresh ? e.date : r.lastReport;
+    // the previous close the live move is measured from (the nightly's is a session older once the day is live)
+    return { ...r, session: day.session, live: true, price: q.p, prevClose: q.pc, move: q.r, news: day.news[r.ticker]?.n ?? 0, surprises, lastReport };
   });
 }

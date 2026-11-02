@@ -7,7 +7,8 @@ import type { AlertUniverse } from './rows';
 export interface AlertFrom { tag: string; section: string | null; path: string }
 export interface AlertDraft { rule: Rule; prefer: string | null; from: AlertFrom | null; name: string | null; editing: { id: string; token: string } | null }
 export type SaveResult = { ok: true } | { ok: false; reason: 'invalid' | 'limit' | 'network' };
-export interface ManagedRule { id: string; name: string; rule: Rule; status: 'active' | 'paused' }
+/** `pending`: saved, its confirmation email not yet opened (it cannot be paused) */
+export interface ManagedRule { id: string; name: string; rule: Rule; status: 'pending' | 'active' | 'paused' }
 export interface ManageState {
   email: string; status: 'pending' | 'active' | 'unsubscribed'; weekly: boolean; rules: ManagedRule[];
   /** a rule just confirmed, and the companies meeting it right now (they fire only when they meet it again) */

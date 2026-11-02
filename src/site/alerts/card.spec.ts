@@ -41,6 +41,33 @@ describe('PtAlertCard (version A)', () => {
     expect(changes).toEqual([{ key: 'pct', value: 1.5 }]);
   });
 
+  it('a price level is typed into a field, and the chart labels it as the pill does', () => {
+    const { f, el, changes, pill } = mount(condition('price-crosses', { dir: 'below', price: 150 }), { row: amd, rows, bars: [100, 97, 94.5, 92.1] });
+    pill('$150').click();
+    f.detectChanges();
+    expect(el.querySelector('.pt-al-step')).toBeNull();
+    const field = el.querySelector<HTMLInputElement>('input.pt-al-num')!;
+    field.value = '93.5';
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    expect(changes).toEqual([{ key: 'price', value: 93.5 }]);
+    f.componentRef.setInput('rc', condition('price-crosses', { dir: 'below', price: 93.5 }));
+    f.detectChanges();
+    expect(pill('$93.50')).toBeDefined();
+    expect([...el.querySelectorAll('.pt-lvl-t')].map((t) => t.textContent!.trim())).toContain('$93.50');
+  });
+
+  it('a typed price outside its limits changes nothing', () => {
+    const { f, el, changes, pill } = mount(condition('price-crosses', { dir: 'below', price: 150 }), { row: amd, rows });
+    pill('$150').click();
+    f.detectChanges();
+    const field = el.querySelector<HTMLInputElement>('input.pt-al-num')!;
+    for (const v of ['0', '-3', 'abc', '']) {
+      field.value = v;
+      field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    }
+    expect(changes).toEqual([]);
+  });
+
   it('a choice pill moves to the next option', () => {
     const { changes, pill } = mount(condition('session-move'), { row: amd, rows });
     pill('Falls').click();

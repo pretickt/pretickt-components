@@ -6,7 +6,7 @@ import type { AlertRow } from './rows';
 const row = (o: Partial<AlertRow> = {}): AlertRow => ({
   ticker: 'AMD', name: 'Advanced Micro Devices, Inc.', logo: null, sector: 'Technology', marketCap: 310e9,
   close: 164, prevClose: 160, ma20: 170, ma50: 200, ma100: 190, ma200: 150, low52: 120, high52: 230, volumeRatio: 3.4,
-  peVsSector: -0.22, undervalued: true, ptUpside: 0.31, piotroski: 8, checks: null, surprises: [0.02, 0.03, 0.01, 0.062],
+  peVsSector: -0.22, undervalued: true, ptUpside: 0.31, piotroski: 8, checks: null, surprises: [0.02, 0.03, 0.01, 0.062], lastReport: '2026-08-04',
   insiderNet90: 2.4e6, earningsDate: '2026-11-02', grade: { dir: 'down', date: '2026-10-30', firm: 'Firm' },
   news: 12, newsUsual: 3, social: 303, socialUsual: 64,
   session: '2026-10-30', live: true, price: 151, move: -0.079, ...o,
@@ -93,6 +93,15 @@ describe('the catalog: technical and universe conditions', () => {
     expect(sentence('below-average', CONDITIONS['below-average'].defaults)).toBe('Trades 15% below its 50-day average');
     expect(pillText({ key: 'x', kind: 'number', min: 0, max: 10, step: 0.5, unit: 'pct' }, 2.5)).toBe('2.5%');
     expect(pillText({ key: 'x', kind: 'number', min: 1, max: 9, step: 1, unit: 'times' }, 3)).toBe('3×');
+  });
+
+  it('a price level reads as a price, never compacted: $155, $1,234.56, $9.75', () => {
+    const spec = CONDITIONS['price-crosses'].params.find((s) => s.key === 'price')!;
+    expect(pillText(spec, 155)).toBe('$155');
+    expect(pillText(spec, 1234.56)).toBe('$1,234.56');
+    expect(pillText(spec, 1234.57)).toBe('$1,234.57');
+    expect(pillText(spec, 9.75)).toBe('$9.75');
+    expect(CONDITIONS['price-crosses'].short({ dir: 'below', price: 4750 })).toBe('Below $4,750');
   });
 
   it('price-crosses seeds a round price below the example', () => {

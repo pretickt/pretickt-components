@@ -1,4 +1,4 @@
-import { type ApplicationRef, Component, computed, createComponent, effect, type ComponentRef, type EnvironmentInjector, inject, type Injector, signal } from '@angular/core';
+import { afterRenderEffect, type ApplicationRef, Component, computed, createComponent, effect, type ComponentRef, type ElementRef, type EnvironmentInjector, inject, type Injector, signal, viewChild } from '@angular/core';
 import { Pt, PtLive } from '@pretickt/components/context';
 import { PtAlerts } from '../../alerts/service';
 import type { AlertFrom, SaveResult } from '../../alerts/token';
@@ -32,18 +32,17 @@ const FAILED: Record<'invalid' | 'limit' | 'network', string> = {
   selector: 'pt-alert-editor',
   imports: [PtAlertCard],
   providers: [Pt],
-  host: { '(keydown.escape)': 'close()' },
   template: `
     @if (alerts.opened()) {
       <div class="pt-al-backdrop" (click)="close()"></div>
-      <div class="pt-al-editor" role="dialog" aria-modal="true" aria-labelledby="pt-al-h">
+      <div #dlg class="pt-al-editor" role="dialog" aria-modal="true" aria-labelledby="pt-al-h" tabindex="-1">
         <header class="pt-al-ed-h">
-          <h2 id="pt-al-h">{{ editing() ? 'Edit your alert' : 'Create an alert' }}</h2>
+          <h2 id="pt-al-h">{{ (saved()?.edit ?? editing()) ? 'Edit your alert' : 'Create an alert' }}</h2>
           <button type="button" class="pt-al-x" aria-label="Close" (click)="close()">×</button>
         </header>
-        @if (saved(); as to) {
+        @if (saved(); as s) {
           <div class="pt-al-done">
-            <p>@if (to) {Check your inbox to confirm: we sent a link to <b>{{ to }}</b>.} @else {Your alert is saved.}</p>
+            <p>@if (s.to) {Check your inbox to confirm: we sent a link to <b>{{ s.to }}</b>.} @else {Your alert is saved.}</p>
             <p class="pt-al-when">You will get an email when a stock starts meeting all of its conditions, at most once a day per stock.</p>
             <button type="button" class="pt-al-save" (click)="close()">Done</button>
           </div>
@@ -106,8 +105,8 @@ export class PtAlertEditor {
   protected readonly nameOf = nameOf;
   protected readonly email = signal('');
   protected readonly weekly = signal(false);
-  /** the address a confirmation went to ('' after an edit); null while editing */
-  protected readonly saved = signal<string | null>(null);
+  /** what was saved: the address a confirmation went to ('' after an edit), and whether it was an edit; null while editing */
+  protected readonly saved = signal<{ to: string; edit: boolean } | null>(null);
   protected readonly failed = signal<string | null>(null);
 
   private readonly liveDay = this.live.after(() => this.alerts.universe()?.asOf);
@@ -143,19 +142,26 @@ export class PtAlertEditor {
   });
   protected readonly canSave = computed(() => !this.alerts.saving() && !ruleProblem(this.rule()) && (this.editing() || EMAIL.test(this.email().trim())));
 
+  private readonly dialog = viewChild<ElementRef<HTMLElement>>('dlg');
+  /** the element that had the focus when the editor opened (the bell): it gets it back on close */
+  private opener: { el: HTMLElement | null } | null = null;
+
   constructor() {
+    // While open: the focus is in the dialog and Escape closes it from anywhere on the page (a listener of its own: a `document:`
+    // host listener would put Angular's resolver in the main bundle); on close the focus goes back to the bell.
+    afterRenderEffect((onCleanup) => {
+      const d = this.dialog()?.nativeElement;
+      if (d && !this.opener) { this.opener = { el: d.ownerDocument.activeElement as HTMLElement | null }; d.focus(); }
+      else if (!d && this.opener) { this.opener.el?.focus(); this.opener = null; }
+      if (!d) return;
+      const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') this.close(); };
+      d.ownerDocument.addEventListener('keydown', onKey);
+      onCleanup(() => d.ownerDocument.removeEventListener('keydown', onKey));
+    });
     effect(() => {
       const t = this.example()?.ticker;
       if (!t || this.bars()?.t === t) return;
       void this.alerts.bars(t).then((b) => this.bars.set({ t, b }));
-    });
-    // a price level added before the universe arrived starts near the example's price
-    effect(() => {
-      const ex = this.example(), def = CONDITIONS['price-crosses'];
-      if (!ex || !def.seed) return;
-      this.rule().all.forEach((rc, i) => {
-        if (rc.c === 'price-crosses' && rc.p['price'] === def.defaults['price']) this.alerts.setParam(i, 'price', def.seed!(ex)['price']!);
-      });
     });
   }
 
@@ -165,7 +171,8 @@ export class PtAlertEditor {
   protected text(e: Event): string { return (e.target as HTMLInputElement).value; }
   protected ticked(e: Event): boolean { return (e.target as HTMLInputElement).checked; }
 
-  protected pick(id: ConditionId): void { this.alerts.addCondition(condition(id, undefined, this.example())); }
+  /** A badge of the palette: seeded by the example now, or by the service once the universe is here (never by an effect: no loop). */
+  protected pick(id: ConditionId): void { const ex = this.example(); this.alerts.addCondition(condition(id, undefined, ex), !ex); }
   protected drag(e: DragEvent, id: ConditionId): void { e.dataTransfer?.setData('text/plain', id); }
   protected drop(e: DragEvent): void {
     e.preventDefault();
@@ -175,9 +182,9 @@ export class PtAlertEditor {
 
   protected save(): void {
     this.failed.set(null);
-    const to = this.editing() ? '' : this.email().trim();
+    const edit = this.editing(), to = edit ? '' : this.email().trim();
     void this.alerts.save(to, this.weekly()).then((r: SaveResult) => {
-      if (r.ok) this.saved.set(to);
+      if (r.ok) this.saved.set({ to, edit });
       else this.failed.set(FAILED[r.reason]);
     });
   }
@@ -189,19 +196,27 @@ export class PtAlertEditor {
   }
 }
 
-let mounted: ComponentRef<PtAlertEditor> | null = null;
+const mounted = new WeakMap<PtAlerts, ComponentRef<PtAlertEditor>>();
 /**
- * A bell's press: mounts the editor once on the page, then adds the bell's badge to the draft (which opens it). `near`: an injector
- * whose providers the editor should see first (the stories' page previews provide their made-up backend in one).
+ * Mounts the editor once per alerts service (the page's; each of the stories' page previews has its own) and returns that service.
+ * `near`: an injector whose providers the editor should see first (a preview's made-up backend, the manage page's own injector).
  */
-export function openEditor(appRef: ApplicationRef, env: EnvironmentInjector, src: AlertSource, from: AlertFrom, near?: Injector): void {
-  if (!mounted) {
+export function mountEditor(appRef: ApplicationRef, env: EnvironmentInjector, near?: Injector): PtAlerts {
+  const alerts = (near ?? env).get(PtAlerts);
+  if (!mounted.has(alerts)) {
     const host = document.createElement('div');
     document.body.append(host);
-    mounted = createComponent(PtAlertEditor, { environmentInjector: env, hostElement: host, ...(near ? { elementInjector: near } : {}) });
-    appRef.attachView(mounted.hostView);
+    const ref = createComponent(PtAlertEditor, { environmentInjector: env, hostElement: host, ...(near ? { elementInjector: near } : {}) });
+    appRef.attachView(ref.hostView);
+    ref.onDestroy(() => { mounted.delete(alerts); host.remove(); });
+    mounted.set(alerts, ref);
   }
-  (near ?? env).get(PtAlerts).add(src, from);
+  return alerts;
+}
+
+/** A bell's press: the editor (mounted on the first one) gets the bell's badge in its draft, which opens it. */
+export function openEditor(appRef: ApplicationRef, env: EnvironmentInjector, src: AlertSource, from: AlertFrom, near?: Injector): void {
+  mountEditor(appRef, env, near).add(src, from);
 }
 
 /** The page's listener hands over a pressed bell: its badge joins the draft and the editor opens. */

@@ -6,7 +6,7 @@ const base: AlertUniverseRow = {
   close: 164, prevClose: 160,
   ma20: null, ma50: null, ma100: null, ma200: null, low52: null, high52: null, volumeRatio: null,
   peVsSector: null, undervalued: false, ptUpside: null, piotroski: null, checks: null,
-  surprises: [0.02, 0.03, 0.01, 0.04], insiderNet90: null, earningsDate: null, grade: null,
+  surprises: [0.02, 0.03, 0.01, 0.04], lastReport: '2026-08-04', insiderNet90: null, earningsDate: null, grade: null,
   news: 2, newsUsual: 3, social: null, socialUsual: null,
 };
 const universe = (rows: Partial<AlertUniverseRow>[] = [{}]): AlertUniverse => ({ asOf: '2026-10-29', rows: rows.map((r) => ({ ...base, ...r })) });
@@ -38,6 +38,12 @@ describe('rowsOf', () => {
     expect(r.session).toBe('2026-10-30');
   });
 
+  it("a live row's previous close is the one its move is measured from (the live file's), not the nightly's", () => {
+    const r = first(rowsOf(universe(), live('2026-10-30')));
+    expect(r.prevClose).toBe(164);
+    expect(r.price / r.prevClose! - 1).toBeCloseTo(r.move!, 10);
+  });
+
   it('rowsOf ignores an older live day', () => {
     const r = first(rowsOf(universe(), live('2026-10-28')));
     expect(r.price).toBe(164);
@@ -56,6 +62,16 @@ describe('rowsOf', () => {
     })));
     expect(r.surprises).toHaveLength(4);
     [0.03, 0.01, 0.04, 0.1].forEach((v, i) => expect(r.surprises![i]).toBeCloseTo(v, 10));
+  });
+
+  it('a report the nightly already has is not counted again from the live file (an after-close report, the next morning)', () => {
+    const e = { date: '2026-10-29', time: 'amc' as const, eps: 1.1, epsEst: 1.0, rev: null, revEst: null };
+    const known = first(rowsOf(universe([{ lastReport: '2026-10-29' }]), live('2026-10-30', { earnings: { AMD: e } })));
+    expect(known.surprises).toEqual([0.02, 0.03, 0.01, 0.04]);
+    const fresh = first(rowsOf(universe(), live('2026-10-30', { earnings: { AMD: { ...e, date: '2026-10-30' } } })));
+    expect(fresh.surprises).toHaveLength(4);
+    expect(fresh.surprises!.at(-1)).toBeCloseTo(0.1, 10);
+    expect(fresh.lastReport).toBe('2026-10-30');
   });
 
   it('a result without an estimate adds no surprise', () => {

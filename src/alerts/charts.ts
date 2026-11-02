@@ -1,5 +1,5 @@
 import { dayMonth, num, pct } from '../ds/format';
-import { CONDITIONS, type Params } from './catalog';
+import { CONDITIONS, price, type Params } from './catalog';
 import type { RuleCondition } from './rule';
 import type { AlertRow } from './rows';
 
@@ -49,7 +49,8 @@ const sig = (v: number) => {
   return pct(v, Math.abs(a - Math.round(a)) < 1e-9 || a >= 10 ? 0 : 1);
 };
 const fmt = (v: number) => num(v, Number.isInteger(v) ? 0 : 1);
-const dollars = (v: number) => `$${num(v, v >= 100 ? 0 : 2)}`;
+/** a price the chart shows (now, a target, the 52-week range): whole dollars from $100 */
+export const dollars = (v: number) => `$${num(v, v >= 100 ? 0 : 2)}`;
 const compactUsd = (v: number) => (Math.abs(v) >= 1e6 ? `$${num(v / 1e6, 1)}M` : Math.abs(v) >= 1e3 ? `$${num(v / 1e3, 0)}K` : `$${num(v, 0)}`);
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const n = (p: Params, k: string) => Number(p[k]);
@@ -96,7 +97,7 @@ function sessionChart(rc: RuleCondition, row: AlertRow, bars: number[] | null | 
   const now = crosses ? row.price : row.move ?? row.price / ref - 1;
   const pts = (bars ?? []).map((c, i) => ({ x: PLOT_L + ((i + 1) / SLOTS) * W, v: val(c) }));
   const ins: LevelIn[] = crosses
-    ? [{ v: thr, label: dollars(thr), caption: 'ALERT', tone }, { v: now, label: dollars(now), caption: 'NOW', tone: 'ink', now: true }]
+    ? [{ v: thr, label: price(thr), caption: 'ALERT', tone }, { v: now, label: dollars(now), caption: 'NOW', tone: 'ink', now: true }]   // the level as its pill says it
     : [{ v: 0, label: '0%', caption: 'PREV CLOSE', tone: 'ink' }, { v: thr, label: sig(thr), caption: 'ALERT', tone },
       { v: now, label: sig(now), caption: 'NOW', tone: 'ink', now: true }];
   const y = scale([...pts.map((q) => q.v), ...ins.map((l) => l.v)], LINE);

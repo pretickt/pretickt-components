@@ -20,7 +20,7 @@ export type ChartKind = 'session' | 'average' | 'range' | 'versus' | 'pe' | 'tar
   | 'insiders' | 'countdown' | 'grade' | 'logos' | 'flag';
 export type Params = Record<string, string | number>;
 export type ParamSpec =
-  | { key: string; kind: 'number'; min: number; max: number; step: number; unit: 'pct' | 'usd' | 'times' | 'days' | 'score' }
+  | { key: string; kind: 'number'; min: number; max: number; step: number; unit: 'pct' | 'usd' | 'price' | 'times' | 'days' | 'score' }
   | { key: string; kind: 'choice'; options: readonly (readonly [string, string])[] }
   | { key: string; kind: 'sector' } | { key: string; kind: 'ticker' };
 /** A piece of a card's sentence: text, or a pill showing (and changing) one param. */
@@ -46,6 +46,8 @@ const fixed = (v: number) => num(v, Number.isInteger(v) ? 0 : Math.abs(v * 10 - 
 /** A move or a distance without its sign: 0.079 → "7.9%", 0.245 → "25%". */
 export const abs = (v: number) => level(Math.abs(v), Math.abs(v) < 0.1 ? 1 : 0);
 const dollars = (v: number) => (v >= 1e6 ? `$${fixed(v / 1e6)}M` : v >= 1e3 ? `$${fixed(v / 1e3)}K` : `$${fixed(v)}`);
+/** A price as a price: never compacted, cents when it has them — $155, $1,234.56, $9.75. */
+export const price = (v: number) => `$${num(v, Number.isInteger(v) ? 0 : 2)}`;
 
 const pct = (key: string, min: number, max: number, step: number) => ({ key, kind: 'number', min, max, step, unit: 'pct' } as const);
 const times = (key: string) => ({ key, kind: 'number', min: 1.5, max: 10, step: 0.5, unit: 'times' } as const);
@@ -72,11 +74,11 @@ const TECHNICAL: Condition[] = [
   {
     id: 'price-crosses', group: 'technical', name: 'Price crosses', freq: 'intraday', chart: 'session',
     params: [choice('dir', [['below', 'Trades below'], ['above', 'Trades above']]),
-      { key: 'price', kind: 'number', min: 0.01, max: 100000, step: 0.01, unit: 'usd' }],
+      { key: 'price', kind: 'number', min: 0.01, max: 100000, step: 0.01, unit: 'price' }],
     defaults: { dir: 'below', price: 100 },
     seed: (r) => ({ price: below(r.price) }),
     say: () => [{ key: 'dir' }, ' ', { key: 'price' }],
-    short: (p) => `${s(p, 'dir') === 'above' ? 'Above' : 'Below'} ${dollars(n(p, 'price'))}`,
+    short: (p) => `${s(p, 'dir') === 'above' ? 'Above' : 'Below'} ${price(n(p, 'price'))}`,
     fact: (_, v) => (v === null ? '' : `traded at ${money(v)}`),
     test: (r, p) => ({ pass: s(p, 'dir') === 'above' ? r.price > n(p, 'price') : r.price < n(p, 'price'), value: r.price }),
   },
@@ -275,6 +277,7 @@ export function pillText(spec: ParamSpec, v: string | number): string {
     case 'pct': return `${fixed(x)}%`;
     case 'times': return `${fixed(x)}×`;
     case 'usd': return dollars(x);
+    case 'price': return price(x);
     case 'days': return `${fixed(x)} ${x === 1 ? 'day' : 'days'}`;
     default: return fixed(x);
   }

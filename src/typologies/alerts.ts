@@ -23,6 +23,8 @@ export const AlertUniverseRow = z.object({
   checks: z.nullable(z.array(z.nullable(z.boolean()))),
   /** EPS surprise of the last ≤ 4 reports, oldest first */
   surprises: z.nullable(z.array(z.number())),
+  /** the date of the newest of those reports */
+  lastReport: z.nullable(IsoDate),
   insiderNet90: Num, earningsDate: z.nullable(IsoDate),
   grade: z.nullable(z.object({ dir: z.enum(['up', 'down']), date: IsoDate, firm: z.string() })),
   news: Num, newsUsual: Num, social: Num, socialUsual: Num,

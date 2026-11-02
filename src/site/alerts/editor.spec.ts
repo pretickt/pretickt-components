@@ -6,13 +6,13 @@ import { MOCK_BARS, MOCK_UNIVERSE } from '../../alerts/mock';
 import { demoFor } from '../../typologies';
 import { PtAlertEditor } from './editor';
 
-function setup(save: () => Promise<SaveResult> = async () => ({ ok: true })) {
+function setup(save: () => Promise<SaveResult> = async () => ({ ok: true }), manageState: unknown = null) {
   const saved: unknown[] = [];
   const backend: AlertsBackend = {
     universe: async () => MOCK_UNIVERSE,
     bars: async (t) => MOCK_BARS[t] ?? null,
     save: (req) => { saved.push(req); return save(); },
-    manage: async () => null,
+    manage: async () => manageState as never,
     landing: () => ({ alert: null, token: null, action: null }),
   };
   TestBed.configureTestingModule({ providers: [{ provide: PT_ALERTS, useValue: backend },
@@ -101,6 +101,32 @@ describe('PtAlertEditor', () => {
     alerts.add({ c: 'session-move' }, from);
     const { text } = await mount();
     expect(text()).toContain('Last session, Oct 30');
+  });
+
+  it('saving an edit says it is saved', async () => {
+    const { alerts } = setup(undefined, { email: 'r•••@example.com', status: 'active', weekly: false, rules: [] });
+    alerts.edit({ id: 'r1', name: 'Mega-cap drops', rule: { v: 1, all: [{ c: 'session-move', p: { dir: 'down', pct: 5 } }] }, status: 'active' }, 'tok');
+    const { el, settle, text } = await mount();
+    expect(el.querySelector('input[type="email"]')).toBeNull();
+    el.querySelector<HTMLButtonElement>('.pt-al-save')!.click();
+    await settle();
+    expect(text()).toContain('Your alert is saved.');
+    expect(text()).not.toContain('Create an alert');
+  });
+
+  it('Escape anywhere on the page closes it; the focus goes into the dialog and back to where it was', async () => {
+    const { alerts } = setup();
+    const outside = document.createElement('button');
+    document.body.append(outside);
+    outside.focus();
+    alerts.add({ c: 'session-move' }, from);
+    const { el, settle } = await mount();
+    expect(el.querySelector('[role="dialog"]')!.contains(document.activeElement)).toBe(true);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await settle();
+    expect(alerts.opened()).toBe(false);
+    expect(document.activeElement).toBe(outside);
+    outside.remove();
   });
 
   it('Escape closes and keeps the draft', async () => {

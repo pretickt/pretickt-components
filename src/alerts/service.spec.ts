@@ -49,9 +49,32 @@ describe('PtAlerts (the alert being built, and the page\'s backend)', () => {
     expect(a.draft()!.from!.section).toBe('targets');   // where the alert was started
   });
 
+  it('pressing the same bell again adds nothing (after closing, or a double press while the editor loads)', () => {
+    const a = mount(fake().backend);
+    a.add({ c: 'session-move', ticker: 'NVDA' }, from);
+    a.close();
+    a.add({ c: 'session-move', ticker: 'NVDA' }, from);
+    expect(ids(a)).toEqual(['session-move', 'one-stock']);
+    a.addCondition({ c: 'session-move', p: { dir: 'down', pct: 5 } });
+    expect(ids(a)).toEqual(['session-move', 'one-stock']);
+  });
+
+  it('a price level is seeded once from the example when the universe arrives; a chosen $100 stays', async () => {
+    const a = mount(fake().backend);
+    a.add({ c: 'price-crosses', ticker: 'AMD' }, from);
+    expect(a.draft()!.rule.all[0]!.p['price']).toBe(100);
+    await new Promise((r) => setTimeout(r));
+    expect(a.draft()!.rule.all[0]!.p['price']).toBe(143);   // AMD at 151 in the made-up universe: 5% under, rounded
+    a.setParam(0, 'price', 100);
+    await new Promise((r) => setTimeout(r));
+    expect(a.draft()!.rule.all[0]!.p['price']).toBe(100);
+    a.addCondition({ c: 'price-crosses', p: { dir: 'above', price: 100 } });
+    expect(a.draft()!.rule.all[2]!.p['price']).toBe(100);   // a condition with its own values is never re-seeded
+  });
+
   it('the rule never grows past RULE_MAX', () => {
     const a = mount(fake().backend);
-    for (let i = 0; i < RULE_MAX + 2; i++) a.add({ c: 'session-move' }, from);
+    for (let i = 0; i < RULE_MAX + 2; i++) a.add({ c: 'session-move', p: { dir: 'down', pct: 1 + i } }, from);
     expect(ids(a)).toHaveLength(RULE_MAX);
   });
 

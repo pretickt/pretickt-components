@@ -2,7 +2,7 @@ import { Component, computed, input, output, signal } from '@angular/core';
 import { PtLogo } from '@pretickt/components/ds';
 import { date } from '@pretickt/components/format';
 import { CONDITIONS, GROUPS, pillText, type ParamSpec } from '../../alerts/catalog';
-import { chartOf, LABEL_X, PLOT_L, PLOT_R, type ChartData, type Tone } from '../../alerts/charts';
+import { chartOf, dollars, LABEL_X, PLOT_L, PLOT_R, type ChartData, type Tone } from '../../alerts/charts';
 import type { RuleCondition } from '../../alerts/rule';
 import { SECTORS } from '../../typologies/values';
 
@@ -122,6 +122,10 @@ let uid = 0;
       @if (open() !== null && openSpec()?.kind === 'sector') {
         <div class="pt-al-choices">@for (s of SECTORS; track s) {<button type="button" (click)="choose(s)">{{ s }}</button>}</div>
       }
+      @if (open() !== null && isPrice()) {
+        <input class="pt-al-num" type="number" inputmode="decimal" step="0.01" aria-label="Price level" [value]="rcv.p[open()!]"
+          (keydown.enter)="typedPrice($event)" (change)="typedPrice($event)" />
+      }
       @if (open() !== null && openSpec()?.kind === 'ticker') {
         <input class="pt-al-ticker" aria-label="Ticker" [value]="rcv.p[open()!]" (keydown.enter)="typed($event)" (change)="typed($event)" />
       }
@@ -164,21 +168,23 @@ export class PtAlertCard {
   });
   protected readonly sentence = computed(() => this.parts().map((p) => p.text).join(''));
   protected readonly openSpec = computed(() => this.def().params.find((s) => s.key === this.open()) ?? null);
+  /** a price level is typed (a stepper would move it a cent at a time) */
+  protected readonly isPrice = computed(() => { const s = this.openSpec(); return s?.kind === 'number' && s.unit === 'price'; });
   protected readonly stepper = computed(() => {
     const s = this.openSpec();
-    if (!s || s.kind !== 'number') return null;
+    if (!s || s.kind !== 'number' || s.unit === 'price') return null;
     const v = Number(this.rc().p[s.key]);
     return { text: pillText(s, v), down: v - s.step >= s.min - 1e-9, up: v + s.step <= s.max + 1e-9 };
   });
 
   protected tone(t: Tone): string { return t === 'ink' ? 'flat' : t; }
-  protected dollars(v: number): string { return `$${v >= 100 ? Math.round(v) : v.toFixed(2)}`; }
+  protected readonly dollars = dollars;
   protected rangeX(v: number, m: { low: number; high: number }): number {
     const f = m.high > m.low ? (v - m.low) / (m.high - m.low) : 0.5;
     return 16 + Math.max(0, Math.min(1, f)) * 268;
   }
 
-  /** A choice moves to its next option; a number opens − and +; a sector the list; a ticker a field. */
+  /** A choice moves to its next option; a number opens − and +, a price a field; a sector the list; a ticker a field. */
   protected press(part: Part): void {
     const s = part.spec;
     if (!s || !part.key) return;
@@ -203,6 +209,13 @@ export class PtAlertCard {
     const s = this.openSpec();
     if (!s) return;
     this.change.emit({ key: s.key, value: sector });
+    this.open.set(null);
+  }
+
+  protected typedPrice(e: Event): void {
+    const s = this.openSpec(), raw = (e.target as HTMLInputElement).value.trim(), v = Number(raw);
+    if (!s || s.kind !== 'number' || !raw || !Number.isFinite(v) || v < s.min || v > s.max) return;
+    this.change.emit({ key: s.key, value: Math.round(v * 100) / 100 });
     this.open.set(null);
   }
 
