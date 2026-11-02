@@ -14,6 +14,10 @@ const row = (o: Partial<AlertRow> = {}): AlertRow => ({
 const test = (id: ConditionId, o: Partial<AlertRow>, p: Params = {}) => CONDITIONS[id].test(row(o), { ...CONDITIONS[id].defaults, ...p });
 
 describe('the catalog: technical and universe conditions', () => {
+  it("the conditions on the session's own numbers restart each session — the check re-arms them: the move, volume, news, social", () => {
+    expect(CONDITION_IDS.filter((id) => CONDITIONS[id].perSession)).toEqual(['session-move', 'volume-spike', 'news-spike', 'social-buzz']);
+  });
+
   it("every condition's defaults fit its own params", () => {
     for (const id of CONDITION_IDS) {
       const c = CONDITIONS[id];

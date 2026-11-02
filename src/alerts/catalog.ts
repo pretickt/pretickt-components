@@ -28,6 +28,9 @@ export type SayPart = string | { key: string };
 export interface Test { pass: boolean; value: number | null }
 export interface Condition {
   id: ConditionId; group: Group; name: string; freq: Freq; chart: ChartKind;
+  /** measured on the session's own numbers (its move, volume, stories, posts): each session starts again, so the check re-arms it
+   *  — an alert on it can fire every day it happens, one on a level (an average, a price, a score) only when a stock gets there */
+  perSession?: true;
   params: readonly ParamSpec[]; defaults: Params;
   /** defaults that depend on the example stock (a price level near its price) */
   seed?(row: AlertRow): Params;
@@ -60,7 +63,7 @@ const below = (price: number) => {
 
 const TECHNICAL: Condition[] = [
   {
-    id: 'session-move', group: 'technical', name: 'Session move', freq: 'intraday', chart: 'session',
+    id: 'session-move', group: 'technical', name: 'Session move', freq: 'intraday', chart: 'session', perSession: true,
     params: [choice('dir', [['down', 'Falls'], ['up', 'Rises']]), pct('pct', 1, 20, 0.5)], defaults: { dir: 'down', pct: 5 },
     say: () => [{ key: 'dir' }, ' more than ', { key: 'pct' }, ' in one session'],
     short: (p) => `${s(p, 'dir') === 'up' ? 'Jumps' : 'Drops'} ${fixed(n(p, 'pct'))}%+`,
@@ -110,7 +113,7 @@ const TECHNICAL: Condition[] = [
     },
   },
   {
-    id: 'volume-spike', group: 'technical', name: 'Volume spike', freq: 'daily', chart: 'versus',
+    id: 'volume-spike', group: 'technical', name: 'Volume spike', freq: 'daily', chart: 'versus', perSession: true,
     params: [times('times')], defaults: { times: 3 },
     say: () => ['Traded ', { key: 'times' }, ' its usual volume'],
     short: (p) => `Volume ${fixed(n(p, 'times'))}×`,
@@ -193,7 +196,7 @@ const FUNDAMENTAL: Condition[] = [
 
 const NEWS: Condition[] = [
   {
-    id: 'news-spike', group: 'news', name: 'News spike', freq: 'intraday', chart: 'versus',
+    id: 'news-spike', group: 'news', name: 'News spike', freq: 'intraday', chart: 'versus', perSession: true,
     params: [times('times')], defaults: { times: 3 },
     say: () => [{ key: 'times' }, ' its usual number of stories'],
     short: (p) => `News ${fixed(n(p, 'times'))}×`,
@@ -224,7 +227,7 @@ const NEWS: Condition[] = [
 
 const SOCIAL: Condition[] = [
   {
-    id: 'social-buzz', group: 'social', name: 'Talked about on Reddit/X', freq: 'daily', chart: 'versus',
+    id: 'social-buzz', group: 'social', name: 'Talked about on Reddit/X', freq: 'daily', chart: 'versus', perSession: true,
     params: [times('times')], defaults: { times: 3 },
     say: () => [{ key: 'times' }, ' its usual posts on Reddit and X'],
     short: (p) => `Social ${fixed(n(p, 'times'))}×`,
