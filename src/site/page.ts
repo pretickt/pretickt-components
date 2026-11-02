@@ -57,11 +57,8 @@ export class PtPage {
       attachHeader(doc, { buildId: this.model.buildId });
       attachCompanyBar(doc); // company pages: the company in the header once its card has scrolled away
       attachShare(doc); // each placement's "Share": the placement as an image, and the link back
-      // a page with alerts: each placement's bell opens the editor with its section's badge (a chunk of its own, loaded on the first press)
-      if (this.model.alerts) doc.addEventListener('click', (e) => {
-        const bell = (e.target as Element | null)?.closest?.('[data-alert]');
-        if (bell) void import('./alerts/editor').then((m) => m.pressBell(bell, appRef, env));
-      });
+      // a page with alerts: its bells, and an email link's landing (one small chunk; the editor and the rest load when needed)
+      if (this.model.alerts) void import('./alerts/start').then((m) => m.startAlerts(doc, appRef, env, this.model));
       const card = REGISTRY[CARD];
       const load = () => import('../../components/pt-company-card').then((m) => m.PtCompanyCard);
       const cards = card ? attachCards(doc, appRef, {
