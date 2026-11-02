@@ -149,11 +149,38 @@ describe('pt-alert-manage: confirm and manage alerts from the email\'s link, no 
     expect(text()).toContain('This link has expired');
   });
 
+  it('one email a day is offered from the second alert (Romeo, 2026-11-02); with one, only to turn it off', async () => {
+    const { text } = await mount({ alert: null, token: 't', action: 'manage' }, () => STATE);
+    expect(text()).not.toContain('Alert emails');
+    TestBed.resetTestingModule();
+    const on = await mount({ alert: null, token: 't', action: 'manage' }, () => ({ ...STATE, digest: true }));
+    expect(on.text()).toContain('Alert emails: one a day, in the evening');
+  });
+
+  it('confirming the alert that makes two asks once: each as it happens, or one email a day', async () => {
+    const two: ManageState = { ...STATE, rules: [...STATE.rules, { id: 'r2', name: 'News 3×', rule: RULE, status: 'pending' }] };
+    let digest = false;
+    const { el, ops, settle, text } = await mount({ alert: null, token: 't', action: 'confirm' }, (op) => {
+      if (op.op === 'digest') digest = op.on;
+      const rules = two.rules.map((r) => ({ ...r, status: 'active' as const }));
+      return op.op === 'confirm' ? { ...two, rules, digest, confirmed: { id: 'r2', now: [] } } : op.op === 'list' ? two : { ...two, rules, digest };
+    });
+    press(el, 'Confirm');
+    await settle();
+    expect(text()).toContain('You have 2 alerts now: their emails can come as they happen, or all in one email a day, in the evening.');
+    press(el, 'One email a day');
+    await settle();
+    expect(ops.at(-1)).toEqual({ op: 'digest', on: true });
+    expect(text()).toContain('Your alerts will come in one email a day, after the close.');
+    expect(text()).not.toContain('You have 2 alerts now');
+  });
+
   it('one email a day or each as it happens: the reader switches it, and the page says which', async () => {
     let digest = false;
+    const two: ManageState = { ...STATE, rules: [...STATE.rules, { id: 'r2', name: 'News 3×', rule: RULE, status: 'active' }] };
     const { el, ops, settle, text } = await mount({ alert: null, token: 't', action: 'manage' }, (op) => {
       if (op.op === 'digest') digest = op.on;
-      return { ...STATE, digest };
+      return { ...two, digest };
     });
     expect(text()).toContain('Alert emails: as they happen');
     press(el, 'One a day instead');

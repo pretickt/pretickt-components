@@ -26,6 +26,8 @@ const FAILED: Record<'invalid' | 'limit' | 'network' | 'captcha', string> = {
   captcha: "The check that you're not a robot did not pass: try again",
 };
 const CHECK_FAILED = "We could not check that you're not a robot: reload the page and try again";
+/** px from the editor's top or bottom edge where a dragged card scrolls it */
+const EDGE = 48;
 
 /**
  * The alert editor (Romeo, 2026-11-01; mockups `editor-desktop.png`, `editor-telefono.png`): every badge by group on the left —
@@ -59,7 +61,7 @@ const CHECK_FAILED = "We could not check that you're not a robot: reload the pag
                   <div class="pt-al-badges">
                     @for (id of idsOf(g[0]); track id) {
                       <button type="button" class="pt-al-badge" [class.pt-al-badge-used]="used().has(id)" draggable="true"
-                        (dragstart)="drag($event, id)" (click)="pick(id)">
+                        (dragstart)="drag($event, id)" (dragend)="endDrag()" (click)="pick(id)">
                         <svg viewBox="0 0 22 14" aria-hidden="true">
                           @for (gp of GLYPHS[id]; track $index) {
                             <path [attr.d]="gp.d" [class.pt-al-g-fill]="gp.fill" [class.pt-al-g-dash]="gp.dash" [class.pt-al-g-faint]="gp.faint" [class.pt-al-g-thick]="gp.thick" />
@@ -72,24 +74,40 @@ const CHECK_FAILED = "We could not check that you're not a robot: reload the pag
                 </div>
               }
             </div>
-            <section class="pt-al-rule" (dragover)="$event.preventDefault()" (drop)="drop($event)">
+            <!-- a badge or a card on its way: drop zones before, between and after the cards (Romeo, 2026-11-02); "and" otherwise -->
+            <section class="pt-al-rule">
               <p class="pt-al-rule-t">Alert me when <u>all</u> of these happen
                 @if (session(); as s) {<span class="pt-al-last">{{ s }}</span>}</p>
               @for (rc of rule().all; track $index; let i = $index) {
-                @if (i) {<p class="pt-al-and">and</p>}
-                <pt-alert-card [rc]="rc" [data]="data()" [count]="count(i)" [ofLabel]="ofLabel()"
-                  (change)="alerts.setParam(i, $event.key, $event.value)" (replace)="alerts.replace(i, $event)" (remove)="alerts.remove(i)" />
+                @if (dragging()) {
+                  @if (zoneShown(i)) {
+                    <div class="pt-al-zone" [attr.data-zone]="i" [class.pt-al-zone-over]="over() === i"
+                      (dragover)="overZone($event, i)" (dragleave)="leaveZone(i)" (drop)="dropAt($event, i)">Drop here</div>
+                  }
+                } @else if (i) {<p class="pt-al-and">and</p>}
+                <pt-alert-card [rc]="rc" [data]="data()" [count]="count(i)" [ofLabel]="ofLabel()" [movable]="rule().all.length > 1"
+                  [lifted]="moving() === i" (change)="alerts.setParam(i, $event.key, $event.value)" (replace)="alerts.replace(i, $event)"
+                  (remove)="alerts.remove(i)" (grab)="grab(i, $event)" (shift)="step(i, $event)" />
               } @empty {
                 <p class="pt-al-empty">Tap a badge to add a condition or drag it below</p>
-                <!-- the drop lands on the section; the box shows where, and lights up while a badge is over it -->
-                <div class="pt-al-drop" [class.pt-al-drop-over]="over()" (dragenter)="over.set(true)" (dragleave)="over.set(false)">Drag a condition here</div>
+                <!-- the empty rule's one drop zone, lit while a badge is over it -->
+                <div class="pt-al-drop" data-zone="0" [class.pt-al-drop-over]="over() === 0" (dragenter)="over.set(0)"
+                  (dragover)="overZone($event, 0)" (dragleave)="leaveZone(0)" (drop)="dropAt($event, 0)">Drag a condition here</div>
+              }
+              @if (dragging() && rule().all.length && zoneShown(rule().all.length)) {
+                <div class="pt-al-zone" [attr.data-zone]="rule().all.length" [class.pt-al-zone-over]="over() === rule().all.length"
+                  (dragover)="overZone($event, rule().all.length)" (dragleave)="leaveZone(rule().all.length)"
+                  (drop)="dropAt($event, rule().all.length)">Drop here</div>
               }
               @if (problem(); as p) {<p class="pt-al-hint">{{ p }}</p>}
             </section>
           </div>
           <footer class="pt-al-foot">
-            <input class="pt-al-name" aria-label="Name of the alert" [value]="alerts.draft()?.name ?? ''" [placeholder]="nameOf(rule())"
-              (input)="alerts.rename(text($event))" />
+            <!-- a new alert is named by its conditions; its name is the reader's to change when editing it (Romeo, 2026-11-02) -->
+            @if (editing()) {
+              <input class="pt-al-name" aria-label="Name of the alert" [value]="alerts.draft()?.name ?? ''" [placeholder]="nameOf(rule())"
+                (input)="alerts.rename(text($event))" />
+            }
             <p class="pt-al-when">Email me when a stock starts meeting all of these · the same stock at most once
               <span class="pt-al-once" role="group" aria-label="How often the same stock">
                 <button type="button" [attr.aria-pressed]="!week()" (click)="alerts.setOnce('day')">a day</button>
@@ -127,8 +145,11 @@ export class PtAlertEditor {
   protected readonly saved = signal<{ to: string; edit: boolean; week: boolean } | null>(null);
   protected readonly failed = signal<string | null>(null);
   protected readonly CHECK_FAILED = CHECK_FAILED;
-  /** a dragged badge is over the empty rule's drop box */
-  protected readonly over = signal(false);
+  /** a badge (card null) or a card (its index) on its way: the drop zones show */
+  protected readonly dragging = signal<{ card: number | null } | null>(null);
+  protected readonly moving = computed(() => this.dragging()?.card ?? null);
+  /** the drop zone under the badge or the card: its slot, 0 before the first card … n after the last */
+  protected readonly over = signal<number | null>(null);
   /** the email field was touched: the human check (Cloudflare's, on www) loads only then */
   protected readonly touched = signal(false);
   /** the human check's token: one save each (a failed save asks for a fresh one) */
@@ -233,14 +254,69 @@ export class PtAlertEditor {
   protected count(i: number): { pass: number; of: number } | null { return this.rows().length ? passCount(this.rule(), i, this.rows()) : null; }
   protected text(e: Event): string { return (e.target as HTMLInputElement).value; }
 
-  /** A badge of the palette: seeded by the example now, or by the service once the universe is here (never by an effect: no loop). */
-  protected pick(id: ConditionId): void { const ex = this.example(); this.alerts.addCondition(condition(id, undefined, ex), !ex); }
-  protected drag(e: DragEvent, id: ConditionId): void { e.dataTransfer?.setData('text/plain', id); }
-  protected drop(e: DragEvent): void {
+  /**
+   * A badge of the palette, at the end or on the drop zone `at`: seeded by the example now, or by the service once the universe is
+   * here (never by an effect: no loop).
+   */
+  protected pick(id: ConditionId, at?: number): void { const ex = this.example(); this.alerts.addCondition(condition(id, undefined, ex), !ex, at); }
+
+  /** A card's own place (the slots just before and after it) is no drop zone while it moves. */
+  protected zoneShown(i: number): boolean { const c = this.moving(); return c === null || (i !== c && i !== c + 1); }
+  protected drag(e: DragEvent, id: ConditionId): void {
+    e.dataTransfer?.setData('text/plain', id);
+    // the zones once the drag has started: changing the page inside dragstart can cancel it (Chrome)
+    setTimeout(() => this.dragging.set({ card: null }));
+  }
+  protected endDrag(): void { this.dragging.set(null); this.over.set(null); }
+  protected overZone(e: Event, i: number): void { e.preventDefault(); this.over.set(i); }
+  protected leaveZone(i: number): void { if (this.over() === i) this.over.set(null); }
+  protected dropAt(e: DragEvent, i: number): void {
     e.preventDefault();
-    this.over.set(false);
+    this.endDrag();
     const id = e.dataTransfer?.getData('text/plain') as ConditionId | undefined;
-    if (id && Object.hasOwn(CONDITIONS, id)) this.pick(id);
+    if (id && Object.hasOwn(CONDITIONS, id)) this.pick(id, i);
+  }
+
+  /**
+   * A card's grip pressed: the pointer (a mouse or a finger) is followed over the page; the zone under it lights, and letting go there
+   * moves the card. Let go anywhere else, or cancelled, it stays where it was.
+   */
+  protected grab(i: number, e: PointerEvent): void {
+    if (e.button > 0) return;
+    e.preventDefault();
+    const doc = (e.target as Element).ownerDocument;
+    this.dragging.set({ card: i });
+    this.over.set(null);
+    const move = (ev: Event) => {
+      const p = ev as PointerEvent, z = doc.elementFromPoint?.(p.clientX, p.clientY)?.closest('[data-zone]');
+      this.over.set(z ? Number(z.getAttribute('data-zone')) : null);
+      // near the editor's top or bottom edge it scrolls, so a zone off the screen (a phone) can be reached
+      const box = this.dialog()?.nativeElement, r = box?.getBoundingClientRect();
+      if (box && r) {
+        if (p.clientY > r.bottom - EDGE) box.scrollBy(0, 24);
+        else if (p.clientY < r.top + EDGE) box.scrollBy(0, -24);
+      }
+    };
+    const end = (ev: Event) => {
+      doc.removeEventListener('pointermove', move);
+      doc.removeEventListener('pointerup', end);
+      doc.removeEventListener('pointercancel', end);
+      const to = ev.type === 'pointerup' ? this.over() : null;
+      this.endDrag();
+      if (to !== null) this.alerts.move(i, to);
+    };
+    doc.addEventListener('pointermove', move);
+    doc.addEventListener('pointerup', end);
+    doc.addEventListener('pointercancel', end);
+  }
+
+  /** The grip's arrow keys: one place up or down; the moved card's grip keeps the focus. */
+  protected step(i: number, d: -1 | 1): void {
+    const to = d < 0 ? i - 1 : i + 2;
+    if (to < 0 || to > this.rule().all.length) return;
+    this.alerts.move(i, to);
+    // after the render the move schedules (registered before this timer); no afterNextRender: a new core import grows the main bundle
+    setTimeout(() => this.dialog()?.nativeElement.querySelectorAll<HTMLElement>('.pt-al-grip')[i + d]?.focus());
   }
 
   protected save(): void {

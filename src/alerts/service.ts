@@ -49,13 +49,26 @@ export class PtAlerts {
     this.seed();
   }
 
-  /** A badge of the editor's palette. */
-  addCondition(rc: RuleCondition, seedLater = false): void {
+  /** A badge of the editor's palette: at the end, or at `at` (the drop zone it was dropped on). */
+  addCondition(rc: RuleCondition, seedLater = false, at?: number): void {
     if (!this.backend) return;
     const d = this.current();
     if (seedLater && CONDITIONS[rc.c].seed) this.unseeded.push(rc);
-    this.draftSig.set({ ...d, rule: this.append(d.rule, [rc]) });
+    this.draftSig.set({ ...d, rule: this.append(d.rule, [rc], at) });
     this.seed();
+  }
+
+  /**
+   * A card moved to the slot `to` (0 before the first card … n after the last), for the reader's own order: the conditions are all
+   * true together whatever their order. Its own place (`from` or `from + 1`) changes nothing.
+   */
+  move(from: number, to: number): void {
+    this.update((rule) => {
+      if (to === from || to === from + 1 || !rule.all[from]) return rule;
+      const all = [...rule.all], [x] = all.splice(from, 1);
+      all.splice(to > from ? to - 1 : to, 0, x!);
+      return { ...rule, all };
+    });
   }
 
   setParam(i: number, key: string, value: string | number): void {
@@ -158,13 +171,17 @@ export class PtAlerts {
     return this.draftSig() ?? { rule: { v: 1, all: [] }, prefer: null, from: null, name: null, editing: null };
   }
 
-  /** Adds conditions up to RULE_MAX, never one the rule already has with the same values (the same bell pressed again). */
-  private append(rule: Rule, more: RuleCondition[]): Rule {
+  /**
+   * Adds conditions up to RULE_MAX, never one the rule already has with the same values (the same bell pressed again): at the end,
+   * or from the slot `at` on.
+   */
+  private append(rule: Rule, more: RuleCondition[], at?: number): Rule {
     const all = [...rule.all];
+    let i = at === undefined ? all.length : Math.max(0, Math.min(at, all.length));
     for (const rc of more) {
       if (all.length >= RULE_MAX) break;
       if (all.some((x) => same(x, rc))) continue;
-      all.push(rc);
+      all.splice(i++, 0, rc);
     }
     return { ...rule, all };
   }

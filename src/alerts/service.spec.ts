@@ -185,6 +185,23 @@ describe('PtAlerts (the alert being built, and the page\'s backend)', () => {
     expect(await mount({ ...backend, estimate: async () => undefined as unknown as number }).estimate(rule)).toBeNull();
   });
 
+  it('a badge dropped between two cards goes there; a card moves before another slot; its own place changes nothing', () => {
+    const a = mount(fake().backend);
+    a.add({ c: 'session-move' }, from);
+    a.addCondition({ c: 'volume-spike', p: { times: 3 } });
+    a.setOnce('week');
+    a.addCondition({ c: 'news-spike', p: { times: 3 } }, false, 1);
+    expect(ids(a)).toEqual(['session-move', 'news-spike', 'volume-spike']);
+    a.move(0, 3);
+    expect(ids(a)).toEqual(['news-spike', 'volume-spike', 'session-move']);
+    a.move(2, 0);
+    expect(ids(a)).toEqual(['session-move', 'news-spike', 'volume-spike']);
+    a.move(1, 1);
+    a.move(1, 2);
+    expect(ids(a)).toEqual(['session-move', 'news-spike', 'volume-spike']);
+    expect(a.draft()!.rule.once).toBe('week');
+  });
+
   it('close keeps the draft, discard clears it', () => {
     const a = mount(fake().backend);
     a.add({ c: 'session-move' }, from);

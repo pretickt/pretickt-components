@@ -27,6 +27,11 @@ import { mountEditor } from './editor';
             <p class="pt-note">Right now: {{ c.now.join(', ') }} {{ c.now.length === 1 ? 'meets' : 'meet' }} all of these — you will get an email
               when another stock starts meeting them.</p>
           }
+          <!-- from the second alert the reader may want them together (Romeo, 2026-11-02): asked once, right after confirming -->
+          @if (s.rules.length >= 2 && !s.digest && s.status !== 'unsubscribed') {
+            <p class="pt-alm-ask">You have {{ s.rules.length }} alerts now: their emails can come as they happen, or all in one email a day, in the evening.
+              <button type="button" class="pt-alm-go" [disabled]="busy()" (click)="act({ op: 'digest', on: true })">One email a day</button></p>
+          }
         }
         @if (done(); as d) {<p class="pt-alm-ok">{{ d }}</p>}
         @if (failed()) {<p class="pt-alm-err" role="alert">Could not reach pretickt: nothing changed. <button type="button" (click)="retry()">Retry</button></p>}
@@ -55,9 +60,12 @@ import { mountEditor } from './editor';
               </li>
             } @empty {<li class="pt-note">No alerts yet: press the bell under any chart to create one.</li>}
           </ul>
-          <!-- the reader's choice (Romeo, 2026-11-02): each alert as it happens, or everything in the evening summary -->
-          <p class="pt-alm-weekly">Alert emails: <b>{{ s.digest ? 'one a day, in the evening' : 'as they happen' }}</b>
-            <button type="button" [disabled]="busy()" (click)="act({ op: 'digest', on: !s.digest })">{{ s.digest ? 'Send them as they happen' : 'One a day instead' }}</button></p>
+          <!-- the reader's choice (Romeo, 2026-11-02): each alert as it happens, or everything in the evening summary — from the second
+               alert on (with one, only to turn it back off) -->
+          @if (s.digest || s.rules.length >= 2) {
+            <p class="pt-alm-weekly">Alert emails: <b>{{ s.digest ? 'one a day, in the evening' : 'as they happen' }}</b>
+              <button type="button" [disabled]="busy()" (click)="act({ op: 'digest', on: !s.digest })">{{ s.digest ? 'Send them as they happen' : 'One a day instead' }}</button></p>
+          }
           <p class="pt-alm-weekly">pretickt's weekly email: <b>{{ s.weekly ? 'on' : 'off' }}</b>
             <button type="button" [disabled]="busy()" (click)="act({ op: 'weekly', on: !s.weekly })">{{ s.weekly ? 'Turn off' : 'Turn on' }}</button></p>
           <button type="button" class="pt-alm-unsub" [disabled]="busy()" (click)="act({ op: 'unsubscribe' })">Unsubscribe from everything</button>

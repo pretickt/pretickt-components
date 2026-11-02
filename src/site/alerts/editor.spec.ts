@@ -276,6 +276,119 @@ describe('PtAlertEditor', () => {
     expect(alerts.draft()!.rule.all).toHaveLength(1);
   });
 
+  it('no name to type when creating (the conditions name it); editing a saved alert shows its name to change (Romeo, 2026-11-02)', async () => {
+    const { alerts, saved } = setup();
+    alerts.add({ c: 'session-move', mega: true }, from);
+    const { el, settle } = await mount();
+    expect(el.querySelector('.pt-al-name')).toBeNull();
+    type(el, 'input[type="email"]', 'me@example.com');
+    await settle();
+    el.querySelector<HTMLButtonElement>('.pt-al-save')!.click();
+    await settle();
+    expect(saved[0]).toMatchObject({ name: 'Drops 5%+ · Mega caps' });
+    alerts.edit({ id: 'r1', name: 'My drops', rule: { v: 1, all: [{ c: 'session-move', p: { dir: 'down', pct: 5 } }] }, status: 'active' }, 'tok');
+    el.querySelector<HTMLButtonElement>('.pt-al-save')?.click();   // the saved panel's Done
+    await settle();
+    alerts.open();
+    await settle();
+    expect(el.querySelector<HTMLInputElement>('.pt-al-name')!.value).toBe('My drops');
+  });
+
+  it('dragging a badge shows a drop zone before, between and after the cards, and it lands where it is dropped', async () => {
+    const { alerts } = setup();
+    alerts.add({ c: 'session-move', mega: true }, from);
+    const { el, settle } = await mount();
+    const zones = () => [...el.querySelectorAll<HTMLElement>('.pt-al-zone')];
+    expect(zones()).toHaveLength(0);
+    expect(el.querySelectorAll('.pt-al-and')).toHaveLength(1);
+    const badge = [...el.querySelectorAll<HTMLButtonElement>('.pt-al-badge')].find((b) => b.textContent!.trim() === 'Volume spike')!;
+    const start = new Event('dragstart', { bubbles: true });
+    Object.defineProperty(start, 'dataTransfer', { value: { setData: () => {} } });
+    badge.dispatchEvent(start);
+    await settle();
+    expect(zones().map((z) => z.dataset['zone'])).toEqual(['0', '1', '2']);
+    expect(el.querySelectorAll('.pt-al-and')).toHaveLength(0);
+    zones()[1]!.dispatchEvent(new Event('dragover', { bubbles: true, cancelable: true }));
+    await settle();
+    expect(zones()[1]!.classList).toContain('pt-al-zone-over');
+    const drop = new Event('drop', { bubbles: true, cancelable: true });
+    Object.defineProperty(drop, 'dataTransfer', { value: { getData: () => 'volume-spike' } });
+    zones()[1]!.dispatchEvent(drop);
+    await settle();
+    expect(alerts.draft()!.rule.all.map((rc) => rc.c)).toEqual(['session-move', 'volume-spike', 'mega-caps']);
+    expect(zones()).toHaveLength(0);
+    // a drag that ends anywhere else takes its zones away
+    badge.dispatchEvent(start);
+    await settle();
+    badge.dispatchEvent(new Event('dragend', { bubbles: true }));
+    await settle();
+    expect(zones()).toHaveLength(0);
+  });
+
+  it("a card's grip moves it: dragged onto a zone (its own place shows none), or with the arrow keys", async () => {
+    const { alerts } = setup();
+    alerts.add({ c: 'session-move', mega: true }, from);
+    alerts.addCondition({ c: 'volume-spike', p: { times: 3 } });
+    const { el, settle } = await mount();
+    const order = () => alerts.draft()!.rule.all.map((rc) => rc.c);
+    const grips = () => [...el.querySelectorAll<HTMLButtonElement>('.pt-al-grip')];
+    expect(grips()).toHaveLength(3);
+    // pointer events as plain events with their fields (the test DOM has no PointerEvent everywhere)
+    const ptr = (type: string, y: number) => Object.assign(new Event(type, { bubbles: true, cancelable: true }), { button: 0, clientX: 10, clientY: y });
+    grips()[0]!.dispatchEvent(ptr('pointerdown', 10));
+    await settle();
+    const zones = [...el.querySelectorAll<HTMLElement>('.pt-al-zone')];
+    expect(zones.map((z) => z.dataset['zone'])).toEqual(['2', '3']);
+    expect(el.querySelector('pt-alert-card')!.querySelector('.pt-al-card')!.classList).toContain('pt-al-card-lifted');
+    const doc = el.ownerDocument as Document & { elementFromPoint: (x: number, y: number) => Element | null };
+    const was = doc.elementFromPoint;
+    doc.elementFromPoint = () => zones[1]!;
+    try {
+      doc.dispatchEvent(ptr('pointermove', 300));
+      await settle();
+      expect(zones[1]!.classList).toContain('pt-al-zone-over');
+      doc.dispatchEvent(ptr('pointerup', 300));
+      await settle();
+    } finally { doc.elementFromPoint = was; }
+    expect(order()).toEqual(['mega-caps', 'volume-spike', 'session-move']);
+    expect(el.querySelectorAll('.pt-al-zone')).toHaveLength(0);
+    // the keyboard: up one, then down one
+    grips()[2]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+    await settle();
+    expect(order()).toEqual(['mega-caps', 'session-move', 'volume-spike']);
+    grips()[0]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    await settle();
+    expect(order()).toEqual(['session-move', 'mega-caps', 'volume-spike']);
+  });
+
+  it('a card dragged near the edge of the editor scrolls it: a zone off the screen can be reached (a phone)', async () => {
+    const { alerts } = setup();
+    alerts.add({ c: 'session-move', mega: true }, from);
+    const { el, settle } = await mount();
+    const dialog = el.querySelector<HTMLElement>('[role="dialog"]')!;
+    const scrolled: number[] = [];
+    dialog.getBoundingClientRect = () => ({ top: 0, bottom: 600, left: 0, right: 390, width: 390, height: 600, x: 0, y: 0, toJSON: () => ({}) });
+    dialog.scrollBy = ((_x: number, y: number) => { scrolled.push(y); }) as typeof dialog.scrollBy;
+    const ptr = (type: string, y: number) => Object.assign(new Event(type, { bubbles: true, cancelable: true }), { button: 0, clientX: 10, clientY: y });
+    el.querySelector<HTMLButtonElement>('.pt-al-grip')!.dispatchEvent(ptr('pointerdown', 300));
+    await settle();
+    const doc = el.ownerDocument;
+    doc.dispatchEvent(ptr('pointermove', 300));
+    expect(scrolled).toEqual([]);
+    doc.dispatchEvent(ptr('pointermove', 590));
+    doc.dispatchEvent(ptr('pointermove', 8));
+    expect(scrolled.map(Math.sign)).toEqual([1, -1]);
+    doc.dispatchEvent(ptr('pointerup', 8));
+    await settle();
+  });
+
+  it('a single condition has no grip', async () => {
+    const { alerts } = setup();
+    alerts.add({ c: 'session-move' }, from);
+    const { el } = await mount();
+    expect(el.querySelectorAll('.pt-al-grip')).toHaveLength(0);
+  });
+
   it('the same stock at most once a day (as before) or a week: the rule keeps the choice, the saved note repeats it', async () => {
     const { alerts, saved } = setup();
     alerts.add({ c: 'session-move', mega: true }, from);
