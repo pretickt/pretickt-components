@@ -191,8 +191,8 @@
   .pt-al-choices { display: flex; flex-wrap: wrap; gap: .3rem; }
   .pt-al-choices button { padding: .2rem .5rem; border: 1px solid var(--color-border); border-radius: .45rem; background: var(--color-surface-raised);
     font-size: .74rem; color: var(--color-ink); cursor: pointer; }
-  .pt-al-ticker { width: 6rem; padding: .25rem .45rem; border: 1px solid var(--color-border); border-radius: .45rem; font: 600 .85rem var(--font-mono); }
-  .pt-al-ticker { text-transform: uppercase; }
+  /* One stock's search, under its sentence */
+  .pt-al-one { display: grid; gap: .2rem; max-width: 20rem; }
   .pt-al-count { margin: 0; font-size: .7rem; color: var(--color-ink-soft); }
   .pt-al-count b { font-family: var(--font-mono); color: var(--color-ink); }
   .pt-al-nodata { margin: .4rem 0; font-size: .78rem; color: var(--color-ink-soft); }
@@ -209,9 +209,11 @@
     background: var(--color-surface-raised); font: .82rem var(--font-sans); color: var(--color-ink); }
   .pt-al-paste { resize: vertical; }
   .pt-al-found { display: grid; gap: .1rem; }
-  .pt-al-found button { display: flex; align-items: center; gap: .4rem; padding: .25rem .4rem; border: 0; border-radius: .4rem; background: none;
-    font-size: .78rem; color: var(--color-ink); text-align: left; cursor: pointer; }
-  .pt-al-found button:hover, .pt-al-found button:focus-visible { background: color-mix(in oklab, var(--color-primary) 9%, transparent); }
+  .pt-al-found [role='option'] { display: flex; align-items: center; gap: .4rem; min-width: 0; padding: .25rem .4rem; border-radius: .4rem;
+    font-size: .78rem; color: var(--color-ink); cursor: pointer; }
+  /* the one ↓ and ↑ (or the pointer) mark: Enter takes it */
+  .pt-al-found .pt-al-found-on { background: color-mix(in oklab, var(--color-primary) 11%, transparent);
+    box-shadow: inset 2px 0 0 var(--color-primary); }
   .pt-al-found b { font-family: var(--font-mono); }
   .pt-al-found span { overflow: hidden; color: var(--color-ink-soft); text-overflow: ellipsis; white-space: nowrap; }
   .pt-al-chips { display: flex; flex-wrap: wrap; gap: .25rem; max-height: 9.5rem; overflow-y: auto; }

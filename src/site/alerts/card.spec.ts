@@ -198,6 +198,29 @@ describe('PtAlertCard (version A)', () => {
     expect([...el.querySelectorAll('.pt-al-found b')].map((b) => b.textContent!.trim())).toEqual(['NVDA']);
     find.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     expect(changes).toEqual([{ key: 'tickers', value: 'AMD,NVDA' }]);
+    // ↓ then Enter: the second found
+    find.value = 'a';
+    find.dispatchEvent(new Event('input'));
+    f.detectChanges();
+    const second = [...el.querySelectorAll('.pt-al-found b')].map((b) => b.textContent!.trim())[1]!;
+    find.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+    find.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    expect(changes.at(-1)).toEqual({ key: 'tickers', value: `AMD,${second}` });
+  });
+
+  it("One stock's symbol: the same search, by symbol or name and by keyboard (Romeo, 2026-11-02)", () => {
+    const { f, el, changes, pill } = mount(condition('one-stock', { ticker: 'NVDA' }), { row: amd, rows });
+    pill('NVDA').click();
+    f.detectChanges();
+    const input = el.querySelector<HTMLInputElement>('pt-alert-find input')!;
+    input.value = 'avg';
+    input.dispatchEvent(new Event('input'));
+    f.detectChanges();
+    expect([...el.querySelectorAll('pt-alert-find [role="option"] b')].map((b) => b.textContent!.trim())).toEqual(['AVGO']);
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(changes).toEqual([{ key: 'ticker', value: 'AVGO' }]);
+    f.detectChanges();
+    expect(el.querySelector('pt-alert-find')).toBeNull();
   });
 
   it("editing a mega caps card makes it the reader's own list, from the day's mega caps", () => {

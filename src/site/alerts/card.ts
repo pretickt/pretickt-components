@@ -8,6 +8,7 @@ import { presets } from '../../alerts/presets';
 import { condition, type RuleCondition } from '../../alerts/rule';
 import type { AlertRow } from '../../alerts/rows';
 import { MEGA_CAP, SECTORS } from '../../typologies/values';
+import { PtAlertFind } from './find';
 
 interface Part { text: string; key: string | null; spec: ParamSpec | null }
 type NumberSpec = Extract<ParamSpec, { kind: 'number' }>;
@@ -18,7 +19,6 @@ const byCap = (a: Member, b: Member) => (b.marketCap ?? -1) - (a.marketCap ?? -1
 /** the list's groups by size (MEGA_CAP the mega caps' line, as the condition's) */
 const SIZES: readonly (readonly [string, (cap: number) => boolean])[] = [
   ['Mega caps', (c) => c >= MEGA_CAP], ['Large caps', (c) => c >= 10e9 && c < MEGA_CAP], ['Mid caps', (c) => c < 10e9]];
-const TICKER = /^[A-Z][A-Z0-9]{0,5}(\.[A-Z])?$/;
 /** a value on its step: 0.5 + 1 = 1.5, never 1.5000000000000002 */
 const onStep = (v: number, step: number) => Number((Math.round(v / step) * step).toFixed((String(step).split('.')[1] ?? '').length));
 let uid = 0;
@@ -30,9 +30,8 @@ let uid = 0;
  */
 @Component({
   selector: 'pt-alert-card',
-  imports: [PtLogo],
+  imports: [PtLogo, PtAlertFind],
   template: `
-    @let rcv = rc();
     <article class="pt-al-card" [attr.data-group]="group()">
       <header class="pt-al-card-h">
         <span class="pt-al-kind">{{ groupLabel() }}</span>
@@ -114,17 +113,7 @@ let uid = 0;
             @if (listOpen()) {
               <!-- the companies, editable (Romeo, 2026-11-02): by logo and symbol, a search, whole groups, a pasted portfolio -->
               <div class="pt-al-list" role="group" aria-label="The companies">
-                <input class="pt-al-find" type="search" placeholder="Add a company: symbol or name" aria-label="Add a company" autocomplete="off"
-                  [value]="find()" (input)="find.set(text($event))" (keydown.enter)="addFound()" />
-                @if (found().length) {
-                  <div class="pt-al-found">
-                    @for (r of found(); track r.ticker) {
-                      <button type="button" (click)="addCompanies([r.ticker]); find.set('')">
-                        <pt-logo [ticker]="r.ticker" [src]="r.logo" [size]="16" /><b>{{ r.ticker }}</b><span>{{ r.name }}</span>
-                      </button>
-                    }
-                  </div>
-                }
+                <pt-alert-find [rows]="data().rows" [exclude]="memberTickers()" (picked)="addCompanies([$event])" />
                 <div class="pt-al-chips">
                   @for (r of members(); track r.ticker) {
                     <span class="pt-al-chip"><pt-logo [ticker]="r.ticker" [src]="r.logo" [size]="16" /><b>{{ r.ticker }}</b>
@@ -199,7 +188,9 @@ let uid = 0;
         <div class="pt-al-choices">@for (s of SECTORS; track s) {<button type="button" (click)="choose(s)">{{ s }}</button>}</div>
       }
       @if (open() !== null && openSpec()?.kind === 'ticker') {
-        <input class="pt-al-ticker" aria-label="Ticker" [value]="rcv.p[open()!]" (keydown.enter)="typed($event)" (change)="typed($event)" />
+        <!-- One stock's symbol: the same search as a portfolio's, by keyboard too (Romeo, 2026-11-02) -->
+        <pt-alert-find class="pt-al-one" [rows]="data().rows" label="Change the stock" placeholder="Symbol or name" [closeOnEscape]="true"
+          [focus]="true" (picked)="chooseTicker($event)" (cancel)="open.set(null)" />
       }
       @if (count(); as c) {<p class="pt-al-count">Today: <b>{{ c.pass }}</b> of {{ c.of }} {{ ofLabel() }}</p>}
     </article>`,
@@ -280,7 +271,6 @@ export class PtAlertCard {
   /** a universe card's list: null until the reader opens or closes it (an empty portfolio opens on its own) */
   private readonly listChoice = signal<boolean | null>(null);
   protected readonly listOpen = computed(() => this.listChoice() ?? (this.rc().c === 'companies' && !listOf(this.rc().p).length));
-  protected readonly find = signal('');
   protected readonly pasteText = signal('');
   protected readonly pasteChoice = signal<boolean | null>(null);
   protected readonly note = signal<string | null>(null);
@@ -294,15 +284,8 @@ export class PtAlertCard {
   });
   /** the paste box shows on an empty list, or when asked for */
   protected readonly pasteOpen = computed(() => this.pasteChoice() ?? !this.members().length);
-  /** the companies a search names, not in the list yet: the symbol itself first, then those starting with it, then by name */
-  protected readonly found = computed(() => {
-    const q = this.find().trim().toLowerCase();
-    if (!q) return [];
-    const have = new Set(this.members().map((m) => m.ticker)), t = (r: AlertRow) => r.ticker.toLowerCase();
-    const rank = (r: AlertRow) => (t(r) === q ? 0 : t(r).startsWith(q) ? 1 : 2);
-    return this.data().rows.filter((r) => !have.has(r.ticker) && (t(r).startsWith(q) || r.name.toLowerCase().includes(q)))
-      .sort((a, b) => rank(a) - rank(b) || byCap(a, b)).slice(0, 6);
-  });
+  /** the list's symbols: the search offers the others */
+  protected readonly memberTickers = computed(() => this.members().map((m) => m.ticker));
   /** the universe by size and by sector: each group added or taken away whole, with how many of it are in */
   protected readonly groups = computed(() => {
     const rows = this.data().rows, have = new Set(this.members().map((m) => m.ticker));
@@ -358,7 +341,7 @@ export class PtAlertCard {
   protected label(s: NumberSpec, v: number): string { return pillText(s, v); }
 
   protected openList(): void { this.listChoice.set(true); this.note.set(null); }
-  protected closeList(): void { this.listChoice.set(false); this.find.set(''); this.note.set(null); this.pasteChoice.set(null); }
+  protected closeList(): void { this.listChoice.set(false); this.note.set(null); this.pasteChoice.set(null); }
   /** The list as it now is: a portfolio's own param; any other universe card becomes the reader's portfolio with it. */
   private commitList(tickers: string[]): void {
     if (tickers.length > LIST_MAX) this.note.set(`${LIST_MAX} companies at most`);
@@ -373,10 +356,6 @@ export class PtAlertCard {
     const have = this.members().map((m) => m.ticker), add = tickers.filter((t) => !have.includes(t));
     if (add.length) this.commitList([...have, ...add]);
     return add.length;
-  }
-  protected addFound(): void {
-    const r = this.found()[0];
-    if (r) { this.addCompanies([r.ticker]); this.find.set(''); }
   }
   /** A group all in goes away whole; otherwise what of it is missing comes in. */
   protected toggleGroup(g: ListGroup): void {
@@ -473,10 +452,11 @@ export class PtAlertCard {
     this.open.set(null);
   }
 
-  protected typed(e: Event): void {
-    const s = this.openSpec(), v = (e.target as HTMLInputElement).value.trim().toUpperCase();
-    if (!s || !TICKER.test(v)) return;
-    this.change.emit({ key: s.key, value: v });
+  /** One stock's search: the company taken is the stock. */
+  protected chooseTicker(ticker: string): void {
+    const s = this.openSpec();
+    if (!s) return;
+    this.change.emit({ key: s.key, value: ticker });
     this.open.set(null);
   }
 }
