@@ -55,6 +55,17 @@ describe("the site's alerts backend (the page's /v1/alerts, the store, the live 
     }
   });
 
+  it('the estimate posts the rule and reads the month; a refusal is no estimate (PtAlerts turns the rest into none)', async () => {
+    const rule = { v: 1 as const, all: [{ c: 'session-move' as const, p: { dir: 'down', pct: 5 } }], once: 'week' as const };
+    const f = fake(() => res(200, { ok: true, perMonth: 12, emails: 12, sessions: 21 }));
+    expect(await siteBackend({ store: store(), api: '', search: '', fetch: f.fetch }).estimate!(rule)).toBe(12);
+    expect(f.calls[0]!.url).toBe('/v1/alerts/estimate');
+    expect(JSON.parse(String(f.calls[0]!.init!.body))).toEqual({ rule });
+    for (const status of [400, 429, 503]) {
+      expect(await siteBackend({ store: store(), api: '', search: '', fetch: fake(() => res(status)).fetch }).estimate!(rule)).toBeNull();
+    }
+  });
+
   it("manage posts the link's token and the op: 200 the alerts, 403 and 410 a link that no longer works, anything else fails", async () => {
     const state = { email: 'r•••@example.com', status: 'active', weekly: false, rules: [] };
     const f = fake(() => res(200, state));

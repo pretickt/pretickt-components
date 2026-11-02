@@ -4,8 +4,11 @@ import type { AlertSource } from './sources';
 
 /** One badge of an alert: a condition and its values. */
 export interface RuleCondition { c: ConditionId; p: Params }
-/** An alert's rule: every condition true together. Stored as is by the platform (JSON). */
-export interface Rule { v: 1; all: RuleCondition[] }
+/**
+ * An alert's rule: every condition true together. Stored as is by the platform (JSON). `once: 'week'`: a stock it fired for stays
+ * quiet for 7 days — the reader's choice (Romeo, 2026-11-02); without it, at most once a day per stock.
+ */
+export interface Rule { v: 1; all: RuleCondition[]; once?: 'week' }
 export const RULE_MAX = 6;
 export type RuleProblem = 'empty' | 'universe-only' | 'too-many' | 'empty-list';
 

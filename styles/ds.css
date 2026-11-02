@@ -286,6 +286,15 @@
   .pt-al-name, .pt-al-email { flex: 1 1 14rem; min-width: 0; padding: .4rem .6rem; border: 1px solid var(--color-border); border-radius: .5rem;
     background: var(--color-surface); font-size: .85rem; color: var(--color-ink); }
   .pt-al-when { flex: 1 1 100%; margin: 0; font-size: .74rem; color: var(--color-ink-soft); }
+  /* the same stock at most once a day or a week: two halves of one pill, the chosen one filled */
+  .pt-al-once { display: inline-flex; margin-left: .15rem; border: 1px solid var(--color-border); border-radius: 999px; overflow: hidden;
+    vertical-align: baseline; }
+  .pt-al-once button { padding: .05rem .55rem; border: 0; background: var(--color-surface-raised); font: 600 .72rem var(--font-sans);
+    color: var(--color-ink-soft); cursor: pointer; }
+  .pt-al-once button + button { border-left: 1px solid var(--color-border); }
+  .pt-al-once button[aria-pressed='true'] { background: color-mix(in oklab, var(--color-primary) 16%, var(--color-surface-raised)); color: var(--color-ink); }
+  .pt-al-est { flex: 1 1 100%; margin: 0; font-size: .74rem; color: var(--color-ink); }
+  .pt-al-est-old { opacity: .5; }
   .pt-al-error { flex: 1 1 100%; margin: 0; font-size: .8rem; color: var(--color-neg); }
   /* the human check (Turnstile, from the email field's first touch): its own row, empty unless Cloudflare asks for a tap */
   .pt-al-human { flex: 1 1 100%; min-width: 0; }

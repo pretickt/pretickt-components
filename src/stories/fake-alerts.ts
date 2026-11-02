@@ -1,6 +1,8 @@
 // Made-up answers for the alerts' stories: the page's backend faked on the made-up universe. Never real data.
 import type { Provider } from '@angular/core';
+import { estimate } from '../alerts/estimate';
 import { MOCK_BARS, MOCK_UNIVERSE } from '../alerts/mock';
+import { mockHistory } from '../alerts/mock-history';
 import { prng, round } from '../typologies/common';
 import { PtAlerts } from '../alerts/service';
 import { PT_ALERTS, type AlertsBackend, type AlertsLanding, type HumanCheck, type ManageState } from '../alerts/token';
@@ -15,6 +17,8 @@ export function fakeAlerts(o: { fail?: 'network' | 'limit' | 'captcha'; landing?
     bars: async (t) => MOCK_BARS[t] ?? null,
     save: () => new Promise((r) => setTimeout(() => r(o.fail ? { ok: false, reason: o.fail } : { ok: true }), 600)),
     manage: async () => o.state ?? null,
+    // the real estimate on made-up sessions, after a short wait like the Worker's
+    estimate: (rule) => new Promise((r) => setTimeout(() => r(estimate(rule, mockHistory())?.perMonth ?? null), 250)),
     landing: () => o.landing ?? { alert: null, token: null, action: null },
     ...(o.check ? { check: o.check } : {}),
   };

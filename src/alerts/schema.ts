@@ -37,6 +37,7 @@ function paramProblem(c: ConditionId, p: Record<string, string | number>): strin
   return null;
 }
 
-export const ruleSchema = z.object({ v: z.literal(1), all: z.array(RuleConditionSchema).check(z.minLength(1), z.maxLength(RULE_MAX)) })
+export const ruleSchema = z.object({ v: z.literal(1), all: z.array(RuleConditionSchema).check(z.minLength(1), z.maxLength(RULE_MAX)),
+  once: z.optional(z.literal('week')) })
   .check(z.refine((r) => r.all.every((rc) => paramProblem(rc.c, rc.p) === null), 'a param does not fit its condition'),
     z.refine((r) => ruleProblem(r as Rule) === null, 'the rule cannot be saved'));

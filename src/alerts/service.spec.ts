@@ -160,6 +160,31 @@ describe('PtAlerts (the alert being built, and the page\'s backend)', () => {
     expect(calls.save[0]).not.toHaveProperty('turnstile');
   });
 
+  it('"a week" is the rule\'s until "a day" takes it away; a bell, a value or a removal keep it', () => {
+    const a = mount(fake().backend);
+    a.add({ c: 'session-move' }, from);
+    a.setOnce('week');
+    a.add({ c: 'near-52w', ticker: 'AMD' }, from);
+    a.setParam(0, 'pct', 7);
+    a.remove(1);
+    expect(a.draft()!.rule.once).toBe('week');
+    a.setOnce('day');
+    expect(a.draft()!.rule).not.toHaveProperty('once');
+  });
+
+  it("the estimate is the backend's, null without one or when it fails", async () => {
+    const { backend } = fake();
+    const rule = { v: 1 as const, all: [{ c: 'session-move' as const, p: { dir: 'down', pct: 5 } }] };
+    expect(await mount(backend).estimate(rule)).toBeNull();
+    TestBed.resetTestingModule();
+    expect(await mount({ ...backend, estimate: async (r) => (r.once ? 4 : 9) }).estimate(rule)).toBe(9);
+    TestBed.resetTestingModule();
+    expect(await mount({ ...backend, estimate: () => Promise.reject(new Error('down')) }).estimate(rule)).toBeNull();
+    TestBed.resetTestingModule();
+    // the site's backend hands over what the Worker said: anything but a number is no estimate
+    expect(await mount({ ...backend, estimate: async () => undefined as unknown as number }).estimate(rule)).toBeNull();
+  });
+
   it('close keeps the draft, discard clears it', () => {
     const a = mount(fake().backend);
     a.add({ c: 'session-move' }, from);

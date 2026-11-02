@@ -47,7 +47,7 @@ const CHECK_FAILED = "We could not check that you're not a robot: reload the pag
         @if (saved(); as s) {
           <div class="pt-al-done">
             <p>@if (s.to) {Check your inbox to confirm: we sent a link to <b>{{ s.to }}</b>.} @else {Your alert is saved.}</p>
-            <p class="pt-al-when">You will get an email when a stock starts meeting all of its conditions, at most once a day per stock.</p>
+            <p class="pt-al-when">You will get an email when a stock starts meeting all of its conditions, at most once a {{ s.week ? 'week' : 'day' }} per stock.</p>
             <button type="button" class="pt-al-save" (click)="close()">Done</button>
           </div>
         } @else {
@@ -90,7 +90,13 @@ const CHECK_FAILED = "We could not check that you're not a robot: reload the pag
           <footer class="pt-al-foot">
             <input class="pt-al-name" aria-label="Name of the alert" [value]="alerts.draft()?.name ?? ''" [placeholder]="nameOf(rule())"
               (input)="alerts.rename(text($event))" />
-            <p class="pt-al-when">Email me when a stock starts meeting all of these · at most once a day per stock</p>
+            <p class="pt-al-when">Email me when a stock starts meeting all of these · the same stock at most once
+              <span class="pt-al-once" role="group" aria-label="How often the same stock">
+                <button type="button" [attr.aria-pressed]="!week()" (click)="alerts.setOnce('day')">a day</button>
+                <button type="button" [attr.aria-pressed]="week()" (click)="alerts.setOnce('week')">a week</button>
+              </span></p>
+            <!-- what the rule would have sent lately (the page's estimate): the last one stays, faded, while the next is on its way -->
+            @if (estimate(); as e) {<p class="pt-al-est" [class.pt-al-est-old]="e.old">In the last month it would have sent {{ e.say }}</p>}
             @if (!editing()) {
               <input class="pt-al-email" type="email" autocomplete="email" placeholder="you@example.com" aria-label="Your email"
                 [value]="email()" (focus)="touched.set(true)" (input)="email.set(text($event)); touched.set(true)" />
@@ -117,8 +123,8 @@ export class PtAlertEditor {
   protected readonly GLYPHS = GLYPHS;
   protected readonly nameOf = nameOf;
   protected readonly email = signal('');
-  /** what was saved: the address a confirmation went to ('' after an edit), and whether it was an edit; null while editing */
-  protected readonly saved = signal<{ to: string; edit: boolean } | null>(null);
+  /** what was saved: the address a confirmation went to ('' after an edit), whether it was an edit, once a week; null while editing */
+  protected readonly saved = signal<{ to: string; edit: boolean; week: boolean } | null>(null);
   protected readonly failed = signal<string | null>(null);
   protected readonly CHECK_FAILED = CHECK_FAILED;
   /** a dragged badge is over the empty rule's drop box */
@@ -137,6 +143,18 @@ export class PtAlertEditor {
   });
   protected readonly rule = computed<Rule>(() => this.alerts.draft()?.rule ?? { v: 1, all: [] });
   protected readonly editing = computed(() => !!this.alerts.draft()?.editing);
+  protected readonly week = computed(() => this.rule().once === 'week');
+  /** the rule as the estimate was asked for it; null while it cannot be saved (nothing to estimate) */
+  private readonly asked = computed(() => (ruleProblem(this.rule()) ? null : JSON.stringify(this.rule())));
+  private readonly answer = signal<{ key: string; n: number | null } | null>(null);
+  /** the last rule asked for (a plain field: Angular's `untracked` would grow the main bundle) */
+  private askedFor: string | null = null;
+  /** "about 25 emails" for the rule as it is; the previous rule's, faded, until its own comes */
+  protected readonly estimate = computed(() => {
+    const a = this.answer(), key = this.asked();
+    if (!a || a.n === null || key === null) return null;
+    return { say: a.n === 0 ? 'no email' : a.n === 1 ? '1 email' : `about ${a.n} emails`, old: a.key !== key };
+  });
   protected readonly used = computed(() => new Set(this.rule().all.map((rc) => rc.c)));
   private readonly example = computed(() => exampleOf(this.rule(), this.rows(), this.alerts.draft()?.prefer));
   private readonly bars = signal<{ t: string; b: number[] | null } | null>(null);
@@ -198,6 +216,16 @@ export class PtAlertEditor {
       if (!t || this.bars()?.t === t) return;
       void this.alerts.bars(t).then((b) => this.bars.set({ t, b }));
     });
+    // the estimate, 400 ms after the rule stops changing (a value nudged with + asks once); an answer for an older rule shows faded
+    effect((onCleanup) => {
+      const key = this.asked(), rule = this.rule();
+      if (key === null || !this.alerts.opened() || this.askedFor === key) return;
+      const t = setTimeout(() => {
+        this.askedFor = key;
+        void this.alerts.estimate(rule).then((n) => this.answer.set({ key, n }));
+      }, 400);
+      onCleanup(() => clearTimeout(t));
+    });
   }
 
   protected idsOf(g: Group): ConditionId[] { return CONDITION_IDS.filter((id) => CONDITIONS[id].group === g); }
@@ -217,10 +245,10 @@ export class PtAlertEditor {
 
   protected save(): void {
     this.failed.set(null);
-    const edit = this.editing(), to = edit ? '' : this.email().trim();
+    const edit = this.editing(), to = edit ? '' : this.email().trim(), week = this.week();
     // the weekly email is not asked here (Romeo, 2026-11-02): an alert's email offers it, at most once a month
     void this.alerts.save(to, false, edit ? null : this.token()).then((r: SaveResult) => {
-      if (r.ok) { this.saved.set({ to, edit }); return; }
+      if (r.ok) { this.saved.set({ to, edit, week }); return; }
       this.failed.set(FAILED[r.reason]);
       // the token went with the call (Cloudflare takes each once): the next Save waits for a fresh one
       if (this.widget) { this.token.set(null); this.widget.reset(); }

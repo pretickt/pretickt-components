@@ -19,11 +19,13 @@ export interface HumanCheck { mount(el: object, on: (s: CheckState) => void): { 
 export interface ManagedRule { id: string; name: string; rule: Rule; status: 'pending' | 'active' | 'paused' }
 export interface ManageState {
   email: string; status: 'pending' | 'active' | 'unsubscribed'; weekly: boolean; rules: ManagedRule[];
+  /** one email a day, the evening summary, instead of each alert as it happens (Romeo, 2026-11-02: the reader's choice) */
+  digest: boolean;
   /** a rule just confirmed, and the companies meeting it right now (they fire only when they meet it again) */
   confirmed?: { id: string; now: string[] };
 }
 export type ManageOp = { op: 'list' | 'confirm' | 'unsubscribe' } | { op: 'pause' | 'resume' | 'delete'; id: string }
-  | { op: 'update'; id: string; name: string; rule: Rule } | { op: 'weekly'; on: boolean };
+  | { op: 'update'; id: string; name: string; rule: Rule } | { op: 'weekly' | 'digest'; on: boolean };
 /** What the page's address says: the event an email opened, the token of a confirm or manage link, and what that link is for. */
 export interface AlertsLanding { alert: string | null; token: string | null; action: 'confirm' | 'manage' | 'weekly' | null }
 /** The page's side of the alerts (the site: `/v1/alerts`, the universe, the session's bars). Absent on the server and in the checks. */
@@ -33,6 +35,8 @@ export interface AlertsBackend {
   /** `turnstile`: the human check's token, when the backend has a check */
   save(req: { email: string; name: string; rule: Rule; from: AlertFrom | null; weekly: boolean; turnstile?: string }): Promise<SaveResult>;
   manage(token: string, op: ManageOp): Promise<ManageState | null>;
+  /** the emails a month the rule would have sent over the last sessions (the editor's estimate); null when it cannot say */
+  estimate?(rule: Rule): Promise<number | null>;
   landing(): AlertsLanding;
   /** the check a new alert's Save needs first (www: Turnstile); none: Save needs none (the stories' made-up backends) */
   check?: HumanCheck;

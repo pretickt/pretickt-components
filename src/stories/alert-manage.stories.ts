@@ -1,6 +1,11 @@
-/** pt-alert-manage on made-up answers (the page's backend faked): confirming, managing, editing, a weekly email, an expired link, a failure. */
+/**
+ * pt-alert-manage on made-up answers (the page's backend faked): confirming, managing, editing, one email a day, a weekly email, an
+ * expired link, a failure.
+ */
 import type { Provider } from '@angular/core';
+import { estimate } from '../alerts/estimate';
 import { MOCK_BARS, MOCK_UNIVERSE } from '../alerts/mock';
+import { mockHistory } from '../alerts/mock-history';
 import type { Rule } from '../alerts/rule';
 import { PtAlerts } from '../alerts/service';
 import { PT_ALERTS, type AlertsBackend, type AlertsLanding, type ManageState } from '../alerts/token';
@@ -9,19 +14,22 @@ import { story } from './story';
 
 const DROP: Rule = { v: 1, all: [{ c: 'session-move', p: { dir: 'down', pct: 5 } }, { c: 'below-average', p: { dir: 'below', pct: 15, days: '50' } },
   { c: 'mega-caps', p: {} }] };
-const STATE: ManageState = { email: 'r•••@example.com', status: 'active', weekly: false, rules: [
+const STATE: ManageState = { email: 'r•••@example.com', status: 'active', weekly: false, digest: false, rules: [
   { id: 'r1', name: 'Mega-cap drops', rule: DROP, status: 'active' },
   { id: 'r2', name: 'News 3× · NVDA', rule: { v: 1, all: [{ c: 'news-spike', p: { times: 3 } }, { c: 'one-stock', p: { ticker: 'NVDA' } }] }, status: 'active' },
-  { id: 'r3', name: 'Near 52-week low · Energy', rule: { v: 1, all: [{ c: 'near-52w', p: { side: 'low', pct: 2 } }, { c: 'sector', p: { sector: 'Energy' } }] }, status: 'paused' },
+  { id: 'r3', name: 'Near 52-week low · Energy', rule: { v: 1, all: [{ c: 'near-52w', p: { side: 'low', pct: 2 } }, { c: 'sector', p: { sector: 'Energy' } }], once: 'week' },
+    status: 'paused' },
 ] };
 /**
- * A backend that answers from memory: pause, resume, delete, an edit and the weekly email change what the next answer shows.
+ * A backend that answers from memory: pause, resume, delete, an edit, one email a day and the weekly email change what the next
+ * answer shows; the editor's estimate is the real one on made-up sessions.
  * `failFirst`: the first call does not get through (the page offers Retry).
  */
 function fake(landing: AlertsLanding, first: ManageState | null, o: { failFirst?: boolean } = {}): Provider[] {
   let s = first, failing = !!o.failFirst;
   const backend: AlertsBackend = {
     universe: async () => MOCK_UNIVERSE, bars: async (t) => MOCK_BARS[t] ?? null, save: async () => ({ ok: true }), landing: () => landing,
+    estimate: async (rule) => estimate(rule, mockHistory())?.perMonth ?? null,
     manage: async (_t, op) => {
       await new Promise((r) => setTimeout(r, 400));
       if (failing) { failing = false; throw new Error('offline'); }
@@ -37,6 +45,7 @@ function fake(landing: AlertsLanding, first: ManageState | null, o: { failFirst?
       if (op.op === 'pause' || op.op === 'resume') s = { ...s, rules: s.rules.map((r) => (r.id === op.id ? { ...r, status: op.op === 'pause' ? 'paused' : 'active' } : r)) };
       if (op.op === 'delete') s = { ...s, rules: s.rules.filter((r) => r.id !== op.id) };
       if (op.op === 'weekly') s = { ...s, weekly: op.on };
+      if (op.op === 'digest') s = { ...s, digest: op.on };
       if (op.op === 'unsubscribe') s = { ...s, status: 'unsubscribed' };
       return s;
     },
@@ -56,6 +65,7 @@ export const stories = [
       { c: 'one-stock', p: { ticker: 'MU' } }] }, status: 'pending' }, ...STATE.rules] }), group: GROUP }),
   story(PtAlertManage, { name: 'A call that does not get through · Retry', providers: fake(at('manage'), STATE, { failFirst: true }), group: GROUP }),
   story(PtAlertManage, { name: "The weekly email's link · Yes, send it", providers: fake(at('weekly'), STATE), group: GROUP }),
+  story(PtAlertManage, { name: 'One email a day, in the evening (the reader chose it)', providers: fake(at('manage'), { ...STATE, digest: true }), group: GROUP }),
   story(PtAlertManage, { name: 'Unsubscribed', providers: fake(at('manage'), { ...STATE, status: 'unsubscribed' }), group: GROUP }),
   story(PtAlertManage, { name: 'Expired link', providers: fake(at('manage'), null), group: GROUP }),
   story(PtAlertManage, { name: 'Without a link (the server)', group: GROUP }),

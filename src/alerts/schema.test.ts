@@ -29,4 +29,9 @@ describe('ruleSchema (the server checks every rule it stores)', () => {
     for (const t of ['', 'AAPL,,MSFT', 'aapl', 'AAPL,AAPL', many.join(','), 'AAPL MSFT']) expect(ok(rule(t)), t.slice(0, 20)).toBe(false);
   });
   it('rejects another version', () => expect(ok({ ...romeo, v: 2 })).toBe(false));
+  it('keeps the reader\'s "once a week" and refuses any other once', () => {
+    expect(ruleSchema.parse({ ...romeo, once: 'week' })).toMatchObject({ once: 'week' });
+    expect(ruleSchema.parse(romeo)).not.toHaveProperty('once');
+    for (const once of ['day', 'month', 7, true]) expect(ok({ ...romeo, once }), String(once)).toBe(false);
+  });
 });

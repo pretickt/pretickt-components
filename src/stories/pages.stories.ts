@@ -243,7 +243,7 @@ export class PtPreviewTrending { readonly page = input.required<PreviewPage>(); 
 @Component({ selector: 'pt-preview-alerts', imports: [PtPagePreview], template: '<pt-page-preview [page]="page()" />' })
 export class PtPreviewAlerts { readonly page = input.required<PreviewPage>(); }
 
-const ALERT_STATE = { email: 'r•••@example.com', status: 'active' as const, weekly: false, confirmed: { id: 'r1', now: ['AMD'] },
+const ALERT_STATE = { email: 'r•••@example.com', status: 'active' as const, weekly: false, digest: false, confirmed: { id: 'r1', now: ['AMD'] },
   rules: [{ id: 'r1', name: 'Mega-cap drops', status: 'active' as const, rule: { v: 1 as const, all: [{ c: 'session-move' as const, p: { dir: 'down', pct: 5 } },
     { c: 'below-average' as const, p: { dir: 'below', pct: 15, days: '50' } }, { c: 'mega-caps' as const, p: {} }] } }] } as ManageState;
 

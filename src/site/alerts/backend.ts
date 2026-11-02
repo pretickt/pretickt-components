@@ -61,6 +61,11 @@ export function siteBackend(o: SiteBackendOptions): AlertsBackend {
       if (r.status === 403 || r.status === 410) return null;   // a link that no longer works
       throw new Error(`alerts ${r.status}`);
     },
+    // the month's emails; PtAlerts.estimate turns a failed call or an answer without a number into none (this file is the main bundle's)
+    async estimate(rule) {
+      const r = await post('/v1/alerts/estimate', { rule });
+      return r.ok ? ((await r.json()) as { perMonth: number }).perMonth : null;
+    },
     landing: () => landingOf(o.search),
     ...(o.turnstile ? { check: turnstileCheck(o.turnstile) } : {}),
   };

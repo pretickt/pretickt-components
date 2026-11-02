@@ -76,6 +76,23 @@ export class PtAlerts {
     if (d) this.draftSig.set({ ...d, name });
   }
 
+  /** How often the same stock: at most once a day (the rule says nothing), or once a week — the reader's choice. */
+  setOnce(once: 'day' | 'week'): void {
+    // a copy without `once` by delete, not by a rest pattern: that helper would land in the main bundle
+    this.update((rule) => {
+      const r: Rule = { ...rule, once: 'week' };
+      if (once === 'day') delete r.once;
+      return r;
+    });
+  }
+
+  /** The emails a month the rule would have sent lately; null without the page's estimate, when it fails or says no number. */
+  estimate(rule: Rule): Promise<number | null> {
+    return this.backend?.estimate
+      ? this.backend.estimate(rule).then((n) => (typeof n === 'number' && Number.isFinite(n) ? n : null), () => null)
+      : Promise.resolve(null);
+  }
+
   open(): void {
     if (!this.backend) return;
     this.openedSig.set(true);
@@ -149,7 +166,7 @@ export class PtAlerts {
       if (all.some((x) => same(x, rc))) continue;
       all.push(rc);
     }
-    return { v: 1, all };
+    return { ...rule, all };
   }
 
   /** Once the universe is here, each price level added without one starts near the example's price — once: never a value chosen since. */
@@ -160,7 +177,7 @@ export class PtAlerts {
     const waiting = new Set(this.unseeded);
     this.unseeded = [];
     if (!ex) return;
-    this.draftSig.set({ ...d, rule: { v: 1, all: d.rule.all.map((rc) => (waiting.has(rc) ? condition(rc.c, { ...rc.p, ...CONDITIONS[rc.c].seed!(ex) }) : rc)) } });
+    this.draftSig.set({ ...d, rule: { ...d.rule, all: d.rule.all.map((rc) => (waiting.has(rc) ? condition(rc.c, { ...rc.p, ...CONDITIONS[rc.c].seed!(ex) }) : rc)) } });
   }
 
   private update(f: (r: Rule) => Rule): void {

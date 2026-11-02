@@ -55,6 +55,9 @@ import { mountEditor } from './editor';
               </li>
             } @empty {<li class="pt-note">No alerts yet: press the bell under any chart to create one.</li>}
           </ul>
+          <!-- the reader's choice (Romeo, 2026-11-02): each alert as it happens, or everything in the evening summary -->
+          <p class="pt-alm-weekly">Alert emails: <b>{{ s.digest ? 'one a day, in the evening' : 'as they happen' }}</b>
+            <button type="button" [disabled]="busy()" (click)="act({ op: 'digest', on: !s.digest })">{{ s.digest ? 'Send them as they happen' : 'One a day instead' }}</button></p>
           <p class="pt-alm-weekly">pretickt's weekly email: <b>{{ s.weekly ? 'on' : 'off' }}</b>
             <button type="button" [disabled]="busy()" (click)="act({ op: 'weekly', on: !s.weekly })">{{ s.weekly ? 'Turn off' : 'Turn on' }}</button></p>
           <button type="button" class="pt-alm-unsub" [disabled]="busy()" (click)="act({ op: 'unsubscribe' })">Unsubscribe from everything</button>
@@ -99,13 +102,15 @@ export class PtAlertManage {
   protected weeklyOn(): void { this.run({ op: 'weekly', on: true }, "You will get pretickt's weekly email.", () => this.asking.set(null)); }
 
   protected nameOf(s: ManageState, id: string): string { return s.rules.find((r) => r.id === id)?.name ?? 'your alert'; }
-  /** the rule as words: "Falls more than 5% in one session · Is a mega cap, over $200B" */
+  /** the rule as words: "Falls more than 5% in one session · Is a mega cap, over $200B", and the reader's once a week */
   protected say(r: ManagedRule): string {
-    return r.rule.all.filter((rc) => CONDITIONS[rc.c]).map((rc) => sentence(rc.c, rc.p)).join(' · ');
+    const all = r.rule.all.filter((rc) => CONDITIONS[rc.c]).map((rc) => sentence(rc.c, rc.p));
+    return [...all, ...(r.rule.once === 'week' ? ['the same stock at most once a week'] : [])].join(' · ');
   }
 
   protected act(op: ManageOp): void {
-    this.run(op, op.op === 'delete' ? 'Alert deleted.' : op.op === 'unsubscribe' ? 'Done: no more emails.' : null);
+    this.run(op, op.op === 'delete' ? 'Alert deleted.' : op.op === 'unsubscribe' ? 'Done: no more emails.'
+      : op.op === 'digest' ? (op.on ? 'Your alerts will come in one email a day, after the close.' : 'Your alerts will come as they happen.') : null);
   }
 
   protected retry(): void {

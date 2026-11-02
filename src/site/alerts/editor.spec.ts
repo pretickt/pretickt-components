@@ -6,7 +6,8 @@ import { MOCK_BARS, MOCK_UNIVERSE } from '../../alerts/mock';
 import { demoFor } from '../../typologies';
 import { PtAlertEditor } from './editor';
 
-function setup(save: () => Promise<SaveResult> = async () => ({ ok: true }), manageState: unknown = null, check?: HumanCheck) {
+function setup(save: () => Promise<SaveResult> = async () => ({ ok: true }), manageState: unknown = null, check?: HumanCheck,
+  estimate?: AlertsBackend['estimate']) {
   const saved: unknown[] = [];
   const backend: AlertsBackend = {
     universe: async () => MOCK_UNIVERSE,
@@ -15,6 +16,7 @@ function setup(save: () => Promise<SaveResult> = async () => ({ ok: true }), man
     manage: async () => manageState as never,
     landing: () => ({ alert: null, token: null, action: null }),
     ...(check ? { check } : {}),
+    ...(estimate ? { estimate } : {}),
   };
   TestBed.configureTestingModule({ providers: [{ provide: PT_ALERTS, useValue: backend },
     { provide: PT_STORE, useValue: new PtStore({ server: true, resolve: async (t, params) => demoFor({ t, params } as never) }) }] });
@@ -272,5 +274,63 @@ describe('PtAlertEditor', () => {
     expect(alerts.opened()).toBe(false);
     expect(el.querySelector('[role="dialog"]')).toBeNull();
     expect(alerts.draft()!.rule.all).toHaveLength(1);
+  });
+
+  it('the same stock at most once a day (as before) or a week: the rule keeps the choice, the saved note repeats it', async () => {
+    const { alerts, saved } = setup();
+    alerts.add({ c: 'session-move', mega: true }, from);
+    const { el, settle, text } = await mount();
+    const once = (label: string) => [...el.querySelectorAll<HTMLButtonElement>('.pt-al-once button')].find((b) => b.textContent!.trim() === label)!;
+    expect(text()).toContain('the same stock at most once');
+    expect(once('a day').getAttribute('aria-pressed')).toBe('true');
+    expect(once('a week').getAttribute('aria-pressed')).toBe('false');
+    once('a week').click();
+    await settle();
+    expect(alerts.draft()!.rule.once).toBe('week');
+    expect(once('a week').getAttribute('aria-pressed')).toBe('true');
+    type(el, 'input[type="email"]', 'me@example.com');
+    await settle();
+    el.querySelector<HTMLButtonElement>('.pt-al-save')!.click();
+    await settle();
+    expect(saved[0]).toMatchObject({ rule: { once: 'week' } });
+    expect(text()).toContain('at most once a week per stock');
+  });
+
+  it('the estimate: asked once the rule can be saved, again when the choice changes; "about N", "1 email", "no email"', async () => {
+    const asked: unknown[] = [];
+    const { alerts } = setup(undefined, null, undefined, async (r) => { asked.push(r); return r.once ? 1 : 25; });
+    alerts.add({ c: 'mega-caps' }, from);
+    const { el, settle, text } = await mount();
+    await new Promise((r) => setTimeout(r, 450));
+    await settle();
+    // a universe alone cannot be saved: nothing to estimate
+    expect(asked).toHaveLength(0);
+    expect(el.querySelector('.pt-al-est')).toBeNull();
+    alerts.addCondition({ c: 'session-move', p: { dir: 'down', pct: 5 } });
+    await new Promise((r) => setTimeout(r, 450));
+    await settle();
+    expect(asked).toHaveLength(1);
+    expect(text()).toContain('In the last month it would have sent about 25 emails');
+    alerts.setOnce('week');
+    await new Promise((r) => setTimeout(r, 450));
+    await settle();
+    expect(text()).toContain('In the last month it would have sent 1 email');
+  });
+
+  it('no estimate line without a page estimate, and "no email" for a quiet rule', async () => {
+    setup();
+    const { alerts } = { alerts: TestBed.inject(PtAlerts) };
+    alerts.add({ c: 'session-move' }, from);
+    const a = await mount();
+    await new Promise((r) => setTimeout(r, 450));
+    await a.settle();
+    expect(a.el.querySelector('.pt-al-est')).toBeNull();
+    TestBed.resetTestingModule();
+    const quiet = setup(undefined, null, undefined, async () => 0);
+    quiet.alerts.add({ c: 'session-move' }, from);
+    const b = await mount();
+    await new Promise((r) => setTimeout(r, 450));
+    await b.settle();
+    expect(b.text()).toContain('In the last month it would have sent no email');
   });
 });

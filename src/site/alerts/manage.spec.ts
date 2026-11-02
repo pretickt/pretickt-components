@@ -6,7 +6,7 @@ import { PT_ALERTS, type AlertsBackend, type AlertsLanding, type ManageOp, type 
 import { PtAlertManage } from './manage';
 
 const RULE: Rule = { v: 1, all: [{ c: 'session-move', p: { dir: 'down', pct: 5 } }, { c: 'mega-caps', p: {} }] };
-const STATE: ManageState = { email: 'm•••@example.com', status: 'active', weekly: false,
+const STATE: ManageState = { email: 'm•••@example.com', status: 'active', weekly: false, digest: false,
   rules: [{ id: 'r1', name: 'Mega-cap drops', rule: RULE, status: 'active' }] };
 
 async function mount(landing: AlertsLanding | null, answer: (op: ManageOp) => ManageState | null | Promise<ManageState | null> = () => STATE) {
@@ -147,5 +147,29 @@ describe('pt-alert-manage: confirm and manage alerts from the email\'s link, no 
   it('an expired link says so', async () => {
     const { text } = await mount({ alert: null, token: 'old', action: 'manage' }, () => null);
     expect(text()).toContain('This link has expired');
+  });
+
+  it('one email a day or each as it happens: the reader switches it, and the page says which', async () => {
+    let digest = false;
+    const { el, ops, settle, text } = await mount({ alert: null, token: 't', action: 'manage' }, (op) => {
+      if (op.op === 'digest') digest = op.on;
+      return { ...STATE, digest };
+    });
+    expect(text()).toContain('Alert emails: as they happen');
+    press(el, 'One a day instead');
+    await settle();
+    expect(ops).toEqual([{ op: 'list' }, { op: 'digest', on: true }]);
+    expect(text()).toContain('Alert emails: one a day, in the evening');
+    expect(text()).toContain('Your alerts will come in one email a day, after the close.');
+    press(el, 'Send them as they happen');
+    await settle();
+    expect(ops.at(-1)).toEqual({ op: 'digest', on: false });
+    expect(text()).toContain('Alert emails: as they happen');
+  });
+
+  it('an alert set to once a week says so under its conditions', async () => {
+    const { text } = await mount({ alert: null, token: 't', action: 'manage' },
+      () => ({ ...STATE, rules: [{ ...STATE.rules[0]!, rule: { ...RULE, once: 'week' } }] }));
+    expect(text()).toContain('Falls more than 5% in one session · Is a mega cap, over $200B · the same stock at most once a week');
   });
 });
