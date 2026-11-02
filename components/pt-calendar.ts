@@ -9,8 +9,9 @@
  * market's (SPY) usual move on its releases. How big, not which way: past reactions do not say where the next one goes (FORECAST.md).
  * A row opens to its sentence (the company a link that opens its card), the estimates and the news about the event, all in the page's
  * HTML. The outlook fields are events@1.2's, optional: without them a row says the date and the EPS estimate, nothing made up.
- * On a month, every date stays in the list by day under the rows.
- * @version 3.0.1
+ * On a month, every date stays in the list by day under the rows. The grid's grey cells, the days of the months around it that share
+ * its weeks, show their events too (Romeo, 2026-11-02: "non vedo i passati di ottobre nelle celle grigie"); rows and list are the month's.
+ * @version 3.1.0
  * @evidence DataForSEO: "earnings calendar" ~153k searches/month, SERP without AI overview (reports/Funzioni pretickt da tenere e aggiungere.md)
  * @evidence DataForSEO: "dividend calendar" in launch/data/08c-serp-dividend-calendar.json
  * @evidence DataForSEO round 14 (2026-10-31, launch/data/14-summary.json): beyond the date, "who is expected to beat earnings this week?" (AI 574), "is it better to buy before or after earnings?" (357), "fed rate decision" 40,500, "important earnings this week" 590
@@ -468,7 +469,8 @@ export class PtCalendar {
   protected readonly hasCompanies = computed(() => this.weekItems().some(isCompany));
   protected readonly cal = computed(() => {
     const m = this.shownMonth();
-    const items = (this.monthEvents.value()?.items ?? []).filter((e) => e.date.startsWith(m) && (e.kind === 'macro' || (isCompany(e) && e.kind === this.kind())));
+    // the grid's every day (events@1.3 answers a month with its weeks): the grey cells show the months around it too
+    const items = (this.monthEvents.value()?.items ?? []).filter((e) => e.kind === 'macro' || (isCompany(e) && e.kind === this.kind()));
     return buildMonth(m, items, this.monthEvents.value()?.asOf ?? '');
   });
   protected readonly cells = computed(() => (this.isWeek() ? this.week() : this.cal().weeks.flat()));
@@ -483,10 +485,15 @@ export class PtCalendar {
   protected readonly listed = computed(() => this.cal().weeks.flat().filter((c) => c.inMonth && (c.macro.length || c.items.length)));
   protected entries = (c: Cell): EventItem[] => [...c.macro, ...c.items];
 
+  /** A row for every event in the grid, grey cells included (their closed days place a report's reacting session across a month end). */
+  private readonly gridRows = computed(() => {
+    const d = this.data();
+    return calendarRows(this.cells().flatMap((c) => [...c.macro, ...c.items]), this.kind(), d?.asOf ?? '', d?.normal ?? null);
+  });
   /** The rows of the days shown (the month's, the week's), in their order; a month's twenty at first, a week's ten, then twenty more. */
   protected readonly rows = computed(() => {
-    const d = this.data();
-    return calendarRows(this.cells().filter((c) => c.inMonth).flatMap((c) => [...c.macro, ...c.items]), this.kind(), d?.asOf ?? '', d?.normal ?? null);
+    const mine = new Set(this.cells().filter((c) => c.inMonth).flatMap((c) => [...c.macro, ...c.items]).map(rowKey));
+    return this.gridRows().filter((r) => mine.has(r.key));
   });
   private readonly shown = linkedSignal({ source: () => this.rows(), computation: (): number => (this.isWeek() ? WEEK_ROWS : MORE_STEP) });
   protected readonly visible = computed(() => this.rows().slice(0, this.shown()));
@@ -496,8 +503,8 @@ export class PtCalendar {
   protected readonly hasMore = computed(() => this.rows().length > this.shown());
   protected readonly moreCount = computed(() => Math.min(MORE_STEP, this.rows().length - this.shown()));
   protected showMore() { this.shown.update((n) => n + MORE_STEP); }
-  /** Each row by its key: a chip in the grid carries its row's number and opens it. */
-  private readonly rowsByKey = computed(() => new Map(this.rows().map((r) => [r.key, r])));
+  /** Each row by its key: a chip in the grid carries its row's number and opens it — a grey cell's chip too, though the rows are the month's. */
+  private readonly rowsByKey = computed(() => new Map(this.gridRows().map((r) => [r.key, r])));
   protected rowOf = (e: EventItem): Row | null => this.rowsByKey().get(rowKey(e)) ?? null;
   protected chipCue = (r: Row | null) => `pt-cal-cue${r && r.cueTone !== 'est' ? ` pt-t-${r.cueTone}` : ''}`;
   protected readonly rowsTitle = computed(() => {

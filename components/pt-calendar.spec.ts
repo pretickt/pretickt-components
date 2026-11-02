@@ -135,9 +135,10 @@ describe('pt-calendar', () => {
   });
   it('puts each company\'s logo in its chip and in the list; the chip keeps its tooltip rows (the hover card shows them)', async () => {
     const ev = eventsDemo({ scope: { by: 'universe', month: '2026-10' }, kinds: ['earnings', 'macro'] });
-    const first = ev.items.find((e) => e.kind === 'earnings')!;
+    const first = ev.items.find((e): e is Extract<EventItem, { kind: 'earnings' }> => e.kind === 'earnings' && e.date.startsWith('2026-10'))!;
     first.logo = `/logos/${first.ticker.toLowerCase()}`;
-    const { el } = await render(PtCalendar, { month: '2026-10' }, withData({ 'events@1': ev }));
+    // October's own days (its grid starts in September, where the same ticker may report too)
+    const { el } = await render(PtCalendar, { month: '2026-10' }, withData({ 'events@1': { ...ev, items: ev.items.filter((e) => e.date.startsWith('2026-10')) } }));
     const chip = [...el.querySelectorAll('.pt-cal-grid button.pt-cal-ev')].find((b) => b.textContent!.includes(first.ticker))!;
     expect(chip.getAttribute('data-tip')).toContain(first.ticker);
     expect(chip.querySelector('img.pt-logo')!.getAttribute('src')).toBe(first.logo);
@@ -381,6 +382,18 @@ describe('pt-calendar grid: the hint in the chip, a click opens the event', () =
     await settle(r.f);
     expect(r.el.querySelector('.pt-cal-pop')).toBeNull();
     r.el.remove();
+  });
+  it('the grey cells show the days of the months around it (events@1.3), their chips open too; rows and list stay the month\'s', async () => {
+    // Romeo, 2026-11-02, on November: "non vedo i passati di ottobre nelle celle grigie"
+    const co = (date: string, ticker: string) => ({ ...companies[0]!, date, ticker, name: `${ticker} Corp` });
+    const r = await render(PtCalendar, { month: '2026-11' }, withData({ 'events@1': { asOf: '2026-10-30', items: [co('2026-10-29', 'OLD'), co('2026-11-04', 'NEW')] } }));
+    const old = chipOf(r.el, 'OLD');
+    expect(old.closest('.pt-cal-day')!.classList).toContain('pt-cal-out');
+    expect(r.el.querySelector('.pt-cal-rows')!.textContent).toContain('NEW reports Wed, Nov 4');
+    expect(r.el.querySelector('.pt-cal-rows')!.textContent).not.toContain('OLD');
+    expect(r.el.querySelector('.pt-cal-list')!.textContent).not.toContain('OLD');
+    await click(r, old);
+    expect(r.el.querySelector('.pt-cal-pop .pt-cal-row-say')!.textContent!.replace(/\s+/g, ' ')).toMatch(/^OLD reported Thu, Oct 29/);
   });
   it('a market date opens too, with no company card; a holiday stays a label', async () => {
     const closed = { date: '2026-10-12', kind: 'macro' as const, meta: { label: 'Closed', event: 'Columbus Day', impact: null } };

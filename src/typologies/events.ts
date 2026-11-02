@@ -8,7 +8,10 @@ export const EventsParams = z.object({
   scope: z.discriminatedUnion('by', [
     /** One ticker: events in the `range` (the last N sessions, as in price-series@1) plus `ahead` calendar days after it. */
     z.object({ by: z.literal('ticker'), ticker: Ticker, range: Range, ahead: intParam(0, 180, 90) }),
-    /** The whole universe for one calendar month (calendar pages). */
+    /**
+     * The whole universe for one calendar month (calendar pages). 1.3: the month's grid (`monthGrid`, its weeks Monday to Sunday,
+     * cut at the calendar window), so the days of the months around it that share a week with it come too; a month's `news` are its own.
+     */
     z.object({ by: z.literal('universe'), month: Month }),
     /** The whole universe between two dates, at most 14 days apart (a week on the home page). Added in 1.1. */
     // strict calendar dates (no 2026-11-31 rolling into December), refused before the span check can read them
@@ -121,7 +124,20 @@ const DEMO_MACRO = [
   { label: 'PCE', event: 'Core PCE Price Index (MoM)', name: 'Core PCE MoM', unit: '%', expected: 0.2, previous: 0.3, size: 0.007 },
 ] as const;
 
-export function eventsDemo(p: EventsParams): Events {
+/**
+ * The days a month's calendar grid shows (1.3): its weeks, Monday to Sunday, so the days of the months around it that share a week
+ * with it come too (the calendar's grey cells). The resolver cuts it at the calendar window.
+ */
+export function monthGrid(month: string): { from: string; to: string } {
+  const first = `${month}-01`, last = addDays(`${addDays(`${month}-28`, 7).slice(0, 7)}-01`, -1);
+  const dow = (d: string) => new Date(`${d}T00:00:00Z`).getUTCDay();
+  return { from: addDays(first, -((dow(first) + 6) % 7)), to: addDays(last, (7 - dow(last)) % 7) };
+}
+
+export function eventsDemo(p: EventsParams): Events { return demoOf(p, false); }
+
+/** `own`: a month's own days only (the pieces a span is cut from). */
+function demoOf(p: EventsParams, own: boolean): Events {
   const items: EventItem[] = [];
   const want = new Set(p.kinds);
   if (p.scope.by === 'ticker') {
@@ -144,11 +160,12 @@ export function eventsDemo(p: EventsParams): Events {
         from: 'Hold', to: i % 4 === 0 ? 'Buy' : 'Hold' } });
     }
     if (want.has('split') && r() > 0.5) items.push({ ...co, date: addDays(DEMO_ASOF, -120), kind: 'split', meta: { numerator: 4, denominator: 1 } });
-  } else if (p.scope.by === 'dates') {
-    // the months the span covers, cut to its days
-    const { from, to } = p.scope;
-    const months = [...new Set([from.slice(0, 7), to.slice(0, 7)])];
-    const all = months.flatMap((month) => eventsDemo({ scope: { by: 'universe', month }, kinds: p.kinds }).items);
+  } else if (p.scope.by === 'dates' || !own) {
+    // a span (or a month's grid, 1.3): each month it covers, cut to its days
+    const { from, to } = p.scope.by === 'dates' ? p.scope : monthGrid(p.scope.month);
+    const months: string[] = [];
+    for (let m = from.slice(0, 7); m <= to.slice(0, 7); m = addDays(`${m}-28`, 7).slice(0, 7)) months.push(m);
+    const all = months.flatMap((month) => demoOf({ scope: { by: 'universe', month }, kinds: p.kinds }, true).items);
     return { asOf: DEMO_ASOF, normal: DEMO_NORMAL, items: all.filter((e) => e.date >= from && e.date <= to).sort(byDateThenSize) };
   } else {
     const r = prng(`universe:${p.scope.month}`);
