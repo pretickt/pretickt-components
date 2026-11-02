@@ -26,9 +26,10 @@ const tickers = (rule: Rule, rows: AlertRow[]) => new Set(matches(rule, rows).ma
  * The first session only says who met it before. A stock comes in when, at the session's low, high or close, it meets the rule and
  * did not at the close before — or it met it then, fell out during the session and closed in again; a condition on the session's own
  * numbers starts again each session. At most once a day per stock, once a week with `once: 'week'`. A rule with a condition read
- * during the session sends an email per stock that comes in, up to 3, plus the evening summary for the rest (the worst case: the
- * check's 5-minute rounds may put several in one email); a rule of the nightly's numbers alone, one email after the nightly.
- * Null without two sessions.
+ * during the session sends an email per stock that comes in, up to 3, plus the evening summary for the rest; a rule of the nightly's
+ * numbers alone, one email after the nightly. Against the real check on the made-up month (pretickt-platform/.drafts/alerts-sim,
+ * 2026-11-02): the median estimate is the true count, 9 in 10 of the alerts with 3 emails or more within 30%; a little low for a
+ * level a stock crosses back and forth within a session (whole sessions cannot see that). Null without two sessions.
  */
 export function estimate(rule: Rule, history: AlertHistory): Estimate | null {
   if (history.length < 2) return null;
