@@ -32,18 +32,8 @@ let uid = 0;
   selector: 'pt-alert-card',
   imports: [PtLogo, PtAlertFind],
   template: `
-    <article class="pt-al-card" [class.pt-al-card-lifted]="lifted()" [attr.data-group]="group()">
+    <article class="pt-al-card" [attr.data-group]="group()">
       <header class="pt-al-card-h">
-        <!-- the grip: drag it onto a drop zone, or move with the arrow keys (the reader's own order: all are true together) -->
-        @if (movable()) {
-          <button type="button" class="pt-al-grip" aria-label="Move this condition: drag it, or use the up and down arrows"
-            (pointerdown)="grab.emit($event)" (keydown)="key($event)">
-            <svg viewBox="0 0 8 12" aria-hidden="true">
-              <circle cx="2" cy="2" r="1.1" /><circle cx="6" cy="2" r="1.1" /><circle cx="2" cy="6" r="1.1" />
-              <circle cx="6" cy="6" r="1.1" /><circle cx="2" cy="10" r="1.1" /><circle cx="6" cy="10" r="1.1" />
-            </svg>
-          </button>
-        }
         <span class="pt-al-kind">{{ groupLabel() }}</span>
         <button type="button" class="pt-al-x" aria-label="Remove this condition" (click)="remove.emit()">×</button>
       </header>
@@ -210,27 +200,14 @@ export class PtAlertCard {
   readonly data = input.required<ChartData>();
   readonly count = input<{ pass: number; of: number } | null>(null);
   readonly ofLabel = input('stocks');
-  /** the rule has other cards: this one shows its grip */
-  readonly movable = input(false);
-  /** this card is being dragged to another place */
-  readonly lifted = input(false);
   readonly change = output<{ key: string; value: string | number }>();
   readonly remove = output<void>();
   /** the condition changed for another: a universe card edited company by company becomes the reader's own list */
   readonly replace = output<RuleCondition>();
-  /** the grip pressed: the editor follows the pointer to a drop zone */
-  readonly grab = output<PointerEvent>();
-  /** the grip's arrow keys: one place up (−1) or down (1) */
-  readonly shift = output<-1 | 1>();
 
   protected readonly open = signal<string | null>(null);
   protected readonly clip = `pt-al-clip-${++uid}`;
 
-  protected key(e: KeyboardEvent): void {
-    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
-    e.preventDefault();
-    this.shift.emit(e.key === 'ArrowUp' ? -1 : 1);
-  }
   protected readonly PLOT_L = PLOT_L;
   protected readonly PLOT_R = PLOT_R;
   protected readonly LABEL_X = LABEL_X;

@@ -325,67 +325,12 @@ describe('PtAlertEditor', () => {
     expect(zones()).toHaveLength(0);
   });
 
-  it("a card's grip moves it: dragged onto a zone (its own place shows none), or with the arrow keys", async () => {
+  it('a card once in stays where it is: no grip to move it (Romeo, 2026-11-02)', async () => {
     const { alerts } = setup();
     alerts.add({ c: 'session-move', mega: true }, from);
     alerts.addCondition({ c: 'volume-spike', p: { times: 3 } });
-    const { el, settle } = await mount();
-    const order = () => alerts.draft()!.rule.all.map((rc) => rc.c);
-    const grips = () => [...el.querySelectorAll<HTMLButtonElement>('.pt-al-grip')];
-    expect(grips()).toHaveLength(3);
-    // pointer events as plain events with their fields (the test DOM has no PointerEvent everywhere)
-    const ptr = (type: string, y: number) => Object.assign(new Event(type, { bubbles: true, cancelable: true }), { button: 0, clientX: 10, clientY: y });
-    grips()[0]!.dispatchEvent(ptr('pointerdown', 10));
-    await settle();
-    const zones = [...el.querySelectorAll<HTMLElement>('.pt-al-zone')];
-    expect(zones.map((z) => z.dataset['zone'])).toEqual(['2', '3']);
-    expect(el.querySelector('pt-alert-card')!.querySelector('.pt-al-card')!.classList).toContain('pt-al-card-lifted');
-    const doc = el.ownerDocument as Document & { elementFromPoint: (x: number, y: number) => Element | null };
-    const was = doc.elementFromPoint;
-    doc.elementFromPoint = () => zones[1]!;
-    try {
-      doc.dispatchEvent(ptr('pointermove', 300));
-      await settle();
-      expect(zones[1]!.classList).toContain('pt-al-zone-over');
-      doc.dispatchEvent(ptr('pointerup', 300));
-      await settle();
-    } finally { doc.elementFromPoint = was; }
-    expect(order()).toEqual(['mega-caps', 'volume-spike', 'session-move']);
-    expect(el.querySelectorAll('.pt-al-zone')).toHaveLength(0);
-    // the keyboard: up one, then down one
-    grips()[2]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
-    await settle();
-    expect(order()).toEqual(['mega-caps', 'session-move', 'volume-spike']);
-    grips()[0]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
-    await settle();
-    expect(order()).toEqual(['session-move', 'mega-caps', 'volume-spike']);
-  });
-
-  it('a card dragged near the edge of the editor scrolls it: a zone off the screen can be reached (a phone)', async () => {
-    const { alerts } = setup();
-    alerts.add({ c: 'session-move', mega: true }, from);
-    const { el, settle } = await mount();
-    const dialog = el.querySelector<HTMLElement>('[role="dialog"]')!;
-    const scrolled: number[] = [];
-    dialog.getBoundingClientRect = () => ({ top: 0, bottom: 600, left: 0, right: 390, width: 390, height: 600, x: 0, y: 0, toJSON: () => ({}) });
-    dialog.scrollBy = ((_x: number, y: number) => { scrolled.push(y); }) as typeof dialog.scrollBy;
-    const ptr = (type: string, y: number) => Object.assign(new Event(type, { bubbles: true, cancelable: true }), { button: 0, clientX: 10, clientY: y });
-    el.querySelector<HTMLButtonElement>('.pt-al-grip')!.dispatchEvent(ptr('pointerdown', 300));
-    await settle();
-    const doc = el.ownerDocument;
-    doc.dispatchEvent(ptr('pointermove', 300));
-    expect(scrolled).toEqual([]);
-    doc.dispatchEvent(ptr('pointermove', 590));
-    doc.dispatchEvent(ptr('pointermove', 8));
-    expect(scrolled.map(Math.sign)).toEqual([1, -1]);
-    doc.dispatchEvent(ptr('pointerup', 8));
-    await settle();
-  });
-
-  it('a single condition has no grip', async () => {
-    const { alerts } = setup();
-    alerts.add({ c: 'session-move' }, from);
     const { el } = await mount();
+    expect(el.querySelectorAll('pt-alert-card')).toHaveLength(3);
     expect(el.querySelectorAll('.pt-al-grip')).toHaveLength(0);
   });
 

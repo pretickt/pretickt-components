@@ -58,18 +58,6 @@ export class PtAlerts {
     this.seed();
   }
 
-  /**
-   * A card moved to the slot `to` (0 before the first card … n after the last), for the reader's own order: the conditions are all
-   * true together whatever their order. Its own place (`from` or `from + 1`) changes nothing.
-   */
-  move(from: number, to: number): void {
-    this.update((rule) => {
-      if (to === from || to === from + 1 || !rule.all[from]) return rule;
-      const all = [...rule.all], [x] = all.splice(from, 1);
-      all.splice(to > from ? to - 1 : to, 0, x!);
-      return { ...rule, all };
-    });
-  }
 
   setParam(i: number, key: string, value: string | number): void {
     this.update((rule) => ({ ...rule, all: rule.all.map((rc, j) => (j === i ? { ...rc, p: { ...rc.p, [key]: value } } : rc)) }));
