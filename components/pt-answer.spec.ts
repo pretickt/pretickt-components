@@ -34,6 +34,21 @@ describe('pt-answer', () => {
       'The average price target of the 41 analyst firms that published one in the last 12 months is $215.40 for Nvidia NVDA, 6.3% below the last close of ' +
       '$230.00 on Oct 16, 2026. Targets range from $150.00 to $275.00, with a median of $210.00.');
   });
+  it("technicals (the hub's Technicals, round 16: \"<ticker> 200 day moving average\" is searched): the close against its 200- and 50-day averages and its 52-week range", async () => {
+    // 252 sessions: 200 at $100, 48 at $110, then $120; highs and lows a dollar either side, one high of $130
+    const points = Array.from({ length: 252 }, (_, i) => {
+      const c = i < 200 ? 100 : i < 250 ? 110 : 120;
+      return { t: i === 251 ? '2026-10-16' : '2026-01-02', o: c, h: i === 100 ? 130 : c + 1, l: c - 1, c, v: 1e6 };
+    });
+    expect(await text({ topic: 'technicals', ticker: 'NVDA' }, { 'price-series@1': [{ ticker: 'NVDA', points }] })).toBe(
+      'Nvidia NVDA closed at $120.00 on Oct 16, 2026, 16.8% above its 200-day moving average of $102.70 and 8.7% above its 50-day moving average of ' +
+      '$110.40. It is 7.7% below its 52-week high of $130.00; its 52-week low is $99.00.');
+    // a young listing: the 50-day average and its range so far
+    expect(await text({ topic: 'technicals', ticker: 'NVDA' }, { 'price-series@1': [{ ticker: 'NVDA', points: points.slice(-60) }] })).toBe(
+      'Nvidia NVDA closed at $120.00 on Oct 16, 2026, 8.7% above its 50-day moving average of $110.40. It is 0.8% below its high since ' +
+      'Jan 2, 2026 of $121.00; its low since then is $99.00.');
+  });
+
   it('no target in a year is an answer too, not a missing page', async () => {
     expect(await text({ topic: 'price-target', ticker: 'XYZ' }, { 'analysts@1': analysts({ summary: null }), 'metric@1': consensus('Hold') }))
       .toBe('No analyst published a price target for XYZ Demo XYZ in the last 12 months. Rating consensus: Hold.');

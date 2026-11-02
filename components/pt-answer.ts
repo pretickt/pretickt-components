@@ -3,9 +3,11 @@
  * price target, its peers, its latest quarter, its insiders; who leads a market list; a calendar month at a glance.
  * Company topics name the company as people search it, with its ticker ("Nvidia NVDA"): the sentence an answer engine quotes stands on its own.
  * Each company a sentence names is a link with its logo (PtSay, PtMention): on the site its card opens on hover, the page's own company too.
- * @version 1.3.2
+ * @version 1.4.0
  * @evidence DataForSEO: "<ticker> stock forecast" 151k/month, "<ticker> price target" 103k/month, "earnings calendar" 153k/month, list queries (launch/data/08c-serp-*.json)
  * @evidence SEO measurement 2026-10-09: list and company subpages of ~80–200 words; the answer belongs in the first lines, with its numbers
+ * @evidence DataForSEO round 16 (2026-11-02): "<ticker> 200 day moving average" 4,080/month on 9 tickers, 50-day 1,550, 52-week high 1,300; the AI
+ *   Overview quotes the pages that state the number (launch/data/16-summary.json)
  */
 import { Component, computed, inject, input } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
@@ -15,7 +17,7 @@ import { INSIDER_WINDOW_DAYS, type EventItem, type ScreenList, type ScreenRow, t
 
 export { plainName } from '@pretickt/components/format';
 
-type Topic = 'forecast' | 'price-target' | 'peers' | 'financials' | 'insiders' | 'list' | 'earnings' | 'dividends';
+type Topic = 'forecast' | 'price-target' | 'peers' | 'financials' | 'insiders' | 'list' | 'earnings' | 'dividends' | 'technicals';
 type Named = { ticker: string; name: string; logo?: string | null };
 
 /** A company the answer names: a link with its logo ("Apple AAPL"), its card on hover. */
@@ -77,12 +79,17 @@ export class PtAnswer {
   /** The company of a company topic, or null: each call below is made only for the topic that reads it (the page asked for the same). */
   private readonly of = (...topics: Topic[]) => (topics.includes(this.topic()) ? this.ticker() ?? null : null);
   /** The company's name for the company topics: the card at the top of every company page asks for it too (the same call). */
-  protected readonly company = this.pt.company(() => { const t = this.of('forecast', 'price-target', 'peers', 'financials', 'insiders'); return t ? { ticker: t } : null; });
+  protected readonly company = this.pt.company(() => {
+    const t = this.of('forecast', 'price-target', 'peers', 'financials', 'insiders', 'technicals');
+    return t ? { ticker: t } : null;
+  });
   protected readonly analysts = this.pt.analysts(() => { const t = this.of('forecast', 'price-target'); return t ? { ticker: t, window: '1y' } : null; });
   protected readonly rating = this.pt.metric(() => { const t = this.of('forecast', 'price-target'); return t ? { ticker: t, metrics: ['pt_upside', 'consensus'] } : null; });
   protected readonly peers = this.pt.screen(() => { const t = this.of('peers'); return t ? { scope: { peersOf: t }, limit: 12 } : null; });
   protected readonly quarters = this.pt.fundamentals(() => { const t = this.of('financials'); return t ? { ticker: t, periods: 12 } : null; });
   protected readonly insiders = this.pt.insider(() => { const t = this.of('insiders'); return t ? { ticker: t, days: 365 } : null; });
+  // the year's daily bars of the hub's price chart (pt-price-events asks the same): the averages and the range come from them
+  protected readonly bars = this.pt.priceSeries(() => { const t = this.of('technicals'); return t ? { tickers: [t], range: '1y', interval: '1d', rebase: false } : null; });
   protected readonly leaders = this.pt.screen(() => {
     if (this.topic() !== 'list') return null;
     const s = this.sector();
@@ -103,6 +110,7 @@ export class PtAnswer {
       case 'financials': return this.quarterAnswer();
       case 'insiders': return this.insiderAnswer();
       case 'list': return this.listAnswer();
+      case 'technicals': return this.technicalsAnswer();
       default: return this.calendarAnswer();
     }
   });
@@ -130,6 +138,28 @@ export class PtAnswer {
     const firms = s.n === 1 ? 'the one analyst firm that published one' : `the ${s.n} analyst firms that published one`;
     const range = `Targets range from ${money(s.low)} to ${money(s.high)}, with a median of ${money(s.median)}.${rating}`;
     return say`The average price target of ${firms} in the last 12 months is ${money(s.mean)} for ${n}, ${vs}. ${range}`;
+  }
+
+  /**
+   * The close against its 200- and 50-day moving averages (simple, on the daily closes) and its 52-week high and low (the bars' own
+   * highs and lows); a listing younger than 200 sessions has the 50-day only, younger than a year its range since its first session.
+   */
+  private technicalsAnswer(): Said | null {
+    const s = this.bars.value(), t = this.ticker();
+    if (!t) return null;
+    if (s === undefined) return PENDING;
+    const pts = s?.[0]?.points ?? [];
+    if (pts.length < 50) return null;
+    const n = this.named(t);
+    if (n === undefined) return PENDING;
+    const last = pts.at(-1)!, c = last.c, avg = (k: number) => pts.slice(-k).reduce((a, p) => a + p.c, 0) / k;
+    const ma50 = avg(50), ma200 = pts.length >= 200 ? avg(200) : null;
+    const year = pts.slice(-252), hi = Math.max(...year.map((p) => p.h)), lo = Math.min(...year.map((p) => p.l));
+    const fifty = `${versus(c / ma50 - 1)} its 50-day moving average of ${money(ma50)}`;
+    const mas = ma200 === null ? fifty : `${versus(c / ma200 - 1)} its 200-day moving average of ${money(ma200)} and ${fifty}`;
+    const range = pts.length >= 252 ? `its 52-week high of ${money(hi)}; its 52-week low is ${money(lo)}`
+      : `its high since ${date(year[0]!.t)} of ${money(hi)}; its low since then is ${money(lo)}`;
+    return say`${n} closed at ${money(c)} on ${date(last.t)}, ${mas}. It is ${versus(c / hi - 1)} ${range}.`;
   }
 
   private peerAnswer(): Said | null {

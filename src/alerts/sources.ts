@@ -62,6 +62,7 @@ export function alertSourceOf(tag: string, props: Record<string, unknown>): Aler
         case 'insiders': return of('insider-buying');
         case 'peers': return of('session-move');
         case 'list': return ofList(props['list'], sector);
+        case 'technicals': return ticker ? { c: 'below-average', p: { days: '200' }, ticker } : { c: 'below-average', p: { days: '200' } };
         case 'earnings': return { c: 'earnings-soon' };
         default: return null;   // dividends: no condition is about dividends
       }
