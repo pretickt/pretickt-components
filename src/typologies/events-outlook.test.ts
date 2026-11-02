@@ -59,7 +59,8 @@ describe('events@1.2, what to expect from each event', () => {
     expect(reports.some((e) => e.meta.moves!.length < 4) && reports.some((e) => e.meta.moves!.length === 8)).toBe(true);
   });
   it('the demo\'s past reports carry what they did (EPS, the move), the coming ones none', () => {
-    const past = reports.filter((e) => e.date < month.asOf), next = eventsDemo(EventsParams.parse({ scope: { by: 'universe', month: '2026-10' }, kinds: ['earnings'] })).items;
+    const past = reports.filter((e) => e.date < month.asOf), next = eventsDemo(EventsParams.parse({ scope: { by: 'universe', month: '2026-10' }, kinds: ['earnings'] })).items
+      .filter((e) => e.date > month.asOf); // October's grid starts in September (1.3): its days up to asOf are past
     expect(past.length).toBeGreaterThan(0);
     expect(past.every((e) => e.meta.epsActual != null && e.meta.move != null && e.meta.confirmed === true)).toBe(true);
     expect(next.every((e) => e.kind === 'earnings' && e.meta.epsActual === null && !e.meta.move)).toBe(true);
