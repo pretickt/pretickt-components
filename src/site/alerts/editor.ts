@@ -17,11 +17,14 @@ const PROBLEM: Record<string, string> = {
   'universe-only': 'Add a condition beyond the universe: a move, a level, news…',
   'too-many': 'Six conditions at most',
 };
-const FAILED: Record<'invalid' | 'limit' | 'network', string> = {
+// a limit's answer is the same for every limit (a sign-up never says whether the address was known): the copy names them all
+const FAILED: Record<'invalid' | 'limit' | 'network' | 'captcha', string> = {
   invalid: 'This alert cannot be saved: check its values',
-  limit: 'You have 10 alerts already: pause or delete one first',
+  limit: 'Not saved: too many sign-ups right now, or this address has 10 alerts already',
   network: 'Could not save — try again',
+  captcha: "The check that you're not a robot did not pass: try again",
 };
+const CHECK_FAILED = "We could not check that you're not a robot: reload the page and try again";
 
 /**
  * The alert editor (Romeo, 2026-11-01; mockups `editor-desktop.png`, `editor-telefono.png`): every badge by group on the left —
@@ -85,11 +88,18 @@ const FAILED: Record<'invalid' | 'limit' | 'network', string> = {
             <p class="pt-al-when">Email me when a stock starts meeting all of these · at most once a day per stock</p>
             @if (!editing()) {
               <input class="pt-al-email" type="email" autocomplete="email" placeholder="you@example.com" aria-label="Your email"
-                [value]="email()" (input)="email.set(text($event))" />
+                [value]="email()" (focus)="touched.set(true)" (input)="email.set(text($event)); touched.set(true)" />
               <label class="pt-al-weekly"><input type="checkbox" [checked]="weekly()" (change)="weekly.set(ticked($event))" />
                 Also send me pretickt's weekly email</label>
+              @if (alerts.check && touched()) {
+                <!-- with its token the row takes no room (an empty line would still add the footer's gap) -->
+                <div class="pt-al-human" [hidden]="!!token()">
+                  @if (waiting()) {<p class="pt-al-wait" role="status">Checking that you're not a robot…</p>}
+                  <div #check class="pt-al-check"></div>
+                </div>
+              }
             }
-            @if (failed(); as f) {<p class="pt-al-error" role="alert">{{ f }}</p>}
+            @if (failed() ?? (checkFailed() ? CHECK_FAILED : null); as f) {<p class="pt-al-error" role="alert">{{ f }}</p>}
             <button type="button" class="pt-al-save" [disabled]="!canSave()" (click)="save()">{{ alerts.saving() ? 'Saving…' : 'Save alert' }}</button>
           </footer>
         }
@@ -108,6 +118,13 @@ export class PtAlertEditor {
   /** what was saved: the address a confirmation went to ('' after an edit), and whether it was an edit; null while editing */
   protected readonly saved = signal<{ to: string; edit: boolean } | null>(null);
   protected readonly failed = signal<string | null>(null);
+  protected readonly CHECK_FAILED = CHECK_FAILED;
+  /** the email field was touched: the human check (Cloudflare's, on www) loads only then */
+  protected readonly touched = signal(false);
+  /** the human check's token: one save each (a failed save asks for a fresh one) */
+  protected readonly token = signal<string | null>(null);
+  protected readonly checkFailed = signal(false);
+  private widget: { reset(): void; remove(): void } | null = null;
 
   private readonly liveDay = this.live.after(() => this.alerts.universe()?.asOf);
   private readonly rows = computed(() => {
@@ -140,9 +157,15 @@ export class PtAlertEditor {
     if (!u) return null;
     return day ? `Live · ${day.time} · 15-min delayed` : `Last session, ${dayMonth(u.asOf)}`;
   });
-  protected readonly canSave = computed(() => !this.alerts.saving() && !ruleProblem(this.rule()) && (this.editing() || EMAIL.test(this.email().trim())));
+  private readonly emailOk = computed(() => EMAIL.test(this.email().trim()));
+  /** a new alert's Save waits for the human check's token (none to wait for without a check, or for an edit) */
+  private readonly checked = computed(() => this.editing() || !this.alerts.check || !!this.token());
+  protected readonly canSave = computed(() => !this.alerts.saving() && !ruleProblem(this.rule()) && (this.editing() || this.emailOk()) && this.checked());
+  /** an address ready, the check still running: why Save waits */
+  protected readonly waiting = computed(() => this.emailOk() && !this.checked() && !this.checkFailed());
 
   private readonly dialog = viewChild<ElementRef<HTMLElement>>('dlg');
+  private readonly checkEl = viewChild<ElementRef<HTMLElement>>('check');
   /** the element that had the focus when the editor opened (the bell): it gets it back on close */
   private opener: { el: HTMLElement | null } | null = null;
 
@@ -157,6 +180,14 @@ export class PtAlertEditor {
       const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') this.close(); };
       d.ownerDocument.addEventListener('keydown', onKey);
       onCleanup(() => d.ownerDocument.removeEventListener('keydown', onKey));
+    });
+    // The human check in its element while the form shows (closing, or the saved panel, takes it away with its token).
+    afterRenderEffect((onCleanup) => {
+      const el = this.checkEl()?.nativeElement, check = this.alerts.check;
+      if (!el || !check) return;
+      const w = check.mount(el, (s) => { this.token.set(s.token); this.checkFailed.set(s.token === null && s.failed); });
+      this.widget = w;
+      onCleanup(() => { w.remove(); this.widget = null; this.token.set(null); this.checkFailed.set(false); });
     });
     effect(() => {
       const t = this.example()?.ticker;
@@ -183,9 +214,11 @@ export class PtAlertEditor {
   protected save(): void {
     this.failed.set(null);
     const edit = this.editing(), to = edit ? '' : this.email().trim();
-    void this.alerts.save(to, this.weekly()).then((r: SaveResult) => {
-      if (r.ok) this.saved.set({ to, edit });
-      else this.failed.set(FAILED[r.reason]);
+    void this.alerts.save(to, this.weekly(), edit ? null : this.token()).then((r: SaveResult) => {
+      if (r.ok) { this.saved.set({ to, edit }); return; }
+      this.failed.set(FAILED[r.reason]);
+      // the token went with the call (Cloudflare takes each once): the next Save waits for a fresh one
+      if (this.widget) { this.token.set(null); this.widget.reset(); }
     });
   }
 

@@ -4,7 +4,7 @@ import { condition, exampleOf, nameOf, RULE_MAX, sourceConditions, type Rule, ty
 import { rowsOf } from './rows';
 import type { AlertRow, AlertUniverse } from './rows';
 import type { AlertSource } from './sources';
-import { PT_ALERTS, type AlertDraft, type AlertFrom, type AlertsLanding, type ManagedRule, type ManageOp, type ManageState, type SaveResult } from './token';
+import { PT_ALERTS, type AlertDraft, type AlertFrom, type AlertsLanding, type HumanCheck, type ManagedRule, type ManageOp, type ManageState, type SaveResult } from './token';
 
 const NONE: AlertsLanding = { alert: null, token: null, action: null };
 const same = (a: RuleCondition, b: RuleCondition) => a.c === b.c && JSON.stringify(a.p) === JSON.stringify(b.p);
@@ -34,6 +34,9 @@ export class PtAlerts {
   private inflight: Promise<SaveResult> | null = null;
   /** price levels waiting for the universe to start near the example's price (seeded once, never again) */
   private unseeded: RuleCondition[] = [];
+
+  /** the check a new alert's Save needs first (www: Turnstile); none in the made-up backends */
+  get check(): HumanCheck | null { return this.backend?.check ?? null; }
 
   /** A bell: its badge (and the stock, sector or mega caps it is tied to) joins the draft, which opens. */
   add(src: AlertSource, from: AlertFrom | null, seed?: AlertRow | null): void {
@@ -91,8 +94,8 @@ export class PtAlerts {
     this.open();
   }
 
-  /** One call at a time; a second press while the first is on its way gets the same answer. */
-  save(email: string, weekly: boolean): Promise<SaveResult> {
+  /** One call at a time; a second press while the first is on its way gets the same answer. `turnstile`: the human check's token. */
+  save(email: string, weekly: boolean, turnstile?: string | null): Promise<SaveResult> {
     if (this.inflight) return this.inflight;
     const d = this.draftSig();
     if (!this.backend || !d) return Promise.resolve({ ok: false, reason: 'invalid' });
@@ -100,7 +103,7 @@ export class PtAlerts {
     const call: Promise<SaveResult> = d.editing
       ? this.manage(d.editing.token, { op: 'update', id: d.editing.id, name, rule: d.rule })
         .then((s): SaveResult => (s && s !== 'failed' ? { ok: true } : { ok: false, reason: 'network' }))
-      : this.backend.save({ email, name, rule: d.rule, from: d.from, weekly });
+      : this.backend.save({ email, name, rule: d.rule, from: d.from, weekly, ...(turnstile ? { turnstile } : {}) });
     this.savingSig.set(true);
     this.inflight = call.catch((): SaveResult => ({ ok: false, reason: 'network' })).then((r) => {
       this.savingSig.set(false);

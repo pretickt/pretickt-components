@@ -42,11 +42,11 @@ describe("the site's alerts backend (the page's /v1/alerts, the store, the live 
     expect(await siteBackend({ store: store(), api: '', search: '', fetch: old.fetch }).bars('AMD')).toBeNull();   // no live file
   });
 
-  it('save posts the alert to /v1/alerts: 200 saved, 400 invalid, 429 over a limit, anything else a network failure', async () => {
+  it('save posts the alert and the human check\'s token to /v1/alerts: 200 saved, 400 invalid, 403 the check, 429 over a limit, anything else a network failure', async () => {
     const req = { email: 'r@example.com', name: 'Drops', rule: { v: 1 as const, all: [{ c: 'session-move' as const, p: { dir: 'down', pct: 5 } }] },
-      from: { tag: 'pt-movers', section: 'moves', path: '/' }, weekly: false };
-    for (const [status, want] of [[200, { ok: true }], [400, { ok: false, reason: 'invalid' }], [429, { ok: false, reason: 'limit' }],
-      [503, { ok: false, reason: 'network' }]] as const) {
+      from: { tag: 'pt-movers', section: 'moves', path: '/' }, weekly: false, turnstile: 'tok' };
+    for (const [status, want] of [[200, { ok: true }], [400, { ok: false, reason: 'invalid' }], [403, { ok: false, reason: 'captcha' }],
+      [429, { ok: false, reason: 'limit' }], [503, { ok: false, reason: 'network' }]] as const) {
       const f = fake(() => res(status, { ok: status === 200 }));
       expect(await siteBackend({ store: store(), api: 'https://api.example', search: '', fetch: f.fetch }).save(req)).toEqual(want);
       expect(f.calls[0]!.url).toBe('https://api.example/v1/alerts');
@@ -66,6 +66,11 @@ describe("the site's alerts backend (the page's /v1/alerts, the store, the live 
       expect(await siteBackend({ store: store(), api: '', search: '', fetch: fake(() => res(status)).fetch }).manage('tok', { op: 'list' })).toBeNull();
     }
     await expect(siteBackend({ store: store(), api: '', search: '', fetch: fake(() => res(502)).fetch }).manage('tok', { op: 'list' })).rejects.toThrow();
+  });
+
+  it("the human check is Turnstile with the page's site key; without one there is none", () => {
+    expect(siteBackend({ store: store(), api: '', search: '', turnstile: 'site-key' }).check?.mount).toBeTypeOf('function');
+    expect(siteBackend({ store: store(), api: '', search: '' }).check).toBeUndefined();
   });
 
   it("the landing is the page address's", () => {

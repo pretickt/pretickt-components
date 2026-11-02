@@ -20,6 +20,13 @@ const until = async (ok: () => boolean) => {
 describe('startAlerts: a page with alerts, once rendered', () => {
   afterEach(() => { document.body.innerHTML = ''; history.replaceState(null, '', '/'); });
 
+  it("the page model's Turnstile key gives the editor its human check; a page without one has none", () => {
+    const { env } = setup();
+    expect(alertsEnv(env, { ...page, turnstile: '1x00000000000000000000AA' }, '').get(PtAlerts).check).not.toBeNull();
+    TestBed.resetTestingModule();
+    expect(alertsEnv(setup().env, page, '').get(PtAlerts).check).toBeNull();
+  });
+
   it("a bell's press opens the editor on the site's backend with its section's badge", async () => {
     const { appRef, env } = setup();
     document.body.innerHTML = `<section id="moves"><div class="pt-island" data-island="pt-movers@1.0.0"><p>…</p>

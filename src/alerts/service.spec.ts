@@ -134,6 +134,25 @@ describe('PtAlerts (the alert being built, and the page\'s backend)', () => {
     expect(await a.save('me@example.com', false)).toEqual({ ok: false, reason: 'network' });
   });
 
+  it("the backend's human check is the editor's; its token goes with the save", async () => {
+    const { backend, calls } = fake();
+    const check = { mount: () => ({ reset() {}, remove() {} }) };
+    const a = mount({ ...backend, check });
+    expect(a.check).toBe(check);
+    a.add({ c: 'session-move' }, from);
+    await a.save('me@example.com', false, 'tok');
+    expect(calls.save[0]).toMatchObject({ email: 'me@example.com', turnstile: 'tok' });
+  });
+
+  it('a backend without a human check: none, and no token in the save', async () => {
+    const { backend, calls } = fake();
+    const a = mount(backend);
+    expect(a.check).toBeNull();
+    a.add({ c: 'session-move' }, from);
+    await a.save('me@example.com', false);
+    expect(calls.save[0]).not.toHaveProperty('turnstile');
+  });
+
   it('close keeps the draft, discard clears it', () => {
     const a = mount(fake().backend);
     a.add({ c: 'session-move' }, from);

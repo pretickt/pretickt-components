@@ -212,6 +212,10 @@
   .pt-al-when { flex: 1 1 100%; margin: 0; font-size: .74rem; color: var(--color-ink-soft); }
   .pt-al-weekly { display: inline-flex; align-items: center; gap: .35rem; font-size: .78rem; color: var(--color-ink); }
   .pt-al-error { flex: 1 1 100%; margin: 0; font-size: .8rem; color: var(--color-neg); }
+  /* the human check (Turnstile, from the email field's first touch): its own row, empty unless Cloudflare asks for a tap */
+  .pt-al-human { flex: 1 1 100%; min-width: 0; }
+  .pt-al-wait { margin: 0 0 .3rem; font-size: .74rem; color: var(--color-ink-soft); }
+  .pt-al-check { max-width: 22rem; }   /* Cloudflare's flexible widget: 300px at least, the row's width at most */
   .pt-al-save { margin-left: auto; padding: .45rem .9rem; border: 0; border-radius: .5rem; background: var(--color-primary); font: 600 .85rem var(--font-sans);
     color: var(--color-primary-ink); cursor: pointer; }
   .pt-al-save:hover { background: var(--color-primary-hover); }

@@ -13,8 +13,11 @@ export interface PageSection { id: string; title?: string; more?: { href: string
  * What the generator gives a page app: its sections, the build, the API origin ('' = same origin), on a company's pages that company,
  * and the address of the intraday file (none: no live prices).
  */
-/** `alerts`: the page draws a bell under each placement and answers it (the platform turns it on with the alerts' API). */
-export interface PageModel { buildId: string; api: string; subject?: string; live?: string; alerts?: true; sections: PageSection[] }
+/**
+ * `alerts`: the page draws a bell under each placement and answers it (the platform turns it on with the alerts' API); `turnstile`:
+ * with them, the site key of the editor's human check (Cloudflare Turnstile).
+ */
+export interface PageModel { buildId: string; api: string; subject?: string; live?: string; alerts?: true; turnstile?: string; sections: PageSection[] }
 
 export interface RenderOptions {
   /** The page document with a `<pt-page></pt-page>` root (the generator's layout). */

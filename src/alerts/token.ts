@@ -6,7 +6,12 @@ import type { AlertUniverse } from './rows';
 /** Where an alert was started: the component, its section on the page and the page. */
 export interface AlertFrom { tag: string; section: string | null; path: string }
 export interface AlertDraft { rule: Rule; prefer: string | null; from: AlertFrom | null; name: string | null; editing: { id: string; token: string } | null }
-export type SaveResult = { ok: true } | { ok: false; reason: 'invalid' | 'limit' | 'network' };
+/** `captcha`: the human check did not pass (or the token was spent): a fresh one, then try again */
+export type SaveResult = { ok: true } | { ok: false; reason: 'invalid' | 'limit' | 'network' | 'captcha' };
+/** What a human check says: a fresh token, or none (`failed`: it cannot run — blocked, offline — or Cloudflare refused it). */
+export type CheckState = { token: string } | { token: null; failed: boolean };
+/** A human check drawn in an element of the editor (Turnstile on www): `reset` asks for a fresh token, `remove` takes it away. */
+export interface HumanCheck { mount(el: HTMLElement, on: (s: CheckState) => void): { reset(): void; remove(): void } }
 /** `pending`: saved, its confirmation email not yet opened (it cannot be paused) */
 export interface ManagedRule { id: string; name: string; rule: Rule; status: 'pending' | 'active' | 'paused' }
 export interface ManageState {
@@ -22,9 +27,12 @@ export interface AlertsLanding { alert: string | null; token: string | null; act
 export interface AlertsBackend {
   universe(): Promise<AlertUniverse | null>;
   bars(ticker: string): Promise<number[] | null>;
-  save(req: { email: string; name: string; rule: Rule; from: AlertFrom | null; weekly: boolean }): Promise<SaveResult>;
+  /** `turnstile`: the human check's token, when the backend has a check */
+  save(req: { email: string; name: string; rule: Rule; from: AlertFrom | null; weekly: boolean; turnstile?: string }): Promise<SaveResult>;
   manage(token: string, op: ManageOp): Promise<ManageState | null>;
   landing(): AlertsLanding;
+  /** the check a new alert's Save needs first (www: Turnstile); none: Save needs none (the stories' made-up backends) */
+  check?: HumanCheck;
 }
 export const PT_ALERTS = new InjectionToken<AlertsBackend>('PT_ALERTS');
 

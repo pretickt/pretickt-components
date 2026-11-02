@@ -197,6 +197,10 @@ email, no account.
   loads the editor's chunk (`pressBell`), an email's `?alert=` shows the alert above the company page (`showEvent`, `event.ts`), the
   alerts' page's `[data-pt-alerts]` gets the manage page (`mountManage`). PtAlerts runs on the site's backend (`backend.ts`: the
   store's `alert-universe@1`, `live/bars-v1.json`, `/v1/alerts`) in an injector of its own (`env.ts`): main.ts provides nothing.
+- **The human check** (Romeo, 2026-11-02): a new alert's Save waits for a Cloudflare Turnstile token. The backend's `check`
+  (`turnstile.ts`, the page model's `turnstile` site key) loads Cloudflare's script from its own address only when the email field is
+  first touched; the widget is invisible unless Cloudflare asks for a tap, a failed save asks for a fresh token (each is good once),
+  the Worker verifies it before writing anything. The made-up backends have no check; the stories use Cloudflare's public test keys.
 - **The main bundle is full** (239,925 of 240,000 bytes on 2026-11-02): a registry component costs it about 1 KB, so the alerts' parts
   are not placeable components, and what they add to the main bundle stays a few bytes. Two traps: a `document:` host listener puts
   Angular's resolver in main (add such a listener by hand), and every symbol a chunk imports from main lengthens main's export list.

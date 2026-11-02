@@ -8,6 +8,7 @@ import { PtAlerts } from '../alerts/service';
 import type { AlertSource } from '../alerts/sources';
 import { PtAlertCard } from '../site/alerts/card';
 import { PtAlertEditor } from '../site/alerts/editor';
+import { turnstileCheck } from '../site/alerts/turnstile';
 import { fakeAlerts, mockSeries } from './fake-alerts';
 import { story } from './story';
 
@@ -35,6 +36,17 @@ const saveAs = (email: string) => (_refresh: () => void, el: HTMLElement) => {
   setTimeout(() => el.querySelector<HTMLButtonElement>('.pt-al-save')?.click(), 50);
 };
 
+/** Touches the email field and types an address: the human check starts (Save waits for its token). */
+const typeEmail = (email: string) => (_refresh: () => void, el: HTMLElement) => {
+  const input = el.querySelector<HTMLInputElement>('.pt-al-email');
+  if (!input) return;
+  input.dispatchEvent(new Event('focus'));
+  input.value = email;
+  input.dispatchEvent(new Event('input'));
+};
+/** Cloudflare's public test site keys (any host, localhost too): they never see a real reader. */
+const TURNSTILE_TEST = { passes: '1x00000000000000000000AA', tap: '3x00000000000000000000FF', blocks: '2x00000000000000000000AB' };
+
 const rows = rowsOf(MOCK_UNIVERSE, null);
 const amd = rows.find((r) => r.ticker === 'AMD')!;
 const closes = (mockSeries({ tickers: ['AMD'], range: '2y' }) as { points: { t: string; c: number }[] }[])[0]!.points.map((p) => ({ t: p.t, c: p.c }));
@@ -55,6 +67,14 @@ export const stories = [
   story(PtAlertEditorStory, { name: 'Editor · saving fails', inputs: { bells: [{ c: 'session-move', mega: true }] }, providers: fakeAlerts({ fail: 'network' }),
     data, group: EDITOR, run: saveAs('reader@example.com') }),
   story(PtAlertEditorStory, { name: 'Editor · saved', inputs: { bells: [{ c: 'session-move', mega: true }, { c: 'below-average' }] }, providers: fakeAlerts(),
+    data, group: EDITOR, run: saveAs('reader@example.com') }),
+  story(PtAlertEditorStory, { name: 'Editor · Turnstile, invisible (test key: passes)', inputs: { bells: [{ c: 'session-move', mega: true }] },
+    providers: fakeAlerts({ check: turnstileCheck(TURNSTILE_TEST.passes) }), data, group: EDITOR, run: typeEmail('reader@example.com') }),
+  story(PtAlertEditorStory, { name: 'Editor · Turnstile asks for a tap (test key)', inputs: { bells: [{ c: 'session-move', mega: true }] },
+    providers: fakeAlerts({ check: turnstileCheck(TURNSTILE_TEST.tap) }), data, group: EDITOR, run: typeEmail('reader@example.com') }),
+  story(PtAlertEditorStory, { name: 'Editor · Turnstile fails (test key: blocks)', inputs: { bells: [{ c: 'session-move', mega: true }] },
+    providers: fakeAlerts({ check: turnstileCheck(TURNSTILE_TEST.blocks) }), data, group: EDITOR, run: typeEmail('reader@example.com') }),
+  story(PtAlertEditorStory, { name: 'Editor · over a limit', inputs: { bells: [{ c: 'session-move', mega: true }] }, providers: fakeAlerts({ fail: 'limit' }),
     data, group: EDITOR, run: saveAs('reader@example.com') }),
   ...CONDITION_IDS.map(cardOf),
 ];

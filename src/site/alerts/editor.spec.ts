@@ -1,12 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { PT_STORE, PtStore } from '@pretickt/components/context';
 import { PtAlerts } from '../../alerts/service';
-import { PT_ALERTS, type AlertsBackend, type SaveResult } from '../../alerts/token';
+import { PT_ALERTS, type AlertsBackend, type CheckState, type HumanCheck, type SaveResult } from '../../alerts/token';
 import { MOCK_BARS, MOCK_UNIVERSE } from '../../alerts/mock';
 import { demoFor } from '../../typologies';
 import { PtAlertEditor } from './editor';
 
-function setup(save: () => Promise<SaveResult> = async () => ({ ok: true }), manageState: unknown = null) {
+function setup(save: () => Promise<SaveResult> = async () => ({ ok: true }), manageState: unknown = null, check?: HumanCheck) {
   const saved: unknown[] = [];
   const backend: AlertsBackend = {
     universe: async () => MOCK_UNIVERSE,
@@ -14,6 +14,7 @@ function setup(save: () => Promise<SaveResult> = async () => ({ ok: true }), man
     save: (req) => { saved.push(req); return save(); },
     manage: async () => manageState as never,
     landing: () => ({ alert: null, token: null, action: null }),
+    ...(check ? { check } : {}),
   };
   TestBed.configureTestingModule({ providers: [{ provide: PT_ALERTS, useValue: backend },
     { provide: PT_STORE, useValue: new PtStore({ server: true, resolve: async (t, params) => demoFor({ t, params } as never) }) }] });
@@ -31,6 +32,12 @@ async function mount() {
 }
 const from = { tag: 'pt-movers', section: 'moves', path: '/' };
 const type = (el: HTMLElement, sel: string, v: string) => { const i = el.querySelector<HTMLInputElement>(sel)!; i.value = v; i.dispatchEvent(new Event('input')); };
+/** A human check the test drives: where it was drawn, its hand-over, its resets and removals. */
+function fakeCheck() {
+  const st = { el: null as HTMLElement | null, on: null as ((s: CheckState) => void) | null, resets: 0, removed: 0 };
+  const check: HumanCheck = { mount: (el, on) => { st.el = el; st.on = on; return { reset: () => { st.resets++; }, remove: () => { st.removed++; } }; } };
+  return { check, st };
+}
 
 describe('PtAlertEditor', () => {
   it('opens on the draft with a card per condition and "and" between', async () => {
@@ -77,6 +84,79 @@ describe('PtAlertEditor', () => {
     await settle();
     expect(text()).toContain('Could not save');
     expect(alerts.draft()!.rule.all).toHaveLength(1);
+  });
+
+  it("the human check starts when the email field is first touched; Save waits for its token and sends it", async () => {
+    const c = fakeCheck();
+    const { alerts, saved } = setup(undefined, null, c.check);
+    alerts.add({ c: 'session-move', mega: true }, from);
+    const { el, settle, text } = await mount();
+    const save = () => el.querySelector<HTMLButtonElement>('.pt-al-save')!;
+    expect(c.st.el).toBeNull();                                        // nothing of Cloudflare's before the email
+    el.querySelector('input[type="email"]')!.dispatchEvent(new Event('focus'));
+    type(el, 'input[type="email"]', 'me@example.com');
+    await settle();
+    expect(c.st.el).toBe(el.querySelector('.pt-al-check'));
+    expect(save().disabled).toBe(true);
+    expect(text()).toContain("Checking that you're not a robot");
+    expect(el.querySelector('.pt-al-human')!.hasAttribute('hidden')).toBe(false);
+    c.st.on!({ token: 'tok' });
+    await settle();
+    expect(save().disabled).toBe(false);
+    expect(text()).not.toContain("Checking that you're not a robot");
+    // with its token the check's row takes no room (the footer as without it); an expired token shows it again
+    expect(el.querySelector('.pt-al-human')!.hasAttribute('hidden')).toBe(true);
+    c.st.on!({ token: null, failed: false });
+    await settle();
+    expect(el.querySelector('.pt-al-human')!.hasAttribute('hidden')).toBe(false);
+    c.st.on!({ token: 'tok' });
+    await settle();
+    save().click();
+    await settle();
+    expect(saved).toHaveLength(1);
+    expect(saved[0]).toMatchObject({ email: 'me@example.com', turnstile: 'tok' });
+    expect(text()).toContain('Check your inbox to confirm');
+    expect(c.st.removed).toBe(1);                                      // the widget goes with the form
+  });
+
+  it('a refused check: its message, a fresh token asked for (the last one is spent), Save waiting again', async () => {
+    const c = fakeCheck();
+    const { alerts } = setup(async () => ({ ok: false, reason: 'captcha' }), null, c.check);
+    alerts.add({ c: 'session-move' }, from);
+    const { el, settle, text } = await mount();
+    el.querySelector('input[type="email"]')!.dispatchEvent(new Event('focus'));
+    type(el, 'input[type="email"]', 'me@example.com');
+    await settle();
+    c.st.on!({ token: 'tok' });
+    await settle();
+    el.querySelector<HTMLButtonElement>('.pt-al-save')!.click();
+    await settle();
+    expect(text()).toContain("The check that you're not a robot did not pass: try again");
+    expect(c.st.resets).toBe(1);
+    expect(el.querySelector<HTMLButtonElement>('.pt-al-save')!.disabled).toBe(true);
+  });
+
+  it("a check that cannot run says so", async () => {
+    const c = fakeCheck();
+    const { alerts } = setup(undefined, null, c.check);
+    alerts.add({ c: 'session-move' }, from);
+    const { el, settle, text } = await mount();
+    el.querySelector('input[type="email"]')!.dispatchEvent(new Event('focus'));
+    await settle();
+    c.st.on!({ token: null, failed: true });
+    await settle();
+    expect(text()).toContain("We could not check that you're not a robot: reload the page and try again");
+  });
+
+  it('over a limit: the message names every limit it can be (a sign-up never says whether the address was known)', async () => {
+    const { alerts } = setup(async () => ({ ok: false, reason: 'limit' }));
+    alerts.add({ c: 'session-move' }, from);
+    const { el, settle, text } = await mount();
+    type(el, 'input[type="email"]', 'me@example.com');
+    await settle();
+    el.querySelector<HTMLButtonElement>('.pt-al-save')!.click();
+    await settle();
+    expect(text()).toContain('Not saved: too many sign-ups right now, or this address has 10 alerts already');
   });
 
   it('save is disabled for a universe-only rule and for an invalid email', async () => {

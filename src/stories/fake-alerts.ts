@@ -3,16 +3,20 @@ import type { Provider } from '@angular/core';
 import { MOCK_BARS, MOCK_UNIVERSE } from '../alerts/mock';
 import { prng, round } from '../typologies/common';
 import { PtAlerts } from '../alerts/service';
-import { PT_ALERTS, type AlertsBackend, type AlertsLanding, type ManageState } from '../alerts/token';
+import { PT_ALERTS, type AlertsBackend, type AlertsLanding, type HumanCheck, type ManageState } from '../alerts/token';
 
-/** The page's alerts faked: the made-up universe and session bars, a save that answers after 600 ms (or fails), a manage state. */
-export function fakeAlerts(o: { fail?: 'network' | 'limit'; landing?: AlertsLanding; state?: ManageState | null } = {}): Provider[] {
+/**
+ * The page's alerts faked: the made-up universe and session bars, a save that answers after 600 ms (or fails), a manage state;
+ * `check`: a human check before Save (the Turnstile stories: Cloudflare's own test keys).
+ */
+export function fakeAlerts(o: { fail?: 'network' | 'limit' | 'captcha'; landing?: AlertsLanding; state?: ManageState | null; check?: HumanCheck } = {}): Provider[] {
   const backend: AlertsBackend = {
     universe: async () => MOCK_UNIVERSE,
     bars: async (t) => MOCK_BARS[t] ?? null,
     save: () => new Promise((r) => setTimeout(() => r(o.fail ? { ok: false, reason: o.fail } : { ok: true }), 600)),
     manage: async () => o.state ?? null,
     landing: () => o.landing ?? { alert: null, token: null, action: null },
+    ...(o.check ? { check: o.check } : {}),
   };
   return [PtAlerts, { provide: PT_ALERTS, useValue: backend }];
 }

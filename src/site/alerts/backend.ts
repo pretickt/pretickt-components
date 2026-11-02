@@ -2,6 +2,7 @@ import { FAILED, type PtStore } from '@pretickt/components/context';
 import type { AlertUniverse } from '../../alerts/rows';
 import type { AlertsBackend, ManageState } from '../../alerts/token';
 import { landingOf } from './landing';
+import { turnstileCheck } from './turnstile';
 
 export interface SiteBackendOptions {
   store: Pick<PtStore, 'ask'>;
@@ -11,6 +12,8 @@ export interface SiteBackendOptions {
   live?: string;
   /** the page address's query: the email link's landing */
   search: string;
+  /** the Turnstile widget's site key (the page model's): a new alert's Save needs its token */
+  turnstile?: string;
   fetch?: (url: string, init?: RequestInit) => Promise<Response>;
 }
 interface BarsFile { session: string; bars: Record<string, unknown> }
@@ -49,7 +52,8 @@ export function siteBackend(o: SiteBackendOptions): AlertsBackend {
     },
     async save(req) {
       const r = await post('/v1/alerts', req);
-      return r.ok ? { ok: true } : { ok: false, reason: r.status === 400 ? 'invalid' : r.status === 429 ? 'limit' : 'network' };
+      return r.ok ? { ok: true }
+        : { ok: false, reason: r.status === 400 ? 'invalid' : r.status === 403 ? 'captcha' : r.status === 429 ? 'limit' : 'network' };
     },
     async manage(token, op) {
       const r = await post('/v1/alerts/manage', { t: token, op });
@@ -58,5 +62,6 @@ export function siteBackend(o: SiteBackendOptions): AlertsBackend {
       throw new Error(`alerts ${r.status}`);
     },
     landing: () => landingOf(o.search),
+    ...(o.turnstile ? { check: turnstileCheck(o.turnstile) } : {}),
   };
 }

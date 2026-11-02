@@ -15,7 +15,7 @@ export function alertsEnv(env: EnvironmentInjector, page: PageModel, search: str
   let e = envs.get(env);
   if (!e) {
     e = createEnvironmentInjector([
-      { provide: PT_ALERTS, useFactory: () => siteBackend({ store: inject(PT_STORE), api: page.api, live: page.live, search }) },
+      { provide: PT_ALERTS, useFactory: () => siteBackend({ store: inject(PT_STORE), api: page.api, live: page.live, search, turnstile: page.turnstile }) },
       PtAlerts,
     ], env);
     envs.set(env, e);
