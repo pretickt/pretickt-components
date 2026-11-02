@@ -7,7 +7,7 @@ import type { AlertRow } from './rows';
  * params, the sentence its card shows, the line of an event, and `test` — which the editor's preview and the platform's check both
  * run, so what the reader sees counted is what fires. Ids, params and defaults are stored in rules: change them with a migration.
  */
-export type ConditionId = 'session-move' | 'price-crosses' | 'below-average' | 'near-52w' | 'volume-spike'
+export type ConditionId = 'session-move' | 'price-crosses' | 'below-average' | 'ma-cross' | 'near-52w' | 'volume-spike'
   | 'pe-vs-sector' | 'undervalued' | 'analyst-upside' | 'piotroski' | 'earnings-surprise' | 'insider-buying'
   | 'news-spike' | 'earnings-soon' | 'grade-change' | 'social-buzz' | 'mega-caps' | 'sector' | 'one-stock' | 'companies';
 export type Group = 'technical' | 'fundamental' | 'news' | 'social' | 'universe';
@@ -16,7 +16,7 @@ export const GROUPS: readonly (readonly [Group, string])[] = [
 ];
 /** When a condition's value can change: during the session (live prices, stories, results), once a day (the nightly), never. */
 export type Freq = 'intraday' | 'daily' | 'fixed';
-export type ChartKind = 'session' | 'average' | 'range' | 'versus' | 'pe' | 'target' | 'checks' | 'surprises'
+export type ChartKind = 'session' | 'average' | 'cross' | 'range' | 'versus' | 'pe' | 'target' | 'checks' | 'surprises'
   | 'insiders' | 'countdown' | 'grade' | 'logos' | 'flag';
 export type Params = Record<string, string | number>;
 export type ParamSpec =
@@ -106,6 +106,20 @@ const TECHNICAL: Condition[] = [
       if (!ma) return NO;
       const d = r.price / ma - 1, t = n(p, 'pct') / 100;
       return { pass: s(p, 'dir') === 'above' ? d >= t - 1e-12 : d <= -t + 1e-12, value: d };
+    },
+  },
+  {
+    // round 16 ("golden cross stocks" 1,000/month, "death cross stocks" 720): the state of the averages, so the check fires on the cross
+    id: 'ma-cross', group: 'technical', name: 'Golden / death cross', freq: 'daily', chart: 'cross',
+    params: [choice('dir', [['golden', 'above'], ['death', 'below']])], defaults: { dir: 'golden' },
+    say: () => ['Its 50-day average is ', { key: 'dir' }, ' its 200-day'],
+    short: (p) => (s(p, 'dir') === 'death' ? 'Death cross' : 'Golden cross'),
+    fact: (p) => (s(p, 'dir') === 'death' ? 'saw its 50-day average cross below its 200-day (a death cross)'
+      : 'saw its 50-day average cross above its 200-day (a golden cross)'),
+    test: (r, p) => {
+      if (r.ma50 === null || r.ma200 === null) return NO;
+      const gap = r.ma50 / r.ma200 - 1;
+      return { pass: s(p, 'dir') === 'death' ? gap < 0 : gap > 0, value: gap };
     },
   },
   {

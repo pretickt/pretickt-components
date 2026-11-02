@@ -136,6 +136,34 @@ function averageChart(rc: RuleCondition, row: AlertRow, closes: { t: string; c: 
     cross: crossOf(pts, thr, below, y), ticks };
 }
 
+/**
+ * A golden or death cross (round 16): the 50-day average's gap over the 200-day on the last three months of daily closes, the cross at
+ * zero, the side the alert waits for shaded, the point where the line crossed marked; NOW is the nightly's gap.
+ */
+function crossChart(rc: RuleCondition, row: AlertRow, closes: { t: string; c: number }[] | null | undefined): LevelChart | null {
+  if (row.ma50 === null || row.ma200 === null) return null;
+  const below = s(rc.p, 'dir') === 'death', tone = below ? 'neg' : 'pos', now = row.ma50 / row.ma200 - 1;
+  const cs = closes ?? [], gaps: { t: string; v: number }[] = [];
+  let s50 = 0, s200 = 0;
+  for (let i = 0; i < cs.length; i++) {
+    s50 += cs[i]!.c;
+    s200 += cs[i]!.c;
+    if (i >= 50) s50 -= cs[i - 50]!.c;
+    if (i >= 200) s200 -= cs[i - 200]!.c;
+    if (i >= 199 && i >= cs.length - 63) gaps.push({ t: cs[i]!.t, v: s50 / 50 / (s200 / 200) - 1 });
+  }
+  const pts = gaps.map((g, i) => ({ x: PLOT_L + (gaps.length > 1 ? i / (gaps.length - 1) : 1) * W, v: g.v, t: g.t }));
+  const ins: LevelIn[] = [{ v: 0, label: 'MA50 = MA200', caption: 'CROSS', tone }, { v: now, label: sig(now), caption: 'NOW', tone: 'ink', now: true }];
+  const y = scale([...pts.map((q) => q.v), ...ins.map((l) => l.v)], LINE);
+  const ticks: LevelChart['ticks'] = [];
+  pts.forEach((q, i) => {
+    if (i && q.t.slice(0, 7) !== pts[i - 1]!.t.slice(0, 7)) ticks.push({ x: q.x, y: LINE.h - 3, label: MONTHS[Number(q.t.slice(5, 7)) - 1] ?? '' });
+  });
+  const line = path(pts.map((q) => ({ x: q.x, y: y(q.v) })));
+  return { kind: 'level', h: LINE.h, line, past: line, bars: [], levels: levelsOf(ins, y, LINE), zone: zoneOf(y(0), below, tone, LINE),
+    cross: crossOf(pts, 0, below, y), ticks };
+}
+
 /** Bars against a level: two counts (usual and the session's), P/E against the sector's, surprises, insider buying, the target. */
 function barsChart(bars: { v: number; label: string; tone?: Bar['tone'] }[], ins: LevelIn[], zoneBelow: boolean | null, zoneTone: 'neg' | 'pos'): LevelChart {
   const y = scale([0, ...bars.map((b) => b.v), ...ins.map((l) => l.v)], BARS);
@@ -178,6 +206,7 @@ export function chartOf(rc: RuleCondition, d: ChartData): ChartModel | null {
   switch (chart) {
     case 'session': return sessionChart(rc, row, d.bars);
     case 'average': return averageChart(rc, row, d.closes);
+    case 'cross': return crossChart(rc, row, d.closes);
     case 'range': {
       if (row.low52 === null || row.high52 === null) return null;
       const t = n(p, 'pct') / 100, side = s(p, 'side') === 'high' ? 'high' : 'low';

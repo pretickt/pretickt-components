@@ -1,4 +1,4 @@
-import { tone, usd } from '../src/ds/format';
+import { pct, tone, usd } from '../src/ds/format';
 import { screenDemo } from '../src/typologies';
 import { PtScreen } from './pt-screen';
 import { basics, column, press, render, withData } from './_spec';
@@ -54,6 +54,19 @@ describe('pt-screen', () => {
     expect(r.html()).toContain(`<span class="pt-t-${tone(row.insiderNet)}">${usd(row.insiderNet, { compact: true, signed: true })}</span>`);
     await press(r.f, r.el, 'Insiders 90d↕');
     expect(r.el.querySelector('th[aria-sort]')!.textContent).toMatch(/^Insiders 90d/);
+  });
+  it("the round-16 lists show what they rank by: the rating change, the cross's date, P/E against the sector, the F-score, the volume", async () => {
+    const cols = { upgrades_downgrades: ['Rating change', 'Upgrade · Firm A'], golden_cross: ['Crossed', 'Oct 28, 2026'],
+      death_cross: ['Crossed', 'Oct 28, 2026'], low_pe: ['P/E vs sector', pct(-0.35)], piotroski: ['F-score', '9/9'],
+      unusual_volume: ['Volume vs 20d', '3.4×'] } as const;
+    for (const [list, [label, cell]] of Object.entries(cols)) {
+      const data = screenDemo({ scope: { list: list as keyof typeof cols }, limit: 3 });
+      data.rows[0] = { ...data.rows[0]!, rating: { dir: 'up', firm: 'Firm A', date: '2026-10-29' }, cross: '2026-10-28', peVsSector: -0.35,
+        fscore: 9, volumeRatio: 3.4 };
+      const r = await render(PtScreen, { list }, withData({ 'screen@1': data }));
+      expect(r.html(), list).toContain(label);
+      expect(column(r.el, 5)[0], list).toBe(cell);   // rank, company, price, 1D, then the list's own
+    }
   });
   it('explains an empty list; without a limit asks for 25 (the default)', async () => {
     expect((await render(PtScreen, { list: '52w_low' }, withData({ 'screen@1': { asOf: '2026-10-02', rows: [] } }))).html()).toContain('No companies match');

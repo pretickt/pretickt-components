@@ -12,6 +12,7 @@ export const GLYPHS: Record<ConditionId, readonly GlyphPart[]> = {
   'session-move': [{ d: 'M1 9H21', dash: true, faint: true }, { d: 'M1 3L5 4L9 5L12 8L16 10L20 12' }],
   'price-crosses': [{ d: 'M1 6H21', dash: true, faint: true }, { d: 'M1 11L6 9L10 10L14 5L18 6L21 3' }],
   'below-average': [{ d: 'M1 5C7 2.8 14 2.8 21 4' }, { d: 'M1 7L6 8L11 10L16 11L21 12.5', faint: true }],
+  'ma-cross': [{ d: 'M1 11C7 10 11 7 21 3' }, { d: 'M1 4C8 5 13 7 21 9', faint: true }],
   'near-52w': [{ d: 'M3 7H19', thick: true, faint: true }, { d: circle(3.5, 7, 2.6), fill: true }],
   'volume-spike': [{ d: 'M1 9h3v4h-3zM5.5 8h3v5h-3zM10 9h3v4h-3zM19 8h2.5v5h-2.5z', fill: true, faint: true }, { d: 'M14.5 1h3v12h-3z', fill: true }],
   'pe-vs-sector': [{ d: 'M1 2.5h11v3.5h-11z', fill: true }, { d: 'M1 8h20v3.5h-20z', fill: true, faint: true }],

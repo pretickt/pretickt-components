@@ -75,6 +75,19 @@ describe("version A's charts", () => {
     expect(m.more).toBe(49);
   });
 
+  it('ma-cross draws the gap of the 50-day over the 200-day average over three months, the cross at zero, where it crossed marked', () => {
+    // 330 closes: a slow fall from $130 to $100 (the 50-day under the 200-day), then a climb of $1 a day that takes it above
+    const closes = Array.from({ length: 330 }, (_, i) => ({ t: `2026-${String(1 + Math.floor(i / 28) % 12).padStart(2, '0')}-01`,
+      c: i < 260 ? 130 - (30 * i) / 259 : 100 + (i - 259) }));
+    const m = chartOf(condition('ma-cross'), { row: { ...amd, ma50: 140, ma200: 112 }, rows, closes })!;
+    expect(m.kind).toBe('level');
+    if (m.kind !== 'level') return;
+    expect(m.levels.map((l) => l.caption)).toEqual(['CROSS', 'NOW']);
+    expect(m.zone?.tone).toBe('pos');
+    expect(m.cross).not.toBeNull();
+    expect(chartOf(condition('ma-cross', { dir: 'death' }), { row: amd, rows, closes })!.kind).toBe('level');
+  });
+
   it('no example row → null', () => {
     expect(chartOf(condition('session-move'), { row: null, rows })).toBeNull();
     expect(chartOf(condition('below-average'), { row: null, rows })).toBeNull();

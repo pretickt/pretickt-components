@@ -1,8 +1,11 @@
 /**
- * Which companies are on this list today (biggest movers, 52-week extremes, undervalued, insider buying, peers)?
- * @version 2.4.1
+ * Which companies are on this list today (biggest movers, 52-week extremes, undervalued, insider buying, upgrades and downgrades,
+ * golden and death crosses, low P/E, Piotroski 8–9, unusual volume, peers)?
+ * @version 2.5.0
  * @evidence DataForSEO: "biggest stock losers today", "52 week low stocks", "undervalued stocks" (launch/data/08c-serp-undervalued-stocks.json)
  * @evidence stockanalysis.com / finviz market-mover tables; beta: peers table on the company page
+ * @evidence DataForSEO round 16 (2026-11-02): "upgrades and downgrades" 3,600/month (KD 9), "golden cross stocks" 1,000 (KD 12), "death cross
+ *   stocks" 720, "low pe stocks" 720 (KD 7), Piotroski 640 (KD 6), "unusual volume stocks" 320 (KD 5) — launch/data/16-summary.json
  */
 import { Component, computed, inject, input, linkedSignal } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
@@ -17,10 +20,17 @@ const COLS = {
   ptUpside: { label: 'Target upside', cell: (r: ScreenRow) => signed(r.ptUpside), value: (r: ScreenRow) => r.ptUpside },
   insiderNet: { label: 'Insiders 90d', cell: (r: ScreenRow) => signed(r.insiderNet, usd(r.insiderNet, { compact: true, signed: true })), value: (r: ScreenRow) => r.insiderNet },
   volumeRatio: { label: 'Volume vs 20d', cell: (r: ScreenRow): Cell => ({ text: r.volumeRatio == null ? '—' : `${num(r.volumeRatio, 1)}×` }), value: (r: ScreenRow) => r.volumeRatio },
+  rating: { label: 'Rating change', cell: (r: ScreenRow): Cell => (r.rating ? { text: `${r.rating.dir === 'up' ? 'Upgrade' : 'Downgrade'} · ${r.rating.firm}`,
+    tone: `pt-t-${r.rating.dir === 'up' ? 'pos' : 'neg'}` } : { text: '—' }), value: (r: ScreenRow) => r.rating?.date ?? null },
+  cross: { label: 'Crossed', cell: (r: ScreenRow): Cell => ({ text: r.cross ? date(r.cross) : '—' }), value: (r: ScreenRow) => r.cross ?? null },
+  peVsSector: { label: 'P/E vs sector', cell: (r: ScreenRow) => signed(r.peVsSector ?? null), value: (r: ScreenRow) => r.peVsSector ?? null },
+  fscore: { label: 'F-score', cell: (r: ScreenRow): Cell => ({ text: r.fscore == null ? '—' : `${r.fscore}/9` }), value: (r: ScreenRow) => r.fscore ?? null },
 };
 const EXTRA: Record<ScreenList | 'peers', (keyof typeof COLS)[]> = {
   biggest_losers: ['offHigh'], biggest_gainers: ['offHigh'], '52w_low': ['offHigh'], '52w_high': ['offHigh'],
   undervalued: ['ptUpside'], insider_buying: ['insiderNet'], most_active: ['volumeRatio'], largest: ['offHigh'], peers: ['offHigh', 'ptUpside'],
+  upgrades_downgrades: ['rating'], golden_cross: ['cross'], death_cross: ['cross'], low_pe: ['peVsSector'], piotroski: ['fscore'],
+  unusual_volume: ['volumeRatio'],
 };
 function spark(v: number[]) {
   if (v.length < 2) return null;

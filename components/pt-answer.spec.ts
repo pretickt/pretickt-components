@@ -49,6 +49,21 @@ describe('pt-answer', () => {
       'Jan 2, 2026 of $121.00; its low since then is $99.00.');
   });
 
+  it('the round-16 lists say who leads them with the number they rank by', async () => {
+    const rows = [row('NVDA', 'NVIDIA Corporation', { rating: { dir: 'up', firm: 'Firm A', date: '2026-10-15' }, cross: '2026-10-14', pe: 8.2, fscore: 9,
+      volumeRatio: 4.1 }), row('AMD', 'Advanced Micro Devices, Inc.', { rating: { dir: 'down', firm: 'Firm B', date: '2026-10-16' }, cross: '2026-10-09',
+      pe: 9.5, fscore: 8, volumeRatio: 3.2 })];
+    const said = (list: string) => text({ topic: 'list', list }, { 'screen@1': screen(rows) });
+    expect(await said('upgrades_downgrades')).toBe('The latest analyst upgrades and downgrades in the week to Oct 16, 2026: Nvidia NVDA upgraded by Firm A ' +
+      'and AMD downgraded by Firm B.');
+    expect(await said('golden_cross')).toBe('Stocks whose 50-day average crossed above their 200-day lately (a golden cross), as of Oct 16, 2026: Nvidia NVDA ' +
+      '(Oct 14, 2026) and AMD (Oct 9, 2026).');
+    expect(await said('death_cross')).toContain('crossed below their 200-day lately (a death cross)');
+    expect(await said('low_pe')).toBe('The profitable stocks with the lowest P/E ratios on Oct 16, 2026: Nvidia NVDA 8.2 and AMD 9.5.');
+    expect(await said('piotroski')).toBe('The largest companies with a Piotroski F-score of 8 or 9 on Oct 16, 2026: Nvidia NVDA (9 of 9) and AMD (8 of 9).');
+    expect(await said('unusual_volume')).toBe('The stocks trading furthest above their usual volume on Oct 16, 2026: Nvidia NVDA 4.1× and AMD 3.2×.');
+  });
+
   it('no target in a year is an answer too, not a missing page', async () => {
     expect(await text({ topic: 'price-target', ticker: 'XYZ' }, { 'analysts@1': analysts({ summary: null }), 'metric@1': consensus('Hold') }))
       .toBe('No analyst published a price target for XYZ Demo XYZ in the last 12 months. Rating consensus: Hold.');

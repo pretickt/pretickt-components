@@ -60,6 +60,18 @@ describe('the catalog: technical and universe conditions', () => {
     expect(test('below-average', { price: 180, ma200: 150 }, { dir: 'above', days: '200' }).pass).toBe(true);
   });
 
+  it('ma-cross (round 16): the 50-day average above the 200-day (golden) or below (death) — a stock starts meeting it when they cross', () => {
+    expect(test('ma-cross', { ma50: 200, ma200: 150 })).toEqual({ pass: true, value: 200 / 150 - 1 });
+    expect(test('ma-cross', { ma50: 140, ma200: 150 }).pass).toBe(false);
+    expect(test('ma-cross', { ma50: 140, ma200: 150 }, { dir: 'death' }).pass).toBe(true);
+    expect(test('ma-cross', { ma50: 150, ma200: 150 }, { dir: 'death' }).pass).toBe(false);
+    expect(test('ma-cross', { ma200: null }).pass).toBe(false);
+    expect(sentence('ma-cross', CONDITIONS['ma-cross'].defaults)).toBe('Its 50-day average is above its 200-day');
+    expect(sentence('ma-cross', { dir: 'death' })).toBe('Its 50-day average is below its 200-day');
+    expect(CONDITIONS['ma-cross'].short({ dir: 'death' })).toBe('Death cross');
+    expect(CONDITIONS['ma-cross'].fact({ dir: 'golden' }, 0.004)).toBe('saw its 50-day average cross above its 200-day (a golden cross)');
+  });
+
   it('near-52w low within 2% passes at 1.02 × low52, not at 1.03 ×', () => {
     expect(test('near-52w', { price: 120 * 1.02, low52: 120 }).pass).toBe(true);
     expect(test('near-52w', { price: 120 * 1.03, low52: 120 }).pass).toBe(false);
@@ -213,8 +225,8 @@ describe('the catalog: fundamental, news and social conditions', () => {
     for (const [id, o] of cases) expect(test(id, o), id).toEqual({ pass: false, value: null });
   });
 
-  it('the catalog has 19 conditions in table order, each with a group, a chart and a short name', () => {
-    expect(CONDITION_IDS).toEqual(['session-move', 'price-crosses', 'below-average', 'near-52w', 'volume-spike', 'pe-vs-sector',
+  it('the catalog has 20 conditions in table order, each with a group, a chart and a short name', () => {
+    expect(CONDITION_IDS).toEqual(['session-move', 'price-crosses', 'below-average', 'ma-cross', 'near-52w', 'volume-spike', 'pe-vs-sector',
       'undervalued', 'analyst-upside', 'piotroski', 'earnings-surprise', 'insider-buying', 'news-spike', 'earnings-soon',
       'grade-change', 'social-buzz', 'mega-caps', 'sector', 'one-stock', 'companies']);
     for (const id of CONDITION_IDS) {

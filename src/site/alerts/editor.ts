@@ -175,7 +175,8 @@ export class PtAlertEditor {
   private readonly bars = signal<{ t: string; b: number[] | null } | null>(null);
   private readonly closes = this.pt.priceSeries(() => {
     const ex = this.example();
-    const long = this.rule().all.some((rc) => rc.c === 'below-average' && String(rc.p['days']) === '200');
+    // the 200-day average over the chart's three months needs more than a year of closes (below its 200-day, a golden or death cross)
+    const long = this.rule().all.some((rc) => (rc.c === 'below-average' && String(rc.p['days']) === '200') || rc.c === 'ma-cross');
     return ex ? { tickers: [ex.ticker], range: long ? '2y' : '1y', interval: '1d', rebase: false } : null;
   });
   protected readonly data = computed<ChartData>(() => {

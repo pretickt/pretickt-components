@@ -56,6 +56,20 @@ const LISTS: Record<ScreenList, { say: (sec: string, d: string, top: Said) => Sa
   most_active: { say: (sec, d, top) => say`The most traded ${sec}stocks by dollar volume on ${d}: ${top}.`, item: (r) => [who(r)], none: (sec, d) => `No ${sec}stock traded on ${d}.` },
   largest: { say: (sec, d, top) => say`The largest ${sec}companies by market capitalization on ${d}: ${top}.`, item: (r) => say`${who(r)} ${usd(r.marketCap, { compact: true })}`,
     none: (sec, d) => `No ${sec}company is listed on ${d}.` },
+  // round 16: the lists people search
+  upgrades_downgrades: { say: (sec, d, top) => say`The latest analyst ${sec}upgrades and downgrades in the week to ${d}: ${top}.`,
+    item: (r) => say`${who(r)} ${r.rating?.dir === 'down' ? 'downgraded' : 'upgraded'} by ${r.rating?.firm ?? 'an analyst'}`,
+    none: (sec, d) => `No analyst upgraded or downgraded a ${sec}stock in the week to ${d}.` },
+  golden_cross: { say: (sec, d, top) => say`${sec ? `${sec}stocks` : 'Stocks'} whose 50-day average crossed above their 200-day lately (a golden cross), as of ${d}: ${top}.`,
+    item: (r) => say`${who(r)} (${r.cross ? date(r.cross) : 'lately'})`, none: (sec, d) => `No ${sec}stock had a golden cross in the two weeks to ${d}.` },
+  death_cross: { say: (sec, d, top) => say`${sec ? `${sec}stocks` : 'Stocks'} whose 50-day average crossed below their 200-day lately (a death cross), as of ${d}: ${top}.`,
+    item: (r) => say`${who(r)} (${r.cross ? date(r.cross) : 'lately'})`, none: (sec, d) => `No ${sec}stock had a death cross in the two weeks to ${d}.` },
+  low_pe: { say: (sec, d, top) => say`The profitable ${sec}stocks with the lowest P/E ratios on ${d}: ${top}.`, item: (r) => say`${who(r)} ${num(r.pe, 1)}`,
+    none: (sec, d) => `No profitable ${sec}stock has a P/E on ${d}.` },
+  piotroski: { say: (sec, d, top) => say`The largest ${sec}companies with a Piotroski F-score of 8 or 9 on ${d}: ${top}.`,
+    item: (r) => say`${who(r)} (${r.fscore ?? '—'} of 9)`, none: (sec, d) => `No ${sec}company scores 8 or 9 on the Piotroski checks on ${d}.` },
+  unusual_volume: { say: (sec, d, top) => say`The ${sec}stocks trading furthest above their usual volume on ${d}: ${top}.`,
+    item: (r) => say`${who(r)} ${num(r.volumeRatio, 1)}×`, none: (sec, d) => `No ${sec}stock traded twice its usual volume on ${d}.` },
 };
 
 @Component({

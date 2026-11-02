@@ -2,8 +2,13 @@ import * as z from 'zod/mini';
 import { DEMO_ASOF, DEMO_COMPANIES, intParam, IsoDate, Num as n, prng, round, Ticker } from './common';
 import { SCREEN_MAX, SECTORS } from './values';
 
-/** Ranked lists of companies (market movers, 52-week extremes, undervalued, insider buying, the largest) and peer groups. */
-export const SCREEN_LISTS = ['biggest_losers', 'biggest_gainers', '52w_low', '52w_high', 'undervalued', 'insider_buying', 'most_active', 'largest'] as const;
+/**
+ * Ranked lists of companies (market movers, 52-week extremes, undervalued, insider buying, the largest) and peer groups; round 16
+ * (2026-11-02, the lists people search): the analysts' upgrades and downgrades, golden and death crosses, low P/E, Piotroski 8–9,
+ * unusual volume.
+ */
+export const SCREEN_LISTS = ['biggest_losers', 'biggest_gainers', '52w_low', '52w_high', 'undervalued', 'insider_buying', 'most_active', 'largest',
+  'upgrades_downgrades', 'golden_cross', 'death_cross', 'low_pe', 'piotroski', 'unusual_volume'] as const;
 export type ScreenList = (typeof SCREEN_LISTS)[number];
 
 export const ScreenParams = z.object({
@@ -16,6 +21,11 @@ export const ScreenRow = z.object({
   close: n, chg1d: n, offHigh: n, pe: n, ptUpside: n, marketCap: n, insiderNet: n, volumeRatio: n,
   /** Last 20 adjusted closes, oldest first, for a sparkline. */
   spark: z.array(z.number()),
+  /** The lists that rank by them: the latest analyst upgrade or downgrade, the day of the 50/200-day cross, P/E against the sector's, the F-score. */
+  rating: z.optional(z.nullable(z.object({ dir: z.enum(['up', 'down']), firm: z.string(), date: IsoDate }))),
+  cross: z.optional(z.nullable(IsoDate)),
+  peVsSector: z.optional(n),
+  fscore: z.optional(z.nullable(z.number())),
   /** True for the subject of a peer list. */
   self: z.boolean(),
 });
@@ -40,7 +50,9 @@ export function screenDemo(p: ScreenParams): Screen {
     return { ticker, name, sector, logo: null, close: spark.at(-1)!,
       chg1d: round((r() - 0.5) * 0.1, 4), offHigh: round(-r() * 0.4, 4), pe: round(10 + r() * 40, 1), ptUpside: round(r() * 0.4 - 0.05, 4),
       marketCap: round(1e10 + r() * 3e12, 0), insiderNet: round((r() - 0.5) * 1e8, 0), volumeRatio: round(0.5 + r() * 2, 2), spark,
-      self: own !== null && i === 0 };
+      self: own !== null && i === 0,
+      rating: { dir: r() < 0.6 ? 'up' as const : 'down' as const, firm: ['Firm A', 'Firm B', 'Firm C'][i % 3]!, date: DEMO_ASOF },
+      cross: DEMO_ASOF, peVsSector: round(-0.6 + r() * 0.5, 3), fscore: 8 + (i % 2) };
   });
   return { asOf: DEMO_ASOF, rows };
 }

@@ -16,6 +16,10 @@ function ofList(list: unknown, sector: string | null): AlertSource | null {
     biggest_losers: { c: 'session-move', p: { dir: 'down' } }, biggest_gainers: { c: 'session-move', p: { dir: 'up' } },
     '52w_low': { c: 'near-52w', p: { side: 'low' } }, '52w_high': { c: 'near-52w', p: { side: 'high' } },
     undervalued: { c: 'undervalued' }, insider_buying: { c: 'insider-buying' }, most_active: { c: 'volume-spike' }, largest: { c: 'mega-caps' },
+    // round 16: who joins one of these lists starts meeting its condition
+    upgrades_downgrades: { c: 'grade-change', p: { dir: 'up' } }, golden_cross: { c: 'ma-cross', p: { dir: 'golden' } },
+    death_cross: { c: 'ma-cross', p: { dir: 'death' } }, low_pe: { c: 'pe-vs-sector' }, piotroski: { c: 'piotroski', p: { side: 'high', score: 8 } },
+    unusual_volume: { c: 'volume-spike', p: { times: 2 } },
   };
   const s = typeof list === 'string' && Object.hasOwn(by, list) ? by[list]! : null;
   return s && sector ? { ...s, sector } : s;
@@ -73,7 +77,7 @@ export function alertSourceOf(tag: string, props: Record<string, unknown>): Aler
 
 /** Where on a company page each condition shows (the alert card's links); none for the universe and what the page lacks. */
 export const SECTION_OF: Partial<Record<ConditionId, string>> = {
-  'session-move': 'why', 'price-crosses': 'card', 'below-average': 'technicals', 'near-52w': 'technicals', 'volume-spike': 'technicals',
+  'session-move': 'why', 'price-crosses': 'card', 'below-average': 'technicals', 'ma-cross': 'technicals', 'near-52w': 'technicals', 'volume-spike': 'technicals',
   'pe-vs-sector': 'snapshot', undervalued: 'targets', 'analyst-upside': 'targets', 'grade-change': 'targets', piotroski: 'value',
   'earnings-surprise': 'financials', 'news-spike': 'news', 'earnings-soon': 'price',
 };
