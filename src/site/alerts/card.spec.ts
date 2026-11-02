@@ -270,6 +270,30 @@ describe('PtAlertCard (version A)', () => {
     expect(text()).toContain('1 company added');
   });
 
+  it('undervalued shows its two tests, each passed or missed: P/E against the sector, the analysts\' upside against 15% (Romeo, 2026-11-02: visual)', () => {
+    const { el, text } = mount(condition('undervalued'), { row: { ...amd, peVsSector: -0.22, ptUpside: 0.09 }, rows });
+    expect([...el.querySelectorAll('.pt-al-crit li')].map((li) => li.classList.contains('pt-al-crit-ok'))).toEqual([true, false]);
+    expect(text()).toContain('P/E 22% below its sector');
+    expect(text()).toContain('Average analyst target 9% above the price, 15% needed');
+  });
+
+  it('results in N days: a line of the coming days, the alert\'s window shaded, the report dated on it; none announced says so', () => {
+    const { el, text } = mount(condition('earnings-soon', { days: 3 }), { row: { ...amd, earningsDate: '2026-11-04', session: '2026-10-30' }, rows });
+    expect(el.querySelector('svg.pt-al-viz')).not.toBeNull();
+    expect(text()).toContain('RESULTS NOV 4');
+    expect(text()).toContain('TODAY');
+    const none = mount(condition('earnings-soon'), { row: { ...amd, earningsDate: null }, rows });
+    expect(none.text()).toContain('No earnings date announced yet');
+  });
+
+  it('an upgrade or a downgrade: its arrow, the firm and the day; none says so', () => {
+    const up = mount(condition('grade-change', { dir: 'up' }), { row: { ...amd, grade: { dir: 'up', firm: 'Firm A', date: '2026-10-30' } }, rows });
+    expect(up.el.querySelector('.pt-al-grade-up svg')).not.toBeNull();
+    expect(up.text()).toContain('Upgraded by Firm A on Oct 30, 2026');
+    const none = mount(condition('grade-change'), { row: { ...amd, grade: null }, rows });
+    expect(none.text()).toContain('No upgrade or downgrade');
+  });
+
   it('no example shows "No data" instead of a chart', () => {
     const { el, text } = mount(condition('session-move'), { row: null, rows });
     expect(el.querySelector('svg.pt-al-viz')).toBeNull();

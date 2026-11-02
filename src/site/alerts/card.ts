@@ -1,6 +1,6 @@
 import { afterRenderEffect, Component, computed, type ElementRef, input, output, signal, viewChild } from '@angular/core';
 import { PtLogo } from '@pretickt/components/ds';
-import { date } from '@pretickt/components/format';
+import { date, dayMonth } from '@pretickt/components/format';
 import { CONDITIONS, GROUPS, LIST_MAX, listOf, pillText, type ParamSpec } from '../../alerts/catalog';
 import { chartOf, dollars, LABEL_X, PLOT_L, PLOT_R, type ChartData, type Tone } from '../../alerts/charts';
 import { companiesIn } from '../../alerts/extract';
@@ -50,12 +50,13 @@ let uid = 0;
                 <rect [attr.class]="'pt-al-zone-' + z.tone" [attr.x]="PLOT_L" [attr.y]="z.y" [attr.width]="PLOT_R - PLOT_L" [attr.height]="z.h" />
               }
               @for (l of m.levels; track $index) {
-                @if (!l.now) {<line [attr.class]="'pt-lvl pt-lvl-' + tone(l.tone)" [attr.x1]="PLOT_L" [attr.x2]="PLOT_R + 8" [attr.y1]="l.y" [attr.y2]="l.y" />}
+                @if (!l.now && !l.bare) {<line [attr.class]="'pt-lvl pt-lvl-' + tone(l.tone)" [attr.x1]="PLOT_L" [attr.x2]="PLOT_R + 8" [attr.y1]="l.y" [attr.y2]="l.y" />}
               }
               @for (b of m.bars; track $index) {
                 <rect [attr.class]="'pt-al-bar-' + b.tone" [attr.x]="b.x" [attr.y]="b.y" [attr.width]="b.w" [attr.height]="b.h" rx="2" />
                 @if (b.label) {<text class="pt-al-ax" [attr.x]="b.x + b.w / 2" [attr.y]="m.h - 3" text-anchor="middle">{{ b.label }}</text>}
               }
+              @if (m.line2) {<path class="pt-al-line2" [attr.d]="m.line2" />}
               @if (m.line) {<path class="pt-price" [attr.d]="m.line" />}
               @if (m.past && m.zone) {<path [attr.class]="'pt-al-past pt-al-past-' + m.zone.tone" [attr.d]="m.past" [attr.clip-path]="'url(#' + clip + ')'" />}
               @if (m.cross; as c) {
@@ -98,17 +99,40 @@ let uid = 0;
             </div>
           }
           @case ('countdown') {
-            <p class="pt-al-fact">
-              @if (m.days !== null && m.days >= 0) {<b>{{ m.days === 0 ? 'Today' : m.days + (m.days === 1 ? ' day' : ' days') }}</b> to results{{ m.date ? ' · ' + date(m.date) : '' }}}
-              @else {No upcoming earnings date}
-            </p>
+            <!-- the coming days (Romeo, 2026-11-02: visual): today on the left, the alert's window shaded, the report dated on the line -->
+            <svg class="pt-al-viz" viewBox="0 0 300 56" role="img" [attr.aria-label]="sentence()">
+              <rect class="pt-al-zone-pos" [attr.x]="dayX(0, m.span)" y="18" [attr.width]="dayX(m.limit, m.span) - dayX(0, m.span)" height="16" rx="3" />
+              <line class="pt-lvl pt-lvl-flat" x1="16" x2="284" y1="26" y2="26" />
+              @if (m.date && m.days !== null && m.days >= 0 && m.days <= m.span) {
+                <circle class="pt-al-dot" [attr.cx]="dayX(m.days, m.span)" cy="26" r="4" />
+                <text class="pt-lvl-n pt-lvl-n-now" [attr.x]="dayX(m.days, m.span)" y="11" [attr.text-anchor]="m.days > m.span * 0.8 ? 'end' : m.days < m.span * 0.2 ? 'start' : 'middle'">RESULTS {{ upper(dayMonth(m.date)) }}</text>
+              }
+              <text class="pt-al-ax" x="16" y="50">TODAY</text>
+              <text class="pt-al-ax" x="284" y="50" text-anchor="end">IN {{ m.span }} DAYS</text>
+            </svg>
+            @if (!m.date || m.days === null || m.days < 0) {<p class="pt-al-fact">No earnings date announced yet</p>}
+            @else if (m.days > m.span) {<p class="pt-al-fact">Results on {{ date(m.date) }}, in {{ m.days }} days</p>}
           }
           @case ('grade') {
-            <p class="pt-al-fact">
-              @if (m.dir) {{{ m.dir === 'down' ? 'Downgraded' : 'Upgraded' }} by {{ m.firm }}{{ m.date ? ' on ' + date(m.date) : '' }}} @else {No analyst grade change}
-            </p>
+            @if (m.dir) {
+              <p class="pt-al-grade" [class.pt-al-grade-up]="m.dir === 'up'" [class.pt-al-grade-down]="m.dir === 'down'">
+                <svg viewBox="0 0 12 12" aria-hidden="true"><path [attr.d]="m.dir === 'up' ? 'M6 1.5L11 10H1Z' : 'M6 10.5L11 2H1Z'" /></svg>
+                <span><b>{{ m.dir === 'down' ? 'Downgraded' : 'Upgraded' }}</b> by {{ m.firm }}{{ m.date ? ' on ' + date(m.date) : '' }}</span></p>
+            } @else {<p class="pt-al-fact">No upgrade or downgrade on its last session</p>}
           }
-          @case ('flag') {<p class="pt-al-fact">{{ m.on ? 'On the undervalued list' : 'Not on the undervalued list' }}</p>}
+          @case ('flag') {
+            <!-- the undervalued list's two tests, each passed or missed (Romeo, 2026-11-02: visual) -->
+            <ul class="pt-al-crit">
+              @let peOk = m.pe !== null && m.pe < 0;
+              @let upOk = m.upside !== null && m.upside >= m.need;
+              <li [class.pt-al-crit-ok]="peOk"><svg class="pt-al-mark" [class.pt-al-mark-on]="peOk" [class.pt-al-mark-off]="!peOk" viewBox="0 0 12 12" aria-hidden="true">
+                <path [attr.d]="peOk ? CHECK : CROSS" /></svg>
+                @if (m.pe === null) {No P/E against its sector} @else {P/E {{ whole(m.pe) }} {{ m.pe < 0 ? 'below' : 'above' }} its sector's median}</li>
+              <li [class.pt-al-crit-ok]="upOk"><svg class="pt-al-mark" [class.pt-al-mark-on]="upOk" [class.pt-al-mark-off]="!upOk" viewBox="0 0 12 12" aria-hidden="true">
+                <path [attr.d]="upOk ? CHECK : CROSS" /></svg>
+                @if (m.upside === null) {No analyst target} @else {Average analyst target {{ whole(m.upside) }} {{ m.upside < 0 ? 'below' : 'above' }} the price, {{ whole(m.need) }} needed}</li>
+            </ul>
+          }
           @case ('logos') {
             @if (listOpen()) {
               <!-- the companies, editable (Romeo, 2026-11-02): by logo and symbol, a search, whole groups, a pasted portfolio -->
@@ -212,6 +236,12 @@ export class PtAlertCard {
   protected readonly PLOT_R = PLOT_R;
   protected readonly LABEL_X = LABEL_X;
   protected readonly SECTORS = SECTORS;
+  /** the countdown's line: a day's x between 16 and 284 */
+  protected dayX(d: number, span: number): number { return 16 + (Math.max(0, Math.min(d, span)) / span) * 268; }
+  /** a fraction as a whole percent, without its sign: 0.224 → "22%" */
+  protected whole(v: number): string { return `${Math.round(Math.abs(v) * 100)}%`; }
+  protected upper(s: string): string { return s.toUpperCase(); }
+  protected readonly dayMonth = dayMonth;
   protected readonly CHECK = 'M2.5 6.5l2.5 2.5l4.5-5';
   protected readonly CROSS = 'M3.5 3.5l5 5M8.5 3.5l-5 5';
   protected readonly DASH = 'M3.5 6h5';

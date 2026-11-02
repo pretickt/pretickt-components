@@ -75,20 +75,30 @@ describe("version A's charts", () => {
     expect(m.more).toBe(49);
   });
 
-  it('ma-cross draws the gap of the 50-day over the 200-day average over three months, the cross at zero, where it crossed marked', () => {
+  it('ma-cross draws the two averages over three months — the 50-day solid, the 200-day dashed — and marks where they cross the way the alert waits for (Romeo, 2026-11-02)', () => {
     // 330 closes: a slow fall from $130 to $100 (the 50-day under the 200-day), then a climb of $1 a day that takes it above
     const closes = Array.from({ length: 330 }, (_, i) => ({ t: `2026-${String(1 + Math.floor(i / 28) % 12).padStart(2, '0')}-01`,
       c: i < 260 ? 130 - (30 * i) / 259 : 100 + (i - 259) }));
+    const c = closes.map((x) => x.c), avg = (k: number) => c.slice(-k).reduce((a, v) => a + v, 0) / k;
     const m = chartOf(condition('ma-cross'), { row: { ...amd, ma50: 140, ma200: 112 }, rows, closes })!;
     expect(m.kind).toBe('level');
     if (m.kind !== 'level') return;
-    expect(m.levels.map((l) => l.caption)).toEqual(['CROSS', 'NOW']);
-    // NOW is where the line ends (the same closes), not the row's averages when the two disagree
-    const last = (() => { const c = closes.map((x) => x.c), a = (k: number) => c.slice(-k).reduce((s, v) => s + v, 0) / k; return a(50) / a(200) - 1; })();
-    expect(m.levels.find((l) => l.caption === 'NOW')!.label).toBe(`+${Math.round(last * 100)}%`);   // sig: whole percents from 10%
-    expect(m.zone?.tone).toBe('pos');
+    expect(m.line).toBeTruthy();
+    expect(m.line2).toBeTruthy();
+    expect(m.zone).toBeNull();
+    // the labels: each average where its line ends, without a level line across the plot
+    expect(m.levels.map((l) => [l.caption, l.label, l.bare])).toEqual([['MA50', `$${Math.round(avg(50))}`, true], ['MA200', `$${Math.round(avg(200))}`, true]]);
     expect(m.cross).not.toBeNull();
-    expect(chartOf(condition('ma-cross', { dir: 'death' }), { row: amd, rows, closes })!.kind).toBe('level');
+    // the same lines for a death cross: they crossed upwards, so nothing fires there
+    const death = chartOf(condition('ma-cross', { dir: 'death' }), { row: amd, rows, closes })!;
+    expect(death.kind === 'level' && death.cross).toBeNull();
+  });
+
+  it('a NOW pill keeps room for its caption: the label under it starts 24 px lower (volume 3.4× against an alert at 3×)', () => {
+    const m = chartOf(condition('volume-spike', { times: 3 }), { row: { ...amd, volumeRatio: 3.4 }, rows })!;
+    if (m.kind !== 'level') throw new Error(m.kind);
+    const now = m.levels.find((l) => l.now)!, alert = m.levels.find((l) => l.caption === 'ALERT')!;
+    expect(alert.labelY - now.labelY).toBeGreaterThanOrEqual(24);
   });
 
   it('no example row → null', () => {

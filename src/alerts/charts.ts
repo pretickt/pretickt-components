@@ -1,6 +1,7 @@
 import { dayMonth, num, pct } from '../ds/format';
 import { CONDITIONS, price, type Params } from './catalog';
 import type { RuleCondition } from './rule';
+import { UNDERVALUED_UPSIDE } from '../typologies/values';
 import type { AlertRow } from './rows';
 
 /**
@@ -13,30 +14,36 @@ const W = PLOT_R - PLOT_L, SLOTS = 78;   // 5-minute bars of a full session, 9:3
 const LINE = { h: 106, top: 10, bottom: 92 } as const, BARS = { h: 92, top: 10, bottom: 76 } as const;
 
 export type Tone = 'ink' | 'neg' | 'pos';
-export interface Level { y: number; labelY: number; label: string; caption: string; tone: Tone; now?: true }
+/** `bare`: a label only, no line across the plot (the averages of a cross, where their own lines end) */
+export interface Level { y: number; labelY: number; label: string; caption: string; tone: Tone; now?: true; bare?: true }
 export interface Bar { x: number; y: number; w: number; h: number; tone: 'base' | 'hit' | 'neg' | 'pos'; label?: string }
 export interface LevelChart {
-  kind: 'level'; h: number; line: string | null; past: string | null; bars: Bar[]; levels: Level[];
+  /** `line2`: a second line, dashed (the 200-day average of a cross) */
+  kind: 'level'; h: number; line: string | null; line2?: string | null; past: string | null; bars: Bar[]; levels: Level[];
   zone: { y: number; h: number; tone: 'neg' | 'pos' } | null; cross: { x: number; y: number } | null; ticks: { x: number; y: number; label: string }[];
 }
 export interface RangeChart { kind: 'range'; low: number; high: number; price: number; band: [number, number]; side: 'low' | 'high' }
 export interface ChecksChart { kind: 'checks'; marks: (boolean | null)[]; score: number | null; threshold: number }
-export interface CountdownChart { kind: 'countdown'; days: number | null; limit: number; date: string | null }
+/** `span`: the days the line shows from today (the alert's window and a week more, two weeks at least) */
+export interface CountdownChart { kind: 'countdown'; days: number | null; limit: number; date: string | null; span: number }
 export interface GradeChart { kind: 'grade'; dir: 'up' | 'down' | null; firm: string | null; date: string | null }
 export interface LogosChart { kind: 'logos'; rows: Pick<AlertRow, 'ticker' | 'logo' | 'name'>[]; more: number }
-export interface FlagChart { kind: 'flag'; on: boolean }
+/** The undervalued list's two tests: the P/E against the sector's median, the analysts' upside against `need` */
+export interface FlagChart { kind: 'flag'; on: boolean; pe: number | null; upside: number | null; need: number }
 export type ChartModel = LevelChart | RangeChart | ChecksChart | CountdownChart | GradeChart | LogosChart | FlagChart;
 /** What a card draws from: the example's row, every row (logos), the session's 5-minute closes, the daily closes (oldest first). */
 export interface ChartData { row: AlertRow | null; rows: AlertRow[]; bars?: number[] | null; closes?: { t: string; c: number }[] | null }
 
 /** Labels on the right never overlap: each at least `gap` below the one above, all inside [top, bottom]; the input order is kept. */
-export function placeLabels(ys: number[], gap: number, top: number, bottom: number): number[] {
+export function placeLabels(ys: number[], gap: number | ((i: number) => number), top: number, bottom: number): number[] {
   const order = ys.map((y, i) => ({ y, i })).sort((a, b) => a.y - b.y);
+  // the room a label needs under it (a NOW pill's caption takes more)
+  const below = (k: number) => (typeof gap === 'number' ? gap : gap(order[k]!.i));
   const out = order.map((o) => Math.max(o.y, top));
-  for (let k = 1; k < out.length; k++) out[k] = Math.max(out[k]!, out[k - 1]! + gap);
+  for (let k = 1; k < out.length; k++) out[k] = Math.max(out[k]!, out[k - 1]! + below(k - 1));
   if (out.length && out[out.length - 1]! > bottom) {
     out[out.length - 1] = bottom;
-    for (let k = out.length - 2; k >= 0; k--) out[k] = Math.min(out[k]!, out[k + 1]! - gap);
+    for (let k = out.length - 2; k >= 0; k--) out[k] = Math.min(out[k]!, out[k + 1]! - below(k));
   }
   const res = new Array<number>(ys.length);
   order.forEach((o, k) => { res[o.i] = out[k]!; });
@@ -57,7 +64,7 @@ const n = (p: Params, k: string) => Number(p[k]);
 const s = (p: Params, k: string) => String(p[k]);
 const path = (pts: { x: number; y: number }[]) => (pts.length ? pts.map((q, i) => `${i ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`).join('') : null);
 
-interface LevelIn { v: number; label: string; caption: string; tone: Tone; now?: true }
+interface LevelIn { v: number; label: string; caption: string; tone: Tone; now?: true; bare?: true }
 /** The scale of a line chart: every value and level inside the plot, 8% to spare. */
 function scale(values: number[], frame: { top: number; bottom: number }) {
   let lo = Math.min(...values), hi = Math.max(...values);
@@ -68,8 +75,9 @@ function scale(values: number[], frame: { top: number; bottom: number }) {
 }
 function levelsOf(ins: LevelIn[], y: (v: number) => number, frame: { top: number; bottom: number }): Level[] {
   const ys = ins.map((l) => y(l.v));
-  const labelYs = placeLabels(ys, 16, frame.top - 4, frame.bottom + 6);
-  return ins.map((l, i) => ({ y: ys[i]!, labelY: labelYs[i]!, label: l.label, caption: l.caption, tone: l.tone, ...(l.now ? { now: true as const } : {}) }));
+  const labelYs = placeLabels(ys, (i) => (ins[i]!.now ? 24 : 16), frame.top - 4, frame.bottom + 6);
+  return ins.map((l, i) => ({ y: ys[i]!, labelY: labelYs[i]!, label: l.label, caption: l.caption, tone: l.tone, ...(l.now ? { now: true as const } : {}),
+    ...(l.bare ? { bare: true as const } : {}) }));
 }
 function zoneOf(level: number, below: boolean, tone: 'neg' | 'pos', frame: { top: number; bottom: number }) {
   return below ? { y: level, h: frame.bottom - level, tone } : { y: frame.top, h: level - frame.top, tone };
@@ -137,33 +145,43 @@ function averageChart(rc: RuleCondition, row: AlertRow, closes: { t: string; c: 
 }
 
 /**
- * A golden or death cross (round 16): the 50-day average's gap over the 200-day on the last three months of daily closes, the cross at
- * zero, the side the alert waits for shaded, the point where the line crossed marked; NOW is the nightly's gap.
+ * A golden or death cross (round 16; Romeo, 2026-11-02: «mi aspetterei di vedere le medie che si incrociano»): the 50-day average
+ * (solid) and the 200-day (dashed) over the last three months of daily closes, each labelled where it ends, and the point where the
+ * 50-day crossed the 200-day the way the alert waits for (up for golden, down for death) marked. Null without the averages.
  */
 function crossChart(rc: RuleCondition, row: AlertRow, closes: { t: string; c: number }[] | null | undefined): LevelChart | null {
   if (row.ma50 === null || row.ma200 === null) return null;
-  const below = s(rc.p, 'dir') === 'death', tone = below ? 'neg' : 'pos', now = row.ma50 / row.ma200 - 1;
-  const cs = closes ?? [], gaps: { t: string; v: number }[] = [];
+  const below = s(rc.p, 'dir') === 'death';
+  const cs = closes ?? [], pts: { t: string; m50: number; m200: number }[] = [];
   let s50 = 0, s200 = 0;
   for (let i = 0; i < cs.length; i++) {
     s50 += cs[i]!.c;
     s200 += cs[i]!.c;
     if (i >= 50) s50 -= cs[i - 50]!.c;
     if (i >= 200) s200 -= cs[i - 200]!.c;
-    if (i >= 199 && i >= cs.length - 63) gaps.push({ t: cs[i]!.t, v: s50 / 50 / (s200 / 200) - 1 });
+    if (i >= 199 && i >= cs.length - 63) pts.push({ t: cs[i]!.t, m50: s50 / 50, m200: s200 / 200 });
   }
-  const pts = gaps.map((g, i) => ({ x: PLOT_L + (gaps.length > 1 ? i / (gaps.length - 1) : 1) * W, v: g.v, t: g.t }));
-  // NOW where the line ends when it is drawn (the same closes), else the nightly's averages
-  const at = pts.at(-1)?.v ?? now;
-  const ins: LevelIn[] = [{ v: 0, label: '0%', caption: 'CROSS', tone }, { v: at, label: sig(at), caption: 'NOW', tone: 'ink', now: true }];
-  const y = scale([...pts.map((q) => q.v), ...ins.map((l) => l.v)], LINE);
+  // without three months of the 200-day: tonight's two averages, labels only
+  const last = pts.at(-1) ?? { t: '', m50: row.ma50, m200: row.ma200 };
+  const ins: LevelIn[] = [{ v: last.m50, label: dollars(last.m50), caption: 'MA50', tone: 'ink', bare: true },
+    { v: last.m200, label: dollars(last.m200), caption: 'MA200', tone: 'ink', bare: true }];
+  const y = scale([...pts.flatMap((p) => [p.m50, p.m200]), ...ins.map((l) => l.v)], LINE);
+  const x = (i: number) => PLOT_L + (pts.length > 1 ? i / (pts.length - 1) : 1) * W;
+  let cross: LevelChart['cross'] = null;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1]!.m50 - pts[i - 1]!.m200, b = pts[i]!.m50 - pts[i]!.m200;
+    if (below ? a >= 0 && b < 0 : a <= 0 && b > 0) {
+      const f = a / (a - b);
+      cross = { x: x(i - 1) + f * (x(i) - x(i - 1)), y: y(pts[i - 1]!.m50 + f * (pts[i]!.m50 - pts[i - 1]!.m50)) };
+    }
+  }
   const ticks: LevelChart['ticks'] = [];
   pts.forEach((q, i) => {
-    if (i && q.t.slice(0, 7) !== pts[i - 1]!.t.slice(0, 7)) ticks.push({ x: q.x, y: LINE.h - 3, label: MONTHS[Number(q.t.slice(5, 7)) - 1] ?? '' });
+    if (i && q.t.slice(0, 7) !== pts[i - 1]!.t.slice(0, 7)) ticks.push({ x: x(i), y: LINE.h - 3, label: MONTHS[Number(q.t.slice(5, 7)) - 1] ?? '' });
   });
-  const line = path(pts.map((q) => ({ x: q.x, y: y(q.v) })));
-  return { kind: 'level', h: LINE.h, line, past: line, bars: [], levels: levelsOf(ins, y, LINE), zone: zoneOf(y(0), below, tone, LINE),
-    cross: crossOf(pts, 0, below, y), ticks };
+  const line = pts.length > 1 ? path(pts.map((p, i) => ({ x: x(i), y: y(p.m50) }))) : null;
+  const line2 = pts.length > 1 ? path(pts.map((p, i) => ({ x: x(i), y: y(p.m200) }))) : null;
+  return { kind: 'level', h: LINE.h, line, line2, past: null, bars: [], levels: levelsOf(ins, y, LINE), zone: null, cross, ticks };
 }
 
 /** Bars against a level: two counts (usual and the session's), P/E against the sector's, surprises, insider buying, the target. */
@@ -248,10 +266,10 @@ export function chartOf(rc: RuleCondition, d: ChartData): ChartModel | null {
     case 'checks': return { kind: 'checks', marks: row.checks ?? Array.from({ length: 9 }, () => null), score: row.piotroski, threshold: n(p, 'score') };
     case 'countdown': {
       const t = CONDITIONS[rc.c].test(row, p);
-      return { kind: 'countdown', days: row.earningsDate ? t.value : null, limit: n(p, 'days'), date: row.earningsDate };
+      return { kind: 'countdown', days: row.earningsDate ? t.value : null, limit: n(p, 'days'), date: row.earningsDate, span: Math.max(14, n(p, 'days') + 7) };
     }
     case 'grade': return { kind: 'grade', dir: row.grade?.dir ?? null, firm: row.grade?.firm ?? null, date: row.grade?.date ?? null };
-    case 'flag': return { kind: 'flag', on: row.undervalued };
+    case 'flag': return { kind: 'flag', on: row.undervalued, pe: row.peVsSector, upside: row.ptUpside, need: UNDERVALUED_UPSIDE };
     default: return null;
   }
 }

@@ -334,23 +334,23 @@ describe('PtAlertEditor', () => {
     expect(el.querySelectorAll('.pt-al-grip')).toHaveLength(0);
   });
 
-  it('the same stock at most once a day (as before) or a week: the rule keeps the choice, the saved note repeats it', async () => {
-    const { alerts, saved } = setup();
+  it('a new alert: at most once a day per stock, no choice; editing it shows the choice of a day or a week (Romeo, 2026-11-02: the email\'s Edit changes it)', async () => {
+    const state = { email: 'm•••@example.com', status: 'active', weekly: false, digest: false, rules: [] };
+    const { alerts } = setup(undefined, state);
     alerts.add({ c: 'session-move', mega: true }, from);
     const { el, settle, text } = await mount();
+    expect(text()).toContain('at most once a day per stock');
+    expect(el.querySelector('.pt-al-once')).toBeNull();
+    alerts.edit({ id: 'r1', name: 'Drops', rule: { v: 1, all: [{ c: 'session-move', p: { dir: 'down', pct: 5 } }] }, status: 'active' }, 'tok');
+    await settle();
     const once = (label: string) => [...el.querySelectorAll<HTMLButtonElement>('.pt-al-once button')].find((b) => b.textContent!.trim() === label)!;
-    expect(text()).toContain('the same stock at most once');
     expect(once('a day').getAttribute('aria-pressed')).toBe('true');
-    expect(once('a week').getAttribute('aria-pressed')).toBe('false');
     once('a week').click();
     await settle();
     expect(alerts.draft()!.rule.once).toBe('week');
     expect(once('a week').getAttribute('aria-pressed')).toBe('true');
-    type(el, 'input[type="email"]', 'me@example.com');
-    await settle();
     el.querySelector<HTMLButtonElement>('.pt-al-save')!.click();
     await settle();
-    expect(saved[0]).toMatchObject({ rule: { once: 'week' } });
     expect(text()).toContain('at most once a week per stock');
   });
 

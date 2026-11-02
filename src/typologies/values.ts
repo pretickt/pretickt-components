@@ -31,6 +31,8 @@ export const SECTORS = ['Technology', 'Industrials', 'Financial Services', 'Heal
 export type Sector = (typeof SECTORS)[number];
 /** A mega cap: a market value of $200 billion or more (pt-logo-map's mega lens, the alerts' Mega caps). */
 export const MEGA_CAP = 200e9;
+/** The undervalued list's upside: an average analyst target at least this far above the price (with a P/E under the sector's median). */
+export const UNDERVALUED_UPSIDE = 0.15;
 
 /** The most rows a list (`screen@1`) answers: the whole universe (518 today), so "Show 20 more" can reach every company. */
 export const SCREEN_MAX = 600;

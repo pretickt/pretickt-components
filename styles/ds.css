@@ -139,6 +139,15 @@
   .pt-al-past { fill: none; stroke-width: 1.8; stroke-linejoin: round; }
   .pt-al-past-neg { stroke: var(--color-neg); } .pt-al-past-pos { stroke: var(--color-pos); }
   .pt-al-fire { fill: var(--color-surface-raised); stroke: var(--color-neg); stroke-width: 1.6; }
+  .pt-al-line2 { fill: none; stroke: var(--color-ink-soft); stroke-width: 1.4; stroke-dasharray: 4 3; }   /* a cross's 200-day average */
+  /* the undervalued card's two tests, each with its mark; an upgrade's or a downgrade's arrow */
+  .pt-al-crit { display: grid; gap: .3rem; margin: .35rem 0 .2rem; padding: 0; list-style: none; font-size: .86rem; color: var(--color-ink-soft); }
+  .pt-al-crit li { display: flex; align-items: center; gap: .45rem; }
+  .pt-al-crit-ok { color: var(--color-ink); }
+  .pt-al-grade { display: flex; align-items: center; gap: .5rem; margin: .5rem 0 .3rem; font-size: .9rem; color: var(--color-ink); }
+  .pt-al-grade svg { flex: none; width: 1.1rem; height: 1.1rem; }
+  .pt-al-grade-up svg { fill: var(--color-pos); }
+  .pt-al-grade-down svg { fill: var(--color-neg); }
   .pt-al-fire-t { font: 600 7px var(--font-sans); fill: var(--color-neg); }
   .pt-al-ax { font: 500 7.5px var(--font-mono); fill: var(--color-ink-soft); }
   .pt-al-bar-base { fill: color-mix(in oklab, var(--color-ink-soft) 30%, var(--color-surface-raised)); }

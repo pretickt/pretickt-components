@@ -58,11 +58,24 @@ const TURNSTILE_TEST = { passes: '1x00000000000000000000AA', tap: '3x00000000000
 const rows = rowsOf(MOCK_UNIVERSE, null);
 const amd = rows.find((r) => r.ticker === 'AMD')!;
 const closes = (mockSeries({ tickers: ['AMD'], range: '2y' }) as { points: { t: string; c: number }[] }[])[0]!.points.map((p) => ({ t: p.t, c: p.c }));
-const cardOf = (id: (typeof CONDITION_IDS)[number]) => {
-  const rc = condition(id, id === 'one-stock' ? { ticker: 'AMD' } : undefined, amd);
+/**
+ * Made-up closes whose 50-day average crosses the 200-day in the last three months: a slow fall, then a climb (golden) or the
+ * other way round (death) — the cross card shows the two averages meeting (Romeo, 2026-11-02).
+ */
+const crossing = (dir: 'golden' | 'death') => Array.from({ length: 330 }, (_, i) => {
+  const t = new Date(Date.UTC(2026, 9, 30) - (329 - i) * 1.45 * 86_400_000).toISOString().slice(0, 10);
+  const c = i < 270 ? 160 - (30 * i) / 269 : 130 + 1.2 * (i - 269);
+  return { t, c: dir === 'golden' ? c : 290 - c };
+});
+const cardOf = (id: (typeof CONDITION_IDS)[number], p?: Record<string, string>) => {
+  const rc = condition(id, id === 'one-stock' ? { ticker: 'AMD' } : p, amd);
   const rule: Rule = { v: 1, all: [rc] };
-  return story(PtAlertCard, { name: `Card · ${CONDITIONS[id].name}`, group: CARDS,
-    inputs: { rc, data: { row: amd, rows, bars: MOCK_BARS['AMD'], closes }, count: passCount(rule, 0, rows), ofLabel: 'stocks' } });
+  const series = id === 'ma-cross' ? crossing(p?.['dir'] === 'death' ? 'death' : 'golden') : closes;
+  // a made-up report date and downgrade for AMD, so those cards draw what they show
+  const row = id === 'earnings-soon' ? { ...amd, earningsDate: '2026-11-04' }
+    : id === 'grade-change' ? { ...amd, grade: { dir: 'down' as const, date: amd.session, firm: 'A made-up firm' } } : amd;
+  return story(PtAlertCard, { name: `Card · ${CONDITIONS[id].name}${p?.['dir'] === 'death' ? ' (death)' : ''}`, group: CARDS,
+    inputs: { rc, data: { row, rows, bars: MOCK_BARS['AMD'], closes: series }, count: passCount(rule, 0, rows), ofLabel: 'stocks' } });
 };
 
 export const stories = [
@@ -86,5 +99,6 @@ export const stories = [
     data, group: EDITOR, run: saveAs('reader@example.com') }),
   story(PtAlertEditorStory, { name: 'Editor · My portfolio, pasted', inputs: { bells: [{ c: 'session-move' }, { c: 'companies' }] },
     providers: fakeAlerts(), data, group: EDITOR, run: pastePortfolio }),
-  ...CONDITION_IDS.map(cardOf),
+  ...CONDITION_IDS.map((id) => cardOf(id)),
+  cardOf('ma-cross', { dir: 'death' }),
 ];

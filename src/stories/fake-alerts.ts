@@ -36,11 +36,15 @@ export function mockSeries(params: unknown): unknown {
   return p.tickers.map((ticker) => {
     const row = MOCK_UNIVERSE.rows.find((r) => r.ticker === ticker);
     const close = row?.close ?? 100, prev = row?.prevClose ?? close, rnd = prng(`series-${ticker}`);
-    const plateau = row?.ma50 ? (50 * row.ma50 - close - prev) / 48 : close;
+    // a plateau, then the last 15 sessions walking to the previous close and the close: a gradual move, never a cliff on the last day,
+    // with the 50-day average still the row's (35 at the plateau P, 13 on the walk, prev and close: 41.5 P + 7.5 prev + close = 50 ma50)
+    const plateau = row?.ma50 ? (50 * row.ma50 - 7.5 * prev - close) / 41.5 : close;
     const day = (i: number) => new Date(Date.UTC(2026, 9, 30) - (n - 1 - i) * 1.45 * 86400000).toISOString().slice(0, 10);
     const noise = (i: number) => (i % 2 ? 1 : -1) * plateau * 0.004 * rnd();   // alternating, so the average stays put
+    const walk = (k: number) => round(plateau + ((prev - plateau) * k) / 14, 2);
     return { ticker, points: Array.from({ length: n }, (_, i) => {
-      const c = i === n - 1 ? close : i === n - 2 ? prev : round(plateau * (i < n - 50 ? 1.04 - 0.04 * (i / (n - 50)) : 1) + noise(i), 2);
+      const c = i === n - 1 ? close : i === n - 2 ? prev : i >= n - 15 ? walk(i - (n - 16))
+        : round(plateau * (i < n - 50 ? 1.04 - 0.04 * (i / (n - 50)) : 1) + noise(i), 2);
       return { t: day(i), o: c, h: c * 1.01, l: c * 0.99, c, v: 1e6 };
     }) };
   });

@@ -103,11 +103,14 @@ const CHECK_FAILED = "We could not check that you're not a robot: reload the pag
               <input class="pt-al-name" aria-label="Name of the alert" [value]="alerts.draft()?.name ?? ''" [placeholder]="nameOf(rule())"
                 (input)="alerts.rename(text($event))" />
             }
-            <p class="pt-al-when">Email me when a stock starts meeting all of these · the same stock at most once
-              <span class="pt-al-once" role="group" aria-label="How often the same stock">
-                <button type="button" [attr.aria-pressed]="!week()" (click)="alerts.setOnce('day')">a day</button>
-                <button type="button" [attr.aria-pressed]="week()" (click)="alerts.setOnce('week')">a week</button>
-              </span></p>
+            <!-- how often the same stock is the reader's to change when editing, from the email's Edit (Romeo, 2026-11-02); a new alert: once a day -->
+            @if (editing()) {
+              <p class="pt-al-when">Email me when a stock starts meeting all of these · the same stock at most once
+                <span class="pt-al-once" role="group" aria-label="How often the same stock">
+                  <button type="button" [attr.aria-pressed]="!week()" (click)="alerts.setOnce('day')">a day</button>
+                  <button type="button" [attr.aria-pressed]="week()" (click)="alerts.setOnce('week')">a week</button>
+                </span></p>
+            } @else {<p class="pt-al-when">Email me when a stock starts meeting all of these · at most once a day per stock</p>}
             <!-- what the rule would have sent lately (the page's estimate): the last one stays, faded, while the next is on its way -->
             @if (estimate(); as e) {<p class="pt-al-est" [class.pt-al-est-old]="e.old">In the last month it would have sent {{ e.say }}</p>}
             @if (!editing()) {
