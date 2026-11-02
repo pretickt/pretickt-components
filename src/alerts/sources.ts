@@ -17,7 +17,7 @@ function ofList(list: unknown, sector: string | null): AlertSource | null {
     '52w_low': { c: 'near-52w', p: { side: 'low' } }, '52w_high': { c: 'near-52w', p: { side: 'high' } },
     undervalued: { c: 'undervalued' }, insider_buying: { c: 'insider-buying' }, most_active: { c: 'volume-spike' }, largest: { c: 'mega-caps' },
     // round 16: who joins one of these lists starts meeting its condition
-    upgrades_downgrades: { c: 'grade-change', p: { dir: 'up' } }, golden_cross: { c: 'ma-cross', p: { dir: 'golden' } },
+    upgrades_downgrades: { c: 'grade-change', p: { dir: 'any' } }, golden_cross: { c: 'ma-cross', p: { dir: 'golden' } },
     death_cross: { c: 'ma-cross', p: { dir: 'death' } }, low_pe: { c: 'pe-vs-sector' }, piotroski: { c: 'piotroski', p: { side: 'high', score: 8 } },
     unusual_volume: { c: 'volume-spike', p: { times: 2 } },
   };

@@ -3,7 +3,7 @@
  * price target, its peers, its latest quarter, its insiders; who leads a market list; a calendar month at a glance.
  * Company topics name the company as people search it, with its ticker ("Nvidia NVDA"): the sentence an answer engine quotes stands on its own.
  * Each company a sentence names is a link with its logo (PtSay, PtMention): on the site its card opens on hover, the page's own company too.
- * @version 1.4.0
+ * @version 1.4.1
  * @evidence DataForSEO: "<ticker> stock forecast" 151k/month, "<ticker> price target" 103k/month, "earnings calendar" 153k/month, list queries (launch/data/08c-serp-*.json)
  * @evidence SEO measurement 2026-10-09: list and company subpages of ~80–200 words; the answer belongs in the first lines, with its numbers
  * @evidence DataForSEO round 16 (2026-11-02): "<ticker> 200 day moving average" 4,080/month on 9 tickers, 50-day 1,550, 52-week high 1,300; the AI
@@ -104,6 +104,8 @@ export class PtAnswer {
   protected readonly insiders = this.pt.insider(() => { const t = this.of('insiders'); return t ? { ticker: t, days: 365 } : null; });
   // the year's daily bars of the hub's price chart (pt-price-events asks the same): the averages and the range come from them
   protected readonly bars = this.pt.priceSeries(() => { const t = this.of('technicals'); return t ? { tickers: [t], range: '1y', interval: '1d', rebase: false } : null; });
+  /** the 52-week range the company card shows beside the answer: traded highs and lows (the series' bars are adjusted for dividends) */
+  protected readonly range52 = this.pt.metric(() => { const t = this.of('technicals'); return t ? { ticker: t, metrics: ['range_52w'] } : null; });
   protected readonly leaders = this.pt.screen(() => {
     if (this.topic() !== 'list') return null;
     const s = this.sector();
@@ -155,20 +157,22 @@ export class PtAnswer {
   }
 
   /**
-   * The close against its 200- and 50-day moving averages (simple, on the daily closes) and its 52-week high and low (the bars' own
-   * highs and lows); a listing younger than 200 sessions has the 50-day only, younger than a year its range since its first session.
+   * The close against its 200- and 50-day moving averages (simple, on the daily closes) and its 52-week high and low — the company
+   * card's, else the bars' own highs and lows; a listing younger than 200 sessions has the 50-day only, younger than a year its range
+   * since its first session.
    */
   private technicalsAnswer(): Said | null {
-    const s = this.bars.value(), t = this.ticker();
+    const s = this.bars.value(), card = this.range52.value(), t = this.ticker();
     if (!t) return null;
-    if (s === undefined) return PENDING;
+    if (s === undefined || card === undefined) return PENDING;
     const pts = s?.[0]?.points ?? [];
     if (pts.length < 50) return null;
     const n = this.named(t);
     if (n === undefined) return PENDING;
     const last = pts.at(-1)!, c = last.c, avg = (k: number) => pts.slice(-k).reduce((a, p) => a + p.c, 0) / k;
     const ma50 = avg(50), ma200 = pts.length >= 200 ? avg(200) : null;
-    const year = pts.slice(-252), hi = Math.max(...year.map((p) => p.h)), lo = Math.min(...year.map((p) => p.l));
+    const year = pts.slice(-252), traded = card?.find((m) => m.key === 'range_52w')?.range;
+    const hi = traded?.hi ?? Math.max(...year.map((p) => p.h)), lo = traded?.lo ?? Math.min(...year.map((p) => p.l));
     const fifty = `${versus(c / ma50 - 1)} its 50-day moving average of ${money(ma50)}`;
     const mas = ma200 === null ? fifty : `${versus(c / ma200 - 1)} its 200-day moving average of ${money(ma200)} and ${fifty}`;
     const range = pts.length >= 252 ? `its 52-week high of ${money(hi)}; its 52-week low is ${money(lo)}`

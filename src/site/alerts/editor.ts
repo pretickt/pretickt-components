@@ -241,7 +241,8 @@ export class PtAlertEditor {
       if (key === null || !this.alerts.opened() || this.askedFor === key) return;
       const t = setTimeout(() => {
         this.askedFor = key;
-        void this.alerts.estimate(rule).then((n) => this.answer.set({ key, n }));
+        // only the last rule asked for: an older one's answer arriving late never replaces it
+        void this.alerts.estimate(rule).then((n) => { if (this.askedFor === key) this.answer.set({ key, n }); });
       }, 400);
       onCleanup(() => clearTimeout(t));
     });

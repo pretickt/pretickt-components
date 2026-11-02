@@ -375,6 +375,24 @@ describe('PtAlertEditor', () => {
     expect(text()).toContain('In the last month it would have sent 1 email');
   });
 
+  it("an older rule's estimate arriving after the newer one's never replaces it", async () => {
+    const pending: ((n: number) => void)[] = [];
+    const { alerts } = setup(undefined, null, undefined, () => new Promise<number>((r) => pending.push(r)));
+    alerts.add({ c: 'session-move', p: { dir: 'down', pct: 5 } }, from);
+    const { settle, text } = await mount();
+    await new Promise((r) => setTimeout(r, 450));
+    alerts.setOnce('week');
+    await new Promise((r) => setTimeout(r, 450));
+    await settle();
+    expect(pending).toHaveLength(2);
+    pending[1]!(1);   // the newer rule's answer first
+    await settle();
+    pending[0]!(25);  // then the older one's
+    await settle();
+    expect(text()).toContain('In the last month it would have sent 1 email');
+    expect(text()).not.toContain('about 25 emails');
+  });
+
   it('no estimate line without a page estimate, and "no email" for a quiet rule', async () => {
     setup();
     const { alerts } = { alerts: TestBed.inject(PtAlerts) };

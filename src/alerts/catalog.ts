@@ -49,6 +49,18 @@ const NO: Test = { pass: false, value: null };
 export const LIST_MAX = 100;
 /** A portfolio's tickers ("AAPL,MSFT" → ['AAPL', 'MSFT']; none while it is empty). */
 export const listOf = (p: Params): string[] => String(p['tickers'] ?? '').split(',').filter(Boolean);
+/** each portfolio read once as a set: its test runs on every row of every session the estimate replays */
+const SETS = new Map<string, ReadonlySet<string>>();
+function inList(p: Params, ticker: string): boolean {
+  const key = String(p['tickers'] ?? '');
+  let set = SETS.get(key);
+  if (!set) {
+    if (SETS.size >= 32) SETS.clear();
+    set = new Set(listOf(p));
+    SETS.set(key, set);
+  }
+  return set.has(ticker);
+}
 const n = (p: Params, k: string) => Number(p[k]);
 const s = (p: Params, k: string) => String(p[k]);
 const fixed = (v: number) => num(v, Number.isInteger(v) ? 0 : Math.abs(v * 10 - Math.round(v * 10)) < 1e-9 ? 1 : 2);
@@ -239,12 +251,17 @@ const NEWS: Condition[] = [
     },
   },
   {
+    // the stock's latest grade of the last 7 days, as the upgrades and downgrades list: a weekend's or a late one fires too
     id: 'grade-change', group: 'news', name: 'Downgrade / Upgrade', freq: 'daily', chart: 'grade',
-    params: [choice('dir', [['down', 'downgrades'], ['up', 'upgrades']])], defaults: { dir: 'down' },
+    params: [choice('dir', [['down', 'downgrades'], ['up', 'upgrades'], ['any', 'upgrades or downgrades']])], defaults: { dir: 'down' },
     say: () => ['An analyst ', { key: 'dir' }, ' it'],
-    short: (p) => (s(p, 'dir') === 'up' ? 'Upgrade' : 'Downgrade'),
-    fact: (p) => `was ${s(p, 'dir') === 'up' ? 'upgraded' : 'downgraded'} by an analyst`,
-    test: (r, p) => (r.grade === null ? NO : { pass: r.grade.dir === s(p, 'dir') && r.grade.date === r.session, value: null }),
+    short: (p) => (s(p, 'dir') === 'any' ? 'Up/downgrade' : s(p, 'dir') === 'up' ? 'Upgrade' : 'Downgrade'),
+    fact: (p, v) => `was ${(s(p, 'dir') === 'any' ? (v ?? 0) > 0 : s(p, 'dir') === 'up') ? 'upgraded' : 'downgraded'} by an analyst`,
+    test: (r, p) => {
+      if (r.grade === null) return NO;
+      const age = (Date.parse(r.session) - Date.parse(r.grade.date)) / 86_400_000;
+      return { pass: age >= 0 && age < 7 && (s(p, 'dir') === 'any' || r.grade.dir === s(p, 'dir')), value: r.grade.dir === 'up' ? 1 : -1 };
+    },
   },
 ];
 
@@ -290,7 +307,7 @@ const UNIVERSE: Condition[] = [
     say: () => ['Is one of ', { key: 'tickers' }],
     short: (p) => { const l = listOf(p); return l.length === 1 ? l[0]! : 'My portfolio'; },
     fact: () => '',
-    test: (r, p) => ({ pass: listOf(p).includes(r.ticker), value: null }),
+    test: (r, p) => ({ pass: inList(p, r.ticker), value: null }),
   },
 ];
 

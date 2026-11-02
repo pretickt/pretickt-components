@@ -202,11 +202,17 @@ describe('the catalog: fundamental, news and social conditions', () => {
     expect(test('earnings-soon', { session: '2026-10-30', earningsDate: '2026-11-02' }).value).toBe(3);
   });
 
-  it('grade-change fires on the session of the grade only', () => {
-    expect(test('grade-change', { session: '2026-10-30', grade: { dir: 'down', date: '2026-10-30', firm: 'F' } }).pass).toBe(true);
-    expect(test('grade-change', { session: '2026-10-31', grade: { dir: 'down', date: '2026-10-30', firm: 'F' } }).pass).toBe(false);
-    expect(test('grade-change', { session: '2026-10-30', grade: { dir: 'up', date: '2026-10-30', firm: 'F' } }).pass).toBe(false);
-    expect(test('grade-change', { session: '2026-10-30', grade: { dir: 'up', date: '2026-10-30', firm: 'F' } }, { dir: 'up' }).pass).toBe(true);
+  it("grade-change: the stock's latest grade of the last 7 days, as the upgrades and downgrades list — a weekend's or a late one included", () => {
+    const g = (dir: 'up' | 'down', date: string) => ({ grade: { dir, date, firm: 'F' } });
+    expect(test('grade-change', { session: '2026-10-30', ...g('down', '2026-10-30') }).pass).toBe(true);
+    expect(test('grade-change', { session: '2026-11-02', ...g('down', '2026-11-01') }).pass).toBe(true);    // dated on a Sunday
+    expect(test('grade-change', { session: '2026-11-05', ...g('down', '2026-10-30') }).pass).toBe(true);    // ingested days late
+    expect(test('grade-change', { session: '2026-11-06', ...g('down', '2026-10-30') }).pass).toBe(false);   // a week on: out
+    expect(test('grade-change', { session: '2026-10-30', ...g('up', '2026-10-30') }).pass).toBe(false);
+    expect(test('grade-change', { session: '2026-10-30', ...g('up', '2026-10-30') }, { dir: 'up' }).pass).toBe(true);
+    // both ways, as the list: the value says which
+    expect(test('grade-change', { session: '2026-10-30', ...g('up', '2026-10-30') }, { dir: 'any' })).toEqual({ pass: true, value: 1 });
+    expect(test('grade-change', { session: '2026-10-30', ...g('down', '2026-10-29') }, { dir: 'any' })).toEqual({ pass: true, value: -1 });
   });
 
   it('social-buzz needs 10 posts at least', () => {
@@ -241,6 +247,7 @@ describe('the catalog: fundamental, news and social conditions', () => {
     expect(f('news-spike', 4.1)).toBe('had 4.1× its usual number of stories');
     expect(f('earnings-soon', 2)).toBe('reports earnings in 2 days');
     expect(f('grade-change', null)).toBe('was downgraded by an analyst');
+    expect([f('grade-change', 1, { dir: 'any' }), f('grade-change', -1, { dir: 'any' })]).toEqual(['was upgraded by an analyst', 'was downgraded by an analyst']);
     expect(f('insider-buying', 2.4e6)).toBe('saw $2.4M of net insider buying in 90 days');
   });
 });

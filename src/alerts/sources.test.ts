@@ -36,7 +36,7 @@ describe("the badge each component's bell adds (spec §2)", () => {
       ['pt-answer', { topic: 'peers', ticker: 'NVDA' }, { c: 'session-move', ticker: 'NVDA' }],
       ['pt-answer', { topic: 'list', list: '52w_low', sector: 'Energy' }, { c: 'near-52w', p: { side: 'low' }, sector: 'Energy' }],
       ['pt-answer', { topic: 'technicals', ticker: 'NVDA' }, { c: 'below-average', p: { days: '200' }, ticker: 'NVDA' }],
-      ['pt-screen', { list: 'upgrades_downgrades' }, { c: 'grade-change', p: { dir: 'up' } }],
+      ['pt-screen', { list: 'upgrades_downgrades' }, { c: 'grade-change', p: { dir: 'any' } }],
       ['pt-screen', { list: 'golden_cross' }, { c: 'ma-cross', p: { dir: 'golden' } }],
       ['pt-screen', { list: 'death_cross' }, { c: 'ma-cross', p: { dir: 'death' } }],
       ['pt-screen', { list: 'low_pe' }, { c: 'pe-vs-sector' }],
