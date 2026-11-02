@@ -49,6 +49,28 @@ describe('PtAlertEditor', () => {
     expect(el.querySelectorAll('.pt-al-and')).toHaveLength(1);
   });
 
+  it('empty: tap a badge or drag it into the dashed box below, which lights up while a badge is over it and takes the drop', async () => {
+    const { alerts } = setup();
+    alerts.open();
+    const { el, settle, text } = await mount();
+    expect(text()).toContain('Tap a badge to add a condition or drag it below');
+    const box = el.querySelector<HTMLElement>('.pt-al-drop')!;
+    expect(box.textContent!.trim()).toBe('Drag a condition here');
+    box.dispatchEvent(new Event('dragenter', { bubbles: true }));
+    await settle();
+    expect(box.classList).toContain('pt-al-drop-over');
+    box.dispatchEvent(new Event('dragleave', { bubbles: true }));
+    await settle();
+    expect(box.classList).not.toContain('pt-al-drop-over');
+    box.dispatchEvent(new Event('dragenter', { bubbles: true }));
+    const drop = new Event('drop', { bubbles: true, cancelable: true });
+    Object.defineProperty(drop, 'dataTransfer', { value: { getData: () => 'session-move' } });
+    box.dispatchEvent(drop);
+    await settle();
+    expect(alerts.draft()!.rule.all.map((rc) => rc.c)).toEqual(['session-move']);
+    expect(el.querySelector('.pt-al-drop')).toBeNull();                  // the empty state's box, gone with the first card
+  });
+
   it('a badge adds its condition; used badges are marked', async () => {
     const { alerts } = setup();
     alerts.add({ c: 'session-move' }, from);

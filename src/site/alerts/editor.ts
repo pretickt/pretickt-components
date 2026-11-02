@@ -78,7 +78,11 @@ const CHECK_FAILED = "We could not check that you're not a robot: reload the pag
                 @if (i) {<p class="pt-al-and">and</p>}
                 <pt-alert-card [rc]="rc" [data]="data()" [count]="count(i)" [ofLabel]="ofLabel()"
                   (change)="alerts.setParam(i, $event.key, $event.value)" (remove)="alerts.remove(i)" />
-              } @empty {<p class="pt-al-empty">Tap a badge to add a condition</p>}
+              } @empty {
+                <p class="pt-al-empty">Tap a badge to add a condition or drag it below</p>
+                <!-- the drop lands on the section; the box shows where, and lights up while a badge is over it -->
+                <div class="pt-al-drop" [class.pt-al-drop-over]="over()" (dragenter)="over.set(true)" (dragleave)="over.set(false)">Drag a condition here</div>
+              }
               @if (problem(); as p) {<p class="pt-al-hint">{{ p }}</p>}
             </section>
           </div>
@@ -119,6 +123,8 @@ export class PtAlertEditor {
   protected readonly saved = signal<{ to: string; edit: boolean } | null>(null);
   protected readonly failed = signal<string | null>(null);
   protected readonly CHECK_FAILED = CHECK_FAILED;
+  /** a dragged badge is over the empty rule's drop box */
+  protected readonly over = signal(false);
   /** the email field was touched: the human check (Cloudflare's, on www) loads only then */
   protected readonly touched = signal(false);
   /** the human check's token: one save each (a failed save asks for a fresh one) */
@@ -207,6 +213,7 @@ export class PtAlertEditor {
   protected drag(e: DragEvent, id: ConditionId): void { e.dataTransfer?.setData('text/plain', id); }
   protected drop(e: DragEvent): void {
     e.preventDefault();
+    this.over.set(false);
     const id = e.dataTransfer?.getData('text/plain') as ConditionId | undefined;
     if (id && Object.hasOwn(CONDITIONS, id)) this.pick(id);
   }

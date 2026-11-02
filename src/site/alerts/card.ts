@@ -1,13 +1,17 @@
-import { Component, computed, input, output, signal } from '@angular/core';
+import { afterRenderEffect, Component, computed, type ElementRef, input, output, signal, viewChild } from '@angular/core';
 import { PtLogo } from '@pretickt/components/ds';
 import { date } from '@pretickt/components/format';
 import { CONDITIONS, GROUPS, pillText, type ParamSpec } from '../../alerts/catalog';
 import { chartOf, dollars, LABEL_X, PLOT_L, PLOT_R, type ChartData, type Tone } from '../../alerts/charts';
+import { presets } from '../../alerts/presets';
 import type { RuleCondition } from '../../alerts/rule';
 import { SECTORS } from '../../typologies/values';
 
 interface Part { text: string; key: string | null; spec: ParamSpec | null }
+type NumberSpec = Extract<ParamSpec, { kind: 'number' }>;
 const TICKER = /^[A-Z][A-Z0-9]{0,5}(\.[A-Z])?$/;
+/** a value on its step: 0.5 + 1 = 1.5, never 1.5000000000000002 */
+const onStep = (v: number, step: number) => Number((Math.round(v / step) * step).toFixed((String(step).split('.')[1] ?? '').length));
 let uid = 0;
 
 /**
@@ -108,6 +112,21 @@ let uid = 0;
       <p class="pt-al-say">
         @for (part of parts(); track $index) {
           @if (part.key === null) {{{ part.text }}}
+          @else if (part.key === open() && inline(); as s) {
+            <!-- a percentage or a price is typed in place, with round values above and below (Romeo, 2026-11-02) -->
+            <span class="pt-al-edit" [attr.data-unit]="s.unit" (focusout)="leave($event)">
+              <span class="pt-al-pre pt-al-pre-up">
+                @for (v of shown()!.up; track v) {<button type="button" (pointerdown)="pick(v, $event)" (click)="pick(v)">{{ label(s, v) }}</button>}
+              </span>
+              @if (s.unit === 'price') {<span class="pt-al-unit">$</span>}
+              <input #field class="pt-al-in" inputmode="decimal" autocomplete="off" [attr.aria-label]="s.unit === 'price' ? 'Price level' : 'Percentage'"
+                [value]="raw()" [style.width]="fieldWidth()" (input)="typing.set(text($event))" (keydown.enter)="enter($event)" (keydown.escape)="escape($event)" />
+              @if (s.unit === 'pct') {<span class="pt-al-unit">%</span>}
+              <span class="pt-al-pre pt-al-pre-down">
+                @for (v of shown()!.down; track v) {<button type="button" (pointerdown)="pick(v, $event)" (click)="pick(v)">{{ label(s, v) }}</button>}
+              </span>
+            </span>
+          }
           @else {<button type="button" class="pt-al-pill" [attr.aria-expanded]="open() === part.key" [attr.aria-label]="'Change ' + part.text"
             (click)="press(part)">{{ part.text }}</button>}
         }
@@ -121,10 +140,6 @@ let uid = 0;
       }
       @if (open() !== null && openSpec()?.kind === 'sector') {
         <div class="pt-al-choices">@for (s of SECTORS; track s) {<button type="button" (click)="choose(s)">{{ s }}</button>}</div>
-      }
-      @if (open() !== null && isPrice()) {
-        <input class="pt-al-num" type="number" inputmode="decimal" step="0.01" aria-label="Price level" [value]="rcv.p[open()!]"
-          (keydown.enter)="typedPrice($event)" (change)="typedPrice($event)" />
       }
       @if (open() !== null && openSpec()?.kind === 'ticker') {
         <input class="pt-al-ticker" aria-label="Ticker" [value]="rcv.p[open()!]" (keydown.enter)="typed($event)" (change)="typed($event)" />
@@ -168,14 +183,35 @@ export class PtAlertCard {
   });
   protected readonly sentence = computed(() => this.parts().map((p) => p.text).join(''));
   protected readonly openSpec = computed(() => this.def().params.find((s) => s.key === this.open()) ?? null);
-  /** a price level is typed (a stepper would move it a cent at a time) */
-  protected readonly isPrice = computed(() => { const s = this.openSpec(); return s?.kind === 'number' && s.unit === 'price'; });
+  /** the open percentage or price: typed in place, round values above and below; the other numbers (counts) keep − and + */
+  protected readonly inline = computed<NumberSpec | null>(() => {
+    const s = this.openSpec();
+    return s?.kind === 'number' && (s.unit === 'pct' || s.unit === 'price') ? s : null;
+  });
+  protected readonly raw = computed(() => { const s = this.inline(); return s ? String(this.rc().p[s.key] ?? '') : ''; });
+  /** what is in the field while it is typed (null: its value as it opened) */
+  protected readonly typing = signal<string | null>(null);
+  /** as wide as its number (the font is monospaced), growing as it is typed */
+  protected readonly fieldWidth = computed(() => `${Math.max(1, (this.typing() ?? this.raw()).length) + 0.4}ch`);
+  /** the field's round values: the farther on top above it, the nearer first below */
+  protected readonly shown = computed(() => {
+    const s = this.inline();
+    if (!s) return null;
+    const p = presets(s, Number(this.rc().p[s.key]));
+    return { up: [...p.up].reverse(), down: p.down };
+  });
   protected readonly stepper = computed(() => {
     const s = this.openSpec();
-    if (!s || s.kind !== 'number' || s.unit === 'price') return null;
+    if (!s || s.kind !== 'number' || this.inline()) return null;
     const v = Number(this.rc().p[s.key]);
     return { text: pillText(s, v), down: v - s.step >= s.min - 1e-9, up: v + s.step <= s.max + 1e-9 };
   });
+  private readonly field = viewChild<ElementRef<HTMLInputElement>>('field');
+
+  constructor() {
+    // the field opens focused, its value selected: typing replaces it
+    afterRenderEffect(() => { const f = this.field()?.nativeElement; if (f) { f.focus(); f.select(); } });
+  }
 
   protected tone(t: Tone): string { return t === 'ink' ? 'flat' : t; }
   protected readonly dollars = dollars;
@@ -184,7 +220,7 @@ export class PtAlertCard {
     return 16 + Math.max(0, Math.min(1, f)) * 268;
   }
 
-  /** A choice moves to its next option; a number opens − and +, a price a field; a sector the list; a ticker a field. */
+  /** A choice moves to its next option; a percentage or a price becomes its field; a count opens − and +; a sector the list; a ticker a field. */
   protected press(part: Part): void {
     const s = part.spec;
     if (!s || !part.key) return;
@@ -193,29 +229,62 @@ export class PtAlertCard {
       this.change.emit({ key: part.key, value: s.options[(i + 1) % s.options.length]![0] });
       return;
     }
+    this.typing.set(null);
     this.open.set(this.open() === part.key ? null : part.key);
   }
+
+  protected text(e: Event): string { return (e.target as HTMLInputElement).value; }
 
   protected step(dir: 1 | -1): void {
     const s = this.openSpec();
     if (!s || s.kind !== 'number') return;
     const v = Number(this.rc().p[s.key]) + dir * s.step;
     if (v < s.min - 1e-9 || v > s.max + 1e-9) return;
-    const decimals = (String(s.step).split('.')[1] ?? '').length;   // 0.5 + 1 = 1.5, never 1.5000000000000002
-    this.change.emit({ key: s.key, value: Number((Math.round(v / s.step) * s.step).toFixed(decimals)) });
+    this.change.emit({ key: s.key, value: onStep(v, s.step) });
+  }
+
+  protected label(s: NumberSpec, v: number): string { return pillText(s, v); }
+
+  /** What was typed in the field ($ and % allowed), on its step (a price to the cent), within its limits; null when it is not one. */
+  private typedValue(raw: string): number | null {
+    const s = this.inline(), t = raw.replace(/[\s$%,]/g, ''), v = Number(t);
+    if (!s || !t || !Number.isFinite(v) || v < s.min || v > s.max) return null;
+    return s.unit === 'price' ? Math.round(v * 100) / 100 : onStep(v, s.step);
+  }
+  /** The field closes on a value: a change only when it differs. */
+  private settle(v: number | null): void {
+    const s = this.inline();
+    this.open.set(null);
+    if (s && v !== null && v !== Number(this.rc().p[s.key])) this.change.emit({ key: s.key, value: v });
+  }
+
+  /** A round value: pressed, it is picked before the field can lose its focus (the keyboard's Enter comes as a click). */
+  protected pick(v: number, e?: Event): void {
+    e?.preventDefault();
+    if (this.inline()) this.settle(v);
+  }
+  /** Enter keeps a typed value; one that is not a value stays in the field, selected. */
+  protected enter(e: Event): void {
+    const f = e.target as HTMLInputElement, v = this.typedValue(f.value);
+    if (v === null) f.select();
+    else this.settle(v);
+  }
+  /** Escape leaves the value as it was, and goes no further: on the page it would close the editor. */
+  protected escape(e: Event): void {
+    e.stopPropagation();
+    this.open.set(null);
+  }
+  /** Leaving the field (not for one of its round values) keeps what was typed, when it is a value. */
+  protected leave(e: FocusEvent): void {
+    const box = e.currentTarget as HTMLElement, to = e.relatedTarget as Node | null;
+    if (!this.inline() || (to && box.contains(to))) return;
+    this.settle(this.typedValue(box.querySelector('input')?.value ?? ''));
   }
 
   protected choose(sector: string): void {
     const s = this.openSpec();
     if (!s) return;
     this.change.emit({ key: s.key, value: sector });
-    this.open.set(null);
-  }
-
-  protected typedPrice(e: Event): void {
-    const s = this.openSpec(), raw = (e.target as HTMLInputElement).value.trim(), v = Number(raw);
-    if (!s || s.kind !== 'number' || !raw || !Number.isFinite(v) || v < s.min || v > s.max) return;
-    this.change.emit({ key: s.key, value: Math.round(v * 100) / 100 });
     this.open.set(null);
   }
 
