@@ -9,7 +9,7 @@ import type { AlertRow } from './rows';
  */
 export type ConditionId = 'session-move' | 'price-crosses' | 'below-average' | 'near-52w' | 'volume-spike'
   | 'pe-vs-sector' | 'undervalued' | 'analyst-upside' | 'piotroski' | 'earnings-surprise' | 'insider-buying'
-  | 'news-spike' | 'earnings-soon' | 'grade-change' | 'social-buzz' | 'mega-caps' | 'sector' | 'one-stock';
+  | 'news-spike' | 'earnings-soon' | 'grade-change' | 'social-buzz' | 'mega-caps' | 'sector' | 'one-stock' | 'companies';
 export type Group = 'technical' | 'fundamental' | 'news' | 'social' | 'universe';
 export const GROUPS: readonly (readonly [Group, string])[] = [
   ['technical', 'Technical'], ['fundamental', 'Fundamental'], ['news', 'News'], ['social', 'Social'], ['universe', 'Universe'],
@@ -22,7 +22,9 @@ export type Params = Record<string, string | number>;
 export type ParamSpec =
   | { key: string; kind: 'number'; min: number; max: number; step: number; unit: 'pct' | 'usd' | 'price' | 'times' | 'days' | 'score' }
   | { key: string; kind: 'choice'; options: readonly (readonly [string, string])[] }
-  | { key: string; kind: 'sector' } | { key: string; kind: 'ticker' };
+  | { key: string; kind: 'sector' } | { key: string; kind: 'ticker' }
+  /** a list of tickers, kept as one string "AAPL,MSFT" (a rule's params are strings and numbers) */
+  | { key: string; kind: 'tickers'; max: number };
 /** A piece of a card's sentence: text, or a pill showing (and changing) one param. */
 export type SayPart = string | { key: string };
 export interface Test { pass: boolean; value: number | null }
@@ -43,6 +45,10 @@ export interface Condition {
 }
 
 const NO: Test = { pass: false, value: null };
+/** a portfolio's companies at most */
+export const LIST_MAX = 100;
+/** A portfolio's tickers ("AAPL,MSFT" → ['AAPL', 'MSFT']; none while it is empty). */
+export const listOf = (p: Params): string[] => String(p['tickers'] ?? '').split(',').filter(Boolean);
 const n = (p: Params, k: string) => Number(p[k]);
 const s = (p: Params, k: string) => String(p[k]);
 const fixed = (v: number) => num(v, Number.isInteger(v) ? 0 : Math.abs(v * 10 - Math.round(v * 10)) < 1e-9 ? 1 : 2);
@@ -263,6 +269,15 @@ const UNIVERSE: Condition[] = [
     fact: () => '',
     test: (r, p) => ({ pass: r.ticker === s(p, 'ticker'), value: null }),
   },
+  {
+    // the reader's own list (Romeo, 2026-11-02): pasted, typed, or a universe card edited company by company or group by group
+    id: 'companies', group: 'universe', name: 'My portfolio', freq: 'fixed', chart: 'logos',
+    params: [{ key: 'tickers', kind: 'tickers', max: LIST_MAX }], defaults: { tickers: '' },
+    say: () => ['Is one of ', { key: 'tickers' }],
+    short: (p) => { const l = listOf(p); return l.length === 1 ? l[0]! : 'My portfolio'; },
+    fact: () => '',
+    test: (r, p) => ({ pass: listOf(p).includes(r.ticker), value: null }),
+  },
 ];
 
 function maOf(r: AlertRow, days: string): number | null {
@@ -277,6 +292,7 @@ export const CONDITION_IDS: readonly ConditionId[] = ALL.map((c) => c.id);
 /** A pill's text: 5 → "5%", 3 → "3×", 1000000 → "$1M", 'down' → "Falls". */
 export function pillText(spec: ParamSpec, v: string | number): string {
   if (spec.kind === 'choice') return spec.options.find(([o]) => o === String(v))?.[1] ?? String(v);
+  if (spec.kind === 'tickers') { const k = String(v).split(',').filter(Boolean).length; return `${k} ${k === 1 ? 'company' : 'companies'}`; }
   if (spec.kind !== 'number') return String(v);
   const x = Number(v);
   switch (spec.unit) {

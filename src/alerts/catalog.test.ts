@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MEGA_CAP, SECTORS } from '../typologies/values';
-import { CONDITIONS, CONDITION_IDS, pillText, sentence, type ConditionId, type Params } from './catalog';
+import { CONDITIONS, CONDITION_IDS, listOf, pillText, sentence, type ConditionId, type Params } from './catalog';
 import type { AlertRow } from './rows';
 
 const row = (o: Partial<AlertRow> = {}): AlertRow => ({
@@ -32,6 +32,7 @@ describe('the catalog: technical and universe conditions', () => {
           expect(Math.abs(((v as number) - s.min) / s.step - Math.round(((v as number) - s.min) / s.step))).toBeLessThan(1e-9);
         } else if (s.kind === 'choice') expect(s.options.map(([o]) => o)).toContain(v);
         else if (s.kind === 'sector') expect(SECTORS as readonly string[]).toContain(v);
+        else if (s.kind === 'tickers') expect(v).toBe('');                // a portfolio starts empty: its card asks for companies
         else expect(String(v)).toMatch(/^[A-Z][A-Z.]{0,5}$/);
       }
     }
@@ -82,6 +83,17 @@ describe('the catalog: technical and universe conditions', () => {
     expect(test('sector', { sector: 'Energy' }).pass).toBe(false);
     expect(test('one-stock', { ticker: 'NVDA' }).pass).toBe(true);
     expect(test('one-stock', { ticker: 'AMD' }).pass).toBe(false);
+  });
+
+  it('companies (My portfolio, Romeo 2026-11-02): one of its listed tickers; its pill and sentence count them', () => {
+    expect(test('companies', {}, { tickers: 'NVDA,AMD' }).pass).toBe(true);
+    expect(test('companies', {}, { tickers: 'NVDA,AAPL' }).pass).toBe(false);
+    expect(test('companies', {}, { tickers: '' }).pass).toBe(false);
+    expect(listOf({ tickers: 'NVDA,AMD' })).toEqual(['NVDA', 'AMD']);
+    expect(listOf({ tickers: '' })).toEqual([]);
+    expect(pillText(CONDITIONS['companies'].params[0]!, 'NVDA,AMD,AAPL')).toBe('3 companies');
+    expect(sentence('companies', { tickers: 'NVDA' })).toBe('Is one of 1 company');
+    expect(CONDITIONS['companies'].name).toBe('My portfolio');
   });
 
   it('null fields never pass', () => {
@@ -201,10 +213,10 @@ describe('the catalog: fundamental, news and social conditions', () => {
     for (const [id, o] of cases) expect(test(id, o), id).toEqual({ pass: false, value: null });
   });
 
-  it('the catalog has 18 conditions in table order, each with a group, a chart and a short name', () => {
+  it('the catalog has 19 conditions in table order, each with a group, a chart and a short name', () => {
     expect(CONDITION_IDS).toEqual(['session-move', 'price-crosses', 'below-average', 'near-52w', 'volume-spike', 'pe-vs-sector',
       'undervalued', 'analyst-upside', 'piotroski', 'earnings-surprise', 'insider-buying', 'news-spike', 'earnings-soon',
-      'grade-change', 'social-buzz', 'mega-caps', 'sector', 'one-stock']);
+      'grade-change', 'social-buzz', 'mega-caps', 'sector', 'one-stock', 'companies']);
     for (const id of CONDITION_IDS) {
       const c = CONDITIONS[id];
       expect(c.group && c.chart && c.short(c.defaults), id).toBeTruthy();

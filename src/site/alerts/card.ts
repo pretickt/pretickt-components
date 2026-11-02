@@ -1,14 +1,23 @@
 import { afterRenderEffect, Component, computed, type ElementRef, input, output, signal, viewChild } from '@angular/core';
 import { PtLogo } from '@pretickt/components/ds';
 import { date } from '@pretickt/components/format';
-import { CONDITIONS, GROUPS, pillText, type ParamSpec } from '../../alerts/catalog';
+import { CONDITIONS, GROUPS, LIST_MAX, listOf, pillText, type ParamSpec } from '../../alerts/catalog';
 import { chartOf, dollars, LABEL_X, PLOT_L, PLOT_R, type ChartData, type Tone } from '../../alerts/charts';
+import { companiesIn } from '../../alerts/extract';
 import { presets } from '../../alerts/presets';
-import type { RuleCondition } from '../../alerts/rule';
-import { SECTORS } from '../../typologies/values';
+import { condition, type RuleCondition } from '../../alerts/rule';
+import type { AlertRow } from '../../alerts/rows';
+import { MEGA_CAP, SECTORS } from '../../typologies/values';
 
 interface Part { text: string; key: string | null; spec: ParamSpec | null }
 type NumberSpec = Extract<ParamSpec, { kind: 'number' }>;
+type Member = Pick<AlertRow, 'ticker' | 'name' | 'logo' | 'marketCap'>;
+/** a group of the universe the list adds or takes away whole: its companies, and how many of them are in */
+interface ListGroup { name: string; tickers: string[]; state: 'all' | 'some' | 'none'; label: string }
+const byCap = (a: Member, b: Member) => (b.marketCap ?? -1) - (a.marketCap ?? -1) || (a.ticker < b.ticker ? -1 : a.ticker > b.ticker ? 1 : 0);
+/** the list's groups by size (MEGA_CAP the mega caps' line, as the condition's) */
+const SIZES: readonly (readonly [string, (cap: number) => boolean])[] = [
+  ['Mega caps', (c) => c >= MEGA_CAP], ['Large caps', (c) => c >= 10e9 && c < MEGA_CAP], ['Mid caps', (c) => c < 10e9]];
 const TICKER = /^[A-Z][A-Z0-9]{0,5}(\.[A-Z])?$/;
 /** a value on its step: 0.5 + 1 = 1.5, never 1.5000000000000002 */
 const onStep = (v: number, step: number) => Number((Math.round(v / step) * step).toFixed((String(step).split('.')[1] ?? '').length));
@@ -102,10 +111,53 @@ let uid = 0;
           }
           @case ('flag') {<p class="pt-al-fact">{{ m.on ? 'On the undervalued list' : 'Not on the undervalued list' }}</p>}
           @case ('logos') {
-            <div class="pt-al-logos">
-              @for (r of m.rows; track r.ticker) {<pt-logo [ticker]="r.ticker" [src]="r.logo" [size]="22" />}
-              @if (m.more) {<span class="pt-al-more">+{{ m.more }}</span>}
-            </div>
+            @if (listOpen()) {
+              <!-- the companies, editable (Romeo, 2026-11-02): by logo and symbol, a search, whole groups, a pasted portfolio -->
+              <div class="pt-al-list" role="group" aria-label="The companies">
+                <input class="pt-al-find" type="search" placeholder="Add a company: symbol or name" aria-label="Add a company" autocomplete="off"
+                  [value]="find()" (input)="find.set(text($event))" (keydown.enter)="addFound()" />
+                @if (found().length) {
+                  <div class="pt-al-found">
+                    @for (r of found(); track r.ticker) {
+                      <button type="button" (click)="addCompanies([r.ticker]); find.set('')">
+                        <pt-logo [ticker]="r.ticker" [src]="r.logo" [size]="16" /><b>{{ r.ticker }}</b><span>{{ r.name }}</span>
+                      </button>
+                    }
+                  </div>
+                }
+                <div class="pt-al-chips">
+                  @for (r of members(); track r.ticker) {
+                    <span class="pt-al-chip"><pt-logo [ticker]="r.ticker" [src]="r.logo" [size]="16" /><b>{{ r.ticker }}</b>
+                      <button type="button" [attr.aria-label]="'Remove ' + r.ticker" (click)="dropCompany(r.ticker)">×</button></span>
+                  } @empty {<p class="pt-al-hint">No companies yet: add them by symbol, by group, or paste your portfolio.</p>}
+                </div>
+                @for (g of groups(); track g.title) {
+                  <p class="pt-al-gt">{{ g.title }}</p>
+                  <div class="pt-al-groups">
+                    @for (x of g.items; track x.name) {
+                      <button type="button" [class]="'pt-al-grp pt-al-grp-' + x.state" [attr.aria-pressed]="x.state === 'all'" (click)="toggleGroup(x)">
+                        {{ x.name }} <span>{{ x.label }}</span></button>
+                    }
+                  </div>
+                }
+                @if (pasteOpen()) {
+                  <textarea class="pt-al-paste" rows="3" placeholder="Paste your portfolio: symbols or company names, in any format"
+                    aria-label="Paste a list of companies" [value]="pasteText()" (input)="pasteText.set(text($event))"></textarea>
+                }
+                <div class="pt-al-list-foot">
+                  @if (pasteOpen()) {<button type="button" [disabled]="!pasteText().trim()" (click)="pasteAdd()">Add from text</button>}
+                  @else {<button type="button" (click)="pasteChoice.set(true)">Paste a list</button>}
+                  @if (note(); as n) {<span class="pt-al-note">{{ n }}</span>}
+                  <button type="button" class="pt-al-done" (click)="closeList()">Done</button>
+                </div>
+              </div>
+            } @else {
+              <button type="button" class="pt-al-logos" aria-label="Edit the companies" (click)="openList()">
+                @for (r of m.rows; track r.ticker) {<pt-logo [ticker]="r.ticker" [src]="r.logo" [size]="22" />}
+                @if (m.more) {<span class="pt-al-more">+{{ m.more }}</span>}
+                <span class="pt-al-logos-edit">Edit</span>
+              </button>
+            }
           }
         }
       } @else {<p class="pt-al-nodata">No data{{ example() ? ' for ' + example()!.ticker : '' }}</p>}
@@ -114,14 +166,19 @@ let uid = 0;
           @if (part.key === null) {{{ part.text }}}
           @else if (part.key === open() && inline(); as s) {
             <!-- a percentage or a price is typed in place, with round values above and below (Romeo, 2026-11-02) -->
-            <span class="pt-al-edit" [attr.data-unit]="s.unit" (focusout)="leave($event)">
+            <span class="pt-al-edit" [class.pt-al-closing]="shutting()" [attr.data-unit]="s.unit" (focusout)="leave($event)">
               <span class="pt-al-pre pt-al-pre-up">
                 @for (v of shown()!.up; track v) {<button type="button" (pointerdown)="pick(v, $event)" (click)="pick(v)">{{ label(s, v) }}</button>}
               </span>
+              <!-- − and + move it finely, the field staying open (Romeo, 2026-11-02) -->
+              <button type="button" class="pt-al-nudge" aria-label="Less" [disabled]="!nudgeable(s, -1)"
+                (pointerdown)="nudgeDown(-1, $event)" (click)="nudgeClick(-1)">−</button>
               @if (s.unit === 'price') {<span class="pt-al-unit">$</span>}
               <input #field class="pt-al-in" inputmode="decimal" autocomplete="off" [attr.aria-label]="s.unit === 'price' ? 'Price level' : 'Percentage'"
                 [value]="raw()" [style.width]="fieldWidth()" (input)="typing.set(text($event))" (keydown.enter)="enter($event)" (keydown.escape)="escape($event)" />
               @if (s.unit === 'pct') {<span class="pt-al-unit">%</span>}
+              <button type="button" class="pt-al-nudge" aria-label="More" [disabled]="!nudgeable(s, 1)"
+                (pointerdown)="nudgeDown(1, $event)" (click)="nudgeClick(1)">+</button>
               <span class="pt-al-pre pt-al-pre-down">
                 @for (v of shown()!.down; track v) {<button type="button" (pointerdown)="pick(v, $event)" (click)="pick(v)">{{ label(s, v) }}</button>}
               </span>
@@ -154,6 +211,8 @@ export class PtAlertCard {
   readonly ofLabel = input('stocks');
   readonly change = output<{ key: string; value: string | number }>();
   readonly remove = output<void>();
+  /** the condition changed for another: a universe card edited company by company becomes the reader's own list */
+  readonly replace = output<RuleCondition>();
 
   protected readonly open = signal<string | null>(null);
   protected readonly clip = `pt-al-clip-${++uid}`;
@@ -193,6 +252,16 @@ export class PtAlertCard {
   protected readonly typing = signal<string | null>(null);
   /** as wide as its number (the font is monospaced), growing as it is typed */
   protected readonly fieldWidth = computed(() => `${Math.max(1, (this.typing() ?? this.raw()).length) + 0.4}ch`);
+  /** the number in the field: what is typed, else the condition's; null while it is not one */
+  private readonly fieldNumber = computed(() => {
+    const t = (this.typing() ?? this.raw()).replace(/[\s$%,]/g, ''), v = Number(t);
+    return t && Number.isFinite(v) ? v : null;
+  });
+  /** the field's pieces fading out: it closes once they are gone */
+  protected readonly shutting = signal(false);
+  private shutAt = 0;
+  /** a press of − or + already acted on its pointerdown: its click is the same press */
+  private pressed = false;
   /** the field's round values: the farther on top above it, the nearer first below */
   protected readonly shown = computed(() => {
     const s = this.inline();
@@ -207,6 +276,46 @@ export class PtAlertCard {
     return { text: pillText(s, v), down: v - s.step >= s.min - 1e-9, up: v + s.step <= s.max + 1e-9 };
   });
   private readonly field = viewChild<ElementRef<HTMLInputElement>>('field');
+
+  /** a universe card's list: null until the reader opens or closes it (an empty portfolio opens on its own) */
+  private readonly listChoice = signal<boolean | null>(null);
+  protected readonly listOpen = computed(() => this.listChoice() ?? (this.rc().c === 'companies' && !listOf(this.rc().p).length));
+  protected readonly find = signal('');
+  protected readonly pasteText = signal('');
+  protected readonly pasteChoice = signal<boolean | null>(null);
+  protected readonly note = signal<string | null>(null);
+  /** the companies a universe card covers, the largest first: a portfolio's symbols the universe lacks stay as bare symbols */
+  protected readonly members = computed<Member[]>(() => {
+    const rc = this.rc(), def = this.def(), rows = this.data().rows;
+    if (def.group !== 'universe') return [];
+    if (rc.c !== 'companies') return rows.filter((r) => def.test(r, rc.p).pass).sort(byCap);
+    const by = new Map(rows.map((r) => [r.ticker, r]));
+    return listOf(rc.p).map((t) => by.get(t) ?? { ticker: t, name: t, logo: null, marketCap: null }).sort(byCap);
+  });
+  /** the paste box shows on an empty list, or when asked for */
+  protected readonly pasteOpen = computed(() => this.pasteChoice() ?? !this.members().length);
+  /** the companies a search names, not in the list yet: the symbol itself first, then those starting with it, then by name */
+  protected readonly found = computed(() => {
+    const q = this.find().trim().toLowerCase();
+    if (!q) return [];
+    const have = new Set(this.members().map((m) => m.ticker)), t = (r: AlertRow) => r.ticker.toLowerCase();
+    const rank = (r: AlertRow) => (t(r) === q ? 0 : t(r).startsWith(q) ? 1 : 2);
+    return this.data().rows.filter((r) => !have.has(r.ticker) && (t(r).startsWith(q) || r.name.toLowerCase().includes(q)))
+      .sort((a, b) => rank(a) - rank(b) || byCap(a, b)).slice(0, 6);
+  });
+  /** the universe by size and by sector: each group added or taken away whole, with how many of it are in */
+  protected readonly groups = computed(() => {
+    const rows = this.data().rows, have = new Set(this.members().map((m) => m.ticker));
+    const view = (name: string, of: AlertRow[]): ListGroup => {
+      const n = of.filter((r) => have.has(r.ticker)).length;
+      return { name, tickers: [...of].sort(byCap).map((r) => r.ticker), state: n === 0 ? 'none' : n === of.length ? 'all' : 'some',
+        label: n && n < of.length ? `${n}/${of.length}` : `${of.length}` };
+    };
+    return [
+      { title: 'By size', items: SIZES.map(([name, f]) => view(name, rows.filter((r) => r.marketCap !== null && f(r.marketCap)))).filter((g) => g.tickers.length) },
+      { title: 'By sector', items: SECTORS.map((s) => view(s, rows.filter((r) => r.sector === s))).filter((g) => g.tickers.length) },
+    ];
+  });
 
   constructor() {
     // the field opens focused, its value selected: typing replaces it
@@ -229,7 +338,10 @@ export class PtAlertCard {
       this.change.emit({ key: part.key, value: s.options[(i + 1) % s.options.length]![0] });
       return;
     }
+    if (s.kind === 'tickers') { if (this.listOpen()) this.closeList(); else this.openList(); return; }
     this.typing.set(null);
+    this.shutAt++;                                                       // a close on its way gives in to the pill just pressed
+    this.shutting.set(false);
     this.open.set(this.open() === part.key ? null : part.key);
   }
 
@@ -245,6 +357,41 @@ export class PtAlertCard {
 
   protected label(s: NumberSpec, v: number): string { return pillText(s, v); }
 
+  protected openList(): void { this.listChoice.set(true); this.note.set(null); }
+  protected closeList(): void { this.listChoice.set(false); this.find.set(''); this.note.set(null); this.pasteChoice.set(null); }
+  /** The list as it now is: a portfolio's own param; any other universe card becomes the reader's portfolio with it. */
+  private commitList(tickers: string[]): void {
+    if (tickers.length > LIST_MAX) this.note.set(`${LIST_MAX} companies at most`);
+    this.listChoice.set(true);
+    const value = tickers.slice(0, LIST_MAX).join(',');
+    if (this.rc().c === 'companies') this.change.emit({ key: 'tickers', value });
+    else this.replace.emit(condition('companies', { tickers: value }));
+  }
+  protected dropCompany(ticker: string): void { this.commitList(this.members().map((m) => m.ticker).filter((t) => t !== ticker)); }
+  /** Companies after those already in, in the order given; how many were new. */
+  protected addCompanies(tickers: string[]): number {
+    const have = this.members().map((m) => m.ticker), add = tickers.filter((t) => !have.includes(t));
+    if (add.length) this.commitList([...have, ...add]);
+    return add.length;
+  }
+  protected addFound(): void {
+    const r = this.found()[0];
+    if (r) { this.addCompanies([r.ticker]); this.find.set(''); }
+  }
+  /** A group all in goes away whole; otherwise what of it is missing comes in. */
+  protected toggleGroup(g: ListGroup): void {
+    if (g.state === 'all') this.commitList(this.members().map((m) => m.ticker).filter((t) => !g.tickers.includes(t)));
+    else this.addCompanies(g.tickers);
+  }
+  /** The companies a pasted text names (My portfolio): added after the list's, and how many came in. */
+  protected pasteAdd(): void {
+    this.note.set(null);
+    const named = companiesIn(this.pasteText(), this.data().rows), n = this.addCompanies(named);
+    if (n) this.pasteText.set('');
+    // the list's limit, when it cut the paste, is the note to read
+    if (!this.note()) this.note.set(n ? `${n} ${n === 1 ? 'company' : 'companies'} added` : named.length ? 'Already in the list' : 'No company found in the text');
+  }
+
   /** What was typed in the field ($ and % allowed), on its step (a price to the cent), within its limits; null when it is not one. */
   private typedValue(raw: string): number | null {
     const s = this.inline(), t = raw.replace(/[\s$%,]/g, ''), v = Number(t);
@@ -254,32 +401,70 @@ export class PtAlertCard {
   /** The field closes on a value: a change only when it differs. */
   private settle(v: number | null): void {
     const s = this.inline();
-    this.open.set(null);
+    this.shut();
     if (s && v !== null && v !== Number(this.rc().p[s.key])) this.change.emit({ key: s.key, value: v });
   }
+  /** The field closes after its pieces' quick fade-out (120 ms; at once for a reader who asked for less motion). */
+  private shut(): void {
+    const k = ++this.shutAt;
+    if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) { this.open.set(null); return; }
+    this.shutting.set(true);
+    setTimeout(() => { if (k === this.shutAt) { this.shutting.set(false); this.open.set(null); } }, 120);
+  }
+  /** an open field that is not on its way out */
+  private live(): NumberSpec | null { return this.shutting() ? null : this.inline(); }
 
   /** A round value: pressed, it is picked before the field can lose its focus (the keyboard's Enter comes as a click). */
   protected pick(v: number, e?: Event): void {
     e?.preventDefault();
-    if (this.inline()) this.settle(v);
+    if (this.live()) this.settle(v);
   }
   /** Enter keeps a typed value; one that is not a value stays in the field, selected. */
   protected enter(e: Event): void {
     const f = e.target as HTMLInputElement, v = this.typedValue(f.value);
+    if (!this.live()) return;
     if (v === null) f.select();
     else this.settle(v);
   }
   /** Escape leaves the value as it was, and goes no further: on the page it would close the editor. */
   protected escape(e: Event): void {
     e.stopPropagation();
-    this.open.set(null);
+    if (this.live()) this.shut();
   }
   /** Leaving the field (not for one of its round values) keeps what was typed, when it is a value. */
   protected leave(e: FocusEvent): void {
     const box = e.currentTarget as HTMLElement, to = e.relatedTarget as Node | null;
-    if (!this.inline() || (to && box.contains(to))) return;
+    if (!this.live() || (to && box.contains(to))) return;
     this.settle(this.typedValue(box.querySelector('input')?.value ?? ''));
   }
+
+  /** A fine step: a percentage's own; a price's about a thousandth of it, at a round step (a cent at least). */
+  private fine(s: NumberSpec, v: number): number {
+    return s.unit === 'price' ? Math.max(0.01, 10 ** (Math.floor(Math.log10(Math.max(v, 0.01))) - 2)) : s.step;
+  }
+  private nudged(s: NumberSpec, v: number, dir: 1 | -1): number {
+    const step = this.fine(s, v);
+    return s.unit === 'price' ? Math.round((Math.round(v / step) * step + dir * step) * 100) / 100 : onStep(v + dir * step, s.step);
+  }
+  protected nudgeable(s: NumberSpec, dir: 1 | -1): boolean {
+    const v = this.fieldNumber();
+    if (v === null) return false;
+    const next = this.nudged(s, v, dir);
+    return next >= s.min - 1e-9 && next <= s.max + 1e-9;
+  }
+  /** − or +: the field's number a fine step on, shown at once; the condition follows, and the field stays open. */
+  private nudge(dir: 1 | -1): void {
+    const s = this.live(), v = this.fieldNumber();
+    if (!s || v === null || !this.nudgeable(s, dir)) return;
+    const next = this.nudged(s, v, dir), f = this.field()?.nativeElement;
+    this.typing.set(String(next));
+    if (f) f.value = String(next);
+    if (next !== Number(this.rc().p[s.key])) this.change.emit({ key: s.key, value: next });
+  }
+  /** pressed with a pointer: at once, the field keeping its focus (no leave) */
+  protected nudgeDown(dir: 1 | -1, e: Event): void { e.preventDefault(); this.pressed = true; this.nudge(dir); }
+  /** a click: the keyboard's, or the same press as its pointerdown */
+  protected nudgeClick(dir: 1 | -1): void { if (this.pressed) { this.pressed = false; return; } this.nudge(dir); }
 
   protected choose(sector: string): void {
     const s = this.openSpec();

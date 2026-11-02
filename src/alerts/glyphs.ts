@@ -28,4 +28,5 @@ export const GLYPHS: Record<ConditionId, readonly GlyphPart[]> = {
   sector: [{ d: 'M1.5 2h5.5v4.5h-5.5zM15 2h5.5v4.5h-5.5zM1.5 8h5.5v4.5h-5.5zM8.25 8h5.5v4.5h-5.5zM15 8h5.5v4.5h-5.5z' },
     { d: 'M8.25 2h5.5v4.5h-5.5z', fill: true }],
   'one-stock': [{ d: circle(11, 7, 5.2) }, { d: circle(11, 7, 1.8), fill: true }],
+  companies: [{ d: 'M3 4.5h16v8h-16zM8.5 4.5v-2h5v2' }, { d: 'M3 8.5h16', faint: true }],
 };

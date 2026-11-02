@@ -16,6 +16,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const PROBLEM: Record<string, string> = {
   'universe-only': 'Add a condition beyond the universe: a move, a level, news…',
   'too-many': 'Six conditions at most',
+  'empty-list': 'Add at least one company to My portfolio',
 };
 // a limit's answer is the same for every limit (a sign-up never says whether the address was known): the copy names them all
 const FAILED: Record<'invalid' | 'limit' | 'network' | 'captcha', string> = {
@@ -29,7 +30,7 @@ const CHECK_FAILED = "We could not check that you're not a robot: reload the pag
 /**
  * The alert editor (Romeo, 2026-11-01; mockups `editor-desktop.png`, `editor-telefono.png`): every badge by group on the left —
  * a click, or a drag onto the rule, opens it into its card (version A) — the cards joined by "and", the name, when the email
- * comes, the email and the weekly email's own box, Save. A dialog of the page app, mounted on the first bell press (its own chunk).
+ * comes, the email, Save. A dialog of the page app, mounted on the first bell press (its own chunk).
  */
 @Component({
   selector: 'pt-alert-editor',
@@ -77,7 +78,7 @@ const CHECK_FAILED = "We could not check that you're not a robot: reload the pag
               @for (rc of rule().all; track $index; let i = $index) {
                 @if (i) {<p class="pt-al-and">and</p>}
                 <pt-alert-card [rc]="rc" [data]="data()" [count]="count(i)" [ofLabel]="ofLabel()"
-                  (change)="alerts.setParam(i, $event.key, $event.value)" (remove)="alerts.remove(i)" />
+                  (change)="alerts.setParam(i, $event.key, $event.value)" (replace)="alerts.replace(i, $event)" (remove)="alerts.remove(i)" />
               } @empty {
                 <p class="pt-al-empty">Tap a badge to add a condition or drag it below</p>
                 <!-- the drop lands on the section; the box shows where, and lights up while a badge is over it -->
@@ -93,8 +94,6 @@ const CHECK_FAILED = "We could not check that you're not a robot: reload the pag
             @if (!editing()) {
               <input class="pt-al-email" type="email" autocomplete="email" placeholder="you@example.com" aria-label="Your email"
                 [value]="email()" (focus)="touched.set(true)" (input)="email.set(text($event)); touched.set(true)" />
-              <label class="pt-al-weekly"><input type="checkbox" [checked]="weekly()" (change)="weekly.set(ticked($event))" />
-                Also send me pretickt's weekly email</label>
               @if (alerts.check && touched()) {
                 <!-- with its token the row takes no room (an empty line would still add the footer's gap) -->
                 <div class="pt-al-human" [hidden]="!!token()">
@@ -118,7 +117,6 @@ export class PtAlertEditor {
   protected readonly GLYPHS = GLYPHS;
   protected readonly nameOf = nameOf;
   protected readonly email = signal('');
-  protected readonly weekly = signal(false);
   /** what was saved: the address a confirmation went to ('' after an edit), and whether it was an edit; null while editing */
   protected readonly saved = signal<{ to: string; edit: boolean } | null>(null);
   protected readonly failed = signal<string | null>(null);
@@ -206,7 +204,6 @@ export class PtAlertEditor {
   protected nameOfId(id: ConditionId): string { return CONDITIONS[id].name; }
   protected count(i: number): { pass: number; of: number } | null { return this.rows().length ? passCount(this.rule(), i, this.rows()) : null; }
   protected text(e: Event): string { return (e.target as HTMLInputElement).value; }
-  protected ticked(e: Event): boolean { return (e.target as HTMLInputElement).checked; }
 
   /** A badge of the palette: seeded by the example now, or by the service once the universe is here (never by an effect: no loop). */
   protected pick(id: ConditionId): void { const ex = this.example(); this.alerts.addCondition(condition(id, undefined, ex), !ex); }
@@ -221,7 +218,8 @@ export class PtAlertEditor {
   protected save(): void {
     this.failed.set(null);
     const edit = this.editing(), to = edit ? '' : this.email().trim();
-    void this.alerts.save(to, this.weekly(), edit ? null : this.token()).then((r: SaveResult) => {
+    // the weekly email is not asked here (Romeo, 2026-11-02): an alert's email offers it, at most once a month
+    void this.alerts.save(to, false, edit ? null : this.token()).then((r: SaveResult) => {
       if (r.ok) { this.saved.set({ to, edit }); return; }
       this.failed.set(FAILED[r.reason]);
       // the token went with the call (Cloudflare takes each once): the next Save waits for a fresh one

@@ -102,6 +102,13 @@ describe('PtAlerts (the alert being built, and the page\'s backend)', () => {
     expect(a.draft()!.name).toBe('My drop');
   });
 
+  it('replace swaps a condition for another (a universe card edited into the reader\'s portfolio)', () => {
+    const a = mount(fake().backend);
+    a.add({ c: 'session-move', mega: true }, from);
+    a.replace(1, { c: 'companies', p: { tickers: 'NVDA,MSFT' } });
+    expect(a.draft()!.rule.all).toEqual([{ c: 'session-move', p: { dir: 'down', pct: 5 } }, { c: 'companies', p: { tickers: 'NVDA,MSFT' } }]);
+  });
+
   it('save is single-flight', async () => {
     let answer!: (r: SaveResult) => void;
     const f = fake(() => new Promise((r) => { answer = r; }));

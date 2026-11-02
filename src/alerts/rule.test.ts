@@ -25,6 +25,11 @@ describe('rules', () => {
     expect(ruleProblem(romeo)).toBeNull();
   });
 
+  it('a portfolio without companies is refused until it has one', () => {
+    expect(ruleProblem({ v: 1, all: [condition('session-move'), condition('companies')] })).toBe('empty-list');
+    expect(ruleProblem({ v: 1, all: [condition('session-move'), condition('companies', { tickers: 'AMD' })] })).toBeNull();
+  });
+
   it('condition() lays defaults, then the seed, then the given params', () => {
     const amd = rows.find((r) => r.ticker === 'AMD')!;
     expect(condition('session-move', { pct: 7 })).toEqual({ c: 'session-move', p: { dir: 'down', pct: 7 } });

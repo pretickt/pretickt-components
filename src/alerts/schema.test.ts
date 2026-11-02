@@ -21,5 +21,12 @@ describe('ruleSchema (the server checks every rule it stores)', () => {
     expect(ok({ v: 1, all: [{ c: 'news-spike', p: { times: 3 } }, { c: 'one-stock', p: { ticker: 'nvda' } }] })).toBe(false);
   });
   it('rejects a rule of universe conditions only', () => expect(ok({ v: 1, all: [{ c: 'mega-caps', p: {} }] })).toBe(false));
+  it('a portfolio: 1 to 100 tickers, each once', () => {
+    const rule = (tickers: string) => ({ v: 1, all: [{ c: 'news-spike', p: { times: 3 } }, { c: 'companies', p: { tickers } }] });
+    expect(ok(rule('AAPL,MSFT,BRK.B'))).toBe(true);
+    const many = Array.from({ length: 101 }, (_, i) => `A${String.fromCharCode(65 + (i % 26))}${String.fromCharCode(65 + Math.floor(i / 26))}`);
+    expect(ok(rule(many.slice(0, 100).join(',')))).toBe(true);
+    for (const t of ['', 'AAPL,,MSFT', 'aapl', 'AAPL,AAPL', many.join(','), 'AAPL MSFT']) expect(ok(rule(t)), t.slice(0, 20)).toBe(false);
+  });
   it('rejects another version', () => expect(ok({ ...romeo, v: 2 })).toBe(false));
 });

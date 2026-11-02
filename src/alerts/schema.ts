@@ -26,6 +26,12 @@ function paramProblem(c: ConditionId, p: Record<string, string | number>): strin
       if (!s.options.some(([o]) => o === v)) return `${c}: ${s.key} unknown choice`;
     } else if (s.kind === 'sector') {
       if (!(SECTORS as readonly string[]).includes(String(v))) return `${c}: unknown sector`;
+    } else if (s.kind === 'tickers') {
+      // "AAPL,MSFT": 1 to its max, each a ticker, each once
+      const list = typeof v === 'string' ? v.split(',') : [];
+      if (!list.length || list.length > s.max || new Set(list).size !== list.length || !list.every((t) => Ticker.safeParse(t).success)) {
+        return `${c}: ${s.key} is not a list of tickers`;
+      }
     } else if (!Ticker.safeParse(v).success) return `${c}: invalid ticker`;
   }
   return null;

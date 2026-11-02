@@ -71,6 +71,36 @@ describe('PtAlertEditor', () => {
     expect(el.querySelector('.pt-al-drop')).toBeNull();                  // the empty state's box, gone with the first card
   });
 
+  it('My portfolio: empty, it asks for companies and Save waits; a pasted text fills it; an edited Mega caps card becomes one', async () => {
+    const { alerts } = setup();
+    alerts.add({ c: 'session-move', mega: true }, from);
+    const { el, settle, text } = await mount();
+    const badge = (name: string) => [...el.querySelectorAll<HTMLButtonElement>('.pt-al-badge')].find((b) => b.textContent!.trim() === name)!;
+    // the Mega caps card, one company taken away: the draft's universe is now the reader's list
+    el.querySelector<HTMLButtonElement>('pt-alert-card .pt-al-logos')!.click();
+    await settle();
+    el.querySelector<HTMLButtonElement>('[aria-label="Remove AMD"]')!.click();
+    await settle();
+    expect(alerts.draft()!.rule.all[1]!.c).toBe('companies');
+    expect(alerts.draft()!.rule.all[1]!.p['tickers']).not.toContain('AMD');
+    // a new, empty portfolio: the hint, and Save waits
+    badge('My portfolio').click();
+    await settle();
+    type(el, 'input[type="email"]', 'me@example.com');
+    await settle();
+    expect(text()).toContain('Add at least one company to My portfolio');
+    expect(el.querySelector<HTMLButtonElement>('.pt-al-save')!.disabled).toBe(true);
+    const box = el.querySelectorAll<HTMLTextAreaElement>('.pt-al-paste');
+    box[box.length - 1]!.value = 'NVDA';
+    box[box.length - 1]!.dispatchEvent(new Event('input'));
+    await settle();
+    const add = [...el.querySelectorAll<HTMLButtonElement>('.pt-al-list button')].filter((b) => b.textContent!.trim() === 'Add from text');
+    add[add.length - 1]!.click();
+    await settle();
+    expect(alerts.draft()!.rule.all[2]).toEqual({ c: 'companies', p: { tickers: 'NVDA' } });
+    expect(el.querySelector<HTMLButtonElement>('.pt-al-save')!.disabled).toBe(false);
+  });
+
   it('a badge adds its condition; used badges are marked', async () => {
     const { alerts } = setup();
     alerts.add({ c: 'session-move' }, from);
@@ -83,10 +113,12 @@ describe('PtAlertEditor', () => {
     expect(badge('Below its average').classList).toContain('pt-al-badge-used');
   });
 
-  it('save sends email, name, rule, from and the weekly choice', async () => {
+  it('save sends email, name, rule and from; the editor asks nothing about the weekly email (Romeo, 2026-11-02)', async () => {
     const { alerts, saved } = setup();
     alerts.add({ c: 'session-move', mega: true }, from);
     const { el, settle, text } = await mount();
+    expect(el.querySelector('input[type="checkbox"]')).toBeNull();
+    expect(text()).not.toContain('weekly');
     type(el, 'input[type="email"]', 'me@example.com');
     await settle();
     el.querySelector<HTMLButtonElement>('.pt-al-save')!.click();

@@ -66,6 +66,11 @@ export class PtAlerts {
     this.update((rule) => ({ ...rule, all: rule.all.filter((_, j) => j !== i) }));
   }
 
+  /** A condition swapped for another: a universe card edited company by company becomes the reader's portfolio. */
+  replace(i: number, rc: RuleCondition): void {
+    this.update((rule) => ({ ...rule, all: rule.all.map((x, j) => (j === i ? rc : x)) }));
+  }
+
   rename(name: string): void {
     const d = this.draftSig();
     if (d) this.draftSig.set({ ...d, name });

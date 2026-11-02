@@ -44,6 +44,14 @@ const typeEmail = (email: string) => (_refresh: () => void, el: HTMLElement) => 
   input.value = email;
   input.dispatchEvent(new Event('input'));
 };
+/** Pastes a made-up portfolio (a broker's table and a sentence) into the empty My portfolio card and adds what it names. */
+const pastePortfolio = (_refresh: () => void, el: HTMLElement) => {
+  const box = el.querySelector<HTMLTextAreaElement>('.pt-al-paste');
+  if (!box) return;
+  box.value = 'Symbol  Qty  Price\nNVDA  10  140.20\nMSFT   4  410.00\nI also hold Apple, Costco and some Coca-Cola, plus $V';
+  box.dispatchEvent(new Event('input'));
+  setTimeout(() => [...el.querySelectorAll<HTMLButtonElement>('.pt-al-list button')].find((b) => b.textContent!.trim() === 'Add from text')?.click(), 50);
+};
 /** Cloudflare's public test site keys (any host, localhost too): they never see a real reader. */
 const TURNSTILE_TEST = { passes: '1x00000000000000000000AA', tap: '3x00000000000000000000FF', blocks: '2x00000000000000000000AB' };
 
@@ -76,5 +84,7 @@ export const stories = [
     providers: fakeAlerts({ check: turnstileCheck(TURNSTILE_TEST.blocks) }), data, group: EDITOR, run: typeEmail('reader@example.com') }),
   story(PtAlertEditorStory, { name: 'Editor · over a limit', inputs: { bells: [{ c: 'session-move', mega: true }] }, providers: fakeAlerts({ fail: 'limit' }),
     data, group: EDITOR, run: saveAs('reader@example.com') }),
+  story(PtAlertEditorStory, { name: 'Editor · My portfolio, pasted', inputs: { bells: [{ c: 'session-move' }, { c: 'companies' }] },
+    providers: fakeAlerts(), data, group: EDITOR, run: pastePortfolio }),
   ...CONDITION_IDS.map(cardOf),
 ];

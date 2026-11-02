@@ -14,7 +14,7 @@ describe('the alerts in the stories (made-up data)', () => {
     for (const id of CONDITION_IDS) expect(names, id).toContain(`Card · ${CONDITIONS[id].name}`);
     for (const n of ['Editor · empty', 'Editor · from the movers', "Editor · Romeo's example", "Editor · from AMD's page: price target, then news",
       'Editor · saving fails', 'Editor · saved', 'Editor · Turnstile, invisible (test key: passes)', 'Editor · Turnstile asks for a tap (test key)',
-      'Editor · Turnstile fails (test key: blocks)', 'Editor · over a limit']) expect(names).toContain(n);
+      'Editor · Turnstile fails (test key: blocks)', 'Editor · over a limit', 'Editor · My portfolio, pasted']) expect(names).toContain(n);
   });
 
   it('the previews show the company page with its bells and the alert on top, and the alerts page', () => {

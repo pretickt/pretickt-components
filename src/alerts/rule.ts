@@ -1,4 +1,4 @@
-import { CONDITIONS, type ConditionId, type Params } from './catalog';
+import { CONDITIONS, listOf, type ConditionId, type Params } from './catalog';
 import type { AlertRow } from './rows';
 import type { AlertSource } from './sources';
 
@@ -7,15 +7,17 @@ export interface RuleCondition { c: ConditionId; p: Params }
 /** An alert's rule: every condition true together. Stored as is by the platform (JSON). */
 export interface Rule { v: 1; all: RuleCondition[] }
 export const RULE_MAX = 6;
-export type RuleProblem = 'empty' | 'universe-only' | 'too-many';
+export type RuleProblem = 'empty' | 'universe-only' | 'too-many' | 'empty-list';
 
 const isUniverse = (rc: RuleCondition) => CONDITIONS[rc.c].group === 'universe';
 const passes = (rc: RuleCondition, row: AlertRow) => CONDITIONS[rc.c].test(row, rc.p).pass;
+const emptyList = (rc: RuleCondition) => CONDITIONS[rc.c].params.some((s) => s.kind === 'tickers') && !listOf(rc.p).length;
 
 /** Why a rule cannot be saved, or null. */
 export function ruleProblem(r: Rule): RuleProblem | null {
   if (!r.all.length) return 'empty';
   if (r.all.length > RULE_MAX) return 'too-many';
+  if (r.all.some(emptyList)) return 'empty-list';
   return r.all.every(isUniverse) ? 'universe-only' : null;
 }
 
