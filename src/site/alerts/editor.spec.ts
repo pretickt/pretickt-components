@@ -35,7 +35,7 @@ const type = (el: HTMLElement, sel: string, v: string) => { const i = el.querySe
 /** A human check the test drives: where it was drawn, its hand-over, its resets and removals. */
 function fakeCheck() {
   const st = { el: null as HTMLElement | null, on: null as ((s: CheckState) => void) | null, resets: 0, removed: 0 };
-  const check: HumanCheck = { mount: (el, on) => { st.el = el; st.on = on; return { reset: () => { st.resets++; }, remove: () => { st.removed++; } }; } };
+  const check: HumanCheck = { mount: (el, on) => { st.el = el as HTMLElement; st.on = on; return { reset: () => { st.resets++; }, remove: () => { st.removed++; } }; } };
   return { check, st };
 }
 

@@ -36,7 +36,8 @@ function load(doc: Document): Promise<Turnstile> {
  */
 export function turnstileCheck(sitekey: string): HumanCheck {
   return {
-    mount(el, on) {
+    mount(target, on) {
+      const el = target as HTMLElement;
       let api: Turnstile | null = null, id: string | null = null, gone = false;
       const none = (failed: boolean): CheckState => ({ token: null, failed });
       load(el.ownerDocument).then((t) => {

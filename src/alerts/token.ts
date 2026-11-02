@@ -10,8 +10,11 @@ export interface AlertDraft { rule: Rule; prefer: string | null; from: AlertFrom
 export type SaveResult = { ok: true } | { ok: false; reason: 'invalid' | 'limit' | 'network' | 'captcha' };
 /** What a human check says: a fresh token, or none (`failed`: it cannot run — blocked, offline — or Cloudflare refused it). */
 export type CheckState = { token: string } | { token: null; failed: boolean };
-/** A human check drawn in an element of the editor (Turnstile on www): `reset` asks for a fresh token, `remove` takes it away. */
-export interface HumanCheck { mount(el: HTMLElement, on: (s: CheckState) => void): { reset(): void; remove(): void } }
+/**
+ * A human check drawn in an element of the editor (Turnstile on www): `reset` asks for a fresh token, `remove` takes it away.
+ * `el` is the page's element, typed `object` so that this file stays free of DOM types (the platform's Worker compiles it).
+ */
+export interface HumanCheck { mount(el: object, on: (s: CheckState) => void): { reset(): void; remove(): void } }
 /** `pending`: saved, its confirmation email not yet opened (it cannot be paused) */
 export interface ManagedRule { id: string; name: string; rule: Rule; status: 'pending' | 'active' | 'paused' }
 export interface ManageState {
