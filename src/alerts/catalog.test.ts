@@ -140,10 +140,21 @@ describe('the catalog: fundamental, news and social conditions', () => {
     expect(test('piotroski', { piotroski: 4 }, { side: 'low', score: 3 }).pass).toBe(false);
   });
 
+  it('an earnings surprise is news in the days after its report only: each report can fire once, two beats in a row two alerts', () => {
+    const at = (lastReport: string | null, session: string) => test('earnings-surprise', { surprises: [0.01, 0.08], lastReport, session }).pass;
+    expect(at('2026-10-29', '2026-10-30')).toBe(true);    // after the close, read the next session
+    expect(at('2026-10-30', '2026-10-30')).toBe(true);
+    expect(at('2026-10-30', '2026-11-03')).toBe(true);    // a Friday's report, on Monday and Tuesday
+    expect(at('2026-10-20', '2026-10-30')).toBe(false);   // ten days on, old news
+    expect(at('2026-08-04', '2026-10-30')).toBe(false);
+    expect(at(null, '2026-10-30')).toBe(false);
+  });
+
   it('earnings-surprise reads the latest report', () => {
-    expect(test('earnings-surprise', { surprises: [0.2, 0.01] }).pass).toBe(false);
-    expect(test('earnings-surprise', { surprises: [0.01, 0.06] }).pass).toBe(true);
-    expect(test('earnings-surprise', { surprises: [0.01, -0.06] }, { dir: 'miss' }).pass).toBe(true);
+    const fresh = { lastReport: '2026-10-29' };
+    expect(test('earnings-surprise', { ...fresh, surprises: [0.2, 0.01] }).pass).toBe(false);
+    expect(test('earnings-surprise', { ...fresh, surprises: [0.01, 0.06] }).pass).toBe(true);
+    expect(test('earnings-surprise', { ...fresh, surprises: [0.01, -0.06] }, { dir: 'miss' }).pass).toBe(true);
     expect(test('earnings-surprise', { surprises: [] })).toEqual({ pass: false, value: null });
   });
 

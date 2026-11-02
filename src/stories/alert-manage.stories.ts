@@ -26,6 +26,13 @@ function fake(landing: AlertsLanding, first: ManageState | null, o: { failFirst?
       await new Promise((r) => setTimeout(r, 400));
       if (failing) { failing = false; throw new Error('offline'); }
       if (!s) return null;
+      const { confirmed: _, ...was } = s;   // the answer of one confirmation only
+      s = was;
+      if (op.op === 'confirm') {
+        const on = s.rules.find((r) => r.status === 'pending');
+        s = { ...s, status: 'active', rules: s.rules.map((r) => (r.status === 'pending' ? { ...r, status: 'active' as const } : r)) };
+        if (on) return { ...s, confirmed: { id: on.id, now: ['AMD'] } };
+      }
       if (op.op === 'update') s = { ...s, rules: s.rules.map((r) => (r.id === op.id ? { ...r, name: op.name, rule: op.rule } : r)) };
       if (op.op === 'pause' || op.op === 'resume') s = { ...s, rules: s.rules.map((r) => (r.id === op.id ? { ...r, status: op.op === 'pause' ? 'paused' : 'active' } : r)) };
       if (op.op === 'delete') s = { ...s, rules: s.rules.filter((r) => r.id !== op.id) };
@@ -41,13 +48,14 @@ const GROUP = 'Alerts · the manage page (made-up answers)';
 const at = (action: AlertsLanding['action']): AlertsLanding => ({ alert: null, token: 'demo', action });
 
 export const stories = [
-  story(PtAlertManage, { name: 'Confirmed · AMD meets it right now', providers: fake(at('confirm'), { ...STATE, confirmed: { id: 'r1', now: ['AMD'] } }), group: GROUP }),
+  story(PtAlertManage, { name: 'A confirmation link · Confirm turns it on (AMD meets it right now)', group: GROUP,
+    providers: fake(at('confirm'), { ...STATE, status: 'pending', rules: STATE.rules.map((r, i) => (i ? r : { ...r, status: 'pending' as const })) }) }),
   story(PtAlertManage, { name: 'Manage · three alerts, one paused', providers: fake(at('manage'), STATE), group: GROUP }),
   story(PtAlertManage, { name: 'A new alert waiting for its confirmation', providers: fake(at('manage'), { ...STATE, rules: [
     { id: 'r4', name: 'Quality pullback · MU', rule: { v: 1, all: [{ c: 'session-move', p: { dir: 'down', pct: 5 } }, { c: 'piotroski', p: { side: 'high', score: 7 } },
       { c: 'one-stock', p: { ticker: 'MU' } }] }, status: 'pending' }, ...STATE.rules] }), group: GROUP }),
   story(PtAlertManage, { name: 'A call that does not get through · Retry', providers: fake(at('manage'), STATE, { failFirst: true }), group: GROUP }),
-  story(PtAlertManage, { name: 'Weekly email turned on', providers: fake(at('weekly'), { ...STATE, weekly: true }), group: GROUP }),
+  story(PtAlertManage, { name: "The weekly email's link · Yes, send it", providers: fake(at('weekly'), STATE), group: GROUP }),
   story(PtAlertManage, { name: 'Unsubscribed', providers: fake(at('manage'), { ...STATE, status: 'unsubscribed' }), group: GROUP }),
   story(PtAlertManage, { name: 'Expired link', providers: fake(at('manage'), null), group: GROUP }),
   story(PtAlertManage, { name: 'Without a link (the server)', group: GROUP }),

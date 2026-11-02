@@ -246,6 +246,9 @@
   .pt-alm-err { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: 0; font-size: .85rem; font-weight: 600; color: var(--color-neg); }
   .pt-alm-err button { padding: .2rem .6rem; border: 1px solid currentColor; border-radius: .45rem; background: none; font: inherit; color: inherit; cursor: pointer; }
   .pt-alm button:disabled { opacity: .5; cursor: default; }
+  .pt-alm-ask { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; margin: 0; padding: .6rem .7rem; border-radius: var(--radius-control);
+    background: color-mix(in oklab, var(--color-primary) 8%, var(--color-surface)); font-size: .9rem; color: var(--color-ink); }
+  .pt-alm-go { padding: .35rem .9rem; border: 0; border-radius: .45rem; background: var(--color-primary); font: 600 .85rem/1.2 inherit; color: #fff; cursor: pointer; }
   /* the alert that fired, above the company page (pt-alert-event) */
   .pt-alev { display: grid; gap: .3rem; margin: 0 0 1rem; padding: .7rem .9rem; border: 1px solid color-mix(in oklab, var(--color-primary) 40%, var(--color-border));
     border-radius: var(--radius-control); background: color-mix(in oklab, var(--color-primary) 6%, var(--color-surface-raised)); }

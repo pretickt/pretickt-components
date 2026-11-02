@@ -52,6 +52,8 @@ const dollars = (v: number) => (v >= 1e6 ? `$${fixed(v / 1e6)}M` : v >= 1e3 ? `$
 /** A price as a price: never compacted, cents when it has them — $155, $1,234.56, $9.75. */
 export const price = (v: number) => `$${num(v, Number.isInteger(v) ? 0 : 2)}`;
 
+/** how long a report's surprise stays news: the next session, or a Friday's through Tuesday */
+const REPORT_DAYS = 4;
 const pct = (key: string, min: number, max: number, step: number) => ({ key, kind: 'number', min, max, step, unit: 'pct' } as const);
 const times = (key: string) => ({ key, kind: 'number', min: 1.5, max: 10, step: 0.5, unit: 'times' } as const);
 const choice = (key: string, options: readonly (readonly [string, string])[]) => ({ key, kind: 'choice', options } as const);
@@ -178,8 +180,9 @@ const FUNDAMENTAL: Condition[] = [
     short: (p) => `${s(p, 'dir') === 'miss' ? 'Miss' : 'Beat'} ${fixed(n(p, 'pct'))}%+`,
     fact: (_, v) => (v === null ? '' : `${v >= 0 ? 'beat' : 'missed'} estimates by ${abs(v)}`),
     test: (r, p) => {
-      const last = r.surprises?.at(-1);
-      if (last === undefined) return NO;
+      const last = r.surprises?.at(-1), since = r.lastReport ? daysBetween(r.lastReport, r.session) : -1;
+      // news in the days after its report only (an after-close report read the next session, a Friday's on Monday): each report once
+      if (last === undefined || since < 0 || since > REPORT_DAYS) return NO;
       const t = n(p, 'pct') / 100;
       return { pass: s(p, 'dir') === 'miss' ? last <= -t + 1e-12 : last >= t - 1e-12, value: last };
     },

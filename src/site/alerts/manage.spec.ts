@@ -33,12 +33,32 @@ describe('pt-alert-manage: confirm and manage alerts from the email\'s link, no 
     expect(text()).toContain('Open the link in one of our emails');
   });
 
-  it('confirm shows the rule on and who meets it right now', async () => {
-    const { ops, text } = await mount({ alert: null, token: 't', action: 'confirm' }, () => ({ ...STATE, confirmed: { id: 'r1', now: ['AMD'] } }));
-    expect(ops).toEqual([{ op: 'confirm' }]);
+  it('a confirmation link asks for a press — a scanner opening it confirms nothing —, then shows the alert on and who meets it right now', async () => {
+    const waiting: ManageState = { ...STATE, status: 'pending', rules: [{ ...STATE.rules[0]!, status: 'pending' }] };
+    const { el, ops, settle, text } = await mount({ alert: null, token: 't', action: 'confirm' },
+      (op) => (op.op === 'confirm' ? { ...STATE, confirmed: { id: 'r1', now: ['AMD'] } } : waiting));
+    expect(ops).toEqual([{ op: 'list' }]);
+    expect(text()).toContain('Waiting for your confirmation');
+    press(el, 'Confirm');
+    await settle();
+    expect(ops).toEqual([{ op: 'list' }, { op: 'confirm' }]);
     expect(text()).toContain('Your alert “Mega-cap drops” is on.');
     expect(text()).toContain('Right now: AMD meets all of these');
     expect(text()).toContain('Falls more than 5% in one session · Is a mega cap, over $200B');
+    expect([...el.querySelectorAll('button')].map((b) => b.textContent!.trim())).not.toContain('Confirm');
+  });
+
+  it('the weekly link asks before turning the weekly email on', async () => {
+    let weekly = false;
+    const { el, ops, settle, text } = await mount({ alert: null, token: 't', action: 'weekly' }, (op) => {
+      if (op.op === 'weekly') weekly = op.on;
+      return { ...STATE, weekly };
+    });
+    expect(ops).toEqual([{ op: 'list' }]);
+    press(el, 'Yes, send it');
+    await settle();
+    expect(ops).toEqual([{ op: 'list' }, { op: 'weekly', on: true }]);
+    expect(text()).toContain("You will get pretickt's weekly email.");
   });
 
   it('pause and resume a rule', async () => {

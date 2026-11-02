@@ -30,6 +30,13 @@ import { mountEditor } from './editor';
         }
         @if (done(); as d) {<p class="pt-alm-ok">{{ d }}</p>}
         @if (failed()) {<p class="pt-alm-err" role="alert">Could not reach pretickt: nothing changed. <button type="button" (click)="retry()">Retry</button></p>}
+        @if (asking() === 'confirm' && waiting(s)) {
+          <p class="pt-alm-ask">Confirm the alerts waiting below: we email you only once you do.
+            <button type="button" class="pt-alm-go" [disabled]="busy()" (click)="confirm()">Confirm</button></p>
+        } @else if (asking() === 'weekly' && !s.weekly && s.status !== 'unsubscribed') {
+          <p class="pt-alm-ask">Want pretickt's weekly email too?
+            <button type="button" class="pt-alm-go" [disabled]="busy()" (click)="weeklyOn()">Yes, send it</button></p>
+        }
         @if (s.status === 'unsubscribed') {<p class="pt-note">You are unsubscribed: we will not email you again.</p>}
         @else {
           <p class="pt-meta">Alerts for {{ s.email }}</p>
@@ -68,7 +75,9 @@ export class PtAlertManage {
   /** a call is on its way: the buttons wait */
   protected readonly busy = signal(false);
   /** the call that did not get through, for Retry; the list shown stays as it was */
-  protected readonly failed = signal<{ op: ManageOp; said: string | null } | null>(null);
+  protected readonly failed = signal<{ op: ManageOp; said: string | null; then?: () => void } | null>(null);
+  /** what the email's link is for, until the reader presses it: a link scanner opening it confirms nothing, turns nothing on */
+  protected readonly asking = signal<'confirm' | 'weekly' | null>(null);
 
   constructor() {
     // every answer, the editor's update of a rule included
@@ -80,10 +89,14 @@ export class PtAlertManage {
       const l = this.alerts.landing();
       if (!this.alerts.enabled || !l.token) return;
       this.asked.set(true);
-      const op: ManageOp = l.action === 'confirm' ? { op: 'confirm' } : l.action === 'weekly' ? { op: 'weekly', on: true } : { op: 'list' };
-      this.run(op, l.action === 'weekly' ? "You will get pretickt's weekly email." : null);
+      this.asking.set(l.action === 'confirm' || l.action === 'weekly' ? l.action : null);
+      this.run({ op: 'list' }, null);
     });
   }
+
+  protected waiting(s: ManageState): boolean { return s.status === 'pending' || s.rules.some((r) => r.status === 'pending'); }
+  protected confirm(): void { this.run({ op: 'confirm' }, null, () => this.asking.set(null)); }
+  protected weeklyOn(): void { this.run({ op: 'weekly', on: true }, "You will get pretickt's weekly email.", () => this.asking.set(null)); }
 
   protected nameOf(s: ManageState, id: string): string { return s.rules.find((r) => r.id === id)?.name ?? 'your alert'; }
   /** the rule as words: "Falls more than 5% in one session · Is a mega cap, over $200B" */
@@ -97,7 +110,7 @@ export class PtAlertManage {
 
   protected retry(): void {
     const f = this.failed();
-    if (f) this.run(f.op, f.said);
+    if (f) this.run(f.op, f.said, f.then);
   }
 
   /** The editor (mounted on the first Edit) opens on the rule; its saved change comes back through `managed`. */
@@ -107,7 +120,7 @@ export class PtAlertManage {
   }
 
   /** One call at a time: its answer replaces the list, a link that no longer works says so, a call that failed keeps the list. */
-  private run(op: ManageOp, said: string | null): void {
+  private run(op: ManageOp, said: string | null, then?: () => void): void {
     const t = this.alerts.landing().token;
     if (!t || this.busy()) return;
     this.busy.set(true);
@@ -115,9 +128,10 @@ export class PtAlertManage {
     this.failed.set(null);
     void this.alerts.manage(t, op).then((s) => {
       this.busy.set(false);
-      if (s === 'failed') return this.failed.set({ op, said });
+      if (s === 'failed') return this.failed.set({ op, said, then });
       this.state.set(s);
       if (s && said) this.done.set(said);
+      if (s) then?.();
     });
   }
 }
