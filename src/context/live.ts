@@ -1,6 +1,6 @@
 import { afterNextRender, computed, inject, Injectable, InjectionToken, signal, type Signal } from '@angular/core';
 
-/** One company in the intraday file: the price of a 5-minute bar over for at least 15 minutes, against the previous close. */
+/** One company in the intraday file: the price of a 1-minute bar over for at least 15 minutes, against the previous close. */
 export interface LiveQuote {
   /** price */ p: number;
   /** the previous session's close */ pc: number;
@@ -11,7 +11,7 @@ export interface LiveQuote {
 export interface LiveStory { title: string; site: string; url: string; at: string }
 export interface LiveEarnings { date: string; time: 'bmo' | 'amc' | null; eps: number | null; epsEst: number | null; rev: number | null; revEst: number | null }
 /**
- * The intraday file the platform uploads every 5 minutes of the session (pretickt-platform `plant/src/live`), as the page app gives it
+ * The intraday file the platform uploads every 2 minutes of the session (pretickt-platform `plant/src/live`), as the page app gives it
  * to components: `time` is when its newest bar ended, in the reader's words ("11:45 AM ET").
  */
 export interface LiveDay {
