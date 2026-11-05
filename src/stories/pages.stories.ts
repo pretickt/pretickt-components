@@ -32,7 +32,8 @@ import { PtWhyToday } from '../../components/pt-why-today';
 import { fitTitle, PtPagePreview, PtPreviewNames, type PreviewPage, type PreviewSection } from './page-preview';
 import { demo, story } from './story';
 
-const UNIVERSE = 'S&P 500 and Nasdaq-100';
+const UNIVERSE = 'S&P 500, Nasdaq-100 and more';
+const UNIVERSE_COMPANIES = 'S&P 500, Nasdaq-100 and other US-listed companies';
 const HOME = { label: 'Home', href: '/' };
 const GROUP = 'Pages · before publishing (www not changed)';
 const NVDA_DRAFTS = { value: true, ask: PA_NVDA_HUB };
@@ -134,7 +135,7 @@ export function homePage(): PreviewPage {
   return {
     path: '/', site: true,
     title: fitTitle('pretickt: why stocks move, price targets, earnings'),
-    description: ('Why stocks moved, analyst targets, earnings and dividend calendars, market movers and insider buying for S&P 500 and Nasdaq-100 companies.'),
+    description: ('Why stocks moved, analyst targets, earnings and dividend calendars, market movers and insider buying for S&P 500, Nasdaq-100 and other US-listed companies.'),
     h1: 'Why stocks move, price targets and earnings',
     lede: `${UNIVERSE} · end-of-day data as of {date}`,
     nav: LIST_NAV,
@@ -144,7 +145,7 @@ export function homePage(): PreviewPage {
       { id: 'dividends', title: 'Ex-dividend dates', more: { href: '/dividend-calendar/', label: 'Full calendar' }, items: [week('dividend')] },
       ...MARKET_LISTS.map(([slug, list, , h1]): PreviewSection => ({ id: slug, title: h1, more: { href: `/markets/${slug}/`, label: 'See all' },
         items: [{ c: PtScreen, inputs: { list, limit: 5 } }] })),
-      { id: 'all-stocks', title: `Every ${UNIVERSE} stock`, more: { href: '/stocks/', label: 'All stocks' }, items: [] },
+      { id: 'all-stocks', title: `Every stock: ${UNIVERSE}`, more: { href: '/stocks/', label: 'All stocks' }, items: [] },
       // Romeo, 2026-11-01: "mettiamo alla fine della home la heat map del mercato delle mega caps"
       { id: 'mega-caps', title: 'Mega-cap stocks heat map', more: { href: '/market-map/', label: 'All the heat maps' }, isNew: true,
         items: [{ c: PtLogoMap, inputs: { lens: 'mega' } }] },
@@ -161,9 +162,9 @@ export function sectorPage(s: Sector): PreviewPage {
   return {
     path: sectorPath(s),
     title: fitTitle(`${s} stocks: today's movers and all companies`, `${s} stocks: movers and all companies`, `${s} stocks`),
-    description: (`${s} stocks in the ${UNIVERSE}: today's movers, 52-week lows and highs, undervalued stocks and insider buying. {date}.`),
+    description: (`${s} stocks: today's movers, 52-week lows and highs, undervalued stocks and insider buying. {date}.`),
     h1: `${s} stocks`,
-    lede: `${UNIVERSE} companies · end-of-day data as of {date}`,
+    lede: `${UNIVERSE_COMPANIES} · end-of-day data as of {date}`,
     crumbs: [HOME, { label: 'Sectors', href: '/sectors/' }, { label: s }],
     sections: [
       { id: 'answer', items: [{ c: PtAnswer, inputs: { topic: 'list', list: 'largest', sector: s } }] },
@@ -178,10 +179,10 @@ export function sectorPage(s: Sector): PreviewPage {
 export function marketMapPage(): PreviewPage {
   return {
     path: '/market-map/',
-    title: fitTitle('Stock Market Heat Map Today: S&P 500 and Nasdaq-100 by Sector', 'Stock Market Heat Map Today by Sector', 'Stock Market Heat Map Today'),
-    description: (`Stock market heat map: the 100 largest ${UNIVERSE} stocks by sector, sized by market value, colored by the day's move. As of {date}.`),
+    title: fitTitle('Stock Market Heat Map Today by Sector', 'Stock Market Heat Map Today'),
+    description: (`Stock market heat map: the 100 largest US-listed stocks by sector, sized by market value, colored by the day's move. As of {date}.`),
     h1: 'Stock market heat map',
-    lede: `The 100 largest ${UNIVERSE} companies · end-of-day data as of {date}`,
+    lede: `The 100 largest ${UNIVERSE_COMPANIES} · end-of-day data as of {date}`,
     crumbs: [HOME, { label: 'Stock market heat map' }],
     nav: LIST_NAV,
     sections: [
@@ -196,7 +197,7 @@ export function marketMapPage(): PreviewPage {
     outro: prose('The heat map, explained',
       qa('How do you read a stock market heat map?', 'Each tile is a company, sized by its market value and colored by the day’s move: green rose, red fell, '
         + 'and the deeper the color, the larger the move. The tiles are grouped by sector.')
-      + qa('Which companies are on the map?', `The 100 largest ${UNIVERSE} companies by market value at the last close. Each sector page has a map of its own sector.`)
+      + qa('Which companies are on the map?', `The 100 largest ${UNIVERSE_COMPANIES} by market value at the last close. Each sector page has a map of its own sector.`)
       + qa('How often is the map updated?', 'Every night after the close, with the end-of-day data; the company pages show the day’s prices 15 minutes late while the market is open.')),
   };
 }
@@ -206,15 +207,15 @@ export function trendingPage(): PreviewPage {
   return {
     path: '/trending/',
     title: fitTitle('Trending Stocks Today: Most Talked About on Reddit and X', 'Trending Stocks on Reddit and X Today', 'Trending Stocks Today'),
-    description: (`The most talked about ${UNIVERSE} stocks on Reddit and X in the last 24 hours, counted every 30 minutes, against each company's usual day.`),
+    description: (`The most talked about stocks on Reddit and X in the last 24 hours, counted every 30 minutes, against each company's usual day.`),
     h1: 'Trending stocks on Reddit and X today',
-    lede: `The most talked about ${UNIVERSE} stocks in the last 24 hours, counted every 30 minutes`,
+    lede: `The most talked about stocks in the last 24 hours, counted every 30 minutes`,
     crumbs: [HOME, { label: 'Trending stocks' }],
     nav: LIST_NAV,
     sections: [{ id: 'trending', isNew: true, note: 'pt-hot, made-up counts until the pulse feeds it', items: [{ c: PtHot, inputs: { data: HOT, head: false, rank: 15 } }] }],
     outro: prose('How the counts work',
       qa('How does pretickt count the posts?', `Every 30 minutes it reads the newest posts and comments of ten investing subreddits (r/stocks, r/wallstreetbets, `
-        + `r/investing and seven more) and of twelve market accounts on X, and counts those that name an ${UNIVERSE} company over the last 24 hours.`)
+        + `r/investing and seven more) and of twelve market accounts on X, and counts those that name a company on the site over the last 24 hours.`)
       + qa('What does “3× its usual” mean?', 'The posts of the last 24 hours against the company’s average day over the four weeks before: 3× is three times '
         + 'as many as on a usual day.')),
   };
