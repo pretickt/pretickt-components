@@ -442,6 +442,61 @@
   .pt-card-all { @apply justify-self-start; }
   .pt-card-foot { @apply border-t border-border pt-2 text-xs text-ink-soft; }
   .pt-card-foot b { @apply font-semibold text-ink; }
+
+  /* pt-company-header: the price and the bands */
+  .pt-hdr { @apply gap-2.5; }
+  .pt-hdr-head { @apply flex flex-wrap items-center justify-between gap-x-3 gap-y-1; }
+  .pt-hdr-px { @apply grid sm:justify-items-end; }
+  .pt-hdr-price { @apply flex items-baseline gap-2; }
+  .pt-hdr-chg { @apply font-mono text-sm font-semibold; }
+  .pt-hdr-body { @apply grid grid-cols-1 gap-3 sm:grid-cols-2; }
+  .pt-hdr-solo { @apply sm:grid-cols-1; }
+  .pt-hdr-chart { @apply relative min-h-[18rem] min-w-0; }
+  .pt-hdr-svg { @apply absolute inset-0 block h-full w-full; touch-action: pan-y; }
+  .pt-hdr-zone { fill: color-mix(in oklab, var(--color-primary) 6%, var(--color-surface-raised)); }
+  .pt-hdr-grid { stroke: var(--color-border); stroke-width: 1; }
+  .pt-hdr-ax { font: 500 10px var(--font-mono); fill: var(--color-ink-soft); }
+  .pt-hdr-cap { font: 500 11px var(--font-sans); fill: var(--color-ink-soft); }
+  .pt-hdr-cap-s { font-size: 9.5px; }
+  .pt-hdr-capv { font: 600 11px var(--font-mono); fill: var(--color-ink); }
+  .pt-hdr-area { fill: var(--color-primary); opacity: .1; }
+  .pt-hdr-line { fill: none; stroke: var(--color-primary); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .pt-hdr-dot { fill: var(--color-primary); stroke: var(--color-surface-raised); stroke-width: 2; }
+  .pt-hdr-cross { stroke: var(--color-ink-soft); stroke-width: 1; }
+  .pt-hdr-tip { @apply pointer-events-none absolute top-0 -translate-x-1/2 whitespace-nowrap rounded border border-border bg-surface-raised px-1.5 py-0.5 font-mono text-2xs; }
+  .pt-hdr-bands { @apply grid min-w-0 gap-0.5; }
+  .pt-band { @apply grid min-w-0 content-start gap-1.5 rounded-md px-2.5 py-2; }
+  .pt-band-g { background: color-mix(in oklab, var(--color-pos) 13%, var(--color-surface-raised)); }
+  .pt-band-r { background: color-mix(in oklab, var(--color-neg) 11%, var(--color-surface-raised)); }
+  .pt-band-n { background: color-mix(in oklab, var(--color-ink-soft) 3%, var(--color-surface-raised)); box-shadow: inset 0 0 0 1px var(--color-border); }
+  .pt-band-h { @apply flex items-baseline gap-1.5 text-xs font-semibold text-ink; }
+  .pt-band-c { @apply ml-auto font-mono text-sm font-semibold; }
+  .pt-band-g .pt-band-mk { @apply text-pos; }
+  .pt-band-r .pt-band-mk { @apply text-neg; }
+  .pt-hdr .pt-badges { @apply gap-1; }
+  .pt-hdr .pt-badge { @apply bg-surface-raised; }
+  .pt-hdr-row { @apply flex items-center gap-1.5 py-1.5; }
+  .pt-hdr-l { @apply shrink-0 text-xs font-semibold text-ink; }
+  .pt-hdr-row .pt-badges { @apply min-w-0 flex-1 overflow-hidden; height: 1.375rem; }
+  .pt-hdr-row.open { @apply items-start; }
+  .pt-hdr-row.open .pt-badges { @apply overflow-visible; height: auto; }
+  .pt-hdr-row .pt-abtn { @apply shrink-0 whitespace-nowrap; }
+  .pt-hdr-note { @apply m-0 text-2xs text-ink-soft; }
+  .pt-hdr-low { @apply gap-1.5 px-2.5 py-2; }
+  .pt-hdr-low .pt-card-who { @apply flex flex-wrap items-baseline gap-x-2; }
+  .pt-hdr-low .pt-card-name { @apply text-sm; }
+  .pt-hdr-low .pt-hdr-px { @apply flex flex-wrap items-baseline gap-x-2; }
+  .pt-hdr-low .pt-card-close { @apply text-base; }
+  .pt-hdr-low .pt-hdr-chart { @apply min-h-[6.5rem]; }
+  .pt-hdr-low .pt-hdr-cap { font-size: 10px; }
+  .pt-hdr-low .pt-hdr-capv { font-size: 10px; }
+  .pt-hdr-low .pt-hdr-l { min-width: 2.9rem; }
+  .pt-hdr-rows { @apply grid min-w-0 content-start gap-0.5; }
+  .pt-hdr-rows .pt-hdr-row { @apply min-h-[1.875rem] px-1.5 py-0.5; }
+  .pt-hdr-bar { @apply mb-0.5 flex h-1.5 gap-0.5; }
+  .pt-hdr-bar i { @apply block h-full min-w-0; flex: 0 1 0; }
+  .pt-hdr-bar-g { @apply rounded-l bg-pos; }
+  .pt-hdr-bar-r { @apply rounded-r bg-neg; }
   /* the floating panel the islands runtime opens over a company link */
   .pt-hovercard { @apply fixed z-50 overflow-auto rounded-control shadow-lg; }
   .pt-hovercard-loading { @apply w-[340px] rounded-control border border-border bg-surface-raised p-3 text-sm text-ink-soft; }

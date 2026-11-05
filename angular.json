@@ -111,7 +111,8 @@
           "options": {
             "buildTarget": "stories:build",
             "port": 4300,
-            "proxyConfig": "src/stories/proxy.json"
+            "proxyConfig": "src/stories/proxy.json",
+            "prebundle": { "exclude": ["@pretickt/components/indicators"] }
           },
           "configurations": {
             "experiments": {

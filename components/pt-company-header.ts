@@ -5,10 +5,10 @@
  * @evidence Romeo, 2026-11-05: the company page's header, «si capisce subito quali sono a favore di un rialzo e quali a favore di un ribasso», «senza dare mai consigli»
  * @evidence design: pretickt/docs/superpowers/specs/2026-11-05-company-header-bands-design.md
  */
-import { Component, computed, inject, input } from '@angular/core';
-import { Pt } from '@pretickt/components/context';
-import { PtLogo } from '@pretickt/components/ds';
-import { money, pct, plainName, usd, type Badge } from '@pretickt/components/format';
+import { afterRenderEffect, Component, computed, type ElementRef, inject, input, signal, viewChild } from '@angular/core';
+import { Pt, PtLive } from '@pretickt/components/context';
+import { PtBadge, PtLogo } from '@pretickt/components/ds';
+import { date, dayMonth, money, pct, plainName, tone, usd, type Badge } from '@pretickt/components/format';
 import { bollinger, macd, rsi, smaLast } from '@pretickt/components/indicators';
 import { METRIC_KEYS, type MetricItem } from '@pretickt/components/typologies';
 
@@ -135,24 +135,152 @@ export function sessionView(points: { t: string; c: number }[], line: SessionLin
   return own;
 }
 
+export interface Chart {
+  w: number; h: number; zoneX: number; top: number; y1: number; lo: number; hi: number; hist: string; day: string; areaHist: string; areaDay: string;
+  dot: { x: number; y: number } | null; ticks: { y: number; label: string }[]; months: { x: number; label: string }[]; showOpen: boolean;
+  points: { x: number; y: number; t: string | null; slot: number | null; v: number }[];
+}
+const SLOTS = 78;
+const niceStep = (x: number) => { const p = 10 ** Math.floor(Math.log10(x)), f = x / p; return Math.max(1, (f <= 1.4 ? 1 : f <= 3 ? 2 : f <= 7 ? 5 : 10) * p); };
+
+/** Three months on the first 80% of the plot, the session (9:30 to 16:00) on the rest, one linear scale for both. Null with nothing to draw. */
+export function chartOf(hist: { t: string; c: number }[], slots: (number | null)[], prev: number | null, w: number, h: number, low: boolean): Chart | null {
+  const day = slots.flatMap((v, i) => (v == null ? [] : [[i, v] as const]));
+  const vals = [...hist.map((p) => p.c), ...day.map((d) => d[1])];
+  if (vals.length < 2) return null;
+  const L = 30, top = low ? 18 : 34, y1 = h - (low ? 15 : 18), zoneX = Math.round(L + (w - L) * 0.8);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  const margin = (hi - lo || hi * 0.01) * 0.08;
+  const steps = low ? 2 : 3, step = niceStep((hi - lo || hi * 0.01) / steps);
+  const ticks: number[] = [];
+  for (let v = Math.ceil((lo - margin) / step) * step; v <= hi + margin; v += step) ticks.push(v);
+  lo -= margin; hi += margin;
+  const sy = (v: number) => y1 - ((v - lo) / (hi - lo)) * (y1 - top);
+  const xh = (i: number) => L + ((zoneX - L) * i) / Math.max(1, hist.length - 1);
+  const xd = (i: number) => zoneX + 3 + ((w - zoneX - 3) * i) / (SLOTS - 1);
+  const f = (n: number) => +n.toFixed(1);
+  const pts = (a: (readonly [number, number])[]) => a.map(([x, y]) => `${f(x)},${f(y)}`).join(' ');
+  const histXY = hist.map((p, i) => [xh(i), sy(p.c)] as const);
+  const dayXY = day.map(([i, v]) => [xd(i), sy(v)] as const);
+  const fromPrev = day.length && prev != null ? [[zoneX, sy(prev)] as const] : [];
+  const end = dayXY.at(-1) ?? histXY.at(-1);
+  const months: Chart['months'] = [];
+  hist.forEach((p, i) => { if (i && p.t.slice(0, 7) !== hist[i - 1]!.t.slice(0, 7) && xh(i) < zoneX - 22) months.push({ x: f(xh(i)), label: date(p.t).slice(0, 3) }); });
+  return {
+    w, h, zoneX, top, y1, lo, hi, hist: pts(histXY), day: pts([...fromPrev, ...dayXY]),
+    areaHist: histXY.length ? pts([[L, y1], ...histXY, [histXY.at(-1)![0], y1]]) : '',
+    areaDay: dayXY.length ? pts([[zoneX, y1], ...fromPrev, ...dayXY, [dayXY.at(-1)![0], y1]]) : '',
+    dot: end ? { x: f(end[0]), y: f(end[1]) } : null,
+    ticks: ticks.map((v) => ({ y: f(sy(v)), label: `$${v.toFixed(0)}` })), months, showOpen: w - zoneX >= 62,
+    points: [...hist.map((p, i) => ({ x: xh(i), y: sy(p.c), t: p.t, slot: null, v: p.c })), ...day.map(([i, v]) => ({ x: xd(i), y: sy(v), t: null, slot: i, v }))],
+  };
+}
+const slotTime = (i: number) => { const t = 570 + i * 5, m = t % 60, h = Math.floor(t / 60); return `${h > 12 ? h - 12 : h}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'} ET`; };
+const BADGE_ROW = (low: boolean) => (low ? ['g', 'n', 'r'] as const : ['n'] as const);
+
 @Component({
   selector: 'pt-company-header',
-  imports: [PtLogo],
+  imports: [PtBadge, PtLogo],
   template: `
     @if (ready().settled && !ready().available) {<p class="pt-na">Data not available</p>}
     @else if (ready().settled) {
+      @let low = size() === 'low';
+      @let b = bands();
       <section [class]="'pt-card pt-hdr pt-hdr-' + size()">
-        <div class="pt-card-id">
-          <pt-logo [ticker]="ticker()" [src]="co.value()?.logo ?? null" [size]="size() === 'full' ? 38 : 28" />
-          <div class="pt-card-who">
-            <div class="pt-card-name">{{ co.value()?.name ? plainName(co.value()!.name) : ticker() }}</div>
+        <div class="pt-hdr-head">
+          <div class="pt-card-id">
+            <pt-logo [ticker]="ticker()" [src]="co.value()?.logo ?? null" [size]="low ? 28 : 38" />
+            <div class="pt-card-who">
+              @let title = co.value()?.name ? plainName(co.value()!.name) : ticker();
+              <div class="pt-card-name">{{ title }}</div>
+              <div class="pt-meta">{{ subLine(title) }}</div>
+            </div>
+          </div>
+          <div class="pt-hdr-px">
+            <div class="pt-hdr-price">
+              @if (price() != null) {<span class="pt-card-close">{{ money(price()) }}</span>}
+              @if (change() != null) {<span [class]="'pt-hdr-chg pt-t-' + tone(change())">{{ pct(change()) }}</span>}
+            </div>
+            <span class="pt-meta">{{ when() }}</span>
+            @if (targetText(); as t) {<span [class]="'pt-card-pt pt-tone-' + tone(upside())" hidden>{{ t }}</span>}
           </div>
         </div>
+        <div class="pt-hdr-body" [class.pt-hdr-solo]="!chart()">
+          @if (chart(); as g) {
+            <div class="pt-hdr-chart" #chartEl (pointermove)="hoverAt($event, g)" (pointerleave)="hover.set(null)">
+              <svg class="pt-hdr-svg" [attr.viewBox]="'0 0 ' + g.w + ' ' + g.h" preserveAspectRatio="xMinYMin meet" role="img" [attr.aria-label]="chartLabel()">
+                <rect class="pt-hdr-zone" [attr.x]="g.zoneX" [attr.y]="g.top - 6" [attr.width]="g.w - g.zoneX" [attr.height]="g.y1 - g.top + 6" />
+                @for (t of g.ticks; track t.label) {
+                  <line class="pt-hdr-grid" x1="30" [attr.x2]="g.w" [attr.y1]="t.y" [attr.y2]="t.y" />
+                  <text class="pt-hdr-ax" x="0" [attr.y]="t.y + 3.5">{{ t.label }}</text>
+                }
+                <line class="pt-hdr-grid" [attr.x1]="g.zoneX" [attr.x2]="g.zoneX" [attr.y1]="g.top - 6" [attr.y2]="g.y1" />
+                <line class="pt-hdr-grid" x1="30" [attr.x2]="g.w" [attr.y1]="g.y1" [attr.y2]="g.y1" />
+                @for (m of g.months; track m.label) {<text class="pt-hdr-ax" [attr.x]="m.x" [attr.y]="g.h - 5">{{ m.label }}</text>}
+                @if (g.showOpen) {<text class="pt-hdr-ax" [attr.x]="g.zoneX + 3" [attr.y]="g.h - 5">9:30</text>}
+                <text class="pt-hdr-ax" [attr.x]="g.w" [attr.y]="g.h - 5" text-anchor="end">16:00</text>
+                <text class="pt-hdr-cap" x="0" y="12">3 months <tspan class="pt-hdr-capv">{{ pct(months3()) }}</tspan></text>
+                @if (low) {
+                  <text class="pt-hdr-cap" [attr.x]="g.w" y="12" text-anchor="end"><tspan class="pt-hdr-capv">{{ zoneTitle() }}</tspan> · {{ zoneNote() }}</text>
+                } @else {
+                  <text class="pt-hdr-capv" [attr.x]="g.w" y="12" text-anchor="end">{{ zoneTitle() }}</text>
+                  <text class="pt-hdr-cap pt-hdr-cap-s" [attr.x]="g.w" y="24" text-anchor="end">{{ zoneNote() }}</text>
+                }
+                @if (g.areaHist) {<polygon class="pt-hdr-area" [attr.points]="g.areaHist" />}
+                @if (g.areaDay) {<polygon class="pt-hdr-area" [attr.points]="g.areaDay" />}
+                @if (g.hist) {<polyline class="pt-hdr-line" [attr.points]="g.hist" />}
+                @if (g.day) {<polyline class="pt-hdr-line pt-hdr-day" [attr.points]="g.day" />}
+                @if (g.dot; as d) {<circle class="pt-hdr-dot" [attr.cx]="d.x" [attr.cy]="d.y" r="5" />}
+                @if (hover(); as h) {
+                  <line class="pt-hdr-cross" [attr.x1]="h.x" [attr.x2]="h.x" [attr.y1]="g.top - 6" [attr.y2]="g.y1" />
+                  <circle class="pt-hdr-dot" [attr.cx]="h.x" [attr.cy]="h.y" r="5" />
+                }
+              </svg>
+              @if (hover(); as h) {<div class="pt-hdr-tip" [style.left.px]="h.left">{{ h.label }}</div>}
+            </div>
+          }
+          @if (low) {
+            <div class="pt-hdr-rows">
+              <div class="pt-hdr-bar" aria-hidden="true"><i class="pt-hdr-bar-g" [style.flex-grow]="b.g.length"></i><i class="pt-hdr-bar-r" [style.flex-grow]="b.r.length"></i></div>
+              @for (s of ROWS; track s) {
+                <div [class]="'pt-band pt-band-' + s + ' pt-hdr-row'" [class.open]="opened().has(s)">
+                  <span class="pt-hdr-l">
+                    @if (s === 'g') {<span class="pt-band-mk" role="img" aria-label="Bullish readings">▲</span> {{ b.g.length }}}
+                    @else if (s === 'r') {<span class="pt-band-mk" role="img" aria-label="Bearish readings">▼</span> {{ b.r.length }}}
+                    @else {Neutral}
+                  </span>
+                  <ul class="pt-badges">@for (m of b[s]; track m.key) {<li [ptBadge]="m" size="mini" [attr.data-key]="m.key"></li>}</ul>
+                  @if (b[s].length) {<button type="button" class="pt-abtn pt-abtn-wide" (click)="toggle(s)">{{ opened().has(s) ? '−' : '+' + more()[s] }}</button>}
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="pt-hdr-bands" [style.grid-template-rows]="rows()">
+              <div class="pt-band pt-band-g">
+                <div class="pt-band-h"><span class="pt-band-mk">▲</span> Bullish readings <b class="pt-band-c">{{ b.g.length }}</b></div>
+                @if (b.g.length) {<ul class="pt-badges">@for (m of b.g; track m.key) {<li [ptBadge]="m" size="mini" [attr.data-key]="m.key"></li>}</ul>}
+                @else {<span class="pt-meta">None right now</span>}
+              </div>
+              <div class="pt-band pt-band-n pt-hdr-row" [class.open]="opened().has('n')">
+                <span class="pt-hdr-l">Neutral</span>
+                <ul class="pt-badges">@for (m of b.n; track m.key) {<li [ptBadge]="m" size="mini" [attr.data-key]="m.key"></li>}</ul>
+                @if (b.n.length) {<button type="button" class="pt-abtn pt-abtn-wide" (click)="toggle('n')">{{ opened().has('n') ? 'Show less' : more().n ? 'Show all (' + more().n + ')' : 'Show all' }}</button>}
+              </div>
+              <div class="pt-band pt-band-r">
+                <div class="pt-band-h"><span class="pt-band-mk">▼</span> Bearish readings <b class="pt-band-c">{{ b.r.length }}</b></div>
+                @if (b.r.length) {<ul class="pt-badges">@for (m of b.r; track m.key) {<li [ptBadge]="m" size="mini" [attr.data-key]="m.key"></li>}</ul>}
+                @else {<span class="pt-meta">None right now</span>}
+              </div>
+            </div>
+          }
+        </div>
+        <p class="pt-hdr-note">{{ low ? 'Updates with the 15-min delayed price. Not a forecast or investment advice.' : 'Updates with the 15-min delayed price; analysts, insiders and news are from the last close. Not a forecast or investment advice.' }}</p>
       </section>
     }`,
 })
 export class PtCompanyHeader {
   private readonly pt = inject(Pt);
+  private readonly live = inject(PtLive);
   readonly ticker = input.required<string>();
   /** full: the company's main page; low: its sub-pages, so the answer below stays high. */
   readonly size = input<'full' | 'low'>('full');
@@ -165,4 +293,90 @@ export class PtCompanyHeader {
     return { settled: vs.every((v) => v !== undefined), available: vs.some((v) => v != null) };
   });
   protected readonly plainName = plainName;
+  protected readonly money = money;
+  protected readonly pct = pct;
+  protected readonly tone = tone;
+  protected readonly ROWS = BADGE_ROW(true);
+
+  private readonly lines = this.live.bars();
+  private readonly points = computed(() => (this.series.value()?.[0]?.points ?? []).map(({ t, c }) => ({ t, c })));
+  private readonly line = computed<SessionLine | null>(() => {
+    const l = this.lines();
+    return l && { session: l.session, ...(l.prev ? { prev: l.prev } : {}), time: l.time, closed: l.closed, closes: l.bars[this.ticker()] ?? [] };
+  });
+  private readonly view = computed(() => sessionView(this.points(), this.line()));
+  private readonly isLive = computed(() => this.view().state === 'running' || this.view().state === 'closing');
+  /** Asked only once there is a price to recompute against: never in the build, so never in the page. */
+  private readonly history = this.pt.priceSeries(() => (this.isLive() ? { tickers: [this.ticker()], range: '2y' } : null));
+  private readonly c0 = computed(() => this.points().at(-1)?.c ?? null);
+  private readonly items = computed(() => {
+    const ms = this.metrics.value() ?? [], p = this.view().price, c0 = this.c0();
+    if (!this.isLive() || p == null || c0 == null) return ms;
+    return livened(ms, p, c0, this.history.value()?.[0]?.points.map((x) => x.c) ?? null);
+  });
+  private readonly byKey = computed(() => new Map(this.items().map((m) => [m.key, m])));
+  private readonly target = computed(() => targetOf(this.metrics.value() ?? [], this.c0()));
+  protected readonly bands = computed(() => bandsOf(this.items(), { target: this.target(), low: this.size() === 'low' }));
+  protected readonly rows = computed(() => bandRows(this.bands().g.length, this.bands().r.length));
+  protected readonly price = computed(() => this.view().price ?? this.byKey().get('range_52w')?.value ?? null);
+  protected readonly change = computed(() => { const v = this.view(); return v.price != null && v.prev ? v.price / v.prev - 1 : null; });
+  protected readonly months3 = computed(() => { const v = this.view(), first = v.hist[0]?.c; return v.price != null && first ? v.price / first - 1 : null; });
+  protected readonly upside = computed(() => this.byKey().get('pt_upside')?.value ?? null);
+  protected readonly targetText = computed(() => { const t = this.target(), u = this.upside(); return t != null && u != null ? `PT ${money(t)} ${pct(u)}` : null; });
+  /** Under the name, the ticker (not when the name is the ticker in other letters) and the market value. */
+  protected subLine(title: string): string {
+    const cap = this.byKey().get('market_cap')?.value;
+    return [title.toUpperCase() === this.ticker().toUpperCase() ? '' : this.ticker(), cap != null ? usd(cap, { compact: true }) : ''].filter(Boolean).join(' · ');
+  }
+  protected readonly when = computed(() => {
+    const v = this.view(), l = this.line();
+    if (v.state === 'running') return `today · ${l!.time}, 15-min delayed`;
+    if (v.state === 'closing') return `today · close ${date(l!.session)}, preliminary`;
+    const day = v.state === 'settled' ? l!.session : this.points().at(-1)?.t;
+    return day ? `${date(day)} · close` : '';
+  });
+  protected readonly zoneTitle = computed(() => {
+    const s = this.view().state;
+    if (s === 'running' || s === 'closing') return 'Today';
+    const day = s === 'settled' ? this.line()!.session : this.points().at(-1)?.t;
+    return day ? dayMonth(day) : '';
+  });
+  protected readonly zoneNote = computed(() => (this.view().state === 'running' ? '15-min delayed' : this.view().state === 'closing' ? 'preliminary' : 'close'));
+  protected readonly chartLabel = computed(() => `${this.ticker()}: three months of closes, then ${this.isLive() ? 'today, 15 minutes delayed' : 'the last session'}. Last ${money(this.price())}.`);
+
+  /** The chart's cell, as measured in the browser; the server draws the default and the SVG scales until then. */
+  private readonly chartEl = viewChild<ElementRef<HTMLElement>>('chartEl');
+  private readonly box = signal<{ w: number; h: number } | null>(null);
+  protected readonly chart = computed(() => {
+    const v = this.view(), low = this.size() === 'low', b = this.box();
+    return chartOf(v.hist, v.slots, v.prev, b?.w ?? 380, b?.h ?? (low ? 104 : 300), low);
+  });
+  protected readonly hover = signal<{ x: number; y: number; left: number; label: string } | null>(null);
+  protected hoverAt(e: PointerEvent, g: Chart): void {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = rect.width ? ((e.clientX - rect.left) * g.w) / rect.width : 0;
+    let near = g.points[0];
+    for (const p of g.points) if (near && Math.abs(p.x - x) < Math.abs(near.x - x)) near = p;
+    if (!near) return;
+    const label = `${near.t ? dayMonth(near.t) : slotTime(near.slot ?? 0)} · ${money(near.v)}`;
+    this.hover.set({ x: near.x, y: near.y, left: Math.min(g.w - 60, Math.max(60, near.x)), label });
+  }
+
+  protected readonly opened = signal<ReadonlySet<Side>>(new Set());
+  protected readonly more = signal<Record<Side, number>>({ g: 0, n: 0, r: 0 });
+  protected toggle(s: Side): void {
+    const next = new Set(this.opened());
+    if (!next.delete(s)) next.add(s);
+    this.opened.set(next);
+  }
+
+  constructor() {
+    afterRenderEffect((cleanup) => {
+      const el = this.chartEl()?.nativeElement;
+      if (!el || typeof ResizeObserver === 'undefined') return;
+      const ro = new ResizeObserver(() => { if (el.clientWidth > 20 && el.clientHeight > 20) this.box.set({ w: el.clientWidth, h: el.clientHeight }); });
+      ro.observe(el);
+      cleanup(() => ro.disconnect());
+    });
+  }
 }

@@ -1,7 +1,8 @@
+import { money, pct } from '../src/ds/format';
 import { bollinger, macd, rsi, smaLast } from '../src/indicators';
-import type { MetricItem } from '../src/typologies';
-import { bandRows, bandsOf, lean, livened, PtCompanyHeader, sessionView, targetOf } from './pt-company-header';
-import { basics } from './_spec';
+import { METRIC_KEYS, metricDemo, priceSeriesDemo, type MetricItem } from '../src/typologies';
+import { bandRows, bandsOf, chartOf, lean, livened, PtCompanyHeader, sessionView, targetOf } from './pt-company-header';
+import { basics, demo, liveDay, render, settle, withData } from './_spec';
 
 const m = (key: string, value: number | null, o: Partial<MetricItem> = {}): MetricItem =>
   ({ key, label: key, value, text: null, unit: '%', delta: null, tone: 'flat', range: null, icon: null, hint: '', asOf: '2026-10-02', ...o });
@@ -191,6 +192,181 @@ describe('pt-company-header: the session on screen', () => {
   });
 });
 
+describe('pt-company-header: the chart', () => {
+  const hist = Array.from({ length: 62 }, (_, i) => ({ t: `2026-${i < 30 ? '09' : '10'}-${String((i % 28) + 1).padStart(2, '0')}`, c: 100 + 10 * Math.sin(i / 5) }));
+  const slots = [100, 101, 99, null, 104];
+  const g = chartOf(hist, slots, hist.at(-1)!.c, 380, 300, false)!;
+  const ys = (pts: string) => pts.trim().split(' ').map((q) => Number(q.split(',')[1]));
+  const xs = (pts: string) => pts.trim().split(' ').map((q) => Number(q.split(',')[0]));
+
+  it('the session is the last 20% of the plot, after a gutter for the prices', () => {
+    expect(g.zoneX).toBe(310);
+    expect(xs(g.hist)[0]).toBe(30);
+    expect(xs(g.hist).at(-1)).toBe(310);
+    expect(xs(g.day)[0]).toBe(310); // from the previous close
+    expect(xs(g.day)[1]).toBe(313);
+  });
+  it('a full session reaches the right edge; one in progress leaves the rest empty', () => {
+    const full = chartOf(hist, Array.from({ length: 78 }, () => 100), 100, 380, 300, false)!;
+    expect(xs(full.day).at(-1)).toBe(380);
+    expect(g.dot!.x).toBeLessThan(330);
+  });
+  it('one linear scale holds every value inside the plot', () => {
+    for (const y of [...ys(g.hist), ...ys(g.day)]) { expect(y).toBeGreaterThanOrEqual(34); expect(y).toBeLessThanOrEqual(282); }
+    const at = (v: number) => g.y1 - ((v - g.lo) / (g.hi - g.lo)) * (g.y1 - 34);
+    expect(g.dot!.y).toBeCloseTo(at(104), 1);
+  });
+  it('labels only values and months the chart reaches', () => {
+    for (const t of g.ticks) { expect(t.y).toBeGreaterThanOrEqual(34); expect(t.y).toBeLessThanOrEqual(282); expect(t.label).toMatch(/^\$\d+$/); }
+    expect(g.months.map((m) => m.label)).toEqual(['Oct']);
+    expect(g.ticks.length).toBeGreaterThan(1);
+  });
+  it('the low box has fewer lines and tighter margins', () => {
+    const low = chartOf(hist, slots, hist.at(-1)!.c, 380, 104, true)!;
+    expect(low.ticks.length).toBeLessThanOrEqual(g.ticks.length);
+    for (const y of ys(low.hist)) expect(y).toBeGreaterThanOrEqual(18);
+  });
+  it('9:30 only when the zone has room for both ends', () => {
+    expect(g.showOpen).toBe(true);
+    expect(chartOf(hist, slots, 100, 250, 300, false)!.showOpen).toBe(false);
+  });
+  it('nothing to draw', () => expect(chartOf([], [], null, 380, 300, false)).toBeNull());
+  it('before the prices load the zone stays empty, the last close on its edge', () => {
+    const still = chartOf(hist, [], null, 380, 300, false)!;
+    expect(still.day).toBe('');
+    expect(still.dot!.x).toBe(310);
+  });
+});
+
 describe('pt-company-header', () => {
   basics(PtCompanyHeader, { ticker: 'NVDA' });
+
+  const metrics = metricDemo({ ticker: 'NVDA', metrics: [...METRIC_KEYS] });
+  const series = priceSeriesDemo({ tickers: ['NVDA'], range: '3m', interval: '1d', rebase: false });
+  const points = series[0]!.points, close = points.at(-1)!.c, lastDay = points.at(-1)!.t;
+  const bands = bandsOf(metrics, { target: targetOf(metrics, close), low: false });
+  const lineAt = (p: number | null, o: Record<string, unknown> = {}) => ({ session: '2099-01-02', prev: lastDay, asOf: '2099-01-02T18:20:00.000Z', time: '1:20 PM ET', closed: false, bars: { NVDA: p == null ? [] : [close, p] }, ...o });
+  const open = (p: number | null, o = {}, resolve = demo()) => render(PtCompanyHeader, { ticker: 'NVDA' }, resolve, { browser: true, providers: liveDay({}, { bars: () => lineAt(p, o) }) });
+  const wait = async (r: Awaited<ReturnType<typeof open>>) => { for (let i = 0; i < 5; i++) { await new Promise((d) => setTimeout(d)); r.f.detectChanges(); } };
+  const text = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+
+  it('the server HTML has every badge in its band, the note, and nothing live', async () => {
+    const r = await render(PtCompanyHeader, { ticker: 'NVDA' });
+    for (const b of bands.g) expect(r.el.querySelector(`.pt-band-g [data-key="${b.key}"]`), b.key).not.toBeNull();
+    for (const b of bands.r) expect(r.el.querySelector(`.pt-band-r [data-key="${b.key}"]`), b.key).not.toBeNull();
+    for (const b of bands.n) expect(r.el.querySelector(`.pt-hdr-row [data-key="${b.key}"]`), b.key).not.toBeNull();
+    expect(text(r.el.querySelector('.pt-hdr-note'))).toBe('Updates with the 15-min delayed price; analysts, insiders and news are from the last close. Not a forecast or investment advice.');
+    expect(text(r.el.querySelector('.pt-hdr-px'))).not.toContain('delayed');
+    expect(text(r.el.querySelector('.pt-card-close'))).toBe(money(close));
+    expect(r.el.querySelector('.pt-hdr-svg')).not.toBeNull();
+  });
+  it('asks only for the company, the badges and three months while the page is being built', async () => {
+    expect((await render(PtCompanyHeader, { ticker: 'NVDA' })).calls()).toBe(3);
+  });
+  it('full: the three words with their counts', async () => {
+    const r = await render(PtCompanyHeader, { ticker: 'NVDA' });
+    expect(text(r.el.querySelector('.pt-band-g .pt-band-h'))).toBe(`▲ Bullish readings ${bands.g.length}`);
+    expect(text(r.el.querySelector('.pt-band-r .pt-band-h'))).toBe(`▼ Bearish readings ${bands.r.length}`);
+    expect(text(r.el.querySelector('.pt-hdr-row .pt-hdr-l'))).toBe('Neutral');
+  });
+  it('low: arrows only, their names for screen readers; PT on the target; the short note; a bar with the proportion', async () => {
+    const r = await render(PtCompanyHeader, { ticker: 'NVDA', size: 'low' });
+    expect(r.el.querySelector('section')!.className).toContain('pt-hdr-low');
+    const rows = [...r.el.querySelectorAll('.pt-hdr-row')];
+    expect(rows.map((x) => text(x.querySelector('.pt-hdr-l')))).toEqual([`▲ ${bands.g.length}`, 'Neutral', `▼ ${bands.r.length}`]);
+    expect(rows[0]!.querySelector('.pt-hdr-l [aria-label]')!.getAttribute('aria-label')).toBe('Bullish readings');
+    expect(rows[2]!.querySelector('.pt-hdr-l [aria-label]')!.getAttribute('aria-label')).toBe('Bearish readings');
+    expect(text(r.el.querySelector('[data-key="pt_upside"] .pt-badge-k'))).toBe('PT');
+    expect(text(r.el.querySelector('.pt-hdr-note'))).toBe('Updates with the 15-min delayed price. Not a forecast or investment advice.');
+    expect(r.el.querySelector<HTMLElement>('.pt-hdr-bar .pt-hdr-bar-g')!.style.flexGrow).toBe(String(bands.g.length));
+    expect(r.el.querySelector<HTMLElement>('.pt-hdr-bar .pt-hdr-bar-r')!.style.flexGrow).toBe(String(bands.r.length));
+  });
+  it('a band with no badges stays, with its 0', async () => {
+    const only = [{ key: 'macd', label: 'MACD', value: 1, text: null, unit: '', delta: null, tone: 'pos', range: null, icon: null, hint: 'h', asOf: '2026-10-02' }];
+    const r = await render(PtCompanyHeader, { ticker: 'NVDA' }, withData({ 'metric@1': only }));
+    expect(text(r.el.querySelector('.pt-band-r'))).toContain('Bearish readings 0');
+    expect(text(r.el.querySelector('.pt-band-r'))).toContain('None right now');
+  });
+  it('the strip in the header finds the name, the ticker and cap, the close and the target', async () => {
+    const r = await render(PtCompanyHeader, { ticker: 'NVDA' });
+    expect(text(r.el.querySelector('.pt-card-name'))).toBe('Nvidia');
+    expect(text(r.el.querySelector('.pt-card-who .pt-meta'))).toMatch(/^NVDA · \$[\d.]+[KMBT]$/);
+    const pt = r.el.querySelector('.pt-card-pt') as HTMLElement;
+    expect(pt.hidden).toBe(true);
+    expect(text(pt)).toBe(`PT ${money(close * (1 + bands.g.concat(bands.n, bands.r).find((b) => b.key === 'pt_upside')!.value!))} ${pct(bands.g.concat(bands.n, bands.r).find((b) => b.key === 'pt_upside')!.value!)}`);
+  });
+  it('the session running: the delayed price, its change, its label, the badges at that price, the closes asked for once', async () => {
+    const p = close * 1.02;
+    const r = await open(p);
+    await wait(r);
+    expect(text(r.el.querySelector('.pt-card-close'))).toBe(money(p));
+    const px = text(r.el.querySelector('.pt-hdr-px'));
+    expect(px).toContain(pct(p / close - 1));
+    expect(px).toContain('today · 1:20 PM ET, 15-min delayed');
+    const u = metrics.find((m) => m.key === 'pt_upside')!.value!;
+    expect(text(r.el.querySelector('[data-key="pt_upside"] .pt-badge-k'))).toBe('Price target at');
+    expect(text(r.el.querySelector('[data-key="pt_upside"] .pt-badge-v'))).toBe(`${money(close * (1 + u))} ${pct((1 + u) / 1.02 - 1)}`);
+    expect(r.calls()).toBe(4);
+    expect(text(r.el.querySelector('.pt-hdr-svg'))).toContain('15-min delayed');
+  });
+  it('closed, before the nightly: the existing words', async () => {
+    const r = await open(close * 1.02, { closed: true });
+    await wait(r);
+    expect(text(r.el.querySelector('.pt-hdr-px'))).toContain('today · close Jan 2, 2099, preliminary');
+  });
+  it('after the nightly: the session in the zone, the build\'s badges, no extra call', async () => {
+    const r = await open(close * 1.02, { session: lastDay, prev: points.at(-2)!.t });
+    await wait(r);
+    expect(text(r.el.querySelector('.pt-card-close'))).toBe(money(close));
+    expect(r.calls()).toBe(3);
+    expect(text(r.el.querySelector('.pt-hdr-px'))).toContain('close');
+    expect(r.el.querySelector('.pt-hdr-day')).not.toBeNull();
+  });
+  it('a ticker missing from the file stays at the last close, with no NaN anywhere', async () => {
+    const r = await open(null);
+    await wait(r);
+    expect(text(r.el.querySelector('.pt-card-close'))).toBe(money(close));
+    expect(r.html()).not.toContain('NaN');
+    expect(r.calls()).toBe(3);
+  });
+  it('a refresh moves a badge to the other band, and the counts and heights follow', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    try {
+      const fixed = metrics.map((m) => (m.key === 'pe_vs_own' ? { ...m, value: -0.12, tone: 'pos' as const } : m));
+      let p = close;
+      const r = await render(PtCompanyHeader, { ticker: 'NVDA' }, withData({ 'metric@1': fixed }), { browser: true, providers: liveDay({}, { bars: () => lineAt(p), poll: { everyMs: 1000, anyTime: true } }) });
+      await wait(r);
+      expect(r.el.querySelector('.pt-band-g [data-key="pe_vs_own"]')).not.toBeNull();
+      const before = r.el.querySelector<HTMLElement>('.pt-hdr-bands')!.style.gridTemplateRows;
+      p = close * 1.1; // −12% × 1.1 → −3.2%: no longer cheaper than its own history by 10%
+      vi.advanceTimersByTime(1000);
+      await wait(r);
+      expect(r.el.querySelector('.pt-band-g [data-key="pe_vs_own"]')).toBeNull();
+      expect(r.el.querySelector('.pt-hdr-row [data-key="pe_vs_own"]')).not.toBeNull();
+      expect(r.el.querySelector<HTMLElement>('.pt-hdr-bands')!.style.gridTemplateRows).not.toBe(before);
+      expect(text(r.el.querySelector('.pt-card-close'))).toBe(money(close * 1.1));
+    } finally { vi.useRealTimers(); }
+  });
+  it('Show all stays open through a refresh', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    try {
+      let p = close;
+      const r = await render(PtCompanyHeader, { ticker: 'NVDA' }, demo(), { browser: true, providers: liveDay({}, { bars: () => lineAt(p), poll: { everyMs: 1000, anyTime: true } }) });
+      await wait(r);
+      r.el.querySelector<HTMLButtonElement>('.pt-hdr-row .pt-abtn')!.click();
+      await settle(r.f);
+      expect(r.el.querySelector('.pt-hdr-row')!.classList.contains('open')).toBe(true);
+      p = close * 1.01;
+      vi.advanceTimersByTime(1000);
+      await wait(r);
+      expect(r.el.querySelector('.pt-hdr-row')!.classList.contains('open')).toBe(true);
+      expect(text(r.el.querySelector('.pt-hdr-row .pt-abtn'))).toBe('Show less');
+    } finally { vi.useRealTimers(); }
+  });
+  it('no price series: the bands alone', async () => {
+    const r = await render(PtCompanyHeader, { ticker: 'NVDA' }, withData({ 'price-series@1': null }));
+    expect(r.el.querySelector('.pt-hdr-svg')).toBeNull();
+    expect(r.el.querySelector('.pt-band-g')).not.toBeNull();
+    expect(r.html()).not.toContain('NaN');
+  });
 });
