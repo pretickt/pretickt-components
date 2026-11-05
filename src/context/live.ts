@@ -1,4 +1,4 @@
-import { afterNextRender, computed, DestroyRef, inject, Injectable, InjectionToken, signal, type Signal } from '@angular/core';
+import { afterNextRender, computed, DestroyRef, DOCUMENT, inject, Injectable, InjectionToken, signal, type Signal } from '@angular/core';
 
 /** One company in the intraday file: the price of a 1-minute bar over for at least 15 minutes, against the previous close. */
 export interface LiveQuote {
@@ -55,6 +55,7 @@ export function mayRefresh(now: Date, last: LiveBars | null, visible: boolean): 
 export class PtLive {
   private readonly source = inject(PT_LIVE, { optional: true });
   private readonly destroy = inject(DestroyRef);
+  private readonly doc = inject(DOCUMENT);
   private readonly day = signal<LiveDay | null>(null);
   private readonly line = signal<LiveBars | null>(null);
   private dayAsked = false;
@@ -87,7 +88,7 @@ export class PtLive {
     if (this.linesAsked || !src?.bars) return;
     this.linesAsked = true;
     const read = () => { src.bars!().then((b) => { if (b) this.line.set(b); }, () => undefined); };
-    const doc = document;
+    const doc = this.doc;
     const turn = () => { if (src.poll?.anyTime || mayRefresh(new Date(), this.line(), doc.visibilityState === 'visible')) read(); };
     read();
     const timer = setInterval(turn, src.poll?.everyMs ?? BARS_EVERY_MS);
