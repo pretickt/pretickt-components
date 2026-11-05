@@ -104,6 +104,9 @@ reported). `private readonly live = inject(PtLive)`; `live.after(() => asOf)` �
 (the date your payload stops at), else null — null on the server, in the checks and until the file has loaded, so show the live parts
 inside `@if` and never let the server HTML depend on them. Say the delay wherever a live price shows ("15-min delayed"). Only the page
 app reads the file (`src/site/live.ts`, the page model's `live` address); a component never fetches.
+`live.bars()` → the session's line of every company (`live/bars-v1.json`: one close per 5-minute slot from 9:30 ET, the session, its previous one, `closed`), read at once and
+again every 2 minutes while the session runs and the tab is in front (`mayRefresh`); null on the server and until rendered, and a failed read keeps the last lines. pt-company-header reads
+only this file, so a page that shows it does not download the day's file unless something asks `after()`.
 
 Types (`MoveBreakdown`, `News`, `MetricItem`, `EventItem`, `ScreenList`, …) and plain values (`RANGES`, `SENTIMENT_FLAT`,
 `METRIC_KEYS`, `CALENDAR_MONTHS`, `cmp`) come from `@pretickt/components/typologies` (in components that entry carries no schema:
@@ -201,7 +204,7 @@ email, no account.
   (`turnstile.ts`, the page model's `turnstile` site key) loads Cloudflare's script from its own address only when the email field is
   first touched; the widget is invisible unless Cloudflare asks for a tap, a failed save asks for a fresh token (each is good once),
   the Worker verifies it before writing anything. The made-up backends have no check; the stories use Cloudflare's public test keys.
-- **The main bundle is full** (239,925 of 240,000 bytes on 2026-11-02): a registry component costs it about 1 KB, so the alerts' parts
+- **The main bundle is full** (241,947 of 242,000 bytes on 2026-11-05; Romeo raised the budget from 240 KB for pt-company-header): a registry component costs it about 1 KB, so the alerts' parts
   are not placeable components, and what they add to the main bundle stays a few bytes. Two traps: a `document:` host listener puts
   Angular's resolver in main (add such a listener by hand), and every symbol a chunk imports from main lengthens main's export list.
 
@@ -248,7 +251,7 @@ bars they read. Fields named `*Pct` are in percent (2.5 = +2.5%), not fractions:
   data renders, missing data shows `pt-na`), `press(f, el, label)` for interactions, `column(el, n)` for tables.
 - `npm test` = Vitest for the plain TypeScript (typologies, indicators, checks, scripts) + `ng test` for the components.
 - `npm run build`: the lint and the metadata of every component, inputs read by the TypeScript checker, the generated registry
-  (`src/site/registry.generated.ts` — never edit it), `ng build`, budgets (main bundle ≤ 240 KB, a component's own chunk ≤ 32 KB).
+  (`src/site/registry.generated.ts` — never edit it), `ng build`, budgets (main bundle ≤ 242 KB, a component's own chunk ≤ 32 KB).
 - `npm run check` (after the build): for props sampled from the inputs' types, demo data renders with safe markup, missing data
   renders `pt-na`, unknown catalogue entries are tolerated; concurrent page renders are whole; each page **hydrates keeping every
   element of the server HTML** (development build: Angular validates every node; production build: as shipped) without one data
@@ -297,6 +300,8 @@ export const stories = [
 (`plant/src/generate/pages.ts`); the build makes every component placeable (registry).
 
 ## Existing components (`dist/index.json`)
+`pt-company-header` (first on each company page, `size` full on the main page, low on the sub-pages: price over three months and the session, badges in Bullish / Neutral / Bearish bands that
+follow the delayed price while the page is open; keeps its height at every update; the rule is `lean`, not the catalogue's tone; the strip below reads its classes) ·
 `pt-company-card` (the company at a glance — logo, price over 60 sessions, 52-week range, consensus, PT, tags with "Show all";
 `size` wide = page header, compact = the hover card; once the wide card has scrolled under the header, the page app shows the
 company in the header — `src/site/cobar.ts` copies the text of `.pt-card-name`, `.pt-card-who .pt-meta`, `.pt-card-close` and
