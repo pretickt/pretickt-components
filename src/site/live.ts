@@ -1,4 +1,4 @@
-import type { LiveDay, LiveSource } from '@pretickt/components/context';
+import type { LiveBars, LiveDay, LiveSource } from '@pretickt/components/context';
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const TIME = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit' });
@@ -18,6 +18,14 @@ export function parseLive(v: unknown): LiveDay | null {
   };
 }
 
+/** The session's lines as the components read them, or null when the file is not one. */
+export function parseBars(v: unknown): LiveBars | null {
+  if (!isObject(v) || v['v'] !== 1 || typeof v['session'] !== 'string' || !DAY.test(v['session']) || typeof v['asOf'] !== 'string' || !isObject(v['bars'])) return null;
+  const at = new Date(v['asOf']);
+  if (Number.isNaN(at.getTime())) return null;
+  return { session: v['session'], ...(typeof v['prev'] === 'string' ? { prev: v['prev'] } : {}), asOf: v['asOf'], time: `${TIME.format(at)} ET`, closed: v['closed'] === true, bars: v['bars'] as LiveBars['bars'] };
+}
+
 /**
  * The site's intraday file: read once, when a component first asks for it (a page without a company card or "why it moved" never
  * does). No address (a preview, the admin), or any failure: null, and the page keeps its end-of-day data.
@@ -32,5 +40,14 @@ export function liveSource(url: string | undefined, o: { fetch?: (u: string) => 
       return res.ok ? parseLive(await res.json()) : null;
     } catch { return null; }
   };
-  return { load: () => (once ??= read()) };
+  const lines = url.replace(/v1\.json$/, 'bars-v1.json');
+  return {
+    load: () => (once ??= read()),
+    bars: async () => {
+      try {
+        const res = await get(lines);
+        return res.ok ? parseBars(await res.json()) : null;
+      } catch { return null; }
+    },
+  };
 }

@@ -1,7 +1,7 @@
 import type { ComponentFixture } from '@angular/core/testing';
 import { TestBed } from '@angular/core/testing';
 import type { Provider, Type } from '@angular/core';
-import { Pt, PT_LIVE, PT_STORE, PtStore, validateParams, type LiveDay, type LiveSource } from '../src/context';
+import { Pt, PT_LIVE, PT_STORE, PtStore, validateParams, type LiveBars, type LiveDay, type LiveSource } from '../src/context';
 import { demoFor, getTypology } from '../src/typologies';
 
 /** Every call answered with the typology's demo; `variant` adds the catalogue entries a newer API may send. */
@@ -41,9 +41,9 @@ export async function render<C>(component: Type<C>, inputs: Record<string, unkno
 }
 
 /** Today's intraday file as the page app gives it (PtLive), for `render(…, { browser: true, providers: liveDay(…) })`. */
-export const liveDay = (d: Partial<LiveDay> = {}): Provider[] => [{ provide: PT_LIVE, useValue: { load: async () => ({
+export const liveDay = (d: Partial<LiveDay> = {}, lines?: { bars: () => LiveBars | null; poll?: LiveSource['poll'] }): Provider[] => [{ provide: PT_LIVE, useValue: { load: async () => ({
   session: '2026-10-01', prev: '2026-09-30', asOf: '2026-10-01T15:30:00.000Z', time: '11:30 AM ET', delayMin: 15, closed: false,
-  q: {}, news: {}, earnings: {}, ...d }) } satisfies LiveSource }];
+  q: {}, news: {}, earnings: {}, ...d }), ...(lines ? { bars: async () => lines.bars(), poll: lines.poll ?? { everyMs: 3_600_000, anyTime: false } } : {}) } satisfies LiveSource }];
 
 /** Clicks the button with this text inside `el` and lets the component settle. */
 export async function press(f: ComponentFixture<unknown>, el: Element, label: string) {
