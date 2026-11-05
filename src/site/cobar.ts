@@ -4,7 +4,7 @@
  * styles/ds.css), and fades it out when the card comes back. The strip copies the card's text, never its markup, so the two cannot
  * disagree and nothing of Angular's leaves the page app. No card (a list page, a card without data): no strip.
  */
-const CARD = 'pt-page .pt-card-wide';
+const CARD = 'pt-page :is(.pt-card-wide, .pt-hdr)';
 const ON = 'pt-cobar-on';
 const LOGO = 24;
 

@@ -19,7 +19,7 @@ import { PtPeopleAsk, type PeopleAsk } from '../../components/drafts/pt-people-a
 import { PtValue } from '../../components/pt-value';
 import { PtAnswer } from '../../components/pt-answer';
 import { PtCalendar } from '../../components/pt-calendar';
-import { PtCompanyCard } from '../../components/pt-company-card';
+import { PtCompanyHeader } from '../../components/pt-company-header';
 import { PtFinancials } from '../../components/pt-financials';
 import { PtLogoMap } from '../../components/pt-logo-map';
 import { PtMetric } from '../../components/pt-metric';
@@ -93,7 +93,7 @@ export function valuePage(t: string, legal: string, sector: Sector): PreviewPage
     crumbs: [HOME, { label: sector, href: sectorPath(sector) }, { label: n, href: hub(t) }, { label: 'Value' }],
     nav: [{ href: hub(t), label: 'Overview' }, ...SUBPAGES.map(([s, label]) => ({ href: `${hub(t)}${s}/`, label }))],
     sections: [
-      { id: 'card', items: [{ c: PtCompanyCard, inputs: { ticker: t } }] },
+      { id: 'card', items: [{ c: PtCompanyHeader, inputs: { ticker: t, size: 'low' } }] },
       { id: 'value', isNew: true, note: 'pt-value, its own page', items: [{ c: PtValue, inputs: { ticker: t } }] },
     ],
   };
@@ -110,7 +110,7 @@ export function companyPage(t: string, legal: string, sector: Sector, drafts: { 
     crumbs: [HOME, { label: sector, href: sectorPath(sector) }, { label: n }],
     nav: [{ href: hub(t), label: 'Overview' }, ...SUBPAGES.map(([s, label]) => ({ href: `${hub(t)}${s}/`, label }))],
     sections: [
-      { id: 'card', items: [{ c: PtCompanyCard, inputs: { ticker: t } }] },
+      { id: 'card', items: [{ c: PtCompanyHeader, inputs: { ticker: t } }] },
       { id: 'answer', items: [{ c: PtAnswer, inputs: { topic: 'forecast', ticker: t } }] },
       { id: 'targets', title: 'Analyst price targets', items: [{ c: PtPriceTarget, inputs: { ticker: t } }] },
       ...(drafts.value ? [{ id: 'value', isNew: true, note: 'pt-value in its compact form: the full one is its own page, /stocks/<t>/value/', items: [{ c: PtValue, inputs: { ticker: t, compact: true } }] }] : []),

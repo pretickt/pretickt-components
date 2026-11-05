@@ -1,4 +1,5 @@
 import { PtCompanyCard } from '../../components/pt-company-card';
+import { PtCompanyHeader } from '../../components/pt-company-header';
 import { render, withData } from '../../components/_spec';
 import { demoFor } from '../typologies';
 import { attachCompanyBar, pastOf } from './cobar';
@@ -43,6 +44,21 @@ describe('the company strip in the header', () => {
     expect(bar.querySelector('.pt-cobar-pt')!.classList.contains([...pt.classList].find((c) => c.startsWith('pt-tone-'))!)).toBe(true);
     expect(doc.querySelector('.pt-header')!.classList.contains('pt-cobar-on')).toBe(false);
   });
+  for (const size of ['full', 'low'] as const) {
+    it(`reads the company header too, ${size}: the name, the ticker and cap, the close and the target`, async () => {
+      const box = await render(PtCompanyHeader, { ticker: 'AAPL', size });
+      const doc = document.implementation.createHTMLDocument('page');
+      doc.body.innerHTML = `${HEADER}<main><pt-page><section class="pt-section" id="card">${box.html()}</section></pt-page></main>`;
+      const { w, observe } = watcher();
+      const bar = attachCompanyBar(doc, { observe })!;
+      expect(w.card).toBe(doc.querySelector('pt-page .pt-hdr'));
+      expect(text(bar.querySelector('.pt-cobar-name'))).toBe(text(box.el.querySelector('.pt-card-name')));
+      expect(text(bar.querySelector('.pt-cobar-tk'))).toBe('AAPL');
+      expect(text(bar.querySelector('.pt-cobar-cap'))).toMatch(/^\$[\d.]+[KMBT]$/);
+      expect(text(bar.querySelector('.pt-cobar-close'))).toBe(text(box.el.querySelector('.pt-card-close')));
+      expect(text(bar.querySelector('.pt-cobar-pt'))).toMatch(/^PT \$[\d.,]+ [+-−]?[\d.]+%$/);
+    });
+  }
   it('without a logo file, the initials, as on the card', async () => {
     const { doc } = await companyPage({ logo: null });
     const bar = attachCompanyBar(doc, watcher())!;
