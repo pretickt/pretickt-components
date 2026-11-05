@@ -5,6 +5,12 @@ import { Ticker } from './common';
 import { METRIC_KEYS, METRIC_LABELS } from './metric';
 import { moveBreakdownDemo } from './move-breakdown';
 
+describe('the metric catalogue', () => {
+  it('names the analysts\' target the way a reader reads it: "Price target at +62.7%" (Romeo, 2026-11-05)', () => {
+    expect(METRIC_LABELS.pt_upside.label).toBe('Price target at');
+  });
+});
+
 describe('typologies', () => {
   it('registers exactly the typologies of the platform', () => {
     expect(Object.keys(TYPOLOGIES).sort()).toEqual(['analysts@1', 'company@1', 'events@1', 'fundamentals@1', 'insider@1', 'metric@1', 'move-breakdown@1', 'news@1',
