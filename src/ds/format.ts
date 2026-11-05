@@ -166,6 +166,11 @@ export const COMMON_NAMES: Readonly<Record<string, string>> = {
   'Verisk Analytics': 'Verisk', 'Verizon Communications': 'Verizon', 'Vertex Pharmaceuticals': 'Vertex', 'Vertiv Holdings Co': 'Vertiv',
   'W.W. Grainger': 'Grainger', 'Walt Disney': 'Disney', 'Westinghouse Air Brake Technologies': 'Wabtec', 'Williams Companies': 'Williams',
   'Zimmer Biomet Holdings': 'Zimmer Biomet',
+  // the companies added for the baskets (2026-11-05)
+  'Archer Aviation': 'Archer', 'BWX Technologies': 'BWX', 'Cerebras Systems': 'Cerebras', 'Check Point Software Technologies': 'Check Point',
+  'Circle Internet Group': 'Circle', 'Clearway Energy': 'Clearway', 'Coeur Mining': 'Coeur', 'CRISPR Therapeutics AG': 'CRISPR Therapeutics',
+  'Enphase Energy': 'Enphase', 'Hecla Mining': 'Hecla', 'Kratos Defense & Security Solutions': 'Kratos', 'Taiwan Semiconductor Manufacturing': 'TSMC',
+  'Tenable Holdings': 'Tenable',
 };
 
 /**

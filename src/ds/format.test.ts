@@ -26,6 +26,23 @@ describe('company names as people, the press and the AI answers write them (plai
     expect([named('NVIDIA Corporation', 'NVDA'), named('Meta Platforms, Inc.', 'META'), named('RTX Corporation', 'RTX'), named('Advanced Micro Devices, Inc.', 'AMD'),
       named('Dow Inc.', 'DOW'), named(null, 'XYZ'), named('', 'XYZ')]).toEqual(['Nvidia NVDA', 'Meta', 'RTX', 'AMD', 'Dow', 'XYZ', 'XYZ']);
   });
+  it('the companies added for the baskets read as people say them', () => {
+    expect(plainName('Taiwan Semiconductor Manufacturing Company Limited')).toBe('TSMC');
+    expect(plainName('Kratos Defense & Security Solutions, Inc.')).toBe('Kratos');
+    expect(plainName('Check Point Software Technologies Ltd.')).toBe('Check Point');
+    expect(plainName('Circle Internet Group')).toBe('Circle');
+    expect(plainName('CRISPR Therapeutics AG')).toBe('CRISPR Therapeutics');
+    expect(plainName('Tenable Holdings, Inc.')).toBe('Tenable');
+    expect(plainName('BWX Technologies, Inc.')).toBe('BWX');
+    expect(plainName('Cerebras Systems Inc.')).toBe('Cerebras');
+    expect(plainName('Coeur Mining, Inc.')).toBe('Coeur');
+    expect(plainName('Hecla Mining Company')).toBe('Hecla');
+    expect(plainName('Archer Aviation Inc.')).toBe('Archer');
+    expect(plainName('Enphase Energy, Inc.')).toBe('Enphase');
+    expect(plainName('Clearway Energy, Inc.')).toBe('Clearway');
+    expect(plainName('Netskope, Inc. Class A Common Stock')).toBe('Netskope');
+    expect(plainName('SK hynix Inc.')).toBe('SK hynix');
+  });
   it('maps a suffix-free name to another one, which stays itself: no chain, no name that changes twice', () => {
     for (const [from, to] of Object.entries(COMMON_NAMES)) {
       expect(to, from).not.toBe(from);
