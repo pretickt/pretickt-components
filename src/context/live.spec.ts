@@ -36,9 +36,9 @@ describe('PtLive', () => {
     f.detectChanges();
     return f;
   }
-  const source = (answers: (LiveBars | null)[], poll = { everyMs: 1000, anyTime: true }) => {
+  const source = (answers: (LiveBars | null)[], poll: LiveSource['poll'] | null = { everyMs: 1000, anyTime: true }) => {
     const calls = { load: 0, bars: 0 };
-    const src: LiveSource = { poll, load: async () => { calls.load++; return null; }, bars: async () => answers[Math.min(calls.bars++, answers.length - 1)]! };
+    const src: LiveSource = { ...(poll ? { poll } : {}), load: async () => { calls.load++; return null; }, bars: async () => answers[Math.min(calls.bars++, answers.length - 1)]! };
     return { src, calls };
   };
 
@@ -68,6 +68,28 @@ describe('PtLive', () => {
     expect(f.nativeElement.textContent).toBe('10:34 AM ET');
   });
   it('turns every 2 minutes unless told otherwise', () => expect(BARS_EVERY_MS).toBe(120_000));
+  it('a hidden tab reads nothing; when it comes back it reads at once', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'], now: new Date('2026-11-03T15:00:00Z') });
+    const state = (v: string) => Object.defineProperty(document, 'visibilityState', { value: v, configurable: true });
+    try {
+      state('visible');
+      const { src, calls } = source([line()], null);
+      mount(BarsHost, src);
+      await flush();
+      expect(calls.bars).toBe(1);
+      state('hidden');
+      vi.advanceTimersByTime(BARS_EVERY_MS * 3);
+      await flush();
+      expect(calls.bars).toBe(1);
+      state('visible');
+      document.dispatchEvent(new Event('visibilitychange'));
+      await flush();
+      expect(calls.bars).toBe(2);
+      vi.advanceTimersByTime(BARS_EVERY_MS);
+      await flush();
+      expect(calls.bars).toBe(3);
+    } finally { delete (document as unknown as { visibilityState?: string }).visibilityState; }
+  });
   it('stops when the page goes', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
     const { src, calls } = source([line()]);

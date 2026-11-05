@@ -130,6 +130,7 @@ export function sessionView(points: { t: string; c: number }[], line: SessionLin
   const own: SessionView = { hist: points, slots: [], price: last?.c ?? null, prev: points.at(-2)?.c ?? null, state: 'static' };
   const newest = line?.closes.filter((v) => v != null).at(-1);
   if (!last || !line || newest == null) return last ? own : { ...own, hist: [] };
+  if (Math.abs(newest / last.c - 1) > OTHER_BASIS) return own; // a split or re-based day: price, change, chart and badges all keep the page's data
   if (line.session === last.t) return { hist: points.slice(0, -1), slots: line.closes, price: last.c, prev: points.at(-2)?.c ?? null, state: 'settled' };
   if (line.session > last.t && (line.prev == null || line.prev === last.t)) return { hist: points, slots: line.closes, price: newest, prev: last.c, state: line.closed ? 'closing' : 'running' };
   return own;

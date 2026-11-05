@@ -183,6 +183,12 @@ describe('pt-company-header: the session on screen', () => {
     const { prev: _, ...old } = line;
     expect(sessionView(pts, old).state).toBe('running');
   });
+  it('a price on another basis (a split, a re-based day): the whole box keeps the page\'s own data', () => {
+    expect(sessionView(pts, { ...line, closes: [25, 24.5] }).state).toBe('static');
+    expect(sessionView(pts, { ...line, closes: [401] }).state).toBe('static');
+    expect(sessionView(pts, { ...line, session: '2026-10-30', prev: '2026-10-29', closes: [25, 24.5] }).state).toBe('static');
+    expect(sessionView(pts, { ...line, closes: [51] }).state).toBe('running');
+  });
   it('a ticker with no line, or a line of nulls: the page\'s own data', () => {
     expect(sessionView(pts, { ...line, closes: [] }).state).toBe('static');
     expect(sessionView(pts, { ...line, closes: [null, null] }).state).toBe('static');
