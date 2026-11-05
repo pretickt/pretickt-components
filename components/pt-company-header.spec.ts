@@ -1,7 +1,7 @@
 import { money, pct } from '../src/ds/format';
 import { bollinger, macd, rsi, smaLast } from '../src/indicators';
 import { METRIC_KEYS, metricDemo, priceSeriesDemo, type MetricItem } from '../src/typologies';
-import { bandRows, bandsOf, chartOf, lean, livened, PtCompanyHeader, sessionView, targetOf } from './pt-company-header';
+import { bandRows, bandsOf, chartOf, lean, livened, overflowCount, PtCompanyHeader, sessionView, targetOf } from './pt-company-header';
 import { basics, demo, liveDay, render, settle, withData } from './_spec';
 
 const m = (key: string, value: number | null, o: Partial<MetricItem> = {}): MetricItem =>
@@ -192,6 +192,15 @@ describe('pt-company-header: the session on screen', () => {
   });
 });
 
+describe('pt-company-header: what a row hides', () => {
+  const ul = (tops: number[]) => ({ children: tops.map((offsetTop) => ({ offsetTop })) }) as unknown as HTMLElement;
+  it('counts the badges below the first line', () => {
+    expect(overflowCount(ul([0, 0, 0, 24, 24]))).toBe(2);
+    expect(overflowCount(ul([0, 0, 0]))).toBe(0);
+    expect(overflowCount(ul([]))).toBe(0);
+  });
+});
+
 describe('pt-company-header: the chart', () => {
   const hist = Array.from({ length: 62 }, (_, i) => ({ t: `2026-${i < 30 ? '09' : '10'}-${String((i % 28) + 1).padStart(2, '0')}`, c: 100 + 10 * Math.sin(i / 5) }));
   const slots = [100, 101, 99, null, 104];
@@ -249,6 +258,8 @@ describe('pt-company-header', () => {
   const open = (p: number | null, o = {}, resolve = demo()) => render(PtCompanyHeader, { ticker: 'NVDA' }, resolve, { browser: true, providers: liveDay({}, { bars: () => lineAt(p, o) }) });
   const wait = async (r: Awaited<ReturnType<typeof open>>) => { for (let i = 0; i < 5; i++) { await new Promise((d) => setTimeout(d)); r.f.detectChanges(); } };
   const text = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+  /** A browser that lays each row's first two badges on the first line. */
+  const laidOut = () => vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockImplementation(function (this: HTMLElement) { return this.matches('.pt-hdr-row li:nth-child(n+3)') ? 30 : 0; });
 
   it('the server HTML has every badge in its band, the note, and nothing live', async () => {
     const r = await render(PtCompanyHeader, { ticker: 'NVDA' });
@@ -349,10 +360,15 @@ describe('pt-company-header', () => {
   });
   it('Show all stays open through a refresh', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const top = laidOut();
     try {
       let p = close;
       const r = await render(PtCompanyHeader, { ticker: 'NVDA' }, demo(), { browser: true, providers: liveDay({}, { bars: () => lineAt(p), poll: { everyMs: 1000, anyTime: true } }) });
       await wait(r);
+      const more = r.el.querySelector<HTMLElement>('.pt-hdr-row .pt-abtn')!;
+      expect(text(more)).toBe('Show all'); // the count is drawn from an attribute: the server's text stays
+      expect(more.dataset['n']).toBe(String(r.el.querySelectorAll('.pt-hdr-row li').length - 2));
+      expect(more.getAttribute('aria-label')).toBe(`Show all, ${more.dataset['n']} more`);
       r.el.querySelector<HTMLButtonElement>('.pt-hdr-row .pt-abtn')!.click();
       await settle(r.f);
       expect(r.el.querySelector('.pt-hdr-row')!.classList.contains('open')).toBe(true);
@@ -361,7 +377,86 @@ describe('pt-company-header', () => {
       await wait(r);
       expect(r.el.querySelector('.pt-hdr-row')!.classList.contains('open')).toBe(true);
       expect(text(r.el.querySelector('.pt-hdr-row .pt-abtn'))).toBe('Show less');
-    } finally { vi.useRealTimers(); }
+    } finally { vi.useRealTimers(); top.mockRestore(); }
+  });
+  it('all the Neutral badges fit: no button', async () => {
+    const r = await render(PtCompanyHeader, { ticker: 'NVDA' }, demo(), { browser: true });
+    await settle(r.f);
+    const more = r.el.querySelector<HTMLButtonElement>('.pt-hdr-row .pt-abtn')!;
+    expect(more.hidden).toBe(true); // jsdom lays everything on one line
+  });
+  it('the low box counts what each row hides as +N', async () => {
+    const top = laidOut();
+    try {
+      const r = await render(PtCompanyHeader, { ticker: 'NVDA', size: 'low' }, demo(), { browser: true });
+      await settle(r.f);
+      const neutral = r.el.querySelector('.pt-band-n.pt-hdr-row')!;
+      const more = neutral.querySelector<HTMLElement>('.pt-abtn')!;
+      expect(text(more)).toBe('+');
+      expect(more.dataset['n']).toBe(String(neutral.querySelectorAll('li').length - 2));
+    } finally { top.mockRestore(); }
+  });
+  describe('the update', () => {
+    const fixed = metrics.map((m) => (m.key === 'pe_vs_own' ? { ...m, value: -0.12, tone: 'pos' as const } : m));
+    /** A browser with layout: a chip's place depends on its band, the box has a height. */
+    function layout() {
+      const animate = vi.fn();
+      (Element.prototype as unknown as { animate: unknown }).animate = animate;
+      const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+        const top = this.closest?.('.pt-band-g') ? 10 : this.closest?.('.pt-band-r') ? 200 : 100;
+        return { left: 0, top, right: 100, bottom: top + 20, width: 100, height: 20, x: 0, y: top, toJSON: () => ({}) } as DOMRect;
+      });
+      const height = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(300);
+      return { animate, restore: () => { rect.mockRestore(); height.mockRestore(); delete (Element.prototype as unknown as { animate?: unknown }).animate; } };
+    }
+    const session = async (reduce = false) => {
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+      const media = vi.spyOn(window as unknown as { matchMedia: () => unknown }, 'matchMedia').mockReturnValue({ matches: reduce });
+      let p = close;
+      const r = await render(PtCompanyHeader, { ticker: 'NVDA' }, withData({ 'metric@1': fixed }), { browser: true, providers: liveDay({}, { bars: () => lineAt(p), poll: { everyMs: 1000, anyTime: true } }) });
+      await wait(r);
+      return { r, up: async () => { p = close * 1.1; vi.advanceTimersByTime(1000); await wait(r); }, done: () => { vi.useRealTimers(); media.mockRestore(); } };
+    };
+    beforeAll(() => { if (!window.matchMedia) (window as unknown as { matchMedia: unknown }).matchMedia = () => ({ matches: false }); });
+
+    it('the box keeps its height while the prices change', async () => {
+      const l = layout(), s = await session();
+      try {
+        const body = s.r.el.querySelector<HTMLElement>('.pt-hdr-body')!;
+        expect(body.style.height).toBe('300px');
+        await s.up();
+        expect(body.style.height).toBe('300px');
+      } finally { s.done(); l.restore(); }
+    });
+    it('a badge that changes band slides there with a transform, 300 ms', async () => {
+      const l = layout(), s = await session();
+      try {
+        l.animate.mockClear();
+        await s.up();
+        const slid = l.animate.mock.calls.find(([k]) => /translate\(0px, -90px\)/.test(JSON.stringify(k)));
+        expect(slid).toBeDefined();
+        expect(slid![1]).toMatchObject({ duration: 300 });
+        expect(l.animate.mock.instances.some((el) => (el as unknown as Element).getAttribute?.('data-key') === 'pe_vs_own')).toBe(true);
+      } finally { s.done(); l.restore(); }
+    });
+    it('a value that changes flashes', async () => {
+      const l = layout(), s = await session();
+      try {
+        await s.up();
+        expect(s.r.el.querySelector('[data-key="pt_upside"] .pt-badge-v')!.classList.contains('pt-hdr-flash')).toBe(true);
+        expect(s.r.el.querySelector('.pt-card-close')!.classList.contains('pt-hdr-flash')).toBe(true);
+        expect(s.r.el.querySelector('[data-key="consensus"] .pt-badge-v')!.classList.contains('pt-hdr-flash')).toBe(false);
+      } finally { s.done(); l.restore(); }
+    });
+    it('none of this under prefers-reduced-motion', async () => {
+      const l = layout(), s = await session(true);
+      try {
+        l.animate.mockClear();
+        await s.up();
+        expect(l.animate).not.toHaveBeenCalled();
+        expect(s.r.el.querySelector('[data-key="pt_upside"] .pt-badge-v')!.classList.contains('pt-hdr-flash')).toBe(false);
+      } finally { s.done(); l.restore(); }
+    });
   });
   it('no price series: the bands alone', async () => {
     const r = await render(PtCompanyHeader, { ticker: 'NVDA' }, withData({ 'price-series@1': null }));

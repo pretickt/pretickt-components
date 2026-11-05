@@ -480,7 +480,10 @@
   .pt-hdr-row .pt-badges { @apply min-w-0 flex-1 overflow-hidden; height: 1.375rem; }
   .pt-hdr-row.open { @apply items-start; }
   .pt-hdr-row.open .pt-badges { @apply overflow-visible; height: auto; }
-  .pt-hdr-row .pt-abtn { @apply shrink-0 whitespace-nowrap; }
+  .pt-hdr-more { @apply shrink-0 whitespace-nowrap; }
+  .pt-hdr-more[hidden] { display: none; }
+  .pt-hdr-more[data-n]::after { content: ' (' attr(data-n) ')'; }
+  .pt-hdr-low .pt-hdr-more[data-n]::after { content: attr(data-n); }
   .pt-hdr-note { @apply m-0 text-2xs text-ink-soft; }
   .pt-hdr-low { @apply gap-1.5 px-2.5 py-2; }
   .pt-hdr-low .pt-card-who { @apply flex flex-wrap items-baseline gap-x-2; }
@@ -497,6 +500,15 @@
   .pt-hdr-bar i { @apply block h-full min-w-0; flex: 0 1 0; }
   .pt-hdr-bar-g { @apply rounded-l bg-pos; }
   .pt-hdr-bar-r { @apply rounded-r bg-neg; }
+  .pt-hdr-body { grid-template-rows: minmax(0, 1fr); }
+  @media (width < 40rem) { .pt-hdr-body { grid-template-rows: auto minmax(0, 1fr); } }
+  /* the update: soft inside the box, the page below stays put */
+  @keyframes pt-hdr-flash { from { background: color-mix(in oklab, var(--color-primary) 24%, transparent); } to { background: transparent; } }
+  @media (prefers-reduced-motion: no-preference) {
+    .pt-hdr-bands { transition: grid-template-rows .3s ease; }
+    .pt-hdr-bar i { transition: flex-grow .3s ease; }
+    .pt-hdr-flash { animation: pt-hdr-flash .7s ease-out; }
+  }
   /* the floating panel the islands runtime opens over a company link */
   .pt-hovercard { @apply fixed z-50 overflow-auto rounded-control shadow-lg; }
   .pt-hovercard-loading { @apply w-[340px] rounded-control border border-border bg-surface-raised p-3 text-sm text-ink-soft; }

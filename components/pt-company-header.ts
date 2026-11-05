@@ -5,7 +5,7 @@
  * @evidence Romeo, 2026-11-05: the company page's header, «si capisce subito quali sono a favore di un rialzo e quali a favore di un ribasso», «senza dare mai consigli»
  * @evidence design: pretickt/docs/superpowers/specs/2026-11-05-company-header-bands-design.md
  */
-import { afterRenderEffect, Component, computed, type ElementRef, inject, input, signal, viewChild } from '@angular/core';
+import { afterRenderEffect, Component, computed, type ElementRef, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { Pt, PtLive } from '@pretickt/components/context';
 import { PtBadge, PtLogo } from '@pretickt/components/ds';
 import { date, dayMonth, money, pct, plainName, tone, usd, type Badge } from '@pretickt/components/format';
@@ -175,8 +175,19 @@ export function chartOf(hist: { t: string; c: number }[], slots: (number | null)
     points: [...hist.map((p, i) => ({ x: xh(i), y: sy(p.c), t: p.t, slot: null, v: p.c })), ...day.map(([i, v]) => ({ x: xd(i), y: sy(v), t: null, slot: i, v }))],
   };
 }
+const flash = (el: HTMLElement | null) => {
+  if (!el) return;
+  el.classList.remove('pt-hdr-flash');
+  void el.offsetWidth; // the animation starts again on a value that changes twice
+  el.classList.add('pt-hdr-flash');
+};
+/** How many badges of a one-line row wrapped out of sight. */
+export function overflowCount(ul: HTMLElement): number {
+  const kids = [...ul.children] as HTMLElement[];
+  const first = kids[0]?.offsetTop ?? 0;
+  return kids.filter((k) => k.offsetTop > first).length;
+}
 const slotTime = (i: number) => { const t = 570 + i * 5, m = t % 60, h = Math.floor(t / 60); return `${h > 12 ? h - 12 : h}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'} ET`; };
-const BADGE_ROW = (low: boolean) => (low ? ['g', 'n', 'r'] as const : ['n'] as const);
 
 @Component({
   selector: 'pt-company-header',
@@ -186,7 +197,7 @@ const BADGE_ROW = (low: boolean) => (low ? ['g', 'n', 'r'] as const : ['n'] as c
     @else if (ready().settled) {
       @let low = size() === 'low';
       @let b = bands();
-      <section [class]="'pt-card pt-hdr pt-hdr-' + size()">
+      <section #root [class]="'pt-card pt-hdr pt-hdr-' + size()">
         <div class="pt-hdr-head">
           <div class="pt-card-id">
             <pt-logo [ticker]="ticker()" [src]="co.value()?.logo ?? null" [size]="low ? 28 : 38" />
@@ -230,7 +241,7 @@ const BADGE_ROW = (low: boolean) => (low ? ['g', 'n', 'r'] as const : ['n'] as c
                 @if (g.areaDay) {<polygon class="pt-hdr-area" [attr.points]="g.areaDay" />}
                 @if (g.hist) {<polyline class="pt-hdr-line" [attr.points]="g.hist" />}
                 @if (g.day) {<polyline class="pt-hdr-line pt-hdr-day" [attr.points]="g.day" />}
-                @if (g.dot; as d) {<circle class="pt-hdr-dot" [attr.cx]="d.x" [attr.cy]="d.y" r="5" />}
+                @if (g.dot; as d) {<circle class="pt-hdr-dot pt-hdr-end" [attr.cx]="d.x" [attr.cy]="d.y" r="5" />}
                 @if (hover(); as h) {
                   <line class="pt-hdr-cross" [attr.x1]="h.x" [attr.x2]="h.x" [attr.y1]="g.top - 6" [attr.y2]="g.y1" />
                   <circle class="pt-hdr-dot" [attr.cx]="h.x" [attr.cy]="h.y" r="5" />
@@ -243,14 +254,14 @@ const BADGE_ROW = (low: boolean) => (low ? ['g', 'n', 'r'] as const : ['n'] as c
             <div class="pt-hdr-rows">
               <div class="pt-hdr-bar" aria-hidden="true"><i class="pt-hdr-bar-g" [style.flex-grow]="b.g.length"></i><i class="pt-hdr-bar-r" [style.flex-grow]="b.r.length"></i></div>
               @for (s of ROWS; track s) {
-                <div [class]="'pt-band pt-band-' + s + ' pt-hdr-row'" [class.open]="opened().has(s)">
+                <div [class]="'pt-band pt-band-' + s + ' pt-hdr-row'" [class.open]="opened().has(s)" [attr.data-side]="s">
                   <span class="pt-hdr-l">
                     @if (s === 'g') {<span class="pt-band-mk" role="img" aria-label="Bullish readings">▲</span> {{ b.g.length }}}
                     @else if (s === 'r') {<span class="pt-band-mk" role="img" aria-label="Bearish readings">▼</span> {{ b.r.length }}}
                     @else {Neutral}
                   </span>
                   <ul class="pt-badges">@for (m of b[s]; track m.key) {<li [ptBadge]="m" size="mini" [attr.data-key]="m.key"></li>}</ul>
-                  @if (b[s].length) {<button type="button" class="pt-abtn pt-abtn-wide" (click)="toggle(s)">{{ opened().has(s) ? '−' : '+' + more()[s] }}</button>}
+                  @if (b[s].length) {<button type="button" class="pt-abtn pt-abtn-wide pt-hdr-more" [hidden]="more()[s] === 0 && !opened().has(s)" [attr.data-n]="opened().has(s) ? null : more()[s]" [attr.aria-label]="moreLabel(s)" (click)="toggle(s)">{{ opened().has(s) ? '−' : '+' }}</button>}
                 </div>
               }
             </div>
@@ -261,10 +272,10 @@ const BADGE_ROW = (low: boolean) => (low ? ['g', 'n', 'r'] as const : ['n'] as c
                 @if (b.g.length) {<ul class="pt-badges">@for (m of b.g; track m.key) {<li [ptBadge]="m" size="mini" [attr.data-key]="m.key"></li>}</ul>}
                 @else {<span class="pt-meta">None right now</span>}
               </div>
-              <div class="pt-band pt-band-n pt-hdr-row" [class.open]="opened().has('n')">
+              <div class="pt-band pt-band-n pt-hdr-row" [class.open]="opened().has('n')" data-side="n">
                 <span class="pt-hdr-l">Neutral</span>
                 <ul class="pt-badges">@for (m of b.n; track m.key) {<li [ptBadge]="m" size="mini" [attr.data-key]="m.key"></li>}</ul>
-                @if (b.n.length) {<button type="button" class="pt-abtn pt-abtn-wide" (click)="toggle('n')">{{ opened().has('n') ? 'Show less' : more().n ? 'Show all (' + more().n + ')' : 'Show all' }}</button>}
+                @if (b.n.length) {<button type="button" class="pt-abtn pt-abtn-wide pt-hdr-more" [hidden]="more().n === 0 && !opened().has('n')" [attr.data-n]="opened().has('n') ? null : more().n" [attr.aria-label]="moreLabel('n')" (click)="toggle('n')">{{ opened().has('n') ? 'Show less' : 'Show all' }}</button>}
               </div>
               <div class="pt-band pt-band-r">
                 <div class="pt-band-h"><span class="pt-band-mk">▼</span> Bearish readings <b class="pt-band-c">{{ b.r.length }}</b></div>
@@ -296,7 +307,7 @@ export class PtCompanyHeader {
   protected readonly money = money;
   protected readonly pct = pct;
   protected readonly tone = tone;
-  protected readonly ROWS = BADGE_ROW(true);
+  protected readonly ROWS = ['g', 'n', 'r'] as const;
 
   private readonly lines = this.live.bars();
   private readonly points = computed(() => (this.series.value()?.[0]?.points ?? []).map(({ t, c }) => ({ t, c })));
@@ -363,12 +374,22 @@ export class PtCompanyHeader {
   }
 
   protected readonly opened = signal<ReadonlySet<Side>>(new Set());
-  protected readonly more = signal<Record<Side, number>>({ g: 0, n: 0, r: 0 });
+  /** What each row hides, once measured: null on the server. */
+  protected readonly more = signal<Record<Side, number | null>>({ g: null, n: null, r: null });
+  /** The count is drawn from `data-n` (CSS), so hydrating never changes the server's text. */
+  protected moreLabel(s: Side): string | null {
+    const n = this.more()[s];
+    return this.opened().has(s) ? 'Show less' : n ? `Show all, ${n} more` : null;
+  }
   protected toggle(s: Side): void {
     const next = new Set(this.opened());
     if (!next.delete(s)) next.add(s);
     this.opened.set(next);
   }
+
+  private readonly rootEl = viewChild<ElementRef<HTMLElement>>('root');
+  private lockedFor: string | null = null;
+  private seen: { width: number; chips: Map<string, { x: number; y: number; text: string }>; price: string; dot: { x: number; y: number } | null } | null = null;
 
   constructor() {
     afterRenderEffect((cleanup) => {
@@ -378,5 +399,59 @@ export class PtCompanyHeader {
       ro.observe(el);
       cleanup(() => ro.disconnect());
     });
+    afterRenderEffect(() => {
+      const root = this.rootEl()?.nativeElement;
+      this.bands(); this.opened(); this.box(); this.chart();
+      if (root) untracked(() => this.settle(root));
+    });
+    afterRenderEffect(() => {
+      const root = this.rootEl()?.nativeElement;
+      if (!root || !globalThis.document?.fonts) return;
+      void document.fonts.ready.then(() => { this.lockedFor = null; this.settle(root); }); // a late font wraps the badges differently
+    });
+  }
+
+  /** After each render: count what the rows hide, keep the box's height so nothing below moves, and slide what changed. */
+  private settle(root: HTMLElement): void {
+    const more = { ...this.more() };
+    root.querySelectorAll<HTMLElement>('.pt-hdr-row').forEach((row) => {
+      const ul = row.querySelector('ul');
+      if (ul && !row.classList.contains('open')) more[row.dataset['side'] as Side] = overflowCount(ul);
+    });
+    if ((['g', 'n', 'r'] as const).some((s) => more[s] !== this.more()[s])) this.more.set(more);
+
+    const body = root.querySelector<HTMLElement>('.pt-hdr-body'), holder = root.querySelector<HTMLElement>('.pt-hdr-bands, .pt-hdr-rows');
+    const width = root.clientWidth, key = `${width}|${[...this.opened()].sort().join()}`;
+    if (body && this.lockedFor !== key) {
+      body.style.height = '';
+      const h = body.offsetHeight;
+      if (h) body.style.height = `${h}px`;
+      this.lockedFor = key;
+    } else if (body && holder) {
+      const extra = holder.scrollHeight - holder.clientHeight; // more rows of badges than the box holds: it grows, without animation
+      if (extra > 1) body.style.height = `${body.offsetHeight + extra}px`;
+    }
+
+    const at = root.getBoundingClientRect();
+    const chips = new Map<string, { x: number; y: number; text: string }>();
+    root.querySelectorAll<HTMLElement>('[data-key]').forEach((el) => {
+      const r = el.getBoundingClientRect();
+      chips.set(el.dataset['key']!, { x: r.left - at.left, y: r.top - at.top, text: el.querySelector('.pt-badge-v')?.textContent ?? '' });
+    });
+    const priceEl = root.querySelector<HTMLElement>('.pt-card-close'), price = priceEl?.textContent ?? '', dot = this.chart()?.dot ?? null;
+    const was = this.seen;
+    this.seen = { width, chips, price, dot };
+    if (!was || was.width !== width || globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const SOFT = { duration: 300, easing: 'ease-out' };
+    root.querySelectorAll<HTMLElement>('[data-key]').forEach((el) => {
+      const a = was.chips.get(el.dataset['key']!), b = chips.get(el.dataset['key']!);
+      if (!a || !b) return;
+      if (a.text !== b.text) flash(el.querySelector<HTMLElement>('.pt-badge-v'));
+      const dx = a.x - b.x, dy = a.y - b.y;
+      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) el.animate?.([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], SOFT);
+    });
+    if (was.price !== price) flash(priceEl);
+    const end = root.querySelector<SVGElement>('.pt-hdr-end');
+    if (end && was.dot && dot && (was.dot.x !== dot.x || was.dot.y !== dot.y)) end.animate?.([{ transform: `translate(${was.dot.x - dot.x}px, ${was.dot.y - dot.y}px)` }, { transform: 'none' }], SOFT);
   }
 }
