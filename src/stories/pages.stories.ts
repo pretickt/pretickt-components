@@ -18,6 +18,7 @@ import { PtHot } from '../../components/drafts/pt-hot';
 import { PtPeopleAsk, type PeopleAsk } from '../../components/drafts/pt-people-ask';
 import { PtValue } from '../../components/pt-value';
 import { PtAnswer } from '../../components/pt-answer';
+import { PtBasket } from '../../components/pt-basket';
 import { PtCalendar } from '../../components/pt-calendar';
 import { PtCompanyHeader } from '../../components/pt-company-header';
 import { PtFinancials } from '../../components/pt-financials';
@@ -231,6 +232,28 @@ export function alertsPage(): PreviewPage {
   };
 }
 
+/** pages.ts `etfPage`: one fund, holdings and why it moved first. */
+export function etfPage(t: string, name: string, tracks: string, holdings: number, same: string[] = []): PreviewPage {
+  const basket = (id: string, title: string, section: string): PreviewSection => ({ id, title, isNew: true, items: [{ c: PtBasket, inputs: { ticker: t, section } }] });
+  const h1 = `${name} (${t})`;
+  return {
+    path: `/etfs/${t.toLowerCase()}/`, title: fitTitle(`${t} ETF: holdings, price target and why it moved`, `${t} ETF: holdings and price target`, `${t} ETF holdings`),
+    description: `${t} ${tracks}. What ${t} holds, what analysts' targets on its holdings add up to, and why it moved. Data as of {date}.`, h1,
+    lede: `${tracks.charAt(0).toUpperCase()}${tracks.slice(1)} · ${holdings} holdings · end-of-day data as of {date}${same.length ? ` · Holds the same basket as ${same.join(' and ')}` : ''}`,
+    crumbs: [HOME, { label: 'ETFs', href: '/etfs/' }, { label: h1 }],
+    sections: [
+      { id: 'card', isNew: true, items: [{ c: PtCompanyHeader, inputs: { ticker: t, size: 'full' } }] },
+      { id: 'answer', isNew: true, items: [{ c: PtAnswer, inputs: { topic: 'basket', ticker: t } }] },
+      basket('moves', 'Why it moved', 'moves'), basket('holdings', 'Holdings', 'holdings'), basket('targets', 'Analyst price target and consensus', 'analysts'), basket('value', `Is ${t} a good buy?`, 'questions'),
+      { id: 'price', title: 'Price and events', isNew: true, items: [{ c: PtPriceEvents, inputs: { ticker: t, range: '1y' } }] },
+      { id: 'news', title: 'News of its largest holdings', isNew: true, items: [{ c: PtNews, inputs: { ticker: t, limit: 10 } }] },
+      basket('questions', `Questions about ${t}`, 'faq'),
+    ],
+  };
+}
+
+@Component({ selector: 'pt-preview-etf', imports: [PtPagePreview], template: '<pt-page-preview [page]="page()" />' })
+export class PtPreviewEtf { readonly page = input.required<PreviewPage>(); }
 @Component({ selector: 'pt-preview-company', imports: [PtPagePreview], template: '<pt-page-preview [page]="page()" />' })
 export class PtPreviewCompany { readonly page = input.required<PreviewPage>(); }
 @Component({ selector: 'pt-preview-home', imports: [PtPagePreview], template: '<pt-page-preview [page]="page()" />' })
@@ -250,6 +273,8 @@ const ALERT_STATE = { email: 'r•••@example.com', status: 'active' as const
     { c: 'below-average' as const, p: { dir: 'below', pct: 15, days: '50' } }, { c: 'mega-caps' as const, p: {} }] } }] } as ManageState;
 
 export const stories = [
+  story(PtPreviewEtf, { name: 'SMH on the demo data (the check; real data in the local stories)', group: GROUP, inputs: { page: etfPage('SMH', 'VanEck Semiconductor ETF', 'tracks the MVIS US Listed Semiconductor 25 Index', 25) } }),
+  story(PtPreviewEtf, { name: 'ARKW under 80%, on the demo data', group: GROUP, inputs: { page: etfPage('ARKW', 'ARK Next Generation Internet ETF', 'is actively managed around the next generation of the internet', 40) } }),
   story(PtPreviewCompany, { name: 'AMD with alerts: a bell under every section, the alert an email opened on top (www data, made-up alert)', live: true,
     group: GROUP, providers: fakeAlerts(), inputs: { page: { ...companyPage('AMD', 'Advanced Micro Devices, Inc.', 'Technology'), alerts: true, alertEvent: AE_AMD } } }),
   story(PtPreviewAlerts, { name: '/alerts/: the page a confirmation link opens (made-up alerts)', group: GROUP, inputs: { page: alertsPage() },

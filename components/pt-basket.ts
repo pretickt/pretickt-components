@@ -73,11 +73,11 @@ export function liveMoves(b: Basket, q: Record<string, { r: number }>, news: Rec
             @if (b.note) {<p class="pt-note">{{ b.note }}</p>}
             <div class="pt-table-wrap">
               <table class="pt-table">
-                <thead><tr><th>Holding</th><th class="pt-num">Weight</th><th class="pt-num">Day</th><th class="pt-num">Target upside</th><th class="pt-bk-lab">Consensus</th></tr></thead>
+                <thead><tr><th>Holding</th><th class="pt-num">Weight</th><th class="pt-num">Day</th><th class="pt-num">Upside</th><th class="pt-bk-lab">Consensus</th></tr></thead>
                 <tbody>
                   @for (h of shown(); track h.name) {
                     <tr>
-                      <td>@if (h.ticker; as t) {<a ptCompany [ticker]="t" [name]="h.name" [logo]="h.logo"></a>} @else {{{ plainName(h.name) }}}</td>
+                      <td>@if (h.ticker; as t) {<a ptCompany [ticker]="t" [name]="h.name" [logo]="h.logo"></a>} @else {<span class="pt-bk-other">{{ plainName(h.name) }}</span>}</td>
                       <td class="pt-num">{{ level(h.weight) }}</td>
                       <td [class]="'pt-num pt-t-' + tone(h.ret)">{{ h.ret == null ? '' : pct(h.ret) }}</td>
                       <td [class]="'pt-num pt-t-' + tone(h.upside)">{{ h.upside == null ? '' : pct(h.upside) }}</td>

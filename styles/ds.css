@@ -1083,7 +1083,14 @@
   .pt-bk-head:hover { color: var(--color-primary); }
   @media (max-width: 26rem) { .pt-bk-mv { grid-template-columns: minmax(0, 1fr) repeat(3, 3.1rem); font-size: .8125rem; } }
   .pt-bk-lab { display: none; }
-  @media (min-width: 40rem) { .pt-bk-lab { display: table-cell; } }
+  @media (min-width: 48rem) { .pt-bk-lab { display: table-cell; } }
+  .pt-bk .pt-table th.pt-num { text-align: right; }
+  .pt-bk-other { display: block; max-width: 11rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (max-width: 40rem) {
+    .pt-bk .pt-co-n { display: none; }
+    .pt-bk .pt-table th, .pt-bk .pt-table td { padding-inline: .5rem; }
+    .pt-bk-other { max-width: 7.5rem; }
+  }
   .pt-bk-figs { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
   .pt-bk-fig { display: grid; gap: .25rem; align-content: start; min-width: 0; }
   .pt-bk-big { margin: 0; font-family: var(--font-mono, monospace); font-size: 1.125rem; font-weight: 600; color: var(--color-ink); }
