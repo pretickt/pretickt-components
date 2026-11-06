@@ -58,7 +58,8 @@ export function liveMoves(b: Basket, q: Record<string, { r: number }>, news: Rec
                         <span [class]="'pt-num pt-bk-pts pt-t-' + tone(m.points)">{{ points(m.points) }}</span>
                         @if (m.headline; as h) {<a class="pt-bk-head pt-meta" [href]="href(h.url)" target="_blank" rel="nofollow noopener noreferrer">{{ h.title }}</a>}
                       </div>
-                    } @else {<div class="pt-bk-mv pt-bk-mv-empty" aria-hidden="true"></div>}
+                    } @else if ($first) {<div class="pt-bk-mv pt-bk-mv-empty"><span class="pt-meta">{{ s.none }}</span></div>}
+                    @else {<div class="pt-bk-mv pt-bk-mv-empty" aria-hidden="true"></div>}
                   }
                 </div>
               }
@@ -176,7 +177,7 @@ export class PtBasket {
   });
   protected readonly sides = computed(() => {
     const v = this.view();
-    return [{ label: 'Pushed it up', rows: slots(v?.up ?? []) }, { label: 'Pulled it down', rows: slots(v?.down ?? []) }];
+    return [{ label: 'Pushed it up', rows: slots(v?.up ?? []), none: 'No holding added as much as 0.01 points.' }, { label: 'Pulled it down', rows: slots(v?.down ?? []), none: 'No holding took off as much as 0.01 points.' }];
   });
   protected readonly moved = computed(() => { const v = this.view(); return v ? basketMoved(this.ticker(), v.ret, v.up, v.down) : ''; });
   protected readonly when = computed(() => {

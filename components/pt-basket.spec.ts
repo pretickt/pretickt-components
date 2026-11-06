@@ -51,6 +51,13 @@ describe('pt-basket', () => {
       expect(text()).toContain('11:30 AM ET, 15-min delayed');
       expect(el.querySelectorAll('.pt-bk-side .pt-bk-mv')).toHaveLength(10);
     });
+    it('a side with no company says so in its first slot, and keeps its five', async () => {
+      const { el } = await section('moves', { ...SMH, moves: { ...SMH.moves, up: [] } });
+      const up = el.querySelector('.pt-bk-side')!;
+      expect(up.querySelectorAll('.pt-bk-mv')).toHaveLength(5);
+      expect(up.textContent).toContain('No holding added as much as 0.01 points.');
+      expect(el.querySelectorAll('.pt-bk-side')[1]!.textContent).not.toContain('No holding');
+    });
     it('at the delayed prices too, a holding whose part would read 0.00 points names no reason for the move', () => {
       const b: Basket = { ...SMH, holdings: [{ ticker: 'NVDA', name: 'NVIDIA Corporation', logo: null, weight: 0.5, ret: 0, upside: null, label: null }, { ticker: 'TINY', name: 'Tiny Inc.', logo: null, weight: 0.001, ret: 0, upside: null, label: null }] };
       const v = liveMoves(b, { NVDA: { r: 0.01 }, TINY: { r: 0.04 } }, {});

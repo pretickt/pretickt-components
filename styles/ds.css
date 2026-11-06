@@ -452,7 +452,7 @@
   .pt-card-foot b { @apply font-semibold text-ink; }
 
   /* pt-company-header: the price and the bands */
-  .pt-hdr { @apply gap-2.5; }
+  .pt-hdr { @apply gap-2.5; grid-template-columns: minmax(0, 1fr); } /* a long name is cut, it does not widen the page */
   .pt-hdr-head { @apply flex flex-wrap items-center justify-between gap-x-3 gap-y-1; }
   .pt-hdr-px { @apply grid sm:justify-items-end; }
   .pt-hdr-price { @apply flex items-baseline gap-2; }
@@ -1082,6 +1082,7 @@
   .pt-bk-co:hover { color: var(--color-primary); }
   .pt-bk-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pt-bk-pts { font-weight: 600; }
+  .pt-bk-mv-empty .pt-meta { grid-column: 1 / -1; }
   .pt-bk-head { grid-column: 1 / -1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pt-bk-head:hover { color: var(--color-primary); }
   @media (max-width: 26rem) { .pt-bk-mv { grid-template-columns: minmax(0, 1fr) repeat(3, 3.1rem); font-size: .8125rem; } }
