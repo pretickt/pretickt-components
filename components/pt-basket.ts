@@ -10,7 +10,7 @@ import { Component, computed, inject, input, linkedSignal } from '@angular/core'
 import { Pt, PtLive } from '@pretickt/components/context';
 import { PtCompany, PtLogo } from '@pretickt/components/ds';
 import { date, href, level, money, num, pct, plainName, stockHref, tone, usd } from '@pretickt/components/format';
-import { BASKET_MIN_COVERAGE, BASKET_MOVERS, BASKET_SHOWN, basketLead, basketMoved, oneMover, type Basket, type BasketMover } from '@pretickt/components/typologies';
+import { BASKET_MIN_COVERAGE, BASKET_MOVER_MIN, BASKET_MOVERS, BASKET_SHOWN, basketLead, basketMoved, oneMover, type Basket, type BasketMover } from '@pretickt/components/typologies';
 
 const QUESTION: Record<string, string> = { demand: 'Demand', advantage: 'Advantage', economics: 'Economics', execution: 'Execution', fragility: 'Fragility', price: 'Price' };
 const SOURCE = 'https://advantage.factset.com/hubfs/Website/Resources%20Section/Research%20Desk/Earnings%20Insight/EarningsInsight_092322.pdf';
@@ -28,8 +28,8 @@ export function liveMoves(b: Basket, q: Record<string, { r: number }>, news: Rec
   }));
   return {
     ret: q[b.ticker]?.r ?? b.ret,
-    up: rows.filter((m) => m.points > 0).sort((x, y) => y.points - x.points).slice(0, BASKET_MOVERS),
-    down: rows.filter((m) => m.points < 0).sort((x, y) => x.points - y.points).slice(0, BASKET_MOVERS),
+    up: rows.filter((m) => m.points >= BASKET_MOVER_MIN).sort((x, y) => y.points - x.points).slice(0, BASKET_MOVERS),
+    down: rows.filter((m) => m.points <= -BASKET_MOVER_MIN).sort((x, y) => x.points - y.points).slice(0, BASKET_MOVERS),
   };
 }
 

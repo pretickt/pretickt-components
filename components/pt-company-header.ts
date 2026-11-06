@@ -9,7 +9,7 @@
 import { afterRenderEffect, Component, computed, type ElementRef, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { Pt, PtLive } from '@pretickt/components/context';
 import { PtBadge, PtLogo } from '@pretickt/components/ds';
-import { date, dayMonth, level, money, pct, plainName, tone, usd, type Badge } from '@pretickt/components/format';
+import { date, dayMonth, level, money, num, pct, plainName, tone, usd, type Badge } from '@pretickt/components/format';
 import { bollinger, macd, rsi, smaLast } from '@pretickt/components/indicators';
 import { METRIC_KEYS, type MetricItem } from '@pretickt/components/typologies';
 
@@ -104,7 +104,7 @@ export function bandsOf(items: MetricItem[], o: { target: number | null; low: bo
     if (m.key === 'pt_upside') {
       if (o.low) b = { ...b, label: 'PT' };
       if (o.target != null && m.value != null) b = { ...b, text: `${money(o.target)} ${pct(m.value)}` };
-    } else if (m.key === 'consensus' && m.text) b = { ...b, text: `${m.text} · ${m.value}` };
+    } else if (m.key === 'consensus' && m.text) b = { ...b, text: `${m.text} · ${num(m.value, 0)}` };
     else if (m.key === 'ma_detail' && count) b = { ...b, text: count.replace(' above', '') };
     else if (m.key === 'range_52w' && m.range) b = { ...b, text: `${usd(m.range.lo, { digits: 0 })}–${usd(m.range.hi, { digits: 0 })}` };
     out[s].push(b);

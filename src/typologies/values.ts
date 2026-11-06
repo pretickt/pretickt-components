@@ -78,5 +78,7 @@ export const FEED_SPARK_MAX = 40;
 export const BASKET_MIN_COVERAGE = 0.8;
 /** The companies behind a fund's move, a side. */
 export const BASKET_MOVERS = 5;
+/** Under this a holding's part in a fund's move reads 0.00 points: on a day when almost everything fell, naming it as what pushed the fund up says nothing. */
+export const BASKET_MOVER_MIN = 0.00005;
 /** The holdings in the server's HTML; `Show all` opens the rest. */
 export const BASKET_SHOWN = 25;

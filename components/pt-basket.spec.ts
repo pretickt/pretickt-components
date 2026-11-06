@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { demoFor, type Basket } from '../src/typologies';
-import { PtBasket } from './pt-basket';
+import { liveMoves, PtBasket } from './pt-basket';
 import { basics, liveDay, press, render, settle, withData } from './_spec';
 
 const demo = (t: string) => demoFor({ t: 'basket@1', params: { ticker: t } }) as Basket;
@@ -50,6 +50,11 @@ describe('pt-basket', () => {
       expect(text()).toContain('SMH rose 2.00%. Nvidia added 1.03 points');
       expect(text()).toContain('11:30 AM ET, 15-min delayed');
       expect(el.querySelectorAll('.pt-bk-side .pt-bk-mv')).toHaveLength(10);
+    });
+    it('at the delayed prices too, a holding whose part would read 0.00 points names no reason for the move', () => {
+      const b: Basket = { ...SMH, holdings: [{ ticker: 'NVDA', name: 'NVIDIA Corporation', logo: null, weight: 0.5, ret: 0, upside: null, label: null }, { ticker: 'TINY', name: 'Tiny Inc.', logo: null, weight: 0.001, ret: 0, upside: null, label: null }] };
+      const v = liveMoves(b, { NVDA: { r: 0.01 }, TINY: { r: 0.04 } }, {});
+      expect(v.up.map((m) => m.ticker)).toEqual(['NVDA']);
     });
     it('a holding missing from the quotes keeps its last figures', async () => {
       const { el } = await live(open);

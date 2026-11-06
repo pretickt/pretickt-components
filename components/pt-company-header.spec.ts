@@ -141,6 +141,10 @@ describe('pt-company-header: the three bands', () => {
     expect(of(b.r, 'ma_detail').text).toBe('0 of 4');
     expect(of(b.n, 'range_52w').text).toBe('$164–$243');
   });
+  it('a fund\'s consensus counts thousands of ratings: its figure has its comma', () => {
+    const fund = [m('consensus', 11784, { text: 'Buy', tone: 'pos', unit: '' })];
+    expect(of(bandsOf(fund, { target: null, low: false }).g, 'consensus').text).toBe('Buy · 11,784');
+  });
   it('the low box says PT; without a target the badge keeps its percent', () => {
     expect(of(bandsOf(items, { target: 325.66, low: true }).g, 'pt_upside').label).toBe('PT');
     expect(of(bandsOf(items, { target: null, low: false }).g, 'pt_upside').text).toBeNull();
