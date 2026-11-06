@@ -73,3 +73,10 @@ export const FEED_MAX = 40;
 export const FEED_DAYS = { back: 120, ahead: 60 } as const;
 /** A card's chart: at most this many closes (around a past event, or the last ones before a coming event). */
 export const FEED_SPARK_MAX = 40;
+
+/** A fund's share on the site under which no basket figure is shown (design 2026-11-05). */
+export const BASKET_MIN_COVERAGE = 0.8;
+/** The companies behind a fund's move, a side. */
+export const BASKET_MOVERS = 5;
+/** The holdings in the server's HTML; `Show all` opens the rest. */
+export const BASKET_SHOWN = 25;

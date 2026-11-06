@@ -3,6 +3,7 @@ import type * as z from 'zod/mini';
 import { AnalystsParams, AnalystsPayload } from './analysts';
 import { AlertEventParams, AlertEventPayload, AlertUniverseParams, AlertUniversePayload } from './alerts';
 import { AttentionParams, AttentionPayload } from './attention';
+import { BasketParams, BasketPayload } from './basket';
 import { CompanyParams, CompanyPayload } from './company';
 import { EventsParams, EventsPayload } from './events';
 import { FeedParams, FeedPayload } from './feed';
@@ -44,6 +45,7 @@ export const TYPOLOGY_SCHEMAS = /* @__PURE__ */ withIds({
   'ongoing-moves@1': { params: OngoingMovesParams, payload: OngoingMovesPayload },
   'feed@1': { params: FeedParams, payload: FeedPayload },
   'value@1': { params: ValueParams, payload: ValuePayload },
+  'basket@1': { params: BasketParams, payload: BasketPayload },
   'attention@1': { params: AttentionParams, payload: AttentionPayload },
   'alert-universe@1': { params: AlertUniverseParams, payload: AlertUniversePayload },
   'alert-event@1': { params: AlertEventParams, payload: AlertEventPayload },

@@ -5,6 +5,7 @@
 export * from './values';
 export type * from './analysts';
 export type * from './attention';
+export type * from './basket';
 export type * from './alerts';
 export type * from './common';
 export type * from './company';

@@ -2,6 +2,7 @@ import type * as z from 'zod/mini';
 import { analystsDemo, analystsSamples } from './analysts';
 import { alertEventDemo, alertEventSamples, alertUniverseDemo, alertUniverseSamples } from './alerts';
 import { attentionDemo, attentionSamples } from './attention';
+import { basketDemo, basketSamples } from './basket';
 import { companyDemo, companySamples } from './company';
 import { eventsDemo, eventsSamples, eventsUnknownVariant } from './events';
 import { feedDemo, feedSamples, feedUnknownVariant } from './feed';
@@ -42,6 +43,7 @@ const EXTRAS: { [K in TypologyKey]: Extras<S[K]['params'], S[K]['payload']> } = 
   'ongoing-moves@1': { demo: ongoingMovesDemo, samples: ongoingMovesSamples },
   'feed@1': { demo: feedDemo, samples: feedSamples, unknownVariant: feedUnknownVariant },
   'value@1': { demo: valueDemo, samples: valueSamples },
+  'basket@1': { demo: basketDemo, samples: basketSamples },
   'attention@1': { demo: attentionDemo, samples: attentionSamples },
   'alert-universe@1': { demo: alertUniverseDemo, samples: alertUniverseSamples },
   'alert-event@1': { demo: alertEventDemo, samples: alertEventSamples },
@@ -72,6 +74,7 @@ export * from './price-series';
 export * from './events';
 export * from './analysts';
 export * from './fundamentals';
+export * from './basket';
 export * from './company';
 export * from './insider';
 export * from './attention';

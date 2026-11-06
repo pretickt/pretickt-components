@@ -7,6 +7,8 @@ export const NewsPayload = z.object({
   asOf: IsoDate,
   items: z.array(z.object({
     publishedAt: z.string(), title: z.string(), site: z.string(), url: HttpUrl, sentiment: z.nullable(z.number()),
+    /** Asked for a fund: the news of its largest holdings, each naming its company. */
+    ticker: z.optional(Ticker), name: z.optional(z.string()), logo: z.optional(z.nullable(z.string())),
   })),
 });
 export type NewsParams = z.output<typeof NewsParams>;

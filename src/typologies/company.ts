@@ -7,6 +7,8 @@ export const CompanyPayload = z.object({
   ticker: Ticker, name: z.string(), sector: z.nullable(z.string()), industry: z.nullable(z.string()),
   /** The site path of its logo (`/logos/<ticker>`), or null. */
   logo: z.nullable(z.string()),
+  /** A fund with a page at /etfs/<ticker>/, and the share of it its basket figures can rest on. */
+  kind: z.optional(z.literal('etf')), coverage: z.optional(z.number()),
 });
 export type CompanyParams = z.output<typeof CompanyParams>;
 export type CompanyProfile = z.infer<typeof CompanyPayload>;
