@@ -32,6 +32,8 @@ export interface PreviewPage {
   path: string; title: string; description: string; h1: string; lede: string;
   crumbs?: { label: string; href?: string }[];
   nav?: { href: string; label: string; isNew?: boolean }[];
+  /** The home's links beside the sector menu (layout.ts HOME_LINKS): shows the site's header above the page. */
+  headerLinks?: { href: string; label: string }[];
   /** The generator's own markup before and after the page app (trusted, static): explanations, questions it answers itself. */
   intro?: string; outro?: string;
   sections: PreviewSection[];
@@ -82,6 +84,14 @@ const json = (v: unknown) => JSON.stringify(v, null, 2);
         @for (b of ld(); track $index) {<pre class="pv-ld">{{ b }}</pre>}
       </aside>
       <div class="pv-page pt-page">
+        @if (p.headerLinks?.length) {
+          <header class="pt-header"><div class="pt-header-in">
+            <a class="pt-brand" href="/" aria-label="pretickt home"><span class="pt-brand-word">pre<span class="pt-brand-tick">tick</span>t</span></a>
+            <nav class="pt-sectors" aria-label="Sectors"><details class="pt-menu"><summary>Sectors</summary></details></nav>
+            <nav class="pt-header-links" aria-label="Markets">@for (l of p.headerLinks; track l.href) {<a [href]="l.href">{{ l.label }}</a>}</nav>
+            <div class="pt-search"><input type="search" placeholder="Search stocks" aria-label="Search companies"></div>
+          </div></header>
+        }
         <main class="pt-main">
           @if (p.crumbs?.length) {
             <nav class="pt-crumbs" aria-label="Breadcrumb"><ol>

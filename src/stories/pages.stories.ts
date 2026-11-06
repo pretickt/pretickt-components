@@ -138,6 +138,7 @@ export function homePage(): PreviewPage {
     description: ('Why stocks moved, analyst targets, earnings and dividend calendars, market movers and insider buying for S&P 500, Nasdaq-100 and other US-listed companies.'),
     h1: 'Why stocks move, price targets and earnings',
     lede: `${UNIVERSE} · end-of-day data as of {date}`,
+    headerLinks: [{ href: '/earnings-calendar/', label: 'Earnings' }, { href: '/dividend-calendar/', label: 'Dividends' }, { href: '/market-map/', label: 'Heat map' }, { href: '/stocks/', label: 'All stocks' }],
     nav: LIST_NAV,
     sections: [
       { id: 'moves', title: 'Ongoing moves', items: [{ c: PtMovers, inputs: { sort: 'cap' } }] },

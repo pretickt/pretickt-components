@@ -1,17 +1,20 @@
 /**
  * Which companies are in a move that is still running, and which way did they go this week — the largest first?
- * @version 1.0.1
+ * @version 1.1.0
  * @evidence beta: the home's "Ongoing moves" chart (pretickt-frontend/src/app/home/ongoing-swings-page.*, ongoing-swings.logic.ts)
  * @evidence Romeo, 2026-10-17: "i market mover per cap come in beta … con una leggenda per le sfumature verde e rosso. nella home"
+ * @evidence Romeo, 2026-11-06: "metti anche una linea verticale stretta che rappresenta il movimento live delayed"
  */
 import { Component, computed, inject, input, linkedSignal } from '@angular/core';
-import { Pt } from '@pretickt/components/context';
+import { Pt, PtLive, type LiveDay } from '@pretickt/components/context';
 import { PtToggles } from '@pretickt/components/ds';
 import { date, pct, plainName, stockHref, tip } from '@pretickt/components/format';
 import { type MarketTrend, type MoveSort, type OngoingMoveRow } from '@pretickt/components/typologies';
 
 // beta's tornado (buildWeekChart), in fractions: the viewBox, the baseline, the top margin a bar may reach
 const W = 800, H = 230, ZERO = 120, TOP = 26;
+/** Today's line: much narrower than the week's bar, whatever the number of companies. */
+const TODAY_W = 2;
 /** A site logo path (as pt-logo accepts): anything else draws the initials, never a request. */
 const SITE_LOGO = /^\/logos\/[a-z0-9.-]{1,40}$/;
 const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -23,6 +26,8 @@ export interface MoverBar {
   weekY: number;
   /** 90 days, 30 days, this week: back to front, each in the tone of its own move. */
   rects: MoverRect[];
+  /** Today's delayed move: a thin line from the baseline, in front of the bars; null without a quote for this company. */
+  today: { x: number; y: number; w: number; h: number } | null;
   logoY: number; labelY1: number; labelY2: number; pctLabel: string; capLabel: string;
   alert: boolean; alertY: number; alertPath: string;
   /** The tooltip rows (the hover card's footer) and the spoken label. */
@@ -47,7 +52,8 @@ export function capShort(v: number | null): string {
   return `$${x >= 10 ? Math.round(x) : x.toFixed(1)}${u}`;
 }
 
-const tipOf = (r: OngoingMoveRow): string => tip({
+const tipOf = (r: OngoingMoveRow, now: number | null, day: LiveDay | null): string => tip({
+  ...(now != null && day ? { [day.closed ? 'Today (close, preliminary)' : `Today (${day.delayMin}-min delayed)`]: pct(now) } : {}),
   'This week': pct(r.week), 'Last 30 days': pct(r.month), 'Last 90 days': pct(r.quarter),
   [r.kind === 'rally' ? 'Rally' : 'Drawdown']: `${pct(r.move)} since ${date(r.since)} (${r.days} days)`,
   ...(r.industry ? { 'Industry moving too': `median ${pct(r.industry.median)}`, Peers: r.industry.peers.map((p) => `${p.ticker} ${pct(p.move)}`).join(' · ') } : {}),
@@ -58,9 +64,14 @@ const tipOf = (r: OngoingMoveRow): string => tip({
  * centre and fading outwards. The boundary is always the centre — both sides share one slot width, set by the longer side — so a
  * lopsided week (a crash: 14 losers, 2 gainers) keeps its most important companies in the middle, where a phone's crop looks; with
  * 14 a side the slots are beta's. One scale for the three windows; per company the 90 days (widest, lightest), the 30 days and the
- * week (narrow, solid) from the shared baseline; the logo on the bar-free side, under it the week's % and the market cap.
+ * week (narrow, solid) from the shared baseline; the logo on the bar-free side, under it the week's % and the market cap. `day`, the
+ * delayed prices of a session newer than the data: a thin line per company for today's move, on the same scale.
  */
-export function buildMovers(rows: readonly OngoingMoveRow[]): MoversChart | null {
+export function buildMovers(rows: readonly OngoingMoveRow[], day: LiveDay | null = null): MoversChart | null {
+  const moveToday = (r: OngoingMoveRow): number | null => {
+    const m = day?.q[r.ticker]?.r;
+    return typeof m === 'number' && Number.isFinite(m) ? m : null;
+  };
   const drawn = rows.filter((r) => r.week != null);
   const losers = drawn.filter((r) => r.week! < 0), gainers = drawn.filter((r) => r.week! >= 0);
   const side = Math.max(losers.length, gainers.length);
@@ -69,7 +80,7 @@ export function buildMovers(rows: readonly OngoingMoveRow[]): MoversChart | null
   // k = 0 is the most important of its side, next to the centre
   const placed = [...losers.map((r, k) => ({ r, x: W / 2 - slot * (k + 0.5) })).reverse(), ...gainers.map((r, k) => ({ r, x: W / 2 + slot * (k + 0.5) }))];
   const ordered = placed.map((p) => p.r);
-  const maxAbs = Math.max(0.01, ...ordered.flatMap((r) => [r.week, r.month, r.quarter].filter((v): v is number => v != null).map(Math.abs)));
+  const maxAbs = Math.max(0.01, ...ordered.flatMap((r) => [r.week, r.month, r.quarter, moveToday(r)].filter((v): v is number => v != null).map(Math.abs)));
   const sy = (v: number) => ZERO - (v / maxAbs) * (ZERO - TOP);
   const rect = (cls: string, v: number | null, x: number, half: number, rx: number | null): MoverRect[] => {
     if (v == null) return [];
@@ -80,13 +91,15 @@ export function buildMovers(rows: readonly OngoingMoveRow[]): MoversChart | null
     const w = r.week!, up = w >= 0, x = r1(at);
     const logoY = up ? ZERO + 4 : ZERO - 18, labelY1 = up ? ZERO + 28 : ZERO - 24, labelY2 = up ? ZERO + 37 : ZERO - 33;
     const alertY = up ? labelY2 + 4 : labelY2 - 16;
+    const now = moveToday(r), nowY = now == null ? ZERO : sy(now);
     return {
       ticker: r.ticker, x, up, logo: r.logo && SITE_LOGO.test(r.logo) ? r.logo : null,
       initials: r.ticker.replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase(), weekY: r1(sy(w)),
       rects: [...rect('pt-mv-q', r.quarter, x, barW, null), ...rect('pt-mv-m', r.month, x, barW * 0.72, null), ...rect('pt-mv-w', w, x, barW / 2, 2)],
+      today: now == null ? null : { x: r1(x - TODAY_W / 2), y: r1(now >= 0 ? nowY : ZERO), w: TODAY_W, h: r1(Math.abs(ZERO - nowY) || 0.5) },
       logoY, labelY1, labelY2, pctLabel: pctShort(w), capLabel: capShort(r.marketCap),
       alert: !!r.industry, alertY, alertPath: `M${r1(x - 3.5)} ${alertY + 7} L${r1(x + 3.5)} ${alertY + 7} L${x} ${alertY} Z`,
-      tip: tipOf(r), label: `${plainName(r.name)}, ${pct(w)} this week`,
+      tip: tipOf(r, now, day), label: `${plainName(r.name)}, ${pct(w)} this week${now == null ? '' : `, ${pct(now)} today`}`,
     };
   });
   return { w: W, h: H, zeroY: ZERO, bars, crop: side > 7 };
@@ -119,6 +132,7 @@ const MARKET_HINTS: Record<MarketTrend, string> = { bullish: 'higher highs and h
                   @for (r of b.rects; track r.cls) {<rect [attr.class]="r.cls" [attr.x]="r.x" [attr.y]="r.y" [attr.width]="r.w" [attr.height]="r.h" [attr.rx]="r.rx" />}
                   @if (b.logo) {<image [attr.href]="b.logo" [attr.x]="b.x - 7" [attr.y]="b.logoY" width="14" height="14" />}
                   @else {<text class="pt-mv-tk" [attr.x]="b.x" [attr.y]="b.logoY + 10" text-anchor="middle">{{ b.initials }}</text>}
+                  @if (b.today; as t) {<rect class="pt-mv-d" [attr.x]="t.x" [attr.y]="t.y" [attr.width]="t.w" [attr.height]="t.h" />}
                   <text [attr.class]="'pt-mv-lab pt-mv-lab-' + (b.up ? 'pos' : 'neg')" [attr.x]="b.x" [attr.y]="b.labelY1" text-anchor="middle">{{ b.pctLabel }}</text>
                   @if (b.capLabel) {<text class="pt-mv-lab pt-mv-cap" [attr.x]="b.x" [attr.y]="b.labelY2" text-anchor="middle">{{ b.capLabel }}</text>}
                   @if (b.alert) {
@@ -130,6 +144,7 @@ const MARKET_HINTS: Record<MarketTrend, string> = { bullish: 'higher highs and h
             </svg>
           </div>
           <div class="pt-legend pt-mv-legend">
+            @if (todayKey(); as k) {<span class="pt-mv-key"><i class="pt-mv-sw-d"></i>{{ k }}</span>}
             @for (k of KEYS; track k[0]) {
               <span class="pt-mv-key"><i [class]="'pt-mv-sw pt-mv-sw-' + k[0] + ' pt-mv-sw-pos'"></i><i [class]="'pt-mv-sw pt-mv-sw-' + k[0] + ' pt-mv-sw-neg'"></i>{{ k[1] }}</span>
             }
@@ -142,12 +157,21 @@ const MARKET_HINTS: Record<MarketTrend, string> = { bullish: 'higher highs and h
 })
 export class PtMovers {
   private readonly pt = inject(Pt);
+  private readonly live = inject(PtLive);
   readonly sort = input<MoveSort>('cap');
 
   /** The reader's choice (the toggle); the note follows the data on screen (`moves.params()`). */
   protected readonly picked = linkedSignal(() => this.sort());
   protected readonly moves = this.pt.ongoingMoves(() => ({ sort: this.picked() }));
-  protected readonly g = computed(() => buildMovers(this.moves.value()?.rows ?? []));
+  /** The delayed prices, read once when the page opens, while the data stops at the previous session. */
+  private readonly day = this.live.after(() => this.moves.value()?.asOf);
+  protected readonly g = computed(() => buildMovers(this.moves.value()?.rows ?? [], this.day()));
+  /** The legend's words for the line, when one shows: the delay and the time, as the company card says them. */
+  protected readonly todayKey = computed(() => {
+    const d = this.day();
+    if (!d || !this.g()?.bars.some((b) => b.today)) return '';
+    return d.closed ? `Today · close ${date(d.session)}, preliminary` : `Today · ${d.time}, ${d.delayMin}-min delayed`;
+  });
   protected readonly thr = computed(() => `${Math.round((this.moves.value()?.threshold ?? 0.04) * 100)}%`);
   protected readonly note = computed(() => {
     const shown = (this.moves.params() as { sort?: MoveSort } | undefined)?.sort ?? this.picked();

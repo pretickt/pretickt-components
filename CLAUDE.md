@@ -317,6 +317,7 @@ earnings|dividend; `view: 'week'` + `start` = five sessions for the home page; "
 nofollow links) · `pt-insiders` (buy/sell totals + Form 4 table) · `pt-movers` (beta's "Ongoing moves" tornado for the home: this
 week's losers left, gainers right, the largest — or with the toggle the biggest moves — in the middle; week / 30 / 90 days in three
 shades with a legend, ⚠ when the industry moves too, the market chip; each bar links its company with its numbers as tooltip rows;
+while a session newer than the data runs, a thin dark line per company for today's delayed move, read once when the page opens, with its time and delay in the legend;
 phones see the middle half at double size) · `pt-feed` (the feed: small event cards on a strip that scrolls sideways and opens on
 today — technical, fundamental, news and the market's own, each with the move it came with and a small price chart around it (the
 event's jump or the move since in its tone; a coming event's band of its usual move), dashed when still to come; a click opens

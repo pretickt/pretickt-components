@@ -1,6 +1,7 @@
 import { ongoingMovesDemo, type OngoingMoveRow, type OngoingMoves } from '../src/typologies';
 import { buildMovers, capShort, pctShort, PtMovers } from './pt-movers';
-import { basics, press, render, withData } from './_spec';
+import type { LiveDay } from '../src/context';
+import { basics, liveDay, press, render, settle, withData } from './_spec';
 
 const row = (ticker: string, week: number | null, o: Partial<OngoingMoveRow> = {}): OngoingMoveRow => ({
   ticker, name: `${ticker} Inc.`, logo: null, marketCap: 1e11, kind: (week ?? 0) < 0 ? 'drawdown' : 'rally', since: '2026-09-01', days: 29,
@@ -59,8 +60,73 @@ describe('buildMovers (beta\'s tornado)', () => {
   });
 });
 
+describe('buildMovers: today\'s line (the delayed move)', () => {
+  const day = (q: Record<string, number>, o: Partial<LiveDay> = {}): LiveDay => ({ session: '2026-10-19', prev: '2026-10-16', asOf: '2026-10-19T15:30:00.000Z', time: '11:30 AM ET', delayMin: 15,
+    closed: false, q: Object.fromEntries(Object.entries(q).map(([t, r]) => [t, { p: 100, pc: 100, r, m: null, s: null, x: null }])), news: {}, earnings: {}, ...o });
+  // one scale: the quarter's ±10% reaches the top margin (94 units above the baseline at 120)
+  const base = [row('A', -0.02, { month: -0.04, quarter: -0.1 }), row('B', 0.02, { month: 0.04, quarter: 0.1 })];
+  it('a line from the baseline, up for a gain and down for a loss, on the bars\' scale and narrower than the week\'s bar', () => {
+    const g = buildMovers(base, day({ A: 0.05, B: -0.05 }))!;
+    const a = g.bars.find((b) => b.ticker === 'A')!.today!, b = g.bars.find((x) => x.ticker === 'B')!.today!;
+    expect([a.y, a.h]).toEqual([73, 47]); // +5% of a 10% scale: half way up
+    expect([b.y, b.h]).toEqual([120, 47]);
+    const week = g.bars.find((x) => x.ticker === 'A')!.rects.at(-1)!;
+    expect(a.w).toBeLessThan(week.w / 3);
+    expect(a.x + a.w / 2).toBeCloseTo(g.bars.find((x) => x.ticker === 'A')!.x, 1);
+  });
+  it('no line without a quote for the company, or without the day: then the chart is the end-of-day one', () => {
+    const g = buildMovers(base, day({ A: 0.05 }))!;
+    expect(g.bars.find((b) => b.ticker === 'B')!.today).toBeNull();
+    expect(buildMovers(base)!.bars.every((b) => b.today === null)).toBe(true);
+    expect(buildMovers(base, null)).toEqual(buildMovers(base));
+  });
+  it('a flat day still shows, and today\'s move joins the scale when it is the largest', () => {
+    expect(buildMovers(base, day({ A: 0 }))!.bars.find((b) => b.ticker === 'A')!.today!.h).toBe(0.5);
+    const g = buildMovers(base, day({ A: -0.2 }))!;
+    expect(g.bars.find((b) => b.ticker === 'A')!.today!.h).toBe(94); // -20% now fills the height
+    expect(g.bars.find((b) => b.ticker === 'A')!.rects[0]!.h).toBe(47); // and the quarter's -10% halves
+  });
+  it('the tooltip opens with today\'s move and its delay, the spoken label ends with it', () => {
+    const b = buildMovers(base, day({ A: -0.021 }))!.bars.find((x) => x.ticker === 'A')!;
+    const rows = JSON.parse(b.tip) as Record<string, string>;
+    expect(Object.entries(rows)[0]).toEqual(['Today (15-min delayed)', '-2.1%']);
+    expect(rows['This week']).toBe('-2.0%');
+    expect(b.label).toBe('A, -2.0% this week, -2.1% today');
+    const closed = buildMovers(base, day({ A: -0.021 }, { closed: true }))!.bars.find((x) => x.ticker === 'A')!;
+    expect(Object.keys(JSON.parse(closed.tip) as object)[0]).toBe('Today (close, preliminary)');
+  });
+});
+
 describe('pt-movers', () => {
   basics(PtMovers, { sort: 'cap' });
+
+  describe('today\'s line on the page', () => {
+    const data = withData({ 'ongoing-moves@1': payload([row('NVDA', -0.066), row('AAPL', 0.02)]) });
+    const open = { session: '2026-10-19', prev: '2026-10-16', time: '11:30 AM ET', q: { NVDA: { p: 180, pc: 184, r: -0.0217, m: null, s: null, x: null } } };
+    const live = async (d: Partial<LiveDay>) => {
+      const r = await render(PtMovers, { sort: 'cap' }, data, { browser: true, providers: liveDay(d) });
+      await settle(r.f);
+      return r;
+    };
+    it('once the delayed prices arrive: the line on the companies they cover, and a legend key that says the delay and the time', async () => {
+      const r = await live(open);
+      expect(r.el.querySelectorAll('.pt-mv-d')).toHaveLength(1);
+      expect(r.el.querySelector('a[href="/stocks/nvda/"] .pt-mv-d')).toBeTruthy();
+      const keys = [...r.el.querySelectorAll('.pt-mv-legend .pt-mv-key')].map((k) => k.textContent!.trim());
+      expect(keys[0]).toBe('Today · 11:30 AM ET, 15-min delayed');
+    });
+    it('after the close the key says the number is preliminary', async () => {
+      const r = await live({ ...open, closed: true });
+      expect(r.el.querySelector('.pt-mv-legend .pt-mv-key')!.textContent!.trim()).toBe('Today · close Oct 19, 2026, preliminary');
+    });
+    it('a session the payload already holds draws no line and no key, and neither does the page the build renders', async () => {
+      const same = await live({ ...open, session: '2026-10-16' });
+      expect(same.el.querySelector('.pt-mv-d')).toBeNull();
+      expect(same.el.querySelector('.pt-mv-legend .pt-mv-key')!.textContent!.trim()).toBe('This week');
+      const built = await view(payload([row('NVDA', -0.066)]));
+      expect(built.el.querySelector('.pt-mv-d')).toBeNull();
+    });
+  });
 
   it('every company is a link to its page, its numbers in the tooltip, its move spoken', async () => {
     const r = await view(payload([row('NVDA', -0.066, { name: 'NVIDIA Corporation', industry: { median: -0.05, peers: [{ ticker: 'AMD', move: -0.09 }] } }), row('AAPL', 0.02)]));

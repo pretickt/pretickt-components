@@ -40,12 +40,20 @@
   .pt-header-in { @apply mx-auto flex max-w-5xl items-center gap-3; }
   .pt-brand-word { @apply hidden sm:inline; }
   .pt-menu { @apply relative; }
-  .pt-menu > summary { @apply cursor-pointer list-none rounded-md px-2 py-1 text-sm text-ink-soft select-none hover:bg-surface hover:text-ink; }
+  .pt-menu > summary { @apply cursor-pointer list-none rounded-md px-2 py-1 text-sm whitespace-nowrap text-ink-soft select-none hover:bg-surface hover:text-ink; }
   .pt-menu > summary::-webkit-details-marker { display: none; }
   .pt-menu > summary::after { content: ' ▾'; }
   .pt-menu[open] > summary { @apply bg-surface text-ink; }
   .pt-menu ul { @apply absolute left-0 top-full z-40 m-0 mt-1 grid w-max list-none grid-cols-1 gap-0.5 rounded-control border border-border bg-surface-raised p-2 text-sm shadow-lg sm:grid-cols-2; }
   .pt-menu a { @apply block rounded-md px-2 py-1 text-ink no-underline hover:bg-surface hover:text-primary; }
+  /* the home's links beside the sector menu; under 48rem their own row under the search, which stays beside the menu */
+  .pt-header-links { @apply flex items-center gap-1 text-sm; }
+  .pt-header-links a { @apply rounded-md px-2 py-1 whitespace-nowrap text-ink-soft no-underline hover:bg-surface hover:text-ink; }
+  @media (width < 48rem) {
+    .pt-header-in:has(.pt-header-links) { @apply flex-wrap gap-y-1; }
+    .pt-header-in:has(.pt-header-links) .pt-search { @apply w-auto max-w-none min-w-0 flex-1; }
+    .pt-header-links { @apply order-last w-full overflow-x-auto; }
+  }
   .pt-search { @apply relative ml-auto w-full max-w-xs; }
   .pt-search input { @apply w-full rounded-control border border-border bg-surface px-3 py-1.5 text-sm text-ink outline-none focus:border-primary; }
   .pt-search-list { @apply absolute right-0 top-full z-40 mt-1 w-full min-w-64 overflow-hidden rounded-control border border-border bg-surface-raised py-1 shadow-lg; }
@@ -784,6 +792,9 @@
   .pt-mv-bar-neg { @apply fill-neg; }
   .pt-mv-m { fill-opacity: 0.35; }
   .pt-mv-q { fill-opacity: 0.18; }
+  /* today's delayed move: dark, so it reads over the week's bar of its own colour; the pale edge keeps it clear of a dark logo */
+  .pt-mv-d { @apply fill-ink; stroke: var(--color-surface); stroke-width: 0.5; }
+  .pt-mv-sw-d { @apply inline-block h-3 w-0.5 rounded-sm bg-ink; }
   .pt-mv-co { @apply cursor-pointer outline-none; }
   .pt-mv-co:is(:hover, :focus-visible) .pt-mv-w { @apply stroke-ink; stroke-width: 1; }
   .pt-mv-tk { @apply fill-primary font-sans font-semibold; font-size: 7px; }
