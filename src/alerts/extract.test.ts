@@ -25,6 +25,29 @@ describe('companiesIn: the companies a pasted text names (My portfolio, Romeo 20
     expect(companiesIn('Microsoft and MSFT', rows)).toEqual(['MSFT']);
   });
 
+  const wordy = [...rows, { ticker: 'NET', name: 'Cloudflare, Inc.' }, { ticker: 'LOW', name: "Lowe's Companies, Inc." }, { ticker: 'CHKP', name: 'Check Point Software Technologies Ltd.' },
+    { ticker: 'CRCL', name: 'Circle Internet Group, Inc.' }, { ticker: 'UEC', name: 'Uranium Energy Corp.' }, { ticker: 'BBY', name: 'Best Buy Co., Inc.' },
+    { ticker: 'TGT', name: 'Target Corporation' }, { ticker: 'NWS', name: 'News Corporation' }, { ticker: 'DAL', name: 'Delta Air Lines, Inc.' }];
+
+  it('a symbol that is also a word counts only with its $, or opening a row with a number after it', () => {
+    expect(companiesIn('SYMBOL QTY HIGH LOW NET\nAAPL 5 230.00\nNET TOTAL 1,200', wordy)).toEqual(['AAPL']);
+    expect(companiesIn('$NET looks good, and $LOW', wordy)).toEqual(['NET', 'LOW']);
+    expect(companiesIn('AAPL 5 230.00\nNET 10 300.50\nLOW,3,210.10', wordy)).toEqual(['AAPL', 'NET', 'LOW']);
+    expect(companiesIn('Cloudflare', wordy)).toEqual(['NET']);
+  });
+
+  it('a name that is an everyday word counts only with its capital, and not as the word that opens a sentence', () => {
+    expect(companiesIn('check the price target on a circle of uranium miners, the best news in delta', wordy)).toEqual([]);
+    expect(companiesIn('Check out this list. Best of all, it is free.\nNews came late.', wordy)).toEqual([]);
+    expect(companiesIn('I hold Target, Check Point and Delta', wordy)).toEqual(['TGT', 'CHKP', 'DAL']);
+    expect(companiesIn('Target, Apple, Circle', wordy)).toEqual(['TGT', 'AAPL', 'CRCL']);
+    expect(companiesIn('the price target is up, and I hold Target', wordy)).toEqual(['TGT']);       // the second time is the name
+  });
+
+  it('the whole name counts in any case, an everyday word in it or not', () => {
+    expect(companiesIn('best buy, uranium energy, check point software technologies', wordy)).toEqual(['BBY', 'UEC', 'CHKP']);
+  });
+
   it('nothing it does not know', () => {
     expect(companiesIn('TSLA USD CASH total 12,000', rows)).toEqual([]);
     expect(companiesIn('', rows)).toEqual([]);
