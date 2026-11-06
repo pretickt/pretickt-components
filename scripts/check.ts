@@ -67,6 +67,8 @@ const month = DEMO_ASOF.slice(0, 7);
 for (const topic of ['forecast', 'price-target', 'peers', 'financials', 'insiders'])
   await page(`pt-answer ${topic} of NVDA`, [{ c: 'pt-answer', props: { topic, ticker: 'NVDA' } }]);
 await page('pt-answer list', [{ c: 'pt-answer', props: { topic: 'list', list: 'biggest_losers' } }, { c: 'pt-screen', props: { list: 'biggest_losers' } }]);
+await page('fund page', [{ c: 'pt-company-header', props: { ticker: 'SMH', size: 'full' } }, { c: 'pt-answer', props: { topic: 'basket', ticker: 'SMH' } }, ...['moves', 'holdings', 'analysts', 'questions', 'faq'].map((section) => ({ c: 'pt-basket', props: { ticker: 'SMH', section } })),
+  { c: 'pt-price-events', props: { ticker: 'SMH', range: '1y', fund: true } }, { c: 'pt-news', props: { ticker: 'SMH', limit: 10 } }]);
 await page('earnings calendar page', [{ c: 'pt-answer', props: { topic: 'earnings', month } }, { c: 'pt-calendar', props: { month } }]);
 await page('dividend calendar page', [{ c: 'pt-answer', props: { topic: 'dividends', month } }, { c: 'pt-calendar', props: { month, kind: 'dividend' } }]);
 // a company page while the market is open: the card hydrates at once and loads today's file, "why it moved" hydrates once the file

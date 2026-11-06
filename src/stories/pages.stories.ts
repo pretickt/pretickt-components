@@ -245,7 +245,7 @@ export function etfPage(t: string, name: string, tracks: string, holdings: numbe
       { id: 'card', isNew: true, items: [{ c: PtCompanyHeader, inputs: { ticker: t, size: 'full' } }] },
       { id: 'answer', isNew: true, items: [{ c: PtAnswer, inputs: { topic: 'basket', ticker: t } }] },
       basket('moves', 'Why it moved', 'moves'), basket('holdings', 'Holdings', 'holdings'), basket('targets', 'Analyst price target and consensus', 'analysts'), basket('value', `Is ${t} a good buy?`, 'questions'),
-      { id: 'price', title: 'Price and events', isNew: true, items: [{ c: PtPriceEvents, inputs: { ticker: t, range: '1y' } }] },
+      { id: 'price', title: 'Price and events', isNew: true, items: [{ c: PtPriceEvents, inputs: { ticker: t, range: '1y', fund: true } }] },
       { id: 'news', title: 'News of its largest holdings', isNew: true, items: [{ c: PtNews, inputs: { ticker: t, limit: 10 } }] },
       basket('questions', `Questions about ${t}`, 'faq'),
     ],

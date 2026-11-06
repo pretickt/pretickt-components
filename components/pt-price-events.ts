@@ -1,6 +1,7 @@
 /**
  * What happened to this stock's price, and which earnings, dividends, splits and analyst moves happened along the way?
  * @version 2.3.0
+ * @evidence design of the fund pages, 2026-11-05, section 7: a fund's chart marks market events, not analyst actions
  * @evidence design of the fund pages, 2026-11-05: on a fund's chart a report is one of its holdings', and its tooltip names the company
  * @evidence beta: the price chart with event markers on the company page
  * @evidence DataForSEO: "<ticker> earnings date", "<ticker> dividend" families (launch/data)
@@ -61,8 +62,10 @@ const KINDS: Record<string, { glyph: string; plural: string; legend: string }> =
   dividend: { glyph: 'D', plural: 'dividends', legend: 'dividend' },
   split: { glyph: 'S', plural: 'splits', legend: 'split' },
   analyst: { glyph: 'A', plural: 'analyst actions', legend: 'analyst rating change' },
+  macro: { glyph: 'M', plural: 'market events', legend: 'market event' },
 };
-const LEGEND = Object.values(KINDS).map((k) => `${k.glyph} ${k.legend}`).join(' · ');
+const legendOf = (kinds: readonly string[]) => kinds.map((k) => `${KINDS[k]!.glyph} ${KINDS[k]!.legend}`).join(' · ');
+const COMPANY_KINDS = ['earnings', 'dividend', 'split', 'analyst'] as const, FUND_KINDS = ['earnings', 'dividend', 'split', 'macro'] as const;
 
 function tipFor(e: EventItem, own: string): string {
   switch (e.kind) {
@@ -77,6 +80,8 @@ function tipFor(e: EventItem, own: string): string {
       return tip({ Dividend: amount(e.meta.amount), 'Ex-date': date(e.date), 'Pay date': e.meta.payDate ? date(e.meta.payDate) : null });
     case 'split':
       return tip({ Split: `${e.meta.numerator}-for-${e.meta.denominator}`, Date: date(e.date) });
+    case 'macro':
+      return tip({ [e.meta.label]: e.meta.event ?? '', Date: date(e.date) });
     case 'analyst':
       return tip({ [e.meta.firm || 'Analyst']: `${e.meta.action}${e.meta.from || e.meta.to ? ` ${e.meta.from ?? '?'} → ${e.meta.to ?? '?'}` : ''}`, Date: date(e.date) });
     default:
@@ -130,11 +135,13 @@ export class PtPriceEvents {
   private readonly pt = inject(Pt);
   readonly ticker = input.required<string>();
   readonly range = input<RangeValue>('1y');
+  /** On a fund's page: market events in place of analyst actions, which rate its holdings, not it. */
+  readonly fund = input(false);
 
   /** The reader's choice (the toggle); the captions follow the data on screen (`series.params()`). */
   protected readonly picked = linkedSignal(() => this.range());
   protected readonly series = this.pt.priceSeries(() => ({ tickers: [this.ticker()], range: this.picked(), interval: '1d', rebase: false }));
-  protected readonly events = this.pt.events(() => ({ scope: { by: 'ticker', ticker: this.ticker(), range: this.picked(), ahead: 90 }, kinds: ['earnings', 'dividend', 'split', 'analyst'] }));
+  protected readonly events = this.pt.events(() => ({ scope: { by: 'ticker', ticker: this.ticker(), range: this.picked(), ahead: 90 }, kinds: [...(this.fund() ? FUND_KINDS : COMPANY_KINDS)] }));
   protected readonly shown = computed(() => (this.series.params() as { range?: RangeValue } | undefined)?.range ?? this.picked());
   /** New data on screen: back to the full view. */
   protected readonly view = linkedSignal<unknown, Viewport>({ source: () => this.series.params(), computation: () => FULL_VIEWPORT });
@@ -152,6 +159,6 @@ export class PtPriceEvents {
   protected readonly caption = computed(() => {
     const p = this.points();
     if (!p.length) return '';
-    return `Last close ${money(p.at(-1)!.c)} · ${pct(p.at(-1)!.c / p[0]!.c - 1)} over ${this.shown()} · ${LEGEND}${this.events.value() ? '' : ' · Events not available'}`;
+    return `Last close ${money(p.at(-1)!.c)} · ${pct(p.at(-1)!.c / p[0]!.c - 1)} over ${this.shown()} · ${legendOf(this.fund() ? FUND_KINDS : COMPANY_KINDS)}${this.events.value() ? '' : ' · Events not available'}`;
   });
 }

@@ -111,4 +111,18 @@ describe('pt-price-events', () => {
     expect(await tips('SMH')).toContain('Nvidia');
     expect(await tips('NVDA')).not.toContain('Nvidia');
   });
+  it('on a fund\'s page: market events beside the reports and its own dividends and splits, no analyst actions, and the legend says so', async () => {
+    const kinds: unknown[] = [];
+    const series = [{ ticker: 'SMH', points: priceSeriesDemo({ tickers: ['SMH'], range: '1y', interval: '1d', rebase: false }).at(0)!.points }];
+    const at = series[0]!.points.at(-10)!.t;
+    const answer = async (t: string, p: unknown) => { if (t === 'events@1') { kinds.push((p as { kinds: unknown }).kinds); return { asOf: at, items: [{ date: at, kind: 'macro', meta: { label: 'Fed', event: 'FOMC', impact: 'High' } }] }; } return series; };
+    const r = await render(PtPriceEvents, { ticker: 'SMH', range: '1y', fund: true }, answer);
+    expect(kinds[0]).toEqual(['earnings', 'dividend', 'split', 'macro']);
+    expect(r.el.querySelector('.pt-mk-macro')).not.toBeNull();
+    expect(r.text()).toContain('market event');
+    expect(r.text()).not.toContain('analyst');
+    const co = await render(PtPriceEvents, { ticker: 'NVDA', range: '1y' }, withData({ 'price-series@1': series, 'events@1': { asOf: at, items: [] } }));
+    expect(co.text()).toContain('analyst');
+    expect(co.text()).not.toContain('market event');
+  });
 });

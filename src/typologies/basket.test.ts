@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { demoFor, getTypology } from './index';
 import { BasketPayload, BASKET_MIN_COVERAGE, BASKET_MOVERS, type Basket } from './basket';
-import { basketLead, basketMoved } from './basket-words';
+import { basketLead, basketMoved, oneMover } from './basket-words';
 import { CompanyPayload } from './company';
 import { NewsPayload } from './news';
 
@@ -79,9 +79,24 @@ describe('a fund in words', () => {
     expect(basketMoved('SMH', null, [], [])).toBe('');
   });
   it('the questions about the business: the mean of what reads, the weakest; price never counts, nor one not comparable', () => {
-    const q = (key: string, pos: number, comparable = true) => ({ key, pos, comparable });
-    expect(basketLead('SMH', [q('demand', 0.8), q('advantage', 0.6), q('fragility', 0.3), q('price', 0), q('execution', 0, false)])).toBe('By weight, SMH\'s holdings are strong on 57% of the questions about the business; weakest on fragility.');
+    const q = (key: string, pos: number, comparable = true, share = 0.98) => ({ key, pos, comparable, share });
+    expect(basketLead('SMH', [q('demand', 0.8), q('advantage', 0.6, true, 0.71), q('fragility', 0.3), q('price', 0, true, 0.1), q('execution', 0, false, 0.02)])).toBe('By weight, SMH\'s holdings are strong on 57% of the questions about the business; weakest on fragility. Each reading rests on at least 71% of the fund.');
     expect(basketLead('SMH', [q('demand', 0.8, false)])).toBeNull();
     expect(basketLead('SMH', null)).toBeNull();
+  });
+});
+
+describe('a company with two share classes', () => {
+  const m = (ticker: string, name: string, weight: number, ret: number) => ({ ticker, name, weight, ret, points: weight * ret });
+  it('is one mover: the weights and the points add up, the move is what they imply, the largest line gives the ticker', () => {
+    const [al, a] = oneMover([m('GOOGL', 'Alphabet Inc.', 0.03, -0.05), m('A', 'A Inc.', 0.02, 0.01), m('GOOG', 'Alphabet Inc.', 0.02, -0.04)]);
+    expect(al).toMatchObject({ ticker: 'GOOGL', weight: 0.05 });
+    expect(al!.points).toBeCloseTo(-0.0023);
+    expect(al!.ret).toBeCloseTo(-0.046);
+    expect(a).toMatchObject({ ticker: 'A', weight: 0.02 });
+  });
+  it('so the sentence names it once', () => {
+    const rows = oneMover([m('GOOGL', 'Alphabet Inc.', 0.03, -0.05), m('GOOG', 'Alphabet Inc.', 0.02, -0.05), m('MU', 'Micron Technology, Inc.', 0.01, -0.05)]);
+    expect(basketMoved('SPY', -0.01, [], rows)).toBe('SPY fell 1.00%. Alphabet took off 0.25 points, Micron 0.05.');
   });
 });

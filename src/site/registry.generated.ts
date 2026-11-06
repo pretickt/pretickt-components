@@ -66,7 +66,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
       @case ('pt-metric') { @defer (hydrate on viewport) {<pt-metric [ticker]="$any(p()).ticker" [metrics]="$any(p()).metrics" />} }
       @case ('pt-movers') { @defer (hydrate on viewport) {<pt-movers [sort]="$any(p()).sort ?? 'cap'" />} }
       @case ('pt-news') { @defer (hydrate on viewport) {<pt-news [ticker]="$any(p()).ticker" [limit]="$any(p()).limit ?? 20" />} }
-      @case ('pt-price-events') { @defer (hydrate on viewport) {<pt-price-events [ticker]="$any(p()).ticker" [range]="$any(p()).range ?? '1y'" />} }
+      @case ('pt-price-events') { @defer (hydrate on viewport) {<pt-price-events [ticker]="$any(p()).ticker" [range]="$any(p()).range ?? '1y'" [fund]="$any(p()).fund ?? false" />} }
       @case ('pt-price-target') { @defer (hydrate on viewport) {<pt-price-target [ticker]="$any(p()).ticker" />} }
       @case ('pt-quality') { @defer (hydrate on viewport) {<pt-quality [ticker]="$any(p()).ticker" />} }
       @case ('pt-screen') { @defer (hydrate on viewport) {<pt-screen [list]="$any(p()).list" [peersOf]="$any(p()).peersOf" [limit]="$any(p()).limit ?? 25" [sector]="$any(p()).sector" />} }

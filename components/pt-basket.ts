@@ -10,7 +10,7 @@ import { Component, computed, inject, input, linkedSignal } from '@angular/core'
 import { Pt, PtLive } from '@pretickt/components/context';
 import { PtCompany, PtLogo } from '@pretickt/components/ds';
 import { date, href, level, money, num, pct, plainName, stockHref, tone, usd } from '@pretickt/components/format';
-import { BASKET_MIN_COVERAGE, BASKET_MOVERS, BASKET_SHOWN, basketLead, basketMoved, type Basket, type BasketMover } from '@pretickt/components/typologies';
+import { BASKET_MIN_COVERAGE, BASKET_MOVERS, BASKET_SHOWN, basketLead, basketMoved, oneMover, type Basket, type BasketMover } from '@pretickt/components/typologies';
 
 const QUESTION: Record<string, string> = { demand: 'Demand', advantage: 'Advantage', economics: 'Economics', execution: 'Execution', fragility: 'Fragility', price: 'Price' };
 const SOURCE = 'https://advantage.factset.com/hubfs/Website/Resources%20Section/Research%20Desk/Earnings%20Insight/EarningsInsight_092322.pdf';
@@ -20,12 +20,12 @@ const slots = (rows: readonly BasketMover[]) => Array.from({ length: BASKET_MOVE
 /** The moves at the delayed prices: a holding missing from the quotes keeps its last figures. */
 export function liveMoves(b: Basket, q: Record<string, { r: number }>, news: Record<string, { top: { title: string; url: string }[] }>): { ret: number | null; up: BasketMover[]; down: BasketMover[] } {
   const known = new Map([...b.moves.up, ...b.moves.down].map((m) => [m.ticker, m.headline]));
-  const rows = b.holdings.flatMap((h): BasketMover[] => {
+  const rows = oneMover(b.holdings.flatMap((h): BasketMover[] => {
     const ret = h.ticker ? q[h.ticker]?.r ?? h.ret : null;
     if (!h.ticker || ret == null) return [];
     const top = news[h.ticker]?.top[0];
     return [{ ticker: h.ticker, name: h.name, logo: h.logo, weight: h.weight, ret, points: h.weight * ret, headline: top ? { title: top.title, url: top.url } : known.get(h.ticker) ?? null }];
-  });
+  }));
   return {
     ret: q[b.ticker]?.r ?? b.ret,
     up: rows.filter((m) => m.points > 0).sort((x, y) => y.points - x.points).slice(0, BASKET_MOVERS),
@@ -43,7 +43,7 @@ export function liveMoves(b: Basket, q: Record<string, { r: number }>, news: Rec
       @switch (section()) {
         @case ('moves') {
           <section class="pt-bk">
-            <p class="pt-answer">{{ moved() }}</p>
+            <p class="pt-answer pt-bk-moved">{{ moved() }}</p>
             <p class="pt-meta">{{ when() }}</p>
             <div class="pt-bk-moves">
               @for (s of sides(); track s.label) {
@@ -75,7 +75,7 @@ export function liveMoves(b: Basket, q: Record<string, { r: number }>, news: Rec
               <table class="pt-table">
                 <thead><tr><th>Holding</th><th class="pt-num">Weight</th><th class="pt-num">Day</th><th class="pt-num">Upside</th><th class="pt-bk-lab">Consensus</th></tr></thead>
                 <tbody>
-                  @for (h of shown(); track h.name) {
+                  @for (h of shown(); track h.ticker ?? h.name) {
                     <tr>
                       <td>@if (h.ticker; as t) {<a ptCompany [ticker]="t" [name]="h.name" [logo]="h.logo"></a>} @else {<span class="pt-bk-other">{{ plainName(h.name) }}</span>}</td>
                       <td class="pt-num">{{ level(h.weight) }}</td>
@@ -116,6 +116,7 @@ export function liveMoves(b: Basket, q: Record<string, { r: number }>, news: Rec
                   </div>
                 }
               </div>
+              @if (b.note) {<p class="pt-note">{{ b.note }}</p>}
               <p class="pt-note">Weighted by the fund. Price only, with no dividends or fees. Targets added up this way have run high: FactSet's for the S&amp;P 500 ran 9.7% above the index on average over 20 years and 0.1% over 10 (<a [href]="SOURCE" target="_blank" rel="nofollow noopener noreferrer">FactSet, Sept. 2022</a>).</p>
             }
           </section>
@@ -130,11 +131,12 @@ export function liveMoves(b: Basket, q: Record<string, { r: number }>, news: Rec
                     <span class="pt-bk-qk">{{ QUESTION[q.key] }}</span>
                     @if (q.comparable) {
                       <div class="pt-bk-bar" aria-hidden="true"><i class="pt-bk-pos" [style.flex-grow]="q.pos"></i><i class="pt-bk-flat" [style.flex-grow]="q.flat"></i><i class="pt-bk-neg" [style.flex-grow]="q.neg"></i></div>
-                      <span class="pt-meta pt-bk-qv">{{ level(q.pos, 0) }} strong · {{ level(q.flat, 0) }} in between · {{ level(q.neg, 0) }} weak</span>
+                      <span class="pt-meta pt-bk-qv">{{ level(q.pos, 0) }} strong · {{ level(q.flat, 0) }} in between · {{ level(q.neg, 0) }} weak · on {{ level(q.share, 0) }} of the fund</span>
                     } @else {<span class="pt-meta pt-bk-qv pt-bk-qn">not comparable for this fund</span>}
                   </div>
                 }
               </div>
+              <p class="pt-note">Shares of the weight with a reading on each question; a card our public checks contradict stays out. Fragility leaves out utilities and real estate: its score reads their normal debt as distress.</p>
             } @else {<p class="pt-note">{{ lowLine() }}</p>}
             <dl class="pt-bk-facts">
               @if (b.fund.expenseRatio != null) {<div><dt>Fee</dt><dd>{{ level(b.fund.expenseRatio, 2) }} a year</dd></div>}

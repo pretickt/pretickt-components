@@ -56,6 +56,18 @@ describe('pt-basket', () => {
       const row = [...el.querySelectorAll('.pt-bk-mv')].find((r) => r.textContent!.includes('AMD'))!; // AMD is not in the quotes: +1.0% still
       expect(row.textContent).toContain('+1.0%');
     });
+    it('the delayed prices keep a company with two share classes as one row, and its name once in the sentence', async () => {
+      const al = (ticker: string, weight: number) => ({ ticker, name: 'Alphabet Inc.', logo: null, weight, ret: 0.01, upside: 0.1, label: 'Buy' });
+      const b: Basket = { ...SMH, holdings: [al('GOOGL', 0.03), al('GOOG', 0.02)] };
+      const q = { GOOGL: { p: 1, pc: 1, r: -0.05, m: 0, s: null, x: null }, GOOG: { p: 1, pc: 1, r: -0.05, m: 0, s: null, x: null } };
+      const r = await section('moves', b, { browser: true, providers: liveDay({ ...open, q: { ...q, SMH: { p: 1, pc: 1, r: -0.01, m: 0, s: null, x: null } } }) });
+      await settle(r.f); await r.f.whenStable(); await settle(r.f);
+      expect(r.text().match(/Alphabet/g)!.length).toBe(2); // once in the sentence, once in its row
+      expect(r.text()).toContain('Alphabet took off 0.25 points');
+    });
+    it('the sentence has room reserved, so a longer one does not push the rows down', async () => {
+      expect((await section('moves')).el.querySelector('.pt-bk-moved')).not.toBeNull();
+    });
     it('a session not newer than the data changes nothing', async () => {
       const { text } = await live({ ...open, session: SMH.asOf });
       expect(text()).toContain('SMH fell 2.75%');
@@ -110,6 +122,9 @@ describe('pt-basket', () => {
       expect(text()).toMatch(/9\.7%/);
       expect(el.querySelector('a[href*="factset"]')).not.toBeNull();
     });
+    it('what the target cannot see is said beside it (JEPI\'s options)', async () => {
+      expect((await section('analysts', { ...SMH, note: 'Part of this fund\'s return comes from options, which the target does not see.' })).text()).toContain('which the target does not see');
+    });
     it('under 80%: one line says how much we cover, and no figure', async () => {
       const t = (await section('analysts', LOW)).text();
       expect(t).toContain('We cover 72% of this fund');
@@ -129,6 +144,12 @@ describe('pt-basket', () => {
       expect(text()).toContain('0.35%');
       expect(text()).toMatch(/\$50(\.0+)?B/);
       expect(text().trim().endsWith('pretickt does not say whether to buy or sell.')).toBe(true);
+    });
+    it('each bar says how much of the fund it rests on, and who its rule leaves out', async () => {
+      const { el, text } = await section('questions');
+      expect(el.querySelector('.pt-bk-q')!.textContent).toContain('on 98% of the fund');
+      expect(text()).toMatch(/Rests on at least 98% of the fund|rests on at least 98% of the fund/);
+      expect(text()).toMatch(/utilities and real estate/i);
     });
     it('a question that does not read across the fund says so instead of 0%', async () => {
       const b: Basket = { ...SMH, questions: SMH.questions!.map((q) => (q.key === 'advantage' ? { ...q, pos: 0, flat: 0, neg: 0, comparable: false } : q)) };
@@ -153,6 +174,10 @@ describe('pt-basket', () => {
     });
   });
 
+  it('two lines of one company in the holdings render as two rows, each with its ticker', async () => {
+    const al = (ticker: string) => ({ ticker, name: 'Alphabet Inc.', logo: null, weight: 0.02, ret: 0.01, upside: 0.1, label: 'Buy' });
+    expect((await section('holdings', { ...SMH, holdings: [al('GOOGL'), al('GOOG')] })).el.querySelectorAll('tbody tr')).toHaveLength(2);
+  });
   it('questions and answers are marked for the page\'s structured data', async () => {
     const { el } = await section('faq', { ...SMH, faq: [{ q: 'What does SMH hold?', a: 'It holds stocks.' }] });
     expect(el.querySelector('[data-faq] [data-faq-q]')!.textContent).toContain('What does SMH hold?');

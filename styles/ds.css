@@ -565,6 +565,7 @@
   .pt-mk-earnings { @apply fill-primary; }
   .pt-mk-dividend { @apply fill-pos; }
   .pt-mk-split { @apply fill-warn; }
+  .pt-mk-macro { @apply fill-ink-soft; }
   .pt-mk-analyst { @apply fill-ink-soft; }
   .pt-mk-other { @apply fill-border; }
   .pt-mk-future { fill-opacity: 0.35; @apply stroke-primary; }
@@ -1070,6 +1071,8 @@
   .dv-more:hover { text-decoration: underline; }
   /* pt-basket: a fund's sections. Each row of the moves has a fixed height, held open when empty, so the section never shifts when the delayed prices arrive. */
   .pt-bk { display: grid; gap: .6rem; min-width: 0; }
+  .pt-bk-moved { min-height: 3lh; }
+  @media (min-width: 48rem) { .pt-bk-moved { min-height: 2lh; } }
   .pt-bk-moves { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
   @media (min-width: 48rem) { .pt-bk-moves { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .pt-bk-side { min-width: 0; }
