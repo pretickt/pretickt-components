@@ -1,13 +1,14 @@
 /**
  * What happened to this stock's price, and which earnings, dividends, splits and analyst moves happened along the way?
- * @version 2.2.0
+ * @version 2.3.0
+ * @evidence design of the fund pages, 2026-11-05: on a fund's chart a report is one of its holdings', and its tooltip names the company
  * @evidence beta: the price chart with event markers on the company page
  * @evidence DataForSEO: "<ticker> earnings date", "<ticker> dividend" families (launch/data)
  */
 import { Component, computed, inject, input, linkedSignal } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
 import { applyXViewport, applyYViewport, closeAt, FULL_VIEWPORT, isoDay, linePath, monthTicks, padTime, PtChart, PtTimeAxis, PtToggles, PtYAxis, type Viewport } from '@pretickt/components/ds';
-import { amount, date, money, num, pct, tip } from '@pretickt/components/format';
+import { amount, date, money, num, pct, plainName, tip } from '@pretickt/components/format';
 import { RANGES, type EventItem, type PriceBar, type RangeValue } from '@pretickt/components/typologies';
 
 // Price labels sit in the right-hand strip you can grab to stretch the scale (beta / TradingView layout).
@@ -63,12 +64,12 @@ const KINDS: Record<string, { glyph: string; plural: string; legend: string }> =
 };
 const LEGEND = Object.values(KINDS).map((k) => `${k.glyph} ${k.legend}`).join(' · ');
 
-function tipFor(e: EventItem): string {
+function tipFor(e: EventItem, own: string): string {
   switch (e.kind) {
     case 'earnings': {
       const m = e.meta;
       const surprise = m.epsActual != null && m.epsEst ? (m.epsActual - m.epsEst) / Math.abs(m.epsEst) : null;
-      return tip({ Earnings: date(e.date), Time: m.time ? m.time.toUpperCase() : null,
+      return tip({ ...(e.ticker && e.ticker !== own ? { Company: plainName(e.name ?? e.ticker) } : {}), Earnings: date(e.date), Time: m.time ? m.time.toUpperCase() : null,
         Status: m.confirmed == null ? null : m.confirmed ? 'Confirmed by the company' : 'Estimated date', 'EPS est.': m.epsEst == null ? null : num(m.epsEst),
         'EPS actual': m.epsActual == null ? null : num(m.epsActual), Surprise: surprise == null ? null : pct(surprise) });
     }
@@ -83,8 +84,8 @@ function tipFor(e: EventItem): string {
   }
 }
 /** Tooltip for a marker: the event itself, or a count with the first few entries. */
-function tipForGroup(m: Marker): string {
-  if (m.items.length === 1) return tipFor(m.items[0]!);
+function tipForGroup(m: Marker, own: string): string {
+  if (m.items.length === 1) return tipFor(m.items[0]!, own);
   const o: Record<string, string> = { [`${m.items.length} ${KINDS[m.kind]?.plural ?? 'events'}`]: date(m.date) };
   for (const e of m.items.slice(0, 5)) {
     const label = e.kind === 'analyst' ? e.meta.firm : e.kind;
@@ -141,7 +142,7 @@ export class PtPriceEvents {
   protected readonly W = W; protected readonly H = H; protected readonly PLOT_W = PLOT_W; protected readonly PLOT_H = PLOT_H;
   protected readonly KINDS = KINDS;
   protected readonly RANGE_TOGGLES = RANGES.map((r) => [r, r.toUpperCase()] as const);
-  protected readonly tipForGroup = tipForGroup;
+  protected readonly tipForGroup = (m: Marker) => tipForGroup(m, this.ticker());
   protected markerClass = (m: Marker) => `pt-mk pt-mk-${KINDS[m.kind] ? m.kind : 'other'}${m.future ? ' pt-mk-future' : ''}`;
 
   protected pick(r: RangeValue) { this.picked.set(r); this.series.retry(); this.events.retry(); }

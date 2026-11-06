@@ -3,7 +3,8 @@
  * price target, its peers, its latest quarter, its insiders; who leads a market list; a calendar month at a glance.
  * Company topics name the company as people search it, with its ticker ("Nvidia NVDA"): the sentence an answer engine quotes stands on its own.
  * Each company a sentence names is a link with its logo (PtSay, PtMention): on the site its card opens on hover, the page's own company too.
- * @version 1.4.1
+ * @version 1.5.0
+ * @evidence design of the fund pages, 2026-11-05: `topic: 'basket'`, the page's first sentence about a fund
  * @evidence DataForSEO: "<ticker> stock forecast" 151k/month, "<ticker> price target" 103k/month, "earnings calendar" 153k/month, list queries (launch/data/08c-serp-*.json)
  * @evidence SEO measurement 2026-10-09: list and company subpages of ~80–200 words; the answer belongs in the first lines, with its numbers
  * @evidence DataForSEO round 16 (2026-11-02): "<ticker> 200 day moving average" 4,080/month on 9 tickers, 50-day 1,550, 52-week high 1,300; the AI
@@ -12,12 +13,12 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
 import { PtSay } from '@pretickt/components/ds';
-import { amount, andSaid, cash, date, level, mention, money, num, pct, say, usd, type Mention, type Said } from '@pretickt/components/format';
+import { amount, andSaid, cash, date, level, mention, money, num, pct, plainName as commonName, say, usd, type Mention, type Said } from '@pretickt/components/format';
 import { INSIDER_WINDOW_DAYS, type EventItem, type ScreenList, type ScreenRow, type Sector } from '@pretickt/components/typologies';
 
 export { plainName } from '@pretickt/components/format';
 
-type Topic = 'forecast' | 'price-target' | 'peers' | 'financials' | 'insiders' | 'list' | 'earnings' | 'dividends' | 'technicals';
+type Topic = 'forecast' | 'price-target' | 'peers' | 'financials' | 'insiders' | 'list' | 'earnings' | 'dividends' | 'technicals' | 'basket';
 type Named = { ticker: string; name: string; logo?: string | null };
 
 /** A company the answer names: a link with its logo ("Apple AAPL"), its card on hover. */
@@ -97,6 +98,7 @@ export class PtAnswer {
     const t = this.of('forecast', 'price-target', 'peers', 'financials', 'insiders', 'technicals');
     return t ? { ticker: t } : null;
   });
+  protected readonly basket = this.pt.basket(() => { const t = this.of('basket'); return t ? { ticker: t } : null; });
   protected readonly analysts = this.pt.analysts(() => { const t = this.of('forecast', 'price-target'); return t ? { ticker: t, window: '1y' } : null; });
   protected readonly rating = this.pt.metric(() => { const t = this.of('forecast', 'price-target'); return t ? { ticker: t, metrics: ['pt_upside', 'consensus'] } : null; });
   protected readonly peers = this.pt.screen(() => { const t = this.of('peers'); return t ? { scope: { peersOf: t }, limit: 12 } : null; });
@@ -127,6 +129,7 @@ export class PtAnswer {
       case 'insiders': return this.insiderAnswer();
       case 'list': return this.listAnswer();
       case 'technicals': return this.technicalsAnswer();
+      case 'basket': return this.basketAnswer();
       default: return this.calendarAnswer();
     }
   });
@@ -135,6 +138,19 @@ export class PtAnswer {
   private named(t: string): Mention | undefined {
     const c = this.company.value();
     return c === undefined ? undefined : mention(t, c?.name ?? null, c?.logo ?? null);
+  }
+
+  /** What a fund holds and what the targets on its covered share say: facts, never a yes or a no; under 80% no figure at all. */
+  private basketAnswer(): Said | null {
+    const b = this.basket.value(), t = this.ticker();
+    if (!t) return null;
+    if (b === undefined) return PENDING;
+    if (b === null) return null;
+    const top = b.holdings[0], who = b.group === 'Market' ? `${t}, which ${b.tracks},` : t;
+    const held = top ? say`${who} holds ${many(b.fund.holdings ?? b.holdings.length, 'stock')}; the largest is ${top.ticker ? mention(top.ticker, top.name, top.logo) : commonName(top.name)} at ${level(top.weight)}. ` : say``;
+    const figure = b.state === 'low' ? `We cover ${level(b.coverage, 0)} of this fund, under the 80% our basket figures need. `
+      : b.target ? `Analysts' targets on the ${level(b.target.share, 0)} of the fund we cover average ${pct(b.target.upside)}, which would put it at ${money(b.target.price)}. ` : '';
+    return say`${held}${figure}pretickt does not say whether to buy or sell.`;
   }
 
   private target(): Said | null {

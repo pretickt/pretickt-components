@@ -1,4 +1,4 @@
-import type { Analysts, Events, Fundamentals, Insider, MetricItem, Screen, ScreenRow } from '../src/typologies';
+import { demoFor, type Analysts, type Basket, type Events, type Fundamentals, type Insider, type MetricItem, type Screen, type ScreenRow } from '../src/typologies';
 import { plainName, PtAnswer } from './pt-answer';
 import { PtCalendar } from './pt-calendar';
 import { basics, render, withData } from './_spec';
@@ -165,3 +165,34 @@ describe('pt-answer', () => {
     expect(Object.keys(d.record)).toEqual(Object.keys(dc.record));
   });
 });
+
+describe('a fund', () => {
+  const fund = demoFor({ t: 'basket@1', params: { ticker: 'SMH' } }) as Basket;
+  const SMH: Basket = { ...fund, group: 'Semiconductors', fund: { ...fund.fund, holdings: 27 }, target: { ...fund.target!, upside: 0.481, price: 747, share: 0.99 }, holdings: [{ ticker: 'NVDA', name: 'NVIDIA Corporation', logo: null, weight: 0.205, ret: null, upside: null, label: null }] };
+  const said = async (b: Basket) => (await render(PtAnswer, { topic: 'basket', ticker: b.ticker }, withData({ 'basket@1': b }))).text().replace(/\s+/g, ' ').trim();
+  it('what it holds, what the targets on its covered share say, and that pretickt does not say whether to buy', async () => {
+    const t = await said(SMH);
+    expect(t).toContain('SMH holds 27 stocks; the largest is Nvidia');
+    expect(t).toContain('at 20.5%.');
+    expect(t).toContain("Analysts' targets on the 99% of the fund we cover average +48.1%, which would put it at $747.00.");
+    expect(t).toContain('pretickt does not say whether to buy or sell.');
+  });
+  it('the market\'s funds name what they track', async () => {
+    expect(await said({ ...SMH, ticker: 'SPY', group: 'Market', tracks: 'tracks the S&P 500' })).toContain('SPY, which tracks the S&P 500, holds 27 stocks');
+  });
+  it('under 80%: no figure, the coverage in words', async () => {
+    const t = await said({ ...SMH, state: 'low', coverage: 0.72, target: null, consensus: null, pe: null, questions: null });
+    expect(t).toContain('We cover 72% of this fund');
+    expect(t).not.toMatch(/\$\d|average/);
+    expect(t).toContain('pretickt does not say whether to buy or sell.');
+  });
+  it('no target to speak of: the holdings alone', async () => {
+    const t = await said({ ...SMH, target: null });
+    expect(t).toContain('SMH holds 27 stocks');
+    expect(t).not.toContain('average');
+  });
+  it('not available', async () => {
+    expect((await render(PtAnswer, { topic: 'basket', ticker: 'SMH' }, withData({ 'basket@1': null }))).text()).not.toContain('holds');
+  });
+});
+

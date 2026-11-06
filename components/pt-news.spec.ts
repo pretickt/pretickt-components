@@ -25,4 +25,12 @@ describe('pt-news', () => {
     await render(PtNews, { ticker: 'NVDA' }, async (t, p) => { asked.push(p); return withData({})(t, p); });
     expect(asked).toEqual([{ ticker: 'NVDA', limit: 20 }]);
   });
+  it('a fund: each story names its company, with a link; a company\'s stories do not', async () => {
+    const item = { publishedAt: '2026-10-02T13:00:00Z', title: 'T', site: 'Reuters', url: 'https://x/a', sentiment: null };
+    const fund = await render(PtNews, { ticker: 'SMH' }, withData({ 'news@1': { asOf: '2026-10-02', items: [{ ...item, ticker: 'NVDA', name: 'NVIDIA Corporation', logo: null }] } }));
+    expect(fund.text()).toContain('Nvidia · Reuters');
+    expect(fund.el.querySelector('.pt-meta a')!.getAttribute('href')).toBe('/stocks/nvda/');
+    const co = await render(PtNews, { ticker: 'NVDA' }, withData({ 'news@1': { asOf: '2026-10-02', items: [item] } }));
+    expect(co.el.querySelector('.pt-meta a')).toBeNull();
+  });
 });

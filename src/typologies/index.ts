@@ -75,6 +75,7 @@ export * from './events';
 export * from './analysts';
 export * from './fundamentals';
 export * from './basket';
+export * from './basket-words';
 export * from './company';
 export * from './insider';
 export * from './attention';

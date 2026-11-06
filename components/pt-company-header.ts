@@ -1,14 +1,15 @@
 /**
  * How does this company look right now: its price over three months and today (15 minutes late), and how the data divide between the
  * two sides, counted, never weighed and never concluded?
- * @version 1.0.0
+ * @version 1.1.0
+ * @evidence design of the fund pages, 2026-11-05: a fund's header says how much of it the basket figures cover
  * @evidence Romeo, 2026-11-05: the company page's header, «si capisce subito quali sono a favore di un rialzo e quali a favore di un ribasso», «senza dare mai consigli»
  * @evidence design: pretickt/docs/superpowers/specs/2026-11-05-company-header-bands-design.md
  */
 import { afterRenderEffect, Component, computed, type ElementRef, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { Pt, PtLive } from '@pretickt/components/context';
 import { PtBadge, PtLogo } from '@pretickt/components/ds';
-import { date, dayMonth, money, pct, plainName, tone, usd, type Badge } from '@pretickt/components/format';
+import { date, dayMonth, level, money, pct, plainName, tone, usd, type Badge } from '@pretickt/components/format';
 import { bollinger, macd, rsi, smaLast } from '@pretickt/components/indicators';
 import { METRIC_KEYS, type MetricItem } from '@pretickt/components/typologies';
 
@@ -286,7 +287,7 @@ const slotTime = (i: number) => { const t = 570 + i * 5, m = t % 60, h = Math.fl
             </div>
           }
         </div>
-        <p class="pt-hdr-note">{{ low ? 'Updates with the 15-min delayed price. Not a forecast or investment advice.' : 'Updates with the 15-min delayed price; analysts, insiders and news are from the last close. Not a forecast or investment advice.' }}</p>
+        <p class="pt-hdr-note">{{ note() }}</p>
       </section>
     }`,
 })
@@ -327,6 +328,11 @@ export class PtCompanyHeader {
     return livened(ms, p, c0, this.history.value()?.[0]?.points.map((x) => x.c) ?? null);
   });
   private readonly byKey = computed(() => new Map(this.items().map((m) => [m.key, m])));
+  protected readonly note = computed(() => {
+    const c = this.co.value();
+    if (c?.kind === 'etf') return `Basket figures cover ${level(c.coverage ?? 0, 0)} of this fund. Updates with the 15-min delayed price; analysts and news are from the last close. Not a forecast or investment advice.`;
+    return this.size() === 'low' ? 'Updates with the 15-min delayed price. Not a forecast or investment advice.' : 'Updates with the 15-min delayed price; analysts, insiders and news are from the last close. Not a forecast or investment advice.';
+  });
   private readonly target = computed(() => targetOf(this.metrics.value() ?? [], this.c0()));
   protected readonly bands = computed(() => bandsOf(this.items(), { target: this.target(), low: this.size() === 'low' }));
   protected readonly rows = computed(() => bandRows(this.bands().g.length, this.bands().r.length));

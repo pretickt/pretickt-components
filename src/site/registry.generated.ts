@@ -3,6 +3,7 @@
 import { Component, computed, inject, Injector, input } from '@angular/core';
 import { Pt, PT_SLOT } from '@pretickt/components/context';
 import { PtAnswer } from '../../components/pt-answer';
+import { PtBasket } from '../../components/pt-basket';
 import { PtCalendar } from '../../components/pt-calendar';
 import { PtCompanyCard } from '../../components/pt-company-card';
 import { PtCompanyHeader } from '../../components/pt-company-header';
@@ -22,18 +23,19 @@ import { PtWhyToday } from '../../components/pt-why-today';
 
 /** Every component: its version, and props it can render with (the build renders each once before any page, see warmUp). */
 export const REGISTRY: Record<string, { version: string; sample: Record<string, unknown> }> = {
-  'pt-answer': { version: '1.4.1', sample: {} },
+  'pt-answer': { version: '1.5.0', sample: {} },
+  'pt-basket': { version: '1.0.0', sample: { ticker: 'NVDA' } },
   'pt-calendar': { version: '3.1.0', sample: { month: '2026-09' } },
   'pt-company-card': { version: '1.2.2', sample: { ticker: 'NVDA' } },
-  'pt-company-header': { version: '1.0.0', sample: { ticker: 'NVDA' } },
+  'pt-company-header': { version: '1.1.0', sample: { ticker: 'NVDA' } },
   'pt-feed': { version: '1.0.0', sample: {} },
   'pt-financials': { version: '2.4.0', sample: { ticker: 'NVDA' } },
   'pt-insiders': { version: '2.3.0', sample: { ticker: 'NVDA' } },
   'pt-logo-map': { version: '0.6.1', sample: {} },
   'pt-metric': { version: '2.1.0', sample: { ticker: 'NVDA', metrics: ['pe', 'pe_vs_sector', 'pe_vs_own', 'pt_upside', 'consensus', 'market_cap', 'fcf_yield', 'insider_net', 'earnings_in', 'news'] } },
   'pt-movers': { version: '1.1.0', sample: {} },
-  'pt-news': { version: '2.1.0', sample: { ticker: 'NVDA' } },
-  'pt-price-events': { version: '2.2.0', sample: { ticker: 'NVDA' } },
+  'pt-news': { version: '2.2.0', sample: { ticker: 'NVDA' } },
+  'pt-price-events': { version: '2.3.0', sample: { ticker: 'NVDA' } },
   'pt-price-target': { version: '2.4.1', sample: { ticker: 'NVDA' } },
   'pt-quality': { version: '0.3.1', sample: { ticker: 'NVDA' } },
   'pt-screen': { version: '2.5.0', sample: {} },
@@ -47,12 +49,13 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
  */
 @Component({
   selector: 'div[ptSlot]',
-  imports: [PtAnswer, PtCalendar, PtCompanyCard, PtCompanyHeader, PtFeed, PtFinancials, PtInsiders, PtLogoMap, PtMetric, PtMovers, PtNews, PtPriceEvents, PtPriceTarget, PtQuality, PtScreen, PtValue, PtWhyToday],
+  imports: [PtAnswer, PtBasket, PtCalendar, PtCompanyCard, PtCompanyHeader, PtFeed, PtFinancials, PtInsiders, PtLogoMap, PtMetric, PtMovers, PtNews, PtPriceEvents, PtPriceTarget, PtQuality, PtScreen, PtValue, PtWhyToday],
   providers: [Pt, { provide: PT_SLOT, useFactory: () => { const injector = inject(Injector); return () => injector.get(PtSlot).id(); } }],
   host: { class: 'pt-island', '[attr.data-island]': 'id()', '[class.pt-island-error]': 'pt.failed()' },
   template: `
     @switch (c()) {
       @case ('pt-answer') { @defer (hydrate on viewport) {<pt-answer [topic]="$any(p()).topic ?? 'forecast'" [ticker]="$any(p()).ticker" [list]="$any(p()).list ?? 'biggest_losers'" [sector]="$any(p()).sector" [month]="$any(p()).month" />} }
+      @case ('pt-basket') { @defer (hydrate on viewport) {<pt-basket [ticker]="$any(p()).ticker" [section]="$any(p()).section ?? 'moves'" />} }
       @case ('pt-calendar') { @defer (hydrate on viewport) {<pt-calendar [month]="$any(p()).month" [kind]="$any(p()).kind ?? 'earnings'" [view]="$any(p()).view ?? 'month'" [start]="$any(p()).start" />} }
       @case ('pt-company-card') { @defer (hydrate on viewport) {<pt-company-card [ticker]="$any(p()).ticker" [size]="$any(p()).size ?? 'wide'" [extra]="$any(p()).extra ?? null" />} }
       @case ('pt-company-header') { @defer (hydrate on viewport) {<pt-company-header [ticker]="$any(p()).ticker" [size]="$any(p()).size ?? 'full'" />} }

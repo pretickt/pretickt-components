@@ -103,4 +103,12 @@ describe('pt-price-events', () => {
     const g = layout(series[0]!.points, [e, twin]);
     expect(g!.markers[0]!.cy).not.toBe(g!.markers[1]!.cy);
   });
+  it('on a fund a report is a holding\'s: its tooltip names the company; on a company it does not', async () => {
+    const series = [{ ticker: 'SMH', points: priceSeriesDemo({ tickers: ['SMH'], range: '1y', interval: '1d', rebase: false }).at(0)!.points }];
+    const at = series[0]!.points.at(-10)!.t;
+    const report = { date: at, ticker: 'NVDA', name: 'NVIDIA Corporation', logo: null, mcap: 1, kind: 'earnings', meta: { time: 'amc', confirmed: true, epsEst: 1, epsActual: 1.1 } };
+    const tips = async (t: string) => (await render(PtPriceEvents, { ticker: t, range: '1y' }, withData({ 'price-series@1': series, 'events@1': { asOf: at, items: [report] } }))).html();
+    expect(await tips('SMH')).toContain('Nvidia');
+    expect(await tips('NVDA')).not.toContain('Nvidia');
+  });
 });

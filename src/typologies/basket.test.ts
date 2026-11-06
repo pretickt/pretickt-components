@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { demoFor, getTypology } from './index';
 import { BasketPayload, BASKET_MIN_COVERAGE, BASKET_MOVERS, type Basket } from './basket';
+import { basketLead, basketMoved } from './basket-words';
 import { CompanyPayload } from './company';
 import { NewsPayload } from './news';
 
@@ -63,5 +64,24 @@ describe('what company@1 and news@1 gain for a fund', () => {
     const item = { publishedAt: '2026-11-05T13:00:00Z', title: 't', site: 's', url: 'https://example.com/x', sentiment: null };
     expect(NewsPayload.parse({ asOf: '2026-11-05', items: [{ ...item, ticker: 'NVDA', name: 'Nvidia', logo: null }] }).items[0]).toMatchObject({ ticker: 'NVDA', name: 'Nvidia' });
     expect(NewsPayload.safeParse({ asOf: '2026-11-05', items: [item] }).success).toBe(true);
+  });
+});
+
+describe('a fund in words', () => {
+  const up = [{ name: 'NVIDIA Corporation', points: 0.0076 }, { name: 'Micron Technology, Inc.', points: 0.0036 }, { name: 'X', points: 0.001 }];
+  it('the move and the two largest behind it, on its side', () => {
+    expect(basketMoved('SMH', -0.0275, [], up)).toBe('SMH fell 2.75%. Nvidia took off 0.76 points, Micron 0.36.');
+    expect(basketMoved('SMH', 0.012, up, [])).toBe('SMH rose 1.20%. Nvidia added 0.76 points, Micron 0.36.');
+    expect(basketMoved('SMH', 0.012, [], up)).toBe('SMH rose 1.20%.');
+  });
+  it('no move of its own: what the holdings did, or nothing', () => {
+    expect(basketMoved('SMH', null, up.slice(0, 1), up.slice(1, 2))).toBe('Nvidia added 0.76 points. Micron took off 0.36 points.');
+    expect(basketMoved('SMH', null, [], [])).toBe('');
+  });
+  it('the questions about the business: the mean of what reads, the weakest; price never counts, nor one not comparable', () => {
+    const q = (key: string, pos: number, comparable = true) => ({ key, pos, comparable });
+    expect(basketLead('SMH', [q('demand', 0.8), q('advantage', 0.6), q('fragility', 0.3), q('price', 0), q('execution', 0, false)])).toBe('By weight, SMH\'s holdings are strong on 57% of the questions about the business; weakest on fragility.');
+    expect(basketLead('SMH', [q('demand', 0.8, false)])).toBeNull();
+    expect(basketLead('SMH', null)).toBeNull();
   });
 });

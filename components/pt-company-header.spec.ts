@@ -471,3 +471,18 @@ describe('pt-company-header', () => {
     expect(r.html()).not.toContain('NaN');
   });
 });
+
+describe('pt-company-header: a fund', () => {
+  const fund = { ticker: 'SMH', name: 'VanEck Semiconductor ETF', sector: null, industry: null, logo: null, kind: 'etf', coverage: 0.99 };
+  const items = metricDemo({ ticker: 'SMH', metrics: [...METRIC_KEYS] }).filter((m) => !['insider_net', 'pe_vs_own', 'pe_vs_sector', 'sector_trend', 'fcf_yield'].includes(m.key));
+  it('its note says how much the basket figures cover, and says nothing of insiders, a stock or a company', async () => {
+    const { text } = await render(PtCompanyHeader, { ticker: 'SMH', size: 'full' }, withData({ 'company@1': fund, 'metric@1': items }));
+    expect(text()).toContain('Basket figures cover 99% of this fund.');
+    expect(text()).not.toMatch(/insiders|\b(this|the) (stock|company)\b/i);
+  });
+  it('a company\'s note stays as it was', async () => {
+    const t = (await render(PtCompanyHeader, { ticker: 'NVDA', size: 'full' })).text();
+    expect(t).not.toContain('Basket figures');
+    expect(t).toContain('analysts, insiders and news are from the last close');
+  });
+});

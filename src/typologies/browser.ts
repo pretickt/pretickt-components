@@ -3,6 +3,7 @@
  * map `@pretickt/components/typologies` here, so no schema (zod) ever reaches a page; the server keeps the full index.
  */
 export * from './values';
+export * from './basket-words';
 export type * from './analysts';
 export type * from './attention';
 export type * from './basket';

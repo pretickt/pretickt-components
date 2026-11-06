@@ -1068,6 +1068,39 @@
   /* the company page's form: the answer, the verdicts, the way to the full page */
   .dv-more { justify-self: start; font-weight: 600; color: var(--color-primary); }
   .dv-more:hover { text-decoration: underline; }
+  /* pt-basket: a fund's sections. Each row of the moves has a fixed height, held open when empty, so the section never shifts when the delayed prices arrive. */
+  .pt-bk { display: grid; gap: .6rem; min-width: 0; }
+  .pt-bk-moves { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 48rem) { .pt-bk-moves { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .pt-bk-side { min-width: 0; }
+  .pt-bk-h { margin: 0 0 .25rem; font-size: .75rem; font-weight: 600; color: var(--color-ink-soft); }
+  .pt-bk-mv { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, 3.6rem); grid-template-rows: 1.5rem 1.25rem; column-gap: .35rem; align-items: center; height: 3rem; font-size: .875rem; border-top: 1px solid var(--color-border); overflow: hidden; }
+  .pt-bk-co { display: flex; align-items: center; gap: .4rem; min-width: 0; color: var(--color-ink); }
+  .pt-bk-co:hover { color: var(--color-primary); }
+  .pt-bk-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pt-bk-pts { font-weight: 600; }
+  .pt-bk-head { grid-column: 1 / -1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pt-bk-head:hover { color: var(--color-primary); }
+  @media (max-width: 26rem) { .pt-bk-mv { grid-template-columns: minmax(0, 1fr) repeat(3, 3.1rem); font-size: .8125rem; } }
+  .pt-bk-lab { display: none; }
+  @media (min-width: 40rem) { .pt-bk-lab { display: table-cell; } }
+  .pt-bk-figs { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+  .pt-bk-fig { display: grid; gap: .25rem; align-content: start; min-width: 0; }
+  .pt-bk-big { margin: 0; font-family: var(--font-mono, monospace); font-size: 1.125rem; font-weight: 600; color: var(--color-ink); }
+  .pt-bk-top { margin: .25rem 0 0; padding: 0; list-style: none; font-size: .875rem; }
+  .pt-bk-bar { display: flex; gap: 2px; height: .5rem; min-width: 0; border-radius: 9999px; overflow: hidden; }
+  .pt-bk-bar i { display: block; min-width: 0; flex-basis: 0; }
+  .pt-bk-pos { background: var(--color-pos); }
+  .pt-bk-flat { background: var(--color-border); }
+  .pt-bk-neg { background: var(--color-neg); }
+  .pt-bk-qs { display: grid; gap: .5rem; }
+  .pt-bk-q { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); column-gap: .6rem; row-gap: .1rem; align-items: center; font-size: .875rem; }
+  .pt-bk-qk { font-weight: 600; color: var(--color-ink); }
+  .pt-bk-qv { grid-column: 2; }
+  .pt-bk-qn { grid-row: 1; }
+  .pt-bk-facts { display: grid; gap: .5rem 1rem; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); margin: .25rem 0 0; }
+  .pt-bk-facts dt { font-size: .75rem; color: var(--color-ink-soft); }
+  .pt-bk-facts dd { margin: 0; font-family: var(--font-mono, monospace); font-size: .875rem; color: var(--color-ink); }
 }
 
 @keyframes pt-dash-flow { to { stroke-dashoffset: -7; } }

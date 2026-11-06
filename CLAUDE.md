@@ -303,14 +303,14 @@ export const stories = [
 ## Existing components (`dist/index.json`)
 `pt-company-header` (first on each company page, `size` full on the main page, low on the sub-pages: price over three months and the session, badges in Bullish / Neutral / Bearish bands that
 follow the delayed price while the page is open; keeps its height at every update; the rule is `lean`, not the catalogue's tone; the strip below reads its classes) ·
-`pt-company-card` (the company at a glance — logo, price over 60 sessions, 52-week range, consensus, PT, tags with "Show all";
+`pt-basket` (a fund's sections, one per placement, `section` moves | holdings | analysts | questions | faq: why it moved with the companies behind it, keeping its height when the delayed prices arrive; what it holds; target, consensus and P/E, each saying how much of the fund it rests on; the questions about the business as shares of the weight, never a yes or a no; a fund we cover under 80% shows none of those figures) · `pt-company-card` (the company at a glance — logo, price over 60 sessions, 52-week range, consensus, PT, tags with "Show all";
 `size` wide = page header, compact = the hover card; once the wide card has scrolled under the header, the page app shows the
 company in the header — `src/site/cobar.ts` copies the text of `.pt-card-name`, `.pt-card-who .pt-meta`, `.pt-card-close` and
 `.pt-card-pt`, so keep those classes) · `pt-metric` (badge strip of the catalogue) · `pt-price-events` (price line +
 E/D/S/A markers grouped per day, range toggles, zoom & pan) · `pt-price-target` (the targets upright first — a rail from the lowest to the highest target, green above today's price and red
 below, a dot per firm's latest target, today as a dark pill, low/average/median/high with their distance from today — then beta's
 pt-chart: clustered target dots, gradient segments, hover panel of the analysts, zoom & pan) · `pt-answer` (the page's question answered first, in a sentence or two, from the data the page already asks for; `topic` forecast |
-price-target | peers | financials | insiders with `ticker`, list with `list` and optional `sector`, earnings | dividends with `month`) ·
+price-target | peers | financials | insiders | basket with `ticker`, list with `list` and optional `sector`, earnings | dividends with `month`) ·
 `pt-calendar` (month grid + macro dates + full list, previous/next month; `kind`
 earnings|dividend; `view: 'week'` + `start` = five sessions for the home page; "+N more" opens the whole day) · `pt-why-today`
 (answer-first sentence + market/sector/stock bars + news spike) · `pt-screen` (ranked table with list-specific column and sparklines;
