@@ -5,7 +5,8 @@
  */
 import { stockHref } from '../ds/format';
 
-export type Company = readonly [ticker: string, name: string];
+/** A row of the search's index: a fund's carries its own address. */
+export type Company = readonly [ticker: string, name: string, path?: string];
 const MAX = 8;
 const fold = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
 const words = (s: string) => s.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
@@ -74,11 +75,11 @@ export function attachHeader(doc: Document, o: HeaderOptions): void {
   const render = () => {
     shown = index ? rankCompanies(index, input.value) : [];
     active = -1;
-    list.replaceChildren(...shown.map(([t, n], i) => {
+    list.replaceChildren(...shown.map(([t, n, path], i) => {
       const a = doc.createElement('a');
       a.id = `${list.id}-${i}`;
       a.className = 'pt-search-opt';
-      a.href = stockHref(t);
+      a.href = path ?? stockHref(t);
       a.setAttribute('role', 'option');
       a.setAttribute('aria-selected', 'false');
       const b = doc.createElement('strong');
@@ -96,7 +97,7 @@ export function attachHeader(doc: Document, o: HeaderOptions): void {
     const c = shown[i];
     if (!c) return;
     form.dispatchEvent(new CustomEvent('pt-interact', { bubbles: true, detail: { action: 'search' } }));
-    go(stockHref(c[0]));
+    go(c[2] ?? stockHref(c[0]));
   };
 
   input.addEventListener('focus', () => { void load(); });

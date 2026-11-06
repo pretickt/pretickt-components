@@ -124,4 +124,15 @@ describe('attachHeader', () => {
     expect(enter.defaultPrevented).toBe(false);
     expect(went).toEqual([]);
   });
+  it('a fund goes to its own page: its row carries the address, in the list and on Enter', async () => {
+    const input = setup({ rows: [['SMH', 'VanEck Semiconductor ETF', '/etfs/smh/'], ['NVDA', 'NVIDIA Corporation']] });
+    input.dispatchEvent(new FocusEvent('focus'));
+    await flush();
+    await type(input, 'smh');
+    expect(options().map((o) => o.getAttribute('href'))).toEqual(['/etfs/smh/']);
+    key(input, 'Enter');
+    expect(went).toEqual(['/etfs/smh/']);
+    await type(input, 'nvda');
+    expect(options().map((o) => o.getAttribute('href'))).toEqual(['/stocks/nvda/']);
+  });
 });
