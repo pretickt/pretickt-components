@@ -145,7 +145,7 @@ export function homePage(): PreviewPage {
       { id: 'dividends', title: 'Ex-dividend dates', more: { href: '/dividend-calendar/', label: 'Full calendar' }, items: [week('dividend')] },
       ...MARKET_LISTS.map(([slug, list, , h1]): PreviewSection => ({ id: slug, title: h1, more: { href: `/markets/${slug}/`, label: 'See all' },
         items: [{ c: PtScreen, inputs: { list, limit: 5 } }] })),
-      { id: 'all-stocks', title: `Every stock: ${UNIVERSE}`, more: { href: '/stocks/', label: 'All stocks' }, items: [] },
+      { id: 'all-stocks', title: UNIVERSE, more: { href: '/stocks/', label: 'All stocks' }, items: [] },
       // Romeo, 2026-11-01: "mettiamo alla fine della home la heat map del mercato delle mega caps"
       { id: 'mega-caps', title: 'Mega-cap stocks heat map', more: { href: '/market-map/', label: 'All the heat maps' }, isNew: true,
         items: [{ c: PtLogoMap, inputs: { lens: 'mega' } }] },
