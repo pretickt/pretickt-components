@@ -242,7 +242,7 @@ describe('pt-price-target on a basket: its holdings\' targets, week by week', ()
 
   it("a fund: a segment from each week's price to its 12-month horizon, dots, its levels the last close and today's target; the lede says weighted", async () => {
     const r = await fund();
-    expect(r.text()).toContain("Analysts' targets on its holdings, weighted, week by week over the last 12 months");
+    expect(r.text()).toContain("Analysts' targets on its holdings, weighted as it holds them today, week by week over the last 12 months");
     expect(r.el.querySelectorAll('circle.pt-dot').length).toBeGreaterThan(1);
     expect(r.el.querySelectorAll('path.pt-seg').length).toBeGreaterThan(1);
     expect([...r.el.querySelectorAll('.pt-lvl-n')].map((n) => n.textContent!.trim()).sort()).toEqual(['TARGET', 'TODAY']);
@@ -251,10 +251,18 @@ describe('pt-price-target on a basket: its holdings\' targets, week by week', ()
   });
   it('a sector: its value line and targets in compact dollars, never a $ with commas', async () => {
     const r = await render(PtPriceTarget, { sector: 'Technology' }, withData({ 'sector@1': tech }));
-    expect(r.text()).toContain("Analysts' targets on its companies, weighted, week by week over the last 12 months");
+    expect(r.text()).toContain("Analysts' targets on its companies, weighted by their value today, week by week over the last 12 months");
     expect(r.el.querySelectorAll('circle.pt-dot').length).toBeGreaterThan(1);
     expect(r.el.innerHTML).not.toMatch(/\$\d{1,3}(,\d{3}){2,}/);
     expect(r.calls()).toBe(1);
+  });
+  it('a sector has no close: the legend, the level tips and TODAY name its value', async () => {
+    const r = await render(PtPriceTarget, { sector: 'Technology' }, withData({ 'sector@1': tech }));
+    expect(r.el.innerHTML).not.toMatch(/last close/i);
+    expect(r.el.querySelector('.pt-lg-lvl')!.textContent).toBe("┄ its value and today's target");
+    const tips = [...r.el.querySelectorAll('.pt-lvl-t')].map((t) => t.getAttribute('data-tip')!);
+    expect(tips.find((t) => t.startsWith('Its value'))).toBeDefined();
+    expect(tips.find((t) => t.startsWith("Today's target"))).toMatch(/from its value$/);
   });
   it("no target history (a fund under 80%, or last night's payload): no chart, one line saying so", async () => {
     const r = await fund({ ...smh, targetHistory: undefined });

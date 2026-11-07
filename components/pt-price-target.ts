@@ -19,7 +19,7 @@ type Target = Analysts['targets'][number];
 /** The targets the price axis names: the summary's high, average and low (a basket's: today's target alone). */
 export type LevelSummary = { mean: number; low?: number; high?: number };
 /** A basket's chart: its money in its own format (a sector's trillions), and its one target named for what it is. */
-export interface PtChartWords { fmt?: (v: number) => string; meanName?: string; meanWhat?: string }
+export interface PtChartWords { fmt?: (v: number) => string; meanName?: string; meanWhat?: string; nowWhat?: string; fromNow?: string }
 
 // Geometry, ported from beta pt-chart.geometry.ts (targets already arrive on our adjusted basis). x unit: days (isoDay). ─────
 const W = 800, H = 340, ML = 6, MR = 46, MT = 12, MB = 22;
@@ -130,8 +130,8 @@ export function buildPtChart(points: PriceBar[], targets: Target[], asOf: string
   const marks: [PtLevel['key'], string, string, number | undefined][] = summary
     ? [['high', 'HIGH', 'High target', summary.high], ['mean', words.meanName ?? 'AVERAGE', words.meanWhat ?? 'Average target', summary.mean], ['low', 'LOW', 'Low target', summary.low]] : [];
   const named = [
-    ...marks.flatMap(([key, name, what, v]) => (v == null ? [] : [{ key, v, name, tone: levelTone(v, current), tip: `${what} ${cash(v)} · ${pct(v / current - 1)} from the last close` }])),
-    { key: 'now' as const, v: current, name: 'TODAY', tone: 'now' as const, tip: `Last close ${cash(current)}` },
+    ...marks.flatMap(([key, name, what, v]) => (v == null ? [] : [{ key, v, name, tone: levelTone(v, current), tip: `${what} ${cash(v)} · ${pct(v / current - 1)} ${words.fromNow ?? 'from the last close'}` }])),
+    { key: 'now' as const, v: current, name: 'TODAY', tone: 'now' as const, tip: `${words.nowWhat ?? 'Last close'} ${cash(current)}` },
   ];
   const levels = placeLevels(named.map((l) => ({ ...l, y: f(sy(l.v)), label: axis(l.v) })).filter((l) => l.y >= MT && l.y <= H - MB));
 
@@ -238,11 +238,11 @@ export function consensusText(history: Analysts['history']): string | null {
     @else if (a && a.summary && ready()) {
       <figure class="pt-chart pt-pt">
         @if (mode() === 'company') {<p class="pt-lede">{{ a.summary.n }} firm{{ a.summary.n === 1 ? '' : 's' }} with a target in the last 12 months · last close {{ money(a.price) }} · as of {{ date(a.asOf) }}</p>}
-        @else {<p class="pt-lede">Analysts' targets on its {{ mode() === 'sector' ? 'companies' : 'holdings' }}, weighted, week by week over the last 12 months · {{ mode() === 'sector' ? 'its value' : 'last close' }} {{ cash(a.price) }} · as of {{ date(a.asOf) }}</p>}
+        @else {<p class="pt-lede">Analysts' targets on its {{ mode() === 'sector' ? 'companies, weighted by their value today' : 'holdings, weighted as it holds them today' }}, week by week over the last 12 months · {{ mode() === 'sector' ? 'its value' : 'last close' }} {{ cash(a.price) }} · as of {{ date(a.asOf) }}</p>}
         @if (c(); as c) {
           <div class="pt-legend">
             @if (mode() === 'company') {<span class="pt-lg-price">— actual price</span><span class="pt-lg-up">● bullish target</span><span class="pt-lg-down">● bearish target</span><span class="pt-lg-lvl">┄ last close, high, average and low target</span>}
-            @else {<span class="pt-lg-price">— {{ mode() === 'sector' ? 'its companies\\' value' : 'actual price' }}</span><span class="pt-lg-up">● a week's target above it</span><span class="pt-lg-down">● below it</span><span class="pt-lg-lvl">┄ last close and today's target</span>}
+            @else {<span class="pt-lg-price">— {{ mode() === 'sector' ? 'its companies\\' value' : 'actual price' }}</span><span class="pt-lg-up">● a week's target above it</span><span class="pt-lg-down">● below it</span><span class="pt-lg-lvl">┄ {{ mode() === 'sector' ? 'its value' : 'last close' }} and today's target</span>}
             <span class="pt-lg-hint">hover a dot to see the {{ mode() === 'company' ? 'analysts' : 'weeks' }} behind it · wheel or drag to move through time · drag the price axis on the right to stretch it · double-click resets</span>
           </div>
           <div ptChart [w]="c.w" [h]="c.h" [plotW]="c.w - MR" [plotH]="c.h - MB" [id]="id()" [label]="'Analyst price targets over time'" [(view)]="view">
@@ -369,7 +369,7 @@ export class PtPriceTarget {
     // a basket names one target, today's; a company its analysts' high, average and low
     const summary = a.summary && m !== 'company' ? { mean: a.summary.mean } : a.summary;
     const words = m === 'company' ? {} : { meanName: 'TARGET', meanWhat: `Today's target on its ${m === 'sector' ? 'companies' : 'holdings'}`,
-      ...(m === 'sector' ? { fmt: (v: number) => usd(v, { compact: true }) } : {}) };
+      ...(m === 'sector' ? { fmt: (v: number) => usd(v, { compact: true }), nowWhat: 'Its value', fromNow: 'from its value' } : {}) };
     return buildPtChart(this.pts(), a.targets, a.asOf, a.price ?? this.pts().at(-1)?.c ?? 0, this.view(), summary, words);
   });
   protected readonly consensus = computed(() => {
