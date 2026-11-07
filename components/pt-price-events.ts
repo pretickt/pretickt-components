@@ -11,7 +11,7 @@ import { Component, computed, inject, input, linkedSignal } from '@angular/core'
 import { Pt } from '@pretickt/components/context';
 import { applyXViewport, applyYViewport, closeAt, FULL_VIEWPORT, isoDay, linePath, monthTicks, padTime, PtChart, PtTimeAxis, PtToggles, PtYAxis, type Viewport } from '@pretickt/components/ds';
 import { amount, date, money, num, pct, plainName, tip, usd } from '@pretickt/components/format';
-import { RANGES, type EventItem, type PriceBar, type RangeValue, type Sector } from '@pretickt/components/typologies';
+import { possessive, RANGES, type EventItem, type PriceBar, type RangeValue, type Sector } from '@pretickt/components/typologies';
 
 // Price labels sit in the right-hand strip you can grab to stretch the scale (beta / TradingView layout).
 export const W = 720, H = 260, L = 6, R = 46, T = 12, B = 24;
@@ -157,7 +157,7 @@ export class PtPriceEvents {
   protected readonly source = computed(() => (this.sector() ? this.sectorCall.value() : this.own() ? this.series.value() : null));
   protected readonly shown = computed(() => (this.sector() ? '1y' : (this.series.params() as { range?: RangeValue } | undefined)?.range ?? this.picked()));
   protected readonly chartId = computed(() => `pe${this.ticker() ?? (this.sector() ?? '').toLowerCase().replace(/\W+/g, '-')}`);
-  protected readonly chartName = computed(() => (this.sector() ? `What ${this.sector()}'s companies are worth, ${this.shown()}` : `${this.ticker()} price, ${this.shown()}`));
+  protected readonly chartName = computed(() => (this.sector() ? `What ${possessive(this.sector()!)} companies are worth, ${this.shown()}` : `${this.ticker()} price, ${this.shown()}`));
   /** New data on screen: back to the full view. */
   protected readonly view = linkedSignal<unknown, Viewport>({ source: () => this.series.params(), computation: () => FULL_VIEWPORT });
 
@@ -178,7 +178,7 @@ export class PtPriceEvents {
     const p = this.points(), s = this.sector();
     if (!p.length) return '';
     const change = `${pct(p.at(-1)!.c / p[0]!.c - 1)} over ${this.shown()}`, missing = this.events.value() ? '' : ' · Events not available';
-    if (s) return `What ${s}'s companies are worth: today's shares at each day's adjusted close, our own sum · ${usd(p.at(-1)!.c, { compact: true })} · ${change} · ${legendOf(SECTOR_KINDS)}${missing}`;
+    if (s) return `What ${possessive(s)} companies are worth: today's shares at each day's adjusted close, our own sum · ${usd(p.at(-1)!.c, { compact: true })} · ${change} · ${legendOf(SECTOR_KINDS)}${missing}`;
     return `Last close ${money(p.at(-1)!.c)} · ${change} · ${legendOf(this.fund() ? FUND_KINDS : COMPANY_KINDS)}${missing}`;
   });
 }

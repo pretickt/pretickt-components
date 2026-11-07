@@ -149,3 +149,9 @@ describe('pt-price-events, for a sector', () => {
     expect(r.el.textContent).not.toMatch(/\$\d{1,3}(,\d{3}){3,}/);
   });
 });
+
+it("a sector whose name ends in s takes an apostrophe alone: \"What Financial Services' companies are worth\"", async () => {
+  const fin = demoFor({ t: 'sector@1', params: { sector: 'Financial Services' } }) as SectorBasket;
+  const r = await render(PtPriceEvents, { sector: 'Financial Services' }, withData({ 'sector@1': fin, 'events@1': { asOf: fin.asOf, items: [] } }));
+  expect(r.el.querySelector('.pt-lede')!.textContent).toMatch(/^What Financial Services' companies are worth/);
+});

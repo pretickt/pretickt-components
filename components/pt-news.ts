@@ -9,7 +9,7 @@
 import { Component, inject, input } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
 import { date, href, plainName, stockHref, tip, tone } from '@pretickt/components/format';
-import { SENTIMENT_FLAT, type Sector } from '@pretickt/components/typologies';
+import { possessive, SENTIMENT_FLAT, type Sector } from '@pretickt/components/typologies';
 
 const MOOD = { pos: 'positive', neg: 'negative', flat: 'neutral', na: 'not scored' } as const;
 const DOT = { pos: 'pt-dot-pos', neg: 'pt-dot-neg', flat: 'pt-dot-flat', na: 'pt-dot-na' } as const;
@@ -19,7 +19,7 @@ const DOT = { pos: 'pt-dot-pos', neg: 'pt-dot-neg', flat: 'pt-dot-flat', na: 'pt
   template: `
     @let n = sector() || ticker() ? news.value() : null;
     @if (n === null) {<p class="pt-na">Data not available</p>}
-    @else if (n && !n.items.length) {<p class="pt-na">No recent stories about {{ sector() ? sector() + "'s largest companies" : ticker() }}.</p>}
+    @else if (n && !n.items.length) {<p class="pt-na">No recent stories about {{ sector() ? possessive(sector()!) + ' largest companies' : ticker() }}.</p>}
     @else if (n) {
       <section>
         <ul class="pt-news">
@@ -48,6 +48,7 @@ export class PtNews {
     return s ? { sector: s, limit: this.limit() } : t ? { ticker: t, limit: this.limit() } : null;
   });
   protected readonly href = href;
+  protected readonly possessive = possessive;
   protected readonly plainName = plainName;
   protected readonly stock = stockHref;
   protected readonly date = date;

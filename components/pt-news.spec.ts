@@ -53,3 +53,7 @@ describe('pt-news, a sector', () => {
 it('pt-news with neither a ticker nor a sector says the data is not available', async () => {
   expect((await render(PtNews, {})).el.querySelector('.pt-na')).not.toBeNull();
 });
+
+it("an empty feed of a sector whose name ends in s: \"No recent stories about Financial Services' largest companies.\"", async () => {
+  expect((await render(PtNews, { sector: 'Financial Services' }, withData({ 'news@1': { asOf: '2026-10-02', items: [] } }))).text()).toContain("No recent stories about Financial Services' largest companies.");
+});

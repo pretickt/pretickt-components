@@ -177,6 +177,28 @@ export function sectorPage(s: Sector): PreviewPage {
   };
 }
 
+/** pages.ts `sectorPage` with its basket (design 2026-11-07, Part A): the answer, the header of its companies' worth, the basket's sections, the lists, every company. */
+export function sectorBasketPage(s: Sector, companies: number): PreviewPage {
+  const basket = (id: string, title: string, section: string): PreviewSection => ({ id, title, isNew: true, items: [{ c: PtBasket, inputs: { sector: s, section } }] });
+  return {
+    path: sectorPath(s),
+    title: fitTitle(`${s} stocks: price target, why they moved and all companies`, `${s} stocks: price target and why they moved`, `${s} stocks: price target and all companies`, `${s} stocks: price target`, `${s} stocks`),
+    description: `${s} stocks on pretickt: what analysts' targets on all ${companies} add up to, why they moved, 52-week lows and highs, undervalued stocks and insider buying. {date}.`,
+    h1: `${s} stocks`,
+    lede: `${companies} companies · end-of-day data as of {date}`,
+    crumbs: [HOME, { label: 'Sectors', href: '/sectors/' }, { label: s }],
+    sections: [
+      { id: 'answer', isNew: true, items: [{ c: PtAnswer, inputs: { topic: 'sector', sector: s } }] },
+      { id: 'card', isNew: true, items: [{ c: PtCompanyHeader, inputs: { sector: s, size: 'full' } }] },
+      basket('moves', 'Why it moved', 'moves'), basket('targets', 'Analyst price target and consensus', 'analysts'), basket('value', `Is ${s} a good buy?`, 'questions'),
+      { id: 'price', title: 'Price and events', isNew: true, items: [{ c: PtPriceEvents, inputs: { sector: s } }] },
+      { id: 'news', title: 'News of the 10 largest companies', isNew: true, items: [{ c: PtNews, inputs: { sector: s, limit: 10 } }] },
+      ...MARKET_LISTS.slice(0, 7).map(([slug, list, , h1]): PreviewSection => ({ id: slug, title: h1, items: [{ c: PtScreen, inputs: { list, sector: s, limit: 5 } }] })),
+      basket('all', `All ${s} stocks`, 'holdings'), basket('questions', `Questions about ${s} stocks`, 'faq'),
+    ],
+  };
+}
+
 /** /market-map: the searched name in the title and h1 (DataForSEO round 13: 33,400 searches a month, 2% with an AI Overview). */
 export function marketMapPage(): PreviewPage {
   return {
@@ -288,6 +310,7 @@ export const stories = [
   story(PtPreviewCompany, { name: 'NVDA on the demo data (the check)', inputs: { page: companyPage('NVDA', 'NVIDIA Corporation', 'Technology', NVDA_DRAFTS) }, group: GROUP }),
   story(PtPreviewHome, { name: 'Home: the mega-cap heat map at the end (www data)', inputs: { page: homePage() }, live: true, group: GROUP }),
   story(PtPreviewSector, { name: 'Technology: its heat map, common names (www data)', inputs: { page: sectorPage('Technology') }, live: true, group: GROUP }),
+  story(PtPreviewSector, { name: 'Technology with its basket, on the demo data (the check; real data in the local stories)', inputs: { page: sectorBasketPage('Technology', 30) }, group: GROUP }),
   story(PtPreviewMarketMap, { name: '/market-map: the heat maps — market, mega caps, the sectors in a strip (www data)', inputs: { page: marketMapPage() }, live: true, group: GROUP }),
   story(PtPreviewTrending, { name: '/trending: the new page (made-up counts)', inputs: { page: trendingPage() }, live: true, group: GROUP }),
   story(PtPreviewNames, { name: 'Every company: the name today and the common name (www list)', live: true, group: GROUP }),

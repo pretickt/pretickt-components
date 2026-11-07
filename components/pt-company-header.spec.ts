@@ -555,3 +555,9 @@ describe('pt-company-header: a year on a phone', () => {
     expect(badge).not.toMatch(/\$/);
   });
 });
+
+it("a sector header's chart label: \"What Financial Services' companies are worth\"", async () => {
+  const fin = demoFor({ t: 'sector@1', params: { sector: 'Financial Services' } }) as SectorBasket;
+  const r = await render(PtCompanyHeader, { sector: 'Financial Services' }, withData({ 'sector@1': fin }));
+  expect(r.el.querySelector('.pt-hdr-svg')!.getAttribute('aria-label')).toMatch(/^What Financial Services' companies are worth/);
+});

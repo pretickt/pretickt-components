@@ -12,7 +12,7 @@ import { Pt, PtLive, type LiveBars } from '@pretickt/components/context';
 import { PtBadge, PtLogo } from '@pretickt/components/ds';
 import { date, dayMonth, level, money, num, pct, plainName, tone, usd, type Badge } from '@pretickt/components/format';
 import { bollinger, macd, rsi, smaLast } from '@pretickt/components/indicators';
-import { METRIC_KEYS, sectorFundLine, type MetricItem, type Sector, type SectorBasket } from '@pretickt/components/typologies';
+import { METRIC_KEYS, possessive, sectorFundLine, type MetricItem, type Sector, type SectorBasket } from '@pretickt/components/typologies';
 
 export type Side = 'g' | 'n' | 'r';
 /** The badges whose catalogue tone already says a direction. */
@@ -404,7 +404,7 @@ export class PtCompanyHeader {
   protected readonly zoneNote = computed(() => (this.view().state === 'running' ? '15-min delayed' : this.view().state === 'closing' ? 'preliminary' : 'close'));
   protected readonly chartLabel = computed(() => {
     const then = this.isLive() ? 'today, 15 minutes delayed' : 'the last session', s = this.sec();
-    return s ? `What ${s.name}'s companies are worth: today's shares at each day's adjusted close, over a year, then ${then}. Last ${this.fmt(this.price())}.`
+    return s ? `What ${possessive(s.name)} companies are worth: today's shares at each day's adjusted close, over a year, then ${then}. Last ${this.fmt(this.price())}.`
       : `${this.ticker()}: three months of closes, then ${then}. Last ${money(this.price())}.`;
   });
 

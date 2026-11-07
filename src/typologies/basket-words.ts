@@ -36,14 +36,16 @@ const BUSINESS = ['demand', 'advantage', 'economics', 'execution', 'fragility'];
  * business; weakest on fragility. Each reading rests on at least 71% of the fund." Null when none of the five reads across this fund. A sector's
  * reads "Technology's companies … of the sector".
  */
+/** "Technology's", "Financial Services'": a name ending in s takes the apostrophe alone. */
+export const possessive = (name: string) => `${name}'${/s$/.test(name) ? '' : 's'}`;
+
 export function basketLead(label: string, questions: readonly { key: string; pos: number; comparable: boolean; share: number }[] | null, whole: 'fund' | 'sector' = 'fund'): string | null {
   const read = (questions ?? []).filter((q) => q.comparable && BUSINESS.includes(q.key));
   if (!read.length) return null;
   const mean = read.reduce((s, q) => s + q.pos, 0) / read.length;
   const weakest = read.reduce((a, b) => (b.pos < a.pos ? b : a));
   const base = Math.min(...read.map((q) => q.share));
-  // "Financial Services' companies", not "Services's"
-  return `By weight, ${label}'${/s$/.test(label) ? '' : 's'} ${whole === 'fund' ? 'holdings' : 'companies'} are strong on ${Math.round(mean * 100)}% of the questions about the business; weakest on ${weakest.key}. Each reading rests on at least ${Math.round(base * 100)}% of the ${whole}.`;
+  return `By weight, ${possessive(label)} ${whole === 'fund' ? 'holdings' : 'companies'} are strong on ${Math.round(mean * 100)}% of the questions about the business; weakest on ${weakest.key}. Each reading rests on at least ${Math.round(base * 100)}% of the ${whole}.`;
 }
 
 /**
