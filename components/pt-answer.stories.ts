@@ -14,6 +14,7 @@ export const stories = [
   story(PtAnswer, { name: 'Technicals: the averages and the 52-week range (demo)', inputs: { topic: 'technicals', ticker: 'NVDA' } }),
   story(PtAnswer, { name: 'A market list (demo)', inputs: { topic: 'list', list: 'biggest_gainers' } }),
   story(PtAnswer, { name: 'A sector\'s list (demo)', inputs: { topic: 'list', list: '52w_low', sector: 'Healthcare' } }),
+  story(PtAnswer, { name: 'A sector: its companies, their worth and their targets (demo)', inputs: { topic: 'sector', sector: 'Technology' } }),
   story(PtAnswer, { name: 'Earnings calendar (demo)', inputs: { topic: 'earnings', month: '2026-10' } }),
   story(PtAnswer, { name: 'Dividend calendar (demo)', inputs: { topic: 'dividends', month: '2026-10' } }),
   story(PtAnswer, { name: 'www: forecast, NVDA', inputs: { topic: 'forecast', ticker: 'NVDA' }, live: true }),

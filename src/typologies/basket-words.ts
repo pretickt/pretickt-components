@@ -42,7 +42,8 @@ export function basketLead(label: string, questions: readonly { key: string; pos
   const mean = read.reduce((s, q) => s + q.pos, 0) / read.length;
   const weakest = read.reduce((a, b) => (b.pos < a.pos ? b : a));
   const base = Math.min(...read.map((q) => q.share));
-  return `By weight, ${label}'s ${whole === 'fund' ? 'holdings' : 'companies'} are strong on ${Math.round(mean * 100)}% of the questions about the business; weakest on ${weakest.key}. Each reading rests on at least ${Math.round(base * 100)}% of the ${whole}.`;
+  // "Financial Services' companies", not "Services's"
+  return `By weight, ${label}'${/s$/.test(label) ? '' : 's'} ${whole === 'fund' ? 'holdings' : 'companies'} are strong on ${Math.round(mean * 100)}% of the questions about the business; weakest on ${weakest.key}. Each reading rests on at least ${Math.round(base * 100)}% of the ${whole}.`;
 }
 
 /**

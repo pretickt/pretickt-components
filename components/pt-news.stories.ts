@@ -8,6 +8,7 @@ const five = demo<News>('news@1', { ticker: 'NVDA', limit: 5 });
 export const stories = [
   story(PtNews, { name: 'Twenty headlines (demo)', inputs: { ticker: 'NVDA' } }),
   story(PtNews, { name: 'Five headlines (demo)', inputs: { ticker: 'NVDA', limit: 5 } }),
+  story(PtNews, { name: 'A sector: its 10 largest companies (demo)', inputs: { sector: 'Technology', limit: 10 } }),
   story(PtNews, { name: 'www: NVDA', inputs: { ticker: 'NVDA', limit: 10 }, live: true }),
   story(PtNews, { name: 'www: TSLA', inputs: { ticker: 'TSLA', limit: 10 }, live: true }),
   story(PtNews, { name: 'Unscored stories, a provider\'s markup in a title', inputs: { ticker: 'NVDA', limit: 5 }, data: { 'news@1': { ...five, items: [

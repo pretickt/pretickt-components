@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { demoFor, type Basket } from '../src/typologies';
+import { demoFor, type Basket, type SectorBasket } from '../src/typologies';
 import { liveMoves, PtBasket } from './pt-basket';
 import { basics, liveDay, press, render, settle, withData } from './_spec';
 
@@ -198,4 +198,79 @@ describe('pt-basket', () => {
   it('nothing says stock or company of a fund', async () => {
     for (const s of ['moves', 'analysts', 'questions']) expect((await section(s)).text()).not.toMatch(/\b(this|the) (stock|company)\b/i);
   });
+});
+
+describe('pt-basket, for a sector', () => {
+  const co = (ticker: string, name: string, weight: number, ret: number | null = 0.01): SectorBasket['holdings'][number] => ({ ticker, name, logo: null, weight, ret, upside: 0.1, label: 'Buy', close: 100 });
+  const base = demoFor({ t: 'sector@1', params: { sector: 'Technology' } }) as SectorBasket;
+  const TECH: SectorBasket = { ...base, ret: 0.012, value: 22.4e12, companies: 3,
+    moves: { sum: 0.012, up: [mover('NVDA', 'NVIDIA Corporation', 0.2, 0.02)], down: [] },
+    holdings: [co('NVDA', 'NVIDIA Corporation', 0.5), co('AAPL', 'Apple Inc.', 0.3), co('MSFT', 'Microsoft Corporation', 0.2)],
+    target: { upside: 0.12, price: 25.1e12, share: 0.97, median: 0.1, top: [{ ticker: 'NVDA', name: 'NVIDIA Corporation', logo: null, weight: 0.5, upside: 0.2, points: 0.1 }] },
+    consensus: { buy: 0.61, hold: 0.33, sell: 0.06, n: 2140, label: 'Buy', share: 0.99 } };
+  const sec = (s: string, b: SectorBasket = TECH, o?: Parameters<typeof render>[3]) => render(PtBasket, { sector: b.sector, section: s }, withData({ 'sector@1': b }), o);
+
+  for (const s of ['moves', 'holdings', 'analysts', 'questions', 'faq']) basics(PtBasket, { sector: 'Technology', section: s });
+
+  it('the moves sentence names the sector; the note says its companies\' points add up to its move', async () => {
+    const t = (await sec('moves')).text();
+    expect(t).toContain('Technology rose 1.20%. Nvidia added 0.40 points.');
+    expect(t).toMatch(/points add up to the sector's move/);
+  });
+  const open = { session: '2026-10-01', prev: '2026-09-30', time: '11:30 AM ET', q: { NVDA: { p: 1, pc: 1, r: 0.02, m: 0, s: null, x: null }, AAPL: { p: 1, pc: 1, r: -0.01, m: 0, s: null, x: null } } };
+  it('live: the move is the weighted sum of the delayed quotes; a company not yet traded counts flat and has no row', () => {
+    const v = liveMoves(TECH, { NVDA: { r: 0.02 }, AAPL: { r: -0.01 } }, {});
+    expect(v.ret).toBeCloseTo(0.5 * 0.02 - 0.3 * 0.01, 9);
+    expect([...v.up, ...v.down].map((m) => m.ticker)).toEqual(['NVDA', 'AAPL']);
+  });
+  it('live on the page: the sentence, five slots a side, 15-min delayed', async () => {
+    const r = await sec('moves', TECH, { browser: true, providers: liveDay(open) });
+    await settle(r.f); await r.f.whenStable(); await settle(r.f);
+    expect(r.text()).toContain('Technology rose 0.70%. Nvidia added 1.00 points.');
+    expect(r.text()).toContain('11:30 AM ET, 15-min delayed');
+    for (const side of r.el.querySelectorAll('.pt-bk-side')) expect(side.querySelectorAll('.pt-bk-mv')).toHaveLength(5);
+  });
+  it("holdings: every company is in the server's HTML, those after the 25th hidden until Show all N", async () => {
+    const many: SectorBasket = { ...TECH, holdings: Array.from({ length: 30 }, (_, i) => co(`T${i}`, `Company ${i}`, 1 / 30)) };
+    const r = await sec('holdings', many);
+    expect(r.el.querySelectorAll('tbody tr')).toHaveLength(30);
+    expect(r.el.querySelectorAll('tbody tr.pt-bk-later')).toHaveLength(5);
+    expect(r.el.querySelectorAll('tbody tr a[href="/stocks/t29/"]')).toHaveLength(1);
+    expect(r.el.querySelector('.pt-bk-all')).toBeNull();
+    await press(r.f, r.el, 'Show all 30');
+    expect(r.el.querySelector('.pt-bk-all')).not.toBeNull();
+    expect(r.el.querySelectorAll('tbody tr')).toHaveLength(30);
+  });
+  it('holdings: the note says how the sector is weighed; the column is the company', async () => {
+    const r = await sec('holdings');
+    expect(r.text()).toContain('Every Technology company on pretickt, weighted by market value at the last close. A company listed under two tickers counts once, split between them.');
+    expect(r.el.querySelector('thead th')!.textContent).toBe('Company');
+  });
+  it('analysts: what the targets would put its companies at, on how much of the sector; the method note', async () => {
+    const t = (await sec('analysts')).text();
+    expect(t).toContain('$25.1T');
+    expect(t).toContain('+12.0%');
+    expect(t).toContain("What analysts' targets on 97% of the sector would put its companies at.");
+    expect(t).toContain('61% Buy of 2,140 ratings');
+    expect(t).toMatch(/on 99% of the sector/);
+    expect(t).toMatch(/Weighted by market value/);
+  });
+  it('questions: not comparable for this sector instead of 0%; the sector\'s facts; the sentence that ends it', async () => {
+    const fin = demoFor({ t: 'sector@1', params: { sector: 'Financial Services' } }) as SectorBasket;
+    const r = await sec('questions', fin);
+    const row = [...r.el.querySelectorAll('.pt-bk-q')].find((x) => x.textContent!.includes('Advantage'))!;
+    expect(row.textContent).toContain('not comparable for this sector');
+    expect(row.textContent).not.toContain('0%');
+    const facts = [...r.el.querySelectorAll('.pt-bk-facts dt')].map((d) => d.textContent);
+    expect(facts).toEqual(['Companies', 'Market value', 'Largest', 'Top 10']);
+    expect(r.text()).toMatch(/By weight, Financial Services' companies are strong on/);
+    expect(r.text().trim().endsWith('pretickt does not say whether to buy or sell.')).toBe(true);
+  });
+  it('nothing says fund, fee or holding of a sector', async () => {
+    for (const s of ['moves', 'holdings', 'analysts', 'questions']) expect((await sec(s)).text(), s).not.toMatch(/\bfunds?\b|\bfees?\b|holding/i);
+  });
+});
+
+it('pt-basket with neither a ticker nor a sector says the data is not available', async () => {
+  expect((await render(PtBasket, { section: 'moves' })).el.querySelector('.pt-na')).not.toBeNull();
 });

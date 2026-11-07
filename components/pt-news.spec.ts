@@ -1,4 +1,5 @@
 import { PtNews } from './pt-news';
+import { describe, expect, it } from 'vitest';
 import { basics, render, withData } from './_spec';
 
 describe('pt-news', () => {
@@ -33,4 +34,22 @@ describe('pt-news', () => {
     const co = await render(PtNews, { ticker: 'NVDA' }, withData({ 'news@1': { asOf: '2026-10-02', items: [item] } }));
     expect(co.el.querySelector('.pt-meta a')).toBeNull();
   });
+});
+
+describe('pt-news, a sector', () => {
+  basics(PtNews, { sector: 'Technology', limit: 10 });
+  it('asks news@1 with its sector and shows each company', async () => {
+    const asked: unknown[] = [];
+    const item = { publishedAt: '2026-10-02T13:00:00Z', title: 'T', site: 'Reuters', url: 'https://x/a', sentiment: null, ticker: 'NVDA', name: 'NVIDIA Corporation', logo: null };
+    const r = await render(PtNews, { sector: 'Technology', limit: 10 }, async (t, p) => { asked.push(p); return withData({ 'news@1': { asOf: '2026-10-02', items: [item] } })(t, p); });
+    expect(asked).toEqual([{ sector: 'Technology', limit: 10 }]);
+    expect(r.text()).toContain('Nvidia · Reuters');
+  });
+  it('explains an empty feed in words of the sector', async () => {
+    expect((await render(PtNews, { sector: 'Technology' }, withData({ 'news@1': { asOf: '2026-10-02', items: [] } }))).text()).toContain("No recent stories about Technology's largest companies.");
+  });
+});
+
+it('pt-news with neither a ticker nor a sector says the data is not available', async () => {
+  expect((await render(PtNews, {})).el.querySelector('.pt-na')).not.toBeNull();
 });

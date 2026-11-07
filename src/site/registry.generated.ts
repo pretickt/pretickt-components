@@ -23,8 +23,8 @@ import { PtWhyToday } from '../../components/pt-why-today';
 
 /** Every component: its version, and props it can render with (the build renders each once before any page, see warmUp). */
 export const REGISTRY: Record<string, { version: string; sample: Record<string, unknown> }> = {
-  'pt-answer': { version: '1.5.0', sample: {} },
-  'pt-basket': { version: '1.0.0', sample: { ticker: 'NVDA' } },
+  'pt-answer': { version: '1.6.0', sample: {} },
+  'pt-basket': { version: '1.1.0', sample: {} },
   'pt-calendar': { version: '3.1.0', sample: { month: '2026-09' } },
   'pt-company-card': { version: '1.2.2', sample: { ticker: 'NVDA' } },
   'pt-company-header': { version: '1.1.0', sample: { ticker: 'NVDA' } },
@@ -34,7 +34,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
   'pt-logo-map': { version: '0.6.1', sample: {} },
   'pt-metric': { version: '2.1.0', sample: { ticker: 'NVDA', metrics: ['pe', 'pe_vs_sector', 'pe_vs_own', 'pt_upside', 'consensus', 'market_cap', 'fcf_yield', 'insider_net', 'earnings_in', 'news'] } },
   'pt-movers': { version: '1.1.0', sample: {} },
-  'pt-news': { version: '2.2.0', sample: { ticker: 'NVDA' } },
+  'pt-news': { version: '2.3.0', sample: {} },
   'pt-price-events': { version: '2.3.0', sample: { ticker: 'NVDA' } },
   'pt-price-target': { version: '2.4.1', sample: { ticker: 'NVDA' } },
   'pt-quality': { version: '0.3.1', sample: { ticker: 'NVDA' } },
@@ -55,7 +55,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
   template: `
     @switch (c()) {
       @case ('pt-answer') { @defer (hydrate on viewport) {<pt-answer [topic]="$any(p()).topic ?? 'forecast'" [ticker]="$any(p()).ticker" [list]="$any(p()).list ?? 'biggest_losers'" [sector]="$any(p()).sector" [month]="$any(p()).month" />} }
-      @case ('pt-basket') { @defer (hydrate on viewport) {<pt-basket [ticker]="$any(p()).ticker" [section]="$any(p()).section ?? 'moves'" />} }
+      @case ('pt-basket') { @defer (hydrate on viewport) {<pt-basket [ticker]="$any(p()).ticker ?? null" [sector]="$any(p()).sector ?? null" [section]="$any(p()).section ?? 'moves'" />} }
       @case ('pt-calendar') { @defer (hydrate on viewport) {<pt-calendar [month]="$any(p()).month" [kind]="$any(p()).kind ?? 'earnings'" [view]="$any(p()).view ?? 'month'" [start]="$any(p()).start" />} }
       @case ('pt-company-card') { @defer (hydrate on viewport) {<pt-company-card [ticker]="$any(p()).ticker" [size]="$any(p()).size ?? 'wide'" [extra]="$any(p()).extra ?? null" />} }
       @case ('pt-company-header') { @defer (hydrate on viewport) {<pt-company-header [ticker]="$any(p()).ticker" [size]="$any(p()).size ?? 'full'" />} }
@@ -65,7 +65,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
       @case ('pt-logo-map') { @defer (hydrate on viewport) {<pt-logo-map [sector]="$any(p()).sector" [lens]="$any(p()).lens ?? 'market'" [form]="$any(p()).form ?? 'full'" />} }
       @case ('pt-metric') { @defer (hydrate on viewport) {<pt-metric [ticker]="$any(p()).ticker" [metrics]="$any(p()).metrics" />} }
       @case ('pt-movers') { @defer (hydrate on viewport) {<pt-movers [sort]="$any(p()).sort ?? 'cap'" />} }
-      @case ('pt-news') { @defer (hydrate on viewport) {<pt-news [ticker]="$any(p()).ticker" [limit]="$any(p()).limit ?? 20" />} }
+      @case ('pt-news') { @defer (hydrate on viewport) {<pt-news [ticker]="$any(p()).ticker ?? null" [sector]="$any(p()).sector ?? null" [limit]="$any(p()).limit ?? 20" />} }
       @case ('pt-price-events') { @defer (hydrate on viewport) {<pt-price-events [ticker]="$any(p()).ticker" [range]="$any(p()).range ?? '1y'" [fund]="$any(p()).fund ?? false" />} }
       @case ('pt-price-target') { @defer (hydrate on viewport) {<pt-price-target [ticker]="$any(p()).ticker" />} }
       @case ('pt-quality') { @defer (hydrate on viewport) {<pt-quality [ticker]="$any(p()).ticker" />} }

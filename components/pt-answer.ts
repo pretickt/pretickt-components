@@ -3,8 +3,9 @@
  * price target, its peers, its latest quarter, its insiders; who leads a market list; a calendar month at a glance.
  * Company topics name the company as people search it, with its ticker ("Nvidia NVDA"): the sentence an answer engine quotes stands on its own.
  * Each company a sentence names is a link with its logo (PtSay, PtMention): on the site its card opens on hover, the page's own company too.
- * @version 1.5.0
+ * @version 1.6.0
  * @evidence design of the fund pages, 2026-11-05: `topic: 'basket'`, the page's first sentence about a fund
+ * @evidence design of the sector pages, 2026-11-07: `topic: 'sector'`, the sector's companies, what they are worth and what the targets on them average
  * @evidence DataForSEO: "<ticker> stock forecast" 151k/month, "<ticker> price target" 103k/month, "earnings calendar" 153k/month, list queries (launch/data/08c-serp-*.json)
  * @evidence SEO measurement 2026-10-09: list and company subpages of ~80–200 words; the answer belongs in the first lines, with its numbers
  * @evidence DataForSEO round 16 (2026-11-02): "<ticker> 200 day moving average" 4,080/month on 9 tickers, 50-day 1,550, 52-week high 1,300; the AI
@@ -18,7 +19,7 @@ import { INSIDER_WINDOW_DAYS, type EventItem, type ScreenList, type ScreenRow, t
 
 export { plainName } from '@pretickt/components/format';
 
-type Topic = 'forecast' | 'price-target' | 'peers' | 'financials' | 'insiders' | 'list' | 'earnings' | 'dividends' | 'technicals' | 'basket';
+type Topic = 'forecast' | 'price-target' | 'peers' | 'financials' | 'insiders' | 'list' | 'earnings' | 'dividends' | 'technicals' | 'basket' | 'sector';
 type Named = { ticker: string; name: string; logo?: string | null };
 
 /** A company the answer names: a link with its logo ("Apple AAPL"), its card on hover. */
@@ -35,6 +36,8 @@ const median = (v: number[]) => { const s = [...v].sort((a, b) => a - b); const 
 const finite = (v: number | null | undefined): v is number => typeof v === 'number' && Number.isFinite(v);
 /** Still waiting: nothing on screen yet. Not available: the na box. */
 const PENDING: Said = [];
+/** A sector's worth in words: "$22.4 trillion", "$640 billion". */
+const worth = (v: number) => (v >= 1e12 ? `$${(v / 1e12).toFixed(1)} trillion` : `$${Math.round(v / 1e9)} billion`);
 
 /**
  * Who leads each list, with the number it ranks by: `say` takes the sector ("Technology " on a sector page, else ""), the session and
@@ -99,6 +102,7 @@ export class PtAnswer {
     return t ? { ticker: t } : null;
   });
   protected readonly basket = this.pt.basket(() => { const t = this.of('basket'); return t ? { ticker: t } : null; });
+  protected readonly sectorBasket = this.pt.sector(() => { const s = this.sector(); return this.topic() === 'sector' && s ? { sector: s } : null; });
   protected readonly analysts = this.pt.analysts(() => { const t = this.of('forecast', 'price-target'); return t ? { ticker: t, window: '1y' } : null; });
   protected readonly rating = this.pt.metric(() => { const t = this.of('forecast', 'price-target'); return t ? { ticker: t, metrics: ['pt_upside', 'consensus'] } : null; });
   protected readonly peers = this.pt.screen(() => { const t = this.of('peers'); return t ? { scope: { peersOf: t }, limit: 12 } : null; });
@@ -130,6 +134,7 @@ export class PtAnswer {
       case 'list': return this.listAnswer();
       case 'technicals': return this.technicalsAnswer();
       case 'basket': return this.basketAnswer();
+      case 'sector': return this.sectorAnswer();
       default: return this.calendarAnswer();
     }
   });
@@ -151,6 +156,18 @@ export class PtAnswer {
     const figure = b.state === 'low' ? `We cover ${level(b.coverage, 0)} of this fund, under the 80% our basket figures need. `
       : b.target ? `Analysts' targets on the ${level(b.target.share, 0)} of the fund we cover average ${pct(b.target.upside)}, which would put it at ${money(b.target.price)}. ` : '';
     return say`${held}${figure}pretickt does not say whether to buy or sell.`;
+  }
+
+  /** A sector's companies, what they are worth, the largest, what the targets on them average: facts, never a yes or a no. */
+  private sectorAnswer(): Said | null {
+    const b = this.sectorBasket.value();
+    if (!this.sector()) return null;
+    if (b === undefined) return PENDING;
+    if (b === null) return null;
+    const top = b.holdings[0];
+    const largest = top?.ticker ? say`; the largest is ${mention(top.ticker, top.name, top.logo)} at ${level(top.weight)}` : say``;
+    const figure = b.target ? ` Analysts' targets on them average ${pct(b.target.upside)}.` : '';
+    return say`${b.name} on pretickt: ${many(b.companies, 'company', 'companies')} worth ${worth(b.value)}${largest}.${figure} pretickt does not say whether to buy or sell.`;
   }
 
   private target(): Said | null {

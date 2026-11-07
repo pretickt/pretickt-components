@@ -1089,6 +1089,8 @@
   .pt-bk-lab { display: none; }
   @media (min-width: 48rem) { .pt-bk-lab { display: table-cell; } }
   .pt-bk .pt-table th.pt-num { text-align: right; }
+  /* a sector's companies are all in the server's HTML (every link): those after the 25th wait for "Show all" */
+  .pt-bk-rows:not(.pt-bk-all) .pt-bk-later { display: none; }
   .pt-bk-other { display: block; max-width: 11rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   @media (max-width: 40rem) {
     .pt-bk .pt-co-n { display: none; }

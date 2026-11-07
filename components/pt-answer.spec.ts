@@ -1,4 +1,4 @@
-import { demoFor, type Analysts, type Basket, type Events, type Fundamentals, type Insider, type MetricItem, type Screen, type ScreenRow } from '../src/typologies';
+import { demoFor, type Analysts, type Basket, type Events, type Fundamentals, type Insider, type MetricItem, type Screen, type ScreenRow, type SectorBasket } from '../src/typologies';
 import { plainName, PtAnswer } from './pt-answer';
 import { PtCalendar } from './pt-calendar';
 import { basics, render, withData } from './_spec';
@@ -196,3 +196,22 @@ describe('a fund', () => {
   });
 });
 
+
+describe('pt-answer, a sector', () => {
+  const base = demoFor({ t: 'sector@1', params: { sector: 'Technology' } }) as SectorBasket;
+  const TECH: SectorBasket = { ...base, companies: 116, value: 22.4e12, holdings: [{ ticker: 'NVDA', name: 'NVIDIA Corporation', logo: null, weight: 0.213, ret: null, upside: null, label: null, close: 180 }],
+    target: { ...base.target!, upside: 0.142 } };
+  const said = async (b: SectorBasket) => (await render(PtAnswer, { topic: 'sector', sector: b.sector }, withData({ 'sector@1': b }))).text().replace(/\s+/g, ' ').trim();
+  basics(PtAnswer, { topic: 'sector', sector: 'Technology' });
+  it('how many companies, what they are worth, the largest, what the targets on them average, and that pretickt does not say whether to buy', async () => {
+    expect(await said(TECH)).toBe("Technology on pretickt: 116 companies worth $22.4 trillion; the largest is Nvidia NVDA at 21.3%. Analysts' targets on them average +14.2%. pretickt does not say whether to buy or sell.");
+  });
+  it('a smaller sector in billions; no target, no average', async () => {
+    const t = await said({ ...TECH, value: 640e9, target: null });
+    expect(t).toContain('116 companies worth $640 billion');
+    expect(t).not.toContain('average');
+  });
+  it('not available', async () => {
+    expect((await render(PtAnswer, { topic: 'sector', sector: 'Technology' }, withData({ 'sector@1': null }))).text()).not.toContain('companies');
+  });
+});
