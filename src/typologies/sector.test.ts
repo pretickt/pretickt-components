@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { basketLead, basketMoved } from './basket-words';
+import { basketLead, basketMoved, sectorFundLine } from './basket-words';
 import { EventsParams } from './events';
 import { demoFor, getTypology } from './index';
 import { NewsParams } from './news';
@@ -74,5 +74,12 @@ describe('a basket in words, for a sector', () => {
   });
   it('basketMoved names the sector as it names a fund', () => {
     expect(basketMoved('Technology', 0.012, [{ name: 'NVIDIA Corporation', points: 0.004 }], [])).toBe('Technology rose 1.20%. Nvidia added 0.40 points.');
+  });
+});
+
+describe('the fund line', () => {
+  it("names the fund that holds the sector's S&P 500 companies, word for word, the sector in lower case", () => {
+    expect(sectorFundLine('Technology', 'XLK')).toBe("XLK holds the S&P 500's technology companies; this page weighs every technology company on pretickt.");
+    expect(sectorFundLine('Communication Services', 'XLC')).toBe("XLC holds the S&P 500's communication services companies; this page weighs every communication services company on pretickt.");
   });
 });

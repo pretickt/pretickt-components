@@ -44,3 +44,12 @@ export function basketLead(label: string, questions: readonly { key: string; pos
   const base = Math.min(...read.map((q) => q.share));
   return `By weight, ${label}'s ${whole === 'fund' ? 'holdings' : 'companies'} are strong on ${Math.round(mean * 100)}% of the questions about the business; weakest on ${weakest.key}. Each reading rests on at least ${Math.round(base * 100)}% of the ${whole}.`;
 }
+
+/**
+ * Why a sector's figures differ from its fund's, word for word (design 2026-11-07): "XLK holds the S&P 500's technology companies; this page weighs every
+ * technology company on pretickt." The header's note and the sector's FAQ say it the same way.
+ */
+export function sectorFundLine(sector: string, tracker: string): string {
+  const s = sector.toLowerCase();
+  return `${tracker} holds the S&P 500's ${s} companies; this page weighs every ${s} company on pretickt.`;
+}
