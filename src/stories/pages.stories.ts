@@ -190,7 +190,9 @@ export function sectorBasketPage(s: Sector, companies: number): PreviewPage {
     sections: [
       { id: 'answer', isNew: true, items: [{ c: PtAnswer, inputs: { topic: 'sector', sector: s } }] },
       { id: 'card', isNew: true, items: [{ c: PtCompanyHeader, inputs: { sector: s, size: 'full' } }] },
-      basket('moves', 'Why it moved', 'moves'), basket('targets', 'Analyst price target and consensus', 'analysts'), basket('value', `Is ${s} a good buy?`, 'questions'),
+      basket('moves', 'Why it moved', 'moves'),
+      { id: 'targets', title: 'Analyst price target and consensus', isNew: true, items: [{ c: PtPriceTarget, inputs: { sector: s } }, { c: PtBasket, inputs: { sector: s, section: 'analysts' } }] },
+      basket('value', `Is ${s} a good buy?`, 'questions'),
       { id: 'price', title: 'Price and events', isNew: true, items: [{ c: PtPriceEvents, inputs: { sector: s } }] },
       { id: 'news', title: 'News of the 10 largest companies', isNew: true, items: [{ c: PtNews, inputs: { sector: s, limit: 10 } }] },
       ...MARKET_LISTS.slice(0, 7).map(([slug, list, , h1]): PreviewSection => ({ id: slug, title: h1, items: [{ c: PtScreen, inputs: { list, sector: s, limit: 5 } }] })),
@@ -266,7 +268,9 @@ export function etfPage(t: string, name: string, tracks: string, holdings: numbe
     sections: [
       { id: 'card', isNew: true, items: [{ c: PtCompanyHeader, inputs: { ticker: t, size: 'full' } }] },
       { id: 'answer', isNew: true, items: [{ c: PtAnswer, inputs: { topic: 'basket', ticker: t } }] },
-      basket('moves', 'Why it moved', 'moves'), basket('holdings', 'Holdings', 'holdings'), basket('targets', 'Analyst price target and consensus', 'analysts'), basket('value', `Is ${t} a good buy?`, 'questions'),
+      basket('moves', 'Why it moved', 'moves'), basket('holdings', 'Holdings', 'holdings'),
+      { id: 'targets', title: 'Analyst price target and consensus', isNew: true, items: [{ c: PtPriceTarget, inputs: { ticker: t, basket: true } }, { c: PtBasket, inputs: { ticker: t, section: 'analysts' } }] },
+      basket('value', `Is ${t} a good buy?`, 'questions'),
       { id: 'price', title: 'Price and events', isNew: true, items: [{ c: PtPriceEvents, inputs: { ticker: t, range: '1y', fund: true } }] },
       { id: 'news', title: 'News of its largest holdings', isNew: true, items: [{ c: PtNews, inputs: { ticker: t, limit: 10 } }] },
       basket('questions', `Questions about ${t}`, 'faq'),
