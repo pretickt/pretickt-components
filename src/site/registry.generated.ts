@@ -36,7 +36,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
   'pt-movers': { version: '1.1.0', sample: {} },
   'pt-news': { version: '2.3.0', sample: {} },
   'pt-price-events': { version: '2.4.0', sample: {} },
-  'pt-price-target': { version: '2.4.1', sample: { ticker: 'NVDA' } },
+  'pt-price-target': { version: '2.5.0', sample: {} },
   'pt-quality': { version: '0.3.1', sample: { ticker: 'NVDA' } },
   'pt-screen': { version: '2.5.0', sample: {} },
   'pt-value': { version: '1.1.1', sample: { ticker: 'NVDA' } },
@@ -67,7 +67,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
       @case ('pt-movers') { @defer (hydrate on viewport) {<pt-movers [sort]="$any(p()).sort ?? 'cap'" />} }
       @case ('pt-news') { @defer (hydrate on viewport) {<pt-news [ticker]="$any(p()).ticker ?? null" [sector]="$any(p()).sector ?? null" [limit]="$any(p()).limit ?? 20" />} }
       @case ('pt-price-events') { @defer (hydrate on viewport) {<pt-price-events [ticker]="$any(p()).ticker ?? null" [sector]="$any(p()).sector ?? null" [range]="$any(p()).range ?? '1y'" [fund]="$any(p()).fund ?? false" />} }
-      @case ('pt-price-target') { @defer (hydrate on viewport) {<pt-price-target [ticker]="$any(p()).ticker" />} }
+      @case ('pt-price-target') { @defer (hydrate on viewport) {<pt-price-target [ticker]="$any(p()).ticker ?? null" [basket]="$any(p()).basket ?? false" [sector]="$any(p()).sector ?? null" />} }
       @case ('pt-quality') { @defer (hydrate on viewport) {<pt-quality [ticker]="$any(p()).ticker" />} }
       @case ('pt-screen') { @defer (hydrate on viewport) {<pt-screen [list]="$any(p()).list" [peersOf]="$any(p()).peersOf" [limit]="$any(p()).limit ?? 25" [sector]="$any(p()).sector" />} }
       @case ('pt-value') { @defer (hydrate on viewport) {<pt-value [ticker]="$any(p()).ticker" [compact]="$any(p()).compact ?? false" />} }

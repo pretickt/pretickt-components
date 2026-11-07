@@ -2,7 +2,7 @@
  * pt-price-target as a company page shows it: the demo, www's real targets (NKE, CHTR, SKYD, NVDA) and the cases its axis and its
  * coverage have to survive. The fixtures are made up; they reproduce the shapes the live pages showed.
  */
-import type { Analysts, PriceSeries } from '@pretickt/components/typologies';
+import { demoFor, type Analysts, type Basket, type PriceSeries, type SectorBasket } from '../src/typologies';
 import { demo, story } from '../src/stories/story';
 import { PtPriceTarget } from './pt-price-target';
 
@@ -61,4 +61,10 @@ export const stories = [
   story(PtPriceTarget, { name: 'No targets in 12 months', inputs: { ticker: 'NVDA' },
     data: { 'analysts@1': { ...nvda, summary: null, targets: [], consensus: null, history: [] } } }),
   story(PtPriceTarget, { name: 'Not available', inputs: { ticker: 'NVDA' }, data: null }),
+  // a basket (Romeo, 2026-11-07): its holdings' targets, weighted, one a week over the year, on the fund's price or the sector's value (made up)
+  story(PtPriceTarget, { name: 'A fund: its holdings\' targets, week by week (demo)', inputs: { ticker: 'SMH', basket: true } }),
+  story(PtPriceTarget, { name: 'A sector: its companies\' targets, week by week, in compact dollars (demo)', inputs: { sector: 'Technology' } }),
+  story(PtPriceTarget, { name: 'A fund with no weeks yet (or under 80%): one line says so', inputs: { ticker: 'SMH', basket: true },
+    data: { 'basket@1': { ...(demoFor({ t: 'basket@1', params: { ticker: 'SMH' } }) as Basket), targetHistory: undefined } } }),
+  story(PtPriceTarget, { name: 'A sector, not available', inputs: { sector: 'Technology' }, data: { 'sector@1': null as unknown as SectorBasket } }),
 ];

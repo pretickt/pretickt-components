@@ -1,6 +1,7 @@
 /**
- * Where do analysts think this stock is going, and how spread out are they?
- * @version 2.4.1
+ * Where do analysts think this stock is going, and how spread out are they? On a fund's or a sector's page: where its holdings' analysts put it, week by week.
+ * @version 2.5.0
+ * @evidence Romeo, 2026-11-07: «for the price target, both in ETFs and sectors, I would like a chart similar to the one in companies, with dots and the lines to see recents and visually» (2.5: `basket`, `sector`)
  * @evidence DataForSEO: "{ticker} price target" ~103k searches/month, "{ticker} stock forecast" ~151k (launch/data, public-site spec §4)
  * @evidence beta: pt-chart (pretickt-frontend/src/app/companies/pt-chart.ts) — geometry, clustering, hover animations and zoom/pan ported 1:1
  * @evidence Romeo, 2026-10-26: "togliamo la linea verticale e mettiamo dei prezzi sull'asse a destra del prezzo, con linee tratteggiate orizzontali di colore opportuno"
@@ -12,11 +13,13 @@ import { Component, computed, inject, input, linkedSignal, signal } from '@angul
 import { Pt } from '@pretickt/components/context';
 import { applyXViewport, applyYViewport, closeAt, FULL_VIEWPORT, isoDay, linePath, monthTicks, padTime, PtChart, PtTimeAxis, type Viewport } from '@pretickt/components/ds';
 import { date, money, month, pct, svgId, tip, usd } from '@pretickt/components/format';
-import { cmp, type Analysts, type PriceBar } from '@pretickt/components/typologies';
+import { cmp, type Analysts, type PriceBar, type Sector } from '@pretickt/components/typologies';
 
 type Target = Analysts['targets'][number];
-/** The targets the price axis names: the summary's high, average and low. */
-export type LevelSummary = Pick<NonNullable<Analysts['summary']>, 'low' | 'mean' | 'high'>;
+/** The targets the price axis names: the summary's high, average and low (a basket's: today's target alone). */
+export type LevelSummary = { mean: number; low?: number; high?: number };
+/** A basket's chart: its money in its own format (a sector's trillions), and its one target named for what it is. */
+export interface PtChartWords { fmt?: (v: number) => string; meanName?: string; meanWhat?: string }
 
 // Geometry, ported from beta pt-chart.geometry.ts (targets already arrive on our adjusted basis). x unit: days (isoDay). ─────
 const W = 800, H = 340, ML = 6, MR = 46, MT = 12, MB = 22;
@@ -75,7 +78,8 @@ function clusterGreedy<T>(items: T[], near: (item: T, group: T[]) => boolean): {
  * line across the plot in the tone of its side. "Today" is `asOf` (the end of the time axis): a component never reads the clock.
  */
 export function buildPtChart(points: PriceBar[], targets: Target[], asOf: string, current: number, viewport: Viewport = FULL_VIEWPORT,
-  summary: LevelSummary | null = null): PtTargetChart | null {
+  summary: LevelSummary | null = null, words: PtChartWords = {}): PtTargetChart | null {
+  const cash = words.fmt ?? money, axis = words.fmt ?? axisPrice;
   if (!points.length || !targets.length || !(current > 0)) return null;
   const items = targets
     .filter((t) => t.target > 0)
@@ -123,12 +127,13 @@ export function buildPtChart(points: PriceBar[], targets: Target[], asOf: string
     segments.set(`${si}:${ei}`, { up: clusters[ei]!.up, line: linePath([[x1, sy(s.y)], [x2, sy(e.y)]]), x1, x2, endIdx: ei });
   });
 
+  const marks: [PtLevel['key'], string, string, number | undefined][] = summary
+    ? [['high', 'HIGH', 'High target', summary.high], ['mean', words.meanName ?? 'AVERAGE', words.meanWhat ?? 'Average target', summary.mean], ['low', 'LOW', 'Low target', summary.low]] : [];
   const named = [
-    ...(summary ? ([['high', 'HIGH', 'High target', summary.high], ['mean', 'AVERAGE', 'Average target', summary.mean], ['low', 'LOW', 'Low target', summary.low]] as const) : [])
-      .map(([key, name, what, v]) => ({ key, v, name, tone: levelTone(v, current), tip: `${what} ${money(v)} · ${pct(v / current - 1)} from the last close` })),
-    { key: 'now' as const, v: current, name: 'TODAY', tone: 'now' as const, tip: `Last close ${money(current)}` },
+    ...marks.flatMap(([key, name, what, v]) => (v == null ? [] : [{ key, v, name, tone: levelTone(v, current), tip: `${what} ${cash(v)} · ${pct(v / current - 1)} from the last close` }])),
+    { key: 'now' as const, v: current, name: 'TODAY', tone: 'now' as const, tip: `Last close ${cash(current)}` },
   ];
-  const levels = placeLevels(named.map((l) => ({ ...l, y: f(sy(l.v)), label: axisPrice(l.v) })).filter((l) => l.y >= MT && l.y <= H - MB));
+  const levels = placeLevels(named.map((l) => ({ ...l, y: f(sy(l.v)), label: axis(l.v) })).filter((l) => l.y >= MT && l.y <= H - MB));
 
   return {
     w: W, h: H, levels, x: { min: xMin, max: xMax },
@@ -226,16 +231,19 @@ export function consensusText(history: Analysts['history']): string | null {
   selector: 'pt-price-target',
   imports: [PtChart, PtTimeAxis],
   template: `
-    @let a = analysts.value();
-    @if (a === null) {<p class="pt-na">Data not available</p>}
+    @let a = data();
+    @if (hidden()) {<p class="pt-na">No weekly target for this {{ mode() === 'sector' ? 'sector' : 'fund' }}</p>}
+    @else if (a === null) {<p class="pt-na">Data not available</p>}
     @else if (a && (!a.summary || !a.targets.length)) {<p class="pt-na">No analyst targets in the last 12 months</p>}
-    @else if (a && a.summary && series.value() !== undefined) {
+    @else if (a && a.summary && ready()) {
       <figure class="pt-chart pt-pt">
-        <p class="pt-lede">{{ a.summary.n }} firm{{ a.summary.n === 1 ? '' : 's' }} with a target in the last 12 months · last close {{ money(a.price) }} · as of {{ date(a.asOf) }}</p>
+        @if (mode() === 'company') {<p class="pt-lede">{{ a.summary.n }} firm{{ a.summary.n === 1 ? '' : 's' }} with a target in the last 12 months · last close {{ money(a.price) }} · as of {{ date(a.asOf) }}</p>}
+        @else {<p class="pt-lede">Analysts' targets on its {{ mode() === 'sector' ? 'companies' : 'holdings' }}, weighted, week by week over the last 12 months · {{ mode() === 'sector' ? 'its value' : 'last close' }} {{ cash(a.price) }} · as of {{ date(a.asOf) }}</p>}
         @if (c(); as c) {
           <div class="pt-legend">
-            <span class="pt-lg-price">— actual price</span><span class="pt-lg-up">● bullish target</span><span class="pt-lg-down">● bearish target</span><span class="pt-lg-lvl">┄ last close, high, average and low target</span>
-            <span class="pt-lg-hint">hover a dot to see the analysts behind it · wheel or drag to move through time · drag the price axis on the right to stretch it · double-click resets</span>
+            @if (mode() === 'company') {<span class="pt-lg-price">— actual price</span><span class="pt-lg-up">● bullish target</span><span class="pt-lg-down">● bearish target</span><span class="pt-lg-lvl">┄ last close, high, average and low target</span>}
+            @else {<span class="pt-lg-price">— {{ mode() === 'sector' ? 'its companies\\' value' : 'actual price' }}</span><span class="pt-lg-up">● a week's target above it</span><span class="pt-lg-down">● below it</span><span class="pt-lg-lvl">┄ last close and today's target</span>}
+            <span class="pt-lg-hint">hover a dot to see the {{ mode() === 'company' ? 'analysts' : 'weeks' }} behind it · wheel or drag to move through time · drag the price axis on the right to stretch it · double-click resets</span>
           </div>
           <div ptChart [w]="c.w" [h]="c.h" [plotW]="c.w - MR" [plotH]="c.h - MB" [id]="id()" [label]="'Analyst price targets over time'" [(view)]="view">
             <svg:g ptDefs>
@@ -275,7 +283,7 @@ export function consensusText(history: Analysts['history']): string | null {
                 <div [class]="g.panel.above ? 'pt-members pt-members-above' : 'pt-members'" [attr.data-i]="g.i" [hidden]="open() !== g.i" [style.left]="g.panel.left" [style.top]="g.panel.top">
                   @for (r of g.rows; track r.m.firm + r.m.date + r.m.target) {
                     <div class="pt-mem" [style.animation-delay]="r.delay">
-                      <span class="pt-mem-analyst">{{ r.m.firm }}</span><span [class]="'pt-mem-target ' + tone(g.cl.up)">{{ money(r.m.target, 0) }}</span>
+                      <span class="pt-mem-analyst">{{ r.m.firm }}</span><span [class]="'pt-mem-target ' + tone(g.cl.up)">{{ cash(r.m.target, 0) }}</span>
                       <span class="pt-mem-date">{{ r.m.date }}</span>@if (r.acc) {<span [class]="'pt-mem-acc ' + r.acc.cls">{{ r.acc.text }}</span>}
                     </div>
                   }
@@ -307,10 +315,37 @@ export function consensusText(history: Analysts['history']): string | null {
 })
 export class PtPriceTarget {
   private readonly pt = inject(Pt);
-  readonly ticker = input.required<string>();
+  readonly ticker = input<string | null>(null);
+  /** On a fund's page, with its ticker: its holdings' targets, weighted, week by week (basket@1), on the fund's price. */
+  readonly basket = input(false);
+  /** On a sector's page: its companies' targets, weighted, week by week (sector@1), on its value line. */
+  readonly sector = input<Sector | null>(null);
 
-  protected readonly analysts = this.pt.analysts(() => ({ ticker: this.ticker(), window: '1y' }));
-  protected readonly series = this.pt.priceSeries(() => ({ tickers: [this.ticker()], range: '1y', interval: '1d', rebase: false }));
+  protected readonly mode = computed(() => (this.sector() ? 'sector' : this.basket() ? 'fund' : 'company'));
+  private readonly own = () => (this.mode() === 'company' ? this.ticker() : null);
+  protected readonly analysts = this.pt.analysts(() => { const t = this.own(); return t ? { ticker: t, window: '1y' as const } : null; });
+  private readonly fundCall = this.pt.basket(() => { const t = this.ticker(); return this.mode() === 'fund' && t ? { ticker: t } : null; });
+  private readonly sectorCall = this.pt.sector(() => { const s = this.sector(); return s ? { sector: s } : null; });
+  protected readonly series = this.pt.priceSeries(() => { const t = this.ticker(); return this.mode() !== 'sector' && t ? { tickers: [t], range: '1y' as const, interval: '1d' as const, rebase: false } : null; });
+  private readonly bk = computed(() => (this.mode() === 'fund' ? this.fundCall.value() : this.mode() === 'sector' ? this.sectorCall.value() : undefined));
+  /**
+   * The analysts in one shape: a company's own, or a basket's weeks as its targets, each from that week's price (Romeo, 2026-11-07: the company pages'
+   * chart on ETFs and sectors). A basket has no consensus by month here: its figures below the chart carry it.
+   */
+  protected readonly data = computed<Analysts | null | undefined>(() => {
+    if (this.mode() === 'company') return this.own() ? this.analysts.value() : null;
+    const b = this.bk();
+    if (!b) return b;
+    const weeks = (b.targetHistory ?? []).filter((w) => w.target != null), t = b.target?.price;
+    return { asOf: b.asOf, price: 'kind' in b ? b.value : b.close, history: [], consensus: null, accuracy: [],
+      summary: t != null && weeks.length ? { low: t, mean: t, median: t, high: t, n: weeks.length } : null,
+      targets: weeks.map((w) => ({ date: w.t, firm: 'Weighted target', target: w.target!, priceWhenPosted: w.price })) };
+  });
+  /** A basket with no weeks (a fund under 80%, a payload of before them): no chart, one line saying so. */
+  protected readonly hidden = computed(() => { const b = this.bk(); return !!b && !b.targetHistory?.some((w) => w.target != null); });
+  protected readonly ready = computed(() => this.mode() === 'sector' || this.series.value() !== undefined);
+  /** A sector's money in compact dollars ($28.2T): its value, its targets, its axis. */
+  protected readonly cash = (v: number | null, digits = 2) => (v == null ? '' : this.mode() === 'sector' ? usd(v, { compact: true }) : money(v, digits));
   protected readonly view = linkedSignal<unknown, Viewport>({ source: () => this.series.params(), computation: () => FULL_VIEWPORT });
   /** The dot whose analysts are shown (hover or keyboard focus). */
   protected readonly open = signal<number | null>(null);
@@ -324,15 +359,21 @@ export class PtPriceTarget {
   /** About how wide a price label is on the axis (its pill's width): digits and "$" of the axis' small type. */
   protected readonly textW = (s: string) => s.length * 5.4;
   protected readonly moreDelay = `${(MAX_MEMBER_ROWS * 0.13).toFixed(2)}s`;
-  protected readonly id = computed(() => svgId(`pt${this.ticker()}`));
+  protected readonly id = computed(() => svgId(`pt${this.ticker() ?? this.sector() ?? ''}`));
 
-  private readonly pts = computed(() => this.series.value()?.[0]?.points ?? []);
+  private readonly pts = computed((): PriceBar[] => (this.mode() === 'sector'
+    ? (this.sectorCall.value()?.series ?? []).map(({ t, c }) => ({ t, o: c, h: c, l: c, c, v: 0 })) : this.series.value()?.[0]?.points ?? []));
   protected readonly c = computed(() => {
-    const a = this.analysts.value(), s = this.series.value();
-    return a && s ? buildPtChart(this.pts(), a.targets, a.asOf, a.price ?? this.pts().at(-1)?.c ?? 0, this.view(), a.summary) : null;
+    const a = this.data(), m = this.mode();
+    if (!a || !this.pts().length) return null;
+    // a basket names one target, today's; a company its analysts' high, average and low
+    const summary = a.summary && m !== 'company' ? { mean: a.summary.mean } : a.summary;
+    const words = m === 'company' ? {} : { meanName: 'TARGET', meanWhat: `Today's target on its ${m === 'sector' ? 'companies' : 'holdings'}`,
+      ...(m === 'sector' ? { fmt: (v: number) => usd(v, { compact: true }) } : {}) };
+    return buildPtChart(this.pts(), a.targets, a.asOf, a.price ?? this.pts().at(-1)?.c ?? 0, this.view(), summary, words);
   });
   protected readonly consensus = computed(() => {
-    const k = this.analysts.value()?.consensus;
+    const k = this.data()?.consensus;
     if (!k) return null;
     const parts = [['sb', 'Strong buy', k.strongBuy], ['b', 'Buy', k.buy], ['h', 'Hold', k.hold], ['s', 'Sell', k.sell], ['ss', 'Strong sell', k.strongSell]] as const;
     const total = parts.reduce((n, [, , v]) => n + v, 0);
@@ -342,15 +383,15 @@ export class PtPriceTarget {
   });
   /** The consensus in a sentence: the month by month history, or the latest month alone when the answer has no history. */
   protected readonly consensusLine = computed(() => {
-    const a = this.analysts.value();
+    const a = this.data();
     return a ? consensusText(a.history.length ? a.history : a.consensus ? [a.consensus] : []) : null;
   });
   /** The ratings month by month under the chart, on its time axis (zoom and pan included). */
   protected readonly cons = computed(() => {
-    const a = this.analysts.value(), ch = this.c();
+    const a = this.data(), ch = this.c();
     return a && ch ? buildConsensusHistory(a.history, ch.x) : null;
   });
-  private readonly accuracy = computed(() => new Map((this.analysts.value()?.accuracy ?? []).filter((x) => x.total > 0).map((x) => [x.firm, x])));
+  private readonly accuracy = computed(() => new Map((this.data()?.accuracy ?? []).filter((x) => x.total > 0).map((x) => [x.firm, x])));
   protected readonly groups = computed(() => {
     const ch = this.c();
     if (!ch) return [];
@@ -364,7 +405,7 @@ export class PtPriceTarget {
       return {
         cl, i,
         segs: ch.segments.map((sg, k) => ({ sg, k })).filter(({ sg }) => sg.endIdx === i),
-        label: cl.members.length > 1 ? `${cl.members.length} targets, about ${money(cl.meanTarget, 0)}` : `${one.firm}, ${money(one.target, 0)}, ${one.date}`,
+        label: cl.members.length > 1 ? `${cl.members.length} targets, about ${this.cash(cl.meanTarget, 0)}` : `${one.firm}, ${this.cash(one.target, 0)}, ${one.date}`,
         pctX: f(cl.labelLeft ? cl.x - cl.r - 3 : cl.x + cl.r + 3),
         panel: { above, left: `${f(left)}%`, top: `${f(top)}%` },
         rows: cl.members.slice(0, MAX_MEMBER_ROWS).map((m, k) => {

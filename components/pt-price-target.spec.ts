@@ -1,5 +1,5 @@
 import { money, pct } from '../src/ds/format';
-import { analystsDemo, priceSeriesDemo } from '../src/typologies';
+import { analystsDemo, demoFor, priceSeriesDemo, type Basket, type SectorBasket } from '../src/typologies';
 import { buildConsensusHistory, buildPtChart, consensusText, LEVEL_GAP, PtPriceTarget } from './pt-price-target';
 import { basics, render, settle, withData } from './_spec';
 
@@ -229,5 +229,39 @@ describe('pt-price-target', () => {
     dot.dispatchEvent(new Event('pointerout', { bubbles: true }));
     await settle(r.f);
     expect(panel().hidden).toBe(true);
+  });
+});
+
+describe('pt-price-target on a basket: its holdings\' targets, week by week', () => {
+  const smh = demoFor({ t: 'basket@1', params: { ticker: 'SMH' } }) as Basket;
+  const tech = demoFor({ t: 'sector@1', params: { sector: 'Technology' } }) as SectorBasket;
+  const fundSeries = priceSeriesDemo({ tickers: ['SMH'], range: '1y', interval: '1d', rebase: false });
+  const fund = (b: unknown = smh) => render(PtPriceTarget, { ticker: 'SMH', basket: true }, withData({ 'basket@1': b, 'price-series@1': fundSeries }));
+  basics(PtPriceTarget, { ticker: 'SMH', basket: true });
+  basics(PtPriceTarget, { sector: 'Technology' });
+
+  it("a fund: a segment from each week's price to its 12-month horizon, dots, its levels the last close and today's target; the lede says weighted", async () => {
+    const r = await fund();
+    expect(r.text()).toContain("Analysts' targets on its holdings, weighted, week by week over the last 12 months");
+    expect(r.el.querySelectorAll('circle.pt-dot').length).toBeGreaterThan(1);
+    expect(r.el.querySelectorAll('path.pt-seg').length).toBeGreaterThan(1);
+    expect([...r.el.querySelectorAll('.pt-lvl-n')].map((n) => n.textContent!.trim()).sort()).toEqual(['TARGET', 'TODAY']);
+    expect(r.el.querySelector('.pt-cons')).toBeNull();
+    expect(r.calls()).toBe(2);
+  });
+  it('a sector: its value line and targets in compact dollars, never a $ with commas', async () => {
+    const r = await render(PtPriceTarget, { sector: 'Technology' }, withData({ 'sector@1': tech }));
+    expect(r.text()).toContain("Analysts' targets on its companies, weighted, week by week over the last 12 months");
+    expect(r.el.querySelectorAll('circle.pt-dot').length).toBeGreaterThan(1);
+    expect(r.el.innerHTML).not.toMatch(/\$\d{1,3}(,\d{3}){2,}/);
+    expect(r.calls()).toBe(1);
+  });
+  it("no target history (a fund under 80%, or last night's payload): no chart, one line saying so", async () => {
+    const r = await fund({ ...smh, targetHistory: undefined });
+    expect(r.el.querySelector('svg')).toBeNull();
+    expect(r.text().trim()).toBe('No weekly target for this fund');
+  });
+  it('not available', async () => {
+    expect((await fund(null)).el.querySelector('.pt-na')).not.toBeNull();
   });
 });

@@ -1,5 +1,6 @@
 import * as z from 'zod/mini';
-import { addDays, DEMO_ASOF, DEMO_COMPANIES, HttpUrl, IsoDate, Num, prng, round, Ticker } from './common';
+import { DEMO_ASOF, DEMO_COMPANIES, HttpUrl, IsoDate, Num, prng, round, Ticker } from './common';
+import { priceSeriesDemo } from './price-series';
 import { VALUE_KEYS, ValueFaq } from './value';
 import { BASKET_MIN_COVERAGE, BASKET_MOVERS } from './values';
 
@@ -70,16 +71,15 @@ export type BasketHolding = z.infer<typeof BasketHolding>;
 export type BasketTarget = z.infer<typeof BasketTarget>;
 export type TargetWeek = z.infer<typeof TargetWeek>;
 
-/** A made-up year of weekly targets ending on today's (`asOf`), for the demos: the price wanders, the target follows it at about `upside`. */
-export function demoTargetHistory(seed: string, asOf: string, close: number, target: number, upside: number): TargetWeek[] {
+/**
+ * A made-up year of weekly targets on the demo's own price line (every 5th point back from its last, as the nightly takes its weeks): the target follows
+ * the price at about `upside`, the last week is today's `target`.
+ */
+export function demoTargetHistory(seed: string, points: readonly { t: string; c: number }[], target: number, upside: number): TargetWeek[] {
   const r = prng(`${seed}:weeks`), out: TargetWeek[] = [];
-  let p = close / (1 + (r() - 0.3) * 0.3);
-  for (let i = 51; i >= 0; i--) {
-    const t = addDays(asOf, -7 * i);
-    p = i === 0 ? close : p * (1 + (r() - 0.48) * 0.04);
-    out.push({ t, price: round(p, 2), target: i === 0 ? target : round(p * (1 + upside * (0.7 + r() * 0.6)), 2), share: 0.97 });
-  }
-  return out;
+  for (let i = points.length - 1; i >= 0 && out.length < 52; i -= 5) out.push({ t: points[i]!.t, price: round(points[i]!.c, 2), target: 0, share: 0.97 });
+  out.reverse();
+  return out.map((w, k) => ({ ...w, target: k === out.length - 1 ? target : round(w.price * (1 + upside * (0.7 + r() * 0.6)), 2) }));
 }
 export type BasketConsensus = z.infer<typeof BasketConsensus>;
 export type BasketPe = z.infer<typeof BasketPe>;
@@ -95,7 +95,10 @@ export function basketDemo(p: BasketParams): Basket {
   const rows = DEMO_COMPANIES.slice(0, 12).map(([ticker, name], i) => ({ ticker, name, logo: null, weight: round(w[i]!, 4), ret: round((r() - 0.5) * 0.08, 4), upside: round(r() * 0.5 - 0.05, 3), label: ['Buy', 'Strong Buy', 'Hold'][i % 3]! }));
   const movers = (list: typeof rows) => list.map((h) => ({ ticker: h.ticker, name: h.name, logo: h.logo, weight: h.weight, ret: h.ret, points: round(h.weight * h.ret, 5), headline: { title: `${h.ticker} demo headline`, url: `https://example.com/${h.ticker.toLowerCase()}` } }));
   const sorted = [...rows].sort((a, b) => b.weight * b.ret - a.weight * a.ret);
-  const upside = round(rows.reduce((s, h) => s + h.weight * h.upside, 0) / rows.reduce((s, h) => s + h.weight, 0), 3), close = round(100 + r() * 400);
+  // the fund's close is its demo price line's last (price-series@1), so the target chart's weeks sit on the line it draws
+  const line = priceSeriesDemo({ tickers: [p.ticker], range: '1y', interval: '1d', rebase: false })[0]!.points;
+  r(); // the draw the close once took: the figures after it keep their values
+  const upside = round(rows.reduce((s, h) => s + h.weight * h.upside, 0) / rows.reduce((s, h) => s + h.weight, 0), 3), close = round(line.at(-1)!.c, 2);
   return {
     asOf: DEMO_ASOF, ticker: p.ticker, name: `${p.ticker} Demo ETF`, logo: null, tracks: 'tracks a made-up index', group: 'Market', same: [], note: null, close, ret: round((r() - 0.5) * 0.04, 4),
     coverage, state: low ? 'low' : 'ok', stale: false,
@@ -106,7 +109,7 @@ export function basketDemo(p: BasketParams): Basket {
     questions: low ? null : VALUE_KEYS.map((key, i) => ({ key, pos: [0.67, 0.5, 0.62, 0.55, 0.2, 0.3][i]!, flat: [0.2, 0.3, 0.2, 0.3, 0.4, 0.3][i]!, neg: [0.13, 0.2, 0.18, 0.15, 0.4, 0.4][i]!, share: 0.98, comparable: true })),
     moves: { sum: round(rows.reduce((s, h) => s + h.weight * h.ret, 0), 5), up: movers(sorted.filter((h) => h.ret > 0).slice(0, BASKET_MOVERS)), down: movers(sorted.filter((h) => h.ret < 0).reverse().slice(0, BASKET_MOVERS)) },
     holdings: [...rows, { ticker: null, name: 'A Private Holding', logo: null, weight: 0.01, ret: null, upside: null, label: null }],
-    ...(low ? {} : { targetHistory: demoTargetHistory(p.ticker, DEMO_ASOF, close, round(close * (1 + upside)), upside) }),
+    ...(low ? {} : { targetHistory: demoTargetHistory(p.ticker, line, round(close * (1 + upside)), upside) }),
     faq: [{ q: `What does ${p.ticker} hold?`, a: `${p.ticker} holds 27 stocks; the largest is ${rows[0]!.name}.` }],
   };
 }
