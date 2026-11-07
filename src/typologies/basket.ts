@@ -1,5 +1,5 @@
 import * as z from 'zod/mini';
-import { DEMO_ASOF, DEMO_COMPANIES, HttpUrl, IsoDate, Num, prng, round, Ticker } from './common';
+import { addDays, DEMO_ASOF, DEMO_COMPANIES, HttpUrl, IsoDate, Num, prng, round, Ticker } from './common';
 import { VALUE_KEYS, ValueFaq } from './value';
 import { BASKET_MIN_COVERAGE, BASKET_MOVERS } from './values';
 
@@ -27,6 +27,13 @@ export const BasketTarget = z.object({ upside: z.number(), price: z.number(), sh
 export const BasketConsensus = z.object({ buy: Share, hold: Share, sell: Share, n: z.number(), label: Text, share: Share });
 export const BasketPe = z.object({ value: z.number(), share: Share });
 export const BasketMoves = z.object({ sum: Num, up: z.array(BasketMover).check(z.refine(atMost(BASKET_MOVERS), 'at most five a side')), down: z.array(BasketMover).check(z.refine(atMost(BASKET_MOVERS), 'at most five a side')) });
+/**
+ * One week of the year (Romeo, 2026-11-07: the company pages' target chart on a basket): the basket's price that week and the target its holdings'
+ * analysts put on it, with today's weights; `share` the weight with a target. Null target: no company had targets from 3 firms that week.
+ */
+export const TargetWeek = z.object({ t: IsoDate, price: z.number(), target: Num, share: Share });
+const ascending = (s: readonly { t: string }[]) => s.every((p, i) => i === 0 || s[i - 1]!.t < p.t);
+export const TargetHistory = z.array(TargetWeek).check(z.refine(ascending, 'oldest first, one point a week'));
 export const BasketPayload = z.object({
   asOf: IsoDate, ticker: Ticker, name: Text, logo: z.nullable(z.string()),
   /** Finishes the sentence "SMH …": "tracks the MVIS US Listed Semiconductor 25 Index". */
@@ -49,9 +56,11 @@ export const BasketPayload = z.object({
   moves: BasketMoves,
   /** Every covered company and the 50 largest others, largest first. */
   holdings: z.array(BasketHolding),
+  /** The target week by week over the year, the last one today's (absent in a payload written before 2026-11-07, and on a fund under 80%). */
+  targetHistory: z.optional(TargetHistory),
   faq: z.array(ValueFaq),
 }).check(
-  z.refine((b) => b.state === 'low' ? b.target === null && b.consensus === null && b.pe === null && b.questions === null : b.coverage >= BASKET_MIN_COVERAGE, 'no basket figure on a fund under 80%'),
+  z.refine((b) => b.state === 'low' ? b.target === null && b.consensus === null && b.pe === null && b.questions === null && !b.targetHistory?.length : b.coverage >= BASKET_MIN_COVERAGE, 'no basket figure on a fund under 80%'),
 );
 export type BasketParams = z.output<typeof BasketParams>;
 export type BasketMover = z.infer<typeof BasketMover>;
@@ -59,6 +68,19 @@ export type BasketContributor = z.infer<typeof BasketContributor>;
 export type BasketQuestion = z.infer<typeof BasketQuestion>;
 export type BasketHolding = z.infer<typeof BasketHolding>;
 export type BasketTarget = z.infer<typeof BasketTarget>;
+export type TargetWeek = z.infer<typeof TargetWeek>;
+
+/** A made-up year of weekly targets ending on today's (`asOf`), for the demos: the price wanders, the target follows it at about `upside`. */
+export function demoTargetHistory(seed: string, asOf: string, close: number, target: number, upside: number): TargetWeek[] {
+  const r = prng(`${seed}:weeks`), out: TargetWeek[] = [];
+  let p = close / (1 + (r() - 0.3) * 0.3);
+  for (let i = 51; i >= 0; i--) {
+    const t = addDays(asOf, -7 * i);
+    p = i === 0 ? close : p * (1 + (r() - 0.48) * 0.04);
+    out.push({ t, price: round(p, 2), target: i === 0 ? target : round(p * (1 + upside * (0.7 + r() * 0.6)), 2), share: 0.97 });
+  }
+  return out;
+}
 export type BasketConsensus = z.infer<typeof BasketConsensus>;
 export type BasketPe = z.infer<typeof BasketPe>;
 export type BasketMoves = z.infer<typeof BasketMoves>;
@@ -84,6 +106,7 @@ export function basketDemo(p: BasketParams): Basket {
     questions: low ? null : VALUE_KEYS.map((key, i) => ({ key, pos: [0.67, 0.5, 0.62, 0.55, 0.2, 0.3][i]!, flat: [0.2, 0.3, 0.2, 0.3, 0.4, 0.3][i]!, neg: [0.13, 0.2, 0.18, 0.15, 0.4, 0.4][i]!, share: 0.98, comparable: true })),
     moves: { sum: round(rows.reduce((s, h) => s + h.weight * h.ret, 0), 5), up: movers(sorted.filter((h) => h.ret > 0).slice(0, BASKET_MOVERS)), down: movers(sorted.filter((h) => h.ret < 0).reverse().slice(0, BASKET_MOVERS)) },
     holdings: [...rows, { ticker: null, name: 'A Private Holding', logo: null, weight: 0.01, ret: null, upside: null, label: null }],
+    ...(low ? {} : { targetHistory: demoTargetHistory(p.ticker, DEMO_ASOF, close, round(close * (1 + upside)), upside) }),
     faq: [{ q: `What does ${p.ticker} hold?`, a: `${p.ticker} holds 27 stocks; the largest is ${rows[0]!.name}.` }],
   };
 }

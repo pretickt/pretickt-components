@@ -18,7 +18,8 @@ describe('basket@1', () => {
   it('a low state with any basket figure is refused: a fund under 80% shows none', () => {
     const low = { ...smh, state: 'low', coverage: 0.72 };
     expect(ok(low)).toBe(false);
-    expect(ok({ ...low, target: null, consensus: null, pe: null, questions: null })).toBe(true);
+    expect(ok({ ...low, target: null, consensus: null, pe: null, questions: null, targetHistory: undefined })).toBe(true);
+    expect(ok({ ...low, target: null, consensus: null, pe: null, questions: null })).toBe(false); // its target history is a basket figure too
     expect(ok({ ...low, target: null, consensus: smh.consensus, pe: null, questions: null })).toBe(false);
   });
   it('an ok state under 80% is refused', () => {

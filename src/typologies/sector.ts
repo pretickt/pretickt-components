@@ -1,5 +1,5 @@
 import * as z from 'zod/mini';
-import { BasketConsensus, BasketHolding, BasketMoves, BasketPe, BasketQuestion, BasketTarget, BASKET_MOVERS } from './basket';
+import { BasketConsensus, BasketHolding, BasketMoves, BasketPe, BasketQuestion, BasketTarget, BASKET_MOVERS, demoTargetHistory, TargetHistory } from './basket';
 import { addDays, DEMO_ASOF, DEMO_COMPANIES, demoName, IsoDate, Num, prng, round, Ticker } from './common';
 import { MetricItem, metricDemo } from './metric';
 import { VALUE_KEYS, ValueFaq, type ValueKey } from './value';
@@ -49,6 +49,8 @@ export const SectorBasketPayload = z.object({
   holdings: z.array(SectorHolding),
   /** The ten largest companies, one row each: a company's share classes merged, its weight their sum, its ticker its largest class's. */
   top: z.array(SectorTop).check(z.refine((t) => t.length <= TOP_COMPANIES, 'at most ten')),
+  /** The target week by week over the year, on the sector's value, the last one today's (absent in a payload written before it). */
+  targetHistory: z.optional(TargetHistory),
   series: z.array(Point).check(z.refine(ascending, 'oldest first, one point a session')),
   badges: z.array(MetricItem).check(z.refine(badgesOnly, 'only the basket badges')),
   faq: z.array(ValueFaq),
@@ -99,6 +101,7 @@ export function sectorDemo(p: SectorParams): SectorBasket {
       : { key, pos: [0.62, 0.5, 0.58, 0.55, 0.3, 0.25][i]!, flat: [0.25, 0.3, 0.22, 0.3, 0.4, 0.35][i]!, neg: [0.13, 0.2, 0.2, 0.15, 0.3, 0.4][i]!, share: 0.97, comparable: true }),
     moves: { sum, up: movers(byPoints.filter((h) => h.ret > 0).slice(0, BASKET_MOVERS)), down: movers(byPoints.filter((h) => h.ret < 0).reverse().slice(0, BASKET_MOVERS)) },
     holdings, series, top: holdings.slice(0, TOP_COMPANIES).map(({ ticker, name, logo, weight }) => ({ ticker, name, logo, weight })),
+    targetHistory: demoTargetHistory(p.sector, DEMO_ASOF, value, round(value * (1 + upside), 0), upside),
     badges: metricDemo({ ticker: tracker, metrics: [...SECTOR_BADGES] }),
     faq: [{ q: `What are the largest ${p.sector} stocks?`, a: `The largest of the ${holdings.length} ${p.sector} companies on pretickt are ${holdings[0]!.name} and ${holdings[1]!.name}.` }],
   };

@@ -94,3 +94,20 @@ describe('the largest companies, one per company', () => {
     expect(ok({ ...tech, top: Array.from({ length: 11 }, (_, i) => ({ ...tech.top[0]!, name: `C${i}` })) })).toBe(false);
   });
 });
+
+describe('the target, week by week', () => {
+  it('the demos carry 52 weeks, oldest first, the last one today\'s target', () => {
+    for (const b of [tech, demoFor({ t: 'basket@1', params: { ticker: 'SMH' } }) as { targetHistory?: { t: string; target: number | null }[]; target: { price: number } | null }]) {
+      const h = b.targetHistory!;
+      expect(h).toHaveLength(52);
+      expect(h.map((w) => w.t)).toEqual([...h.map((w) => w.t)].sort());
+      expect(h.at(-1)!.target).toBe(b.target!.price);
+    }
+  });
+  it('a low fund carries none', () => {
+    expect((demoFor({ t: 'basket@1', params: { ticker: 'ARKW' } }) as { targetHistory?: unknown }).targetHistory).toBeUndefined();
+  });
+  it('weeks out of order are refused', () => {
+    expect(ok({ ...tech, targetHistory: [...tech.targetHistory!].reverse() })).toBe(false);
+  });
+});
