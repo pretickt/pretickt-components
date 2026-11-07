@@ -1,7 +1,8 @@
 /**
  * Where do analysts think this stock is going, and how spread out are they? On a fund's or a sector's page: where its holdings' analysts put it, week by week.
- * @version 2.5.0
+ * @version 2.6.0
  * @evidence Romeo, 2026-11-07: «for the price target, both in ETFs and sectors, I would like a chart similar to the one in companies, with dots and the lines to see recents and visually» (2.5: `basket`, `sector`)
+ * @evidence Romeo, 2026-11-07, on a basket dot's panel: «do not show weighted target, but the surrounding companies with logos» (2.6: the week, then its largest companies)
  * @evidence DataForSEO: "{ticker} price target" ~103k searches/month, "{ticker} stock forecast" ~151k (launch/data, public-site spec §4)
  * @evidence beta: pt-chart (pretickt-frontend/src/app/companies/pt-chart.ts) — geometry, clustering, hover animations and zoom/pan ported 1:1
  * @evidence Romeo, 2026-10-26: "togliamo la linea verticale e mettiamo dei prezzi sull'asse a destra del prezzo, con linee tratteggiate orizzontali di colore opportuno"
@@ -11,8 +12,8 @@
  */
 import { Component, computed, inject, input, linkedSignal, signal } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
-import { applyXViewport, applyYViewport, closeAt, FULL_VIEWPORT, isoDay, linePath, monthTicks, padTime, PtChart, PtTimeAxis, type Viewport } from '@pretickt/components/ds';
-import { date, money, month, pct, svgId, tip, usd } from '@pretickt/components/format';
+import { applyXViewport, applyYViewport, closeAt, FULL_VIEWPORT, isoDay, linePath, monthTicks, padTime, PtChart, PtLogo, PtTimeAxis, type Viewport } from '@pretickt/components/ds';
+import { date, money, month, pct, plainName, svgId, tip, usd } from '@pretickt/components/format';
 import { cmp, type Analysts, type PriceBar, type Sector } from '@pretickt/components/typologies';
 
 type Target = Analysts['targets'][number];
@@ -229,7 +230,7 @@ export function consensusText(history: Analysts['history']): string | null {
 
 @Component({
   selector: 'pt-price-target',
-  imports: [PtChart, PtTimeAxis],
+  imports: [PtChart, PtLogo, PtTimeAxis],
   template: `
     @let a = data();
     @if (hidden()) {<p class="pt-na">No weekly target for this {{ mode() === 'sector' ? 'sector' : 'fund' }}</p>}
@@ -243,7 +244,7 @@ export function consensusText(history: Analysts['history']): string | null {
           <div class="pt-legend">
             @if (mode() === 'company') {<span class="pt-lg-price">— actual price</span><span class="pt-lg-up">● bullish target</span><span class="pt-lg-down">● bearish target</span><span class="pt-lg-lvl">┄ last close, high, average and low target</span>}
             @else {<span class="pt-lg-price">— {{ mode() === 'sector' ? 'its companies\\' value' : 'actual price' }}</span><span class="pt-lg-up">● a week's target above it</span><span class="pt-lg-down">● below it</span><span class="pt-lg-lvl">┄ {{ mode() === 'sector' ? 'its value' : 'last close' }} and today's target</span>}
-            <span class="pt-lg-hint">hover a dot to see the {{ mode() === 'company' ? 'analysts' : 'weeks' }} behind it · wheel or drag to move through time · drag the price axis on the right to stretch it · double-click resets</span>
+            <span class="pt-lg-hint">hover a dot to see {{ mode() === 'company' ? 'the analysts behind it' : 'its largest companies that week' }} ·wheel or drag to move through time · drag the price axis on the right to stretch it · double-click resets</span>
           </div>
           <div ptChart [w]="c.w" [h]="c.h" [plotW]="c.w - MR" [plotH]="c.h - MB" [id]="id()" [label]="'Analyst price targets over time'" [(view)]="view">
             <svg:g ptDefs>
@@ -280,14 +281,21 @@ export function consensusText(history: Analysts['history']): string | null {
             </svg:g>
             <ng-container ngProjectAs="[ptAfter]">
               @for (g of groups(); track g.i) {
-                <div [class]="g.panel.above ? 'pt-members pt-members-above' : 'pt-members'" [attr.data-i]="g.i" [hidden]="open() !== g.i" [style.left]="g.panel.left" [style.top]="g.panel.top">
-                  @for (r of g.rows; track r.m.firm + r.m.date + r.m.target) {
-                    <div class="pt-mem" [style.animation-delay]="r.delay">
-                      <span class="pt-mem-analyst">{{ r.m.firm }}</span><span [class]="'pt-mem-target ' + tone(g.cl.up)">{{ cash(r.m.target, 0) }}</span>
-                      <span class="pt-mem-date">{{ r.m.date }}</span>@if (r.acc) {<span [class]="'pt-mem-acc ' + r.acc.cls">{{ r.acc.text }}</span>}
-                    </div>
+                <div [class]="g.panel.above ? 'pt-members pt-members-above' : 'pt-members'" [attr.data-i]="g.i" [hidden]="open() !== g.i" [style.--pt-x]="g.panel.left" [style.top]="g.panel.top">
+                  @if (mode() === 'company') {
+                    @for (r of g.rows; track r.m.firm + r.m.date + r.m.target) {
+                      <div class="pt-mem" [style.animation-delay]="r.delay">
+                        <span class="pt-mem-analyst">{{ r.m.firm }}</span><span [class]="'pt-mem-target ' + tone(g.cl.up)">{{ cash(r.m.target, 0) }}</span>
+                        <span class="pt-mem-date">{{ r.m.date }}</span>@if (r.acc) {<span [class]="'pt-mem-acc ' + r.acc.cls">{{ r.acc.text }}</span>}
+                      </div>
+                    }
+                    @if (g.more > 0) {<div class="pt-mem pt-mem-more" [style.animation-delay]="moreDelay">+{{ g.more }} more</div>}
+                  } @else {
+                    <div class="pt-mem pt-mem-week">{{ g.week }}</div>
+                    @for (x of g.cos; track x.ticker) {
+                      <div class="pt-mem pt-mem-co" [style.animation-delay]="x.delay"><pt-logo [ticker]="x.ticker" [src]="x.logo" [size]="16" /><span class="pt-mem-analyst">{{ x.name }}</span><span [class]="'pt-mem-target ' + x.tone">{{ x.up }}</span></div>
+                    }
                   }
-                  @if (g.more > 0) {<div class="pt-mem pt-mem-more" [style.animation-delay]="moreDelay">+{{ g.more }} more</div>}
                 </div>
               }
             </ng-container>
@@ -339,8 +347,11 @@ export class PtPriceTarget {
     const weeks = (b.targetHistory ?? []).filter((w) => w.target != null), t = b.target?.price;
     return { asOf: b.asOf, price: 'kind' in b ? b.value : b.close, history: [], consensus: null, accuracy: [],
       summary: t != null && weeks.length ? { low: t, mean: t, median: t, high: t, n: weeks.length } : null,
-      targets: weeks.map((w) => ({ date: w.t, firm: 'Weighted target', target: w.target!, priceWhenPosted: w.price })) };
+      targets: weeks.map((w) => ({ date: w.t, firm: 'Week', target: w.target!, priceWhenPosted: w.price })) };
   });
+  /** A basket's dot names its newest week's largest companies (Romeo, 2026-11-07: «the surrounding companies with logos»): their names and logos from the page's holdings. */
+  private readonly weekOf = computed(() => new Map((this.bk()?.targetHistory ?? []).map((w) => [w.t, w])));
+  private readonly holdingOf = computed(() => new Map((this.bk()?.holdings ?? []).flatMap((h) => (h.ticker ? [[h.ticker, h] as const] : []))));
   /** A basket with no weeks (a fund under 80%, a payload of before them): no chart, one line saying so. */
   protected readonly hidden = computed(() => { const b = this.bk(); return !!b && !b.targetHistory?.some((w) => w.target != null); });
   protected readonly ready = computed(() => this.mode() === 'sector' || this.series.value() !== undefined);
@@ -395,9 +406,12 @@ export class PtPriceTarget {
   protected readonly groups = computed(() => {
     const ch = this.c();
     if (!ch) return [];
-    const acc = this.accuracy();
+    const acc = this.accuracy(), basket = this.mode() !== 'company', weekOf = this.weekOf(), holdingOf = this.holdingOf();
     return ch.clusters.map((cl, i) => {
       const one = cl.members[0]!;
+      const cos = basket ? (weekOf.get(one.date)?.top ?? []).flatMap((c, k) => { const h = holdingOf.get(c.ticker);
+        return h ? [{ ticker: c.ticker, name: plainName(h.name), logo: h.logo, up: pct(c.upside, 0), tone: tone(c.upside >= 0), delay: `${(k * 0.13).toFixed(2)}s` }] : []; }) : [];
+      const week = `Week of ${date(one.date)}`;
       // % coordinates in the responsive wrapper; x clamped so the panel stays inside, flipped above the dot in the bottom third.
       const above = cl.y > ch.h * 0.62;
       const left = Math.min(85, Math.max(15, (cl.x / ch.w) * 100));
@@ -405,7 +419,9 @@ export class PtPriceTarget {
       return {
         cl, i,
         segs: ch.segments.map((sg, k) => ({ sg, k })).filter(({ sg }) => sg.endIdx === i),
-        label: cl.members.length > 1 ? `${cl.members.length} targets, about ${this.cash(cl.meanTarget, 0)}` : `${one.firm}, ${this.cash(one.target, 0)}, ${one.date}`,
+        label: basket ? [week, ...cos.map((x) => `${x.name} ${x.up}`)].join(', ')
+          : cl.members.length > 1 ? `${cl.members.length} targets, about ${this.cash(cl.meanTarget, 0)}` : `${one.firm}, ${this.cash(one.target, 0)}, ${one.date}`,
+        week, cos,
         pctX: f(cl.labelLeft ? cl.x - cl.r - 3 : cl.x + cl.r + 3),
         panel: { above, left: `${f(left)}%`, top: `${f(top)}%` },
         rows: cl.members.slice(0, MAX_MEMBER_ROWS).map((m, k) => {

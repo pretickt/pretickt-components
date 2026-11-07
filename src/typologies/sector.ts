@@ -101,7 +101,7 @@ export function sectorDemo(p: SectorParams): SectorBasket {
       : { key, pos: [0.62, 0.5, 0.58, 0.55, 0.3, 0.25][i]!, flat: [0.25, 0.3, 0.22, 0.3, 0.4, 0.35][i]!, neg: [0.13, 0.2, 0.2, 0.15, 0.3, 0.4][i]!, share: 0.97, comparable: true }),
     moves: { sum, up: movers(byPoints.filter((h) => h.ret > 0).slice(0, BASKET_MOVERS)), down: movers(byPoints.filter((h) => h.ret < 0).reverse().slice(0, BASKET_MOVERS)) },
     holdings, series, top: holdings.slice(0, TOP_COMPANIES).map(({ ticker, name, logo, weight }) => ({ ticker, name, logo, weight })),
-    targetHistory: demoTargetHistory(p.sector, series, round(value * (1 + upside), 0), upside),
+    targetHistory: demoTargetHistory(p.sector, series, round(value * (1 + upside), 0), upside, holdings.map((h) => h.ticker)),
     badges: metricDemo({ ticker: tracker, metrics: [...SECTOR_BADGES] }),
     faq: [{ q: `What are the largest ${p.sector} stocks?`, a: `The largest of the ${holdings.length} ${p.sector} companies on pretickt are ${holdings[0]!.name} and ${holdings[1]!.name}.` }],
   };

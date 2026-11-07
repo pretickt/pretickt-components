@@ -1,4 +1,4 @@
-import { money, pct } from '../src/ds/format';
+import { date, money, pct, plainName } from '../src/ds/format';
 import { analystsDemo, demoFor, priceSeriesDemo, type Basket, type SectorBasket } from '../src/typologies';
 import { buildConsensusHistory, buildPtChart, consensusText, LEVEL_GAP, PtPriceTarget } from './pt-price-target';
 import { basics, render, settle, withData } from './_spec';
@@ -263,6 +263,25 @@ describe('pt-price-target on a basket: its holdings\' targets, week by week', ()
     const tips = [...r.el.querySelectorAll('.pt-lvl-t')].map((t) => t.getAttribute('data-tip')!);
     expect(tips.find((t) => t.startsWith('Its value'))).toBeDefined();
     expect(tips.find((t) => t.startsWith("Today's target"))).toMatch(/from its value$/);
+  });
+  it("a dot's panel names its week and the basket's largest companies, each with its logo and its upside then, never a 'Weighted target'", async () => {
+    for (const [r, b] of [[await fund(), smh], [await render(PtPriceTarget, { sector: 'Technology' }, withData({ 'sector@1': tech })), tech]] as const) {
+      expect(r.text()).not.toContain('Weighted target');
+      expect(r.el.querySelector('.pt-lg-hint')!.textContent).toContain('hover a dot to see its largest companies that week');
+      const last = b.targetHistory!.at(-1)!, name = new Map(b.holdings.map((h) => [h.ticker, h.name]));
+      const panel = [...r.el.querySelectorAll('.pt-members')].find((p) => p.querySelector('.pt-mem-week')?.textContent?.trim() === `Week of ${date(last.t)}`)!;
+      expect(panel).toBeDefined();
+      const rows = [...panel.querySelectorAll('.pt-mem-co')];
+      expect(rows.map((x) => x.querySelector('.pt-mem-analyst')!.textContent!.trim())).toEqual(last.top!.map((c) => plainName(name.get(c.ticker)!)));
+      expect(rows.map((x) => x.querySelector('.pt-mem-target')!.textContent!.trim())).toEqual(last.top!.map((c) => pct(c.upside, 0)));
+      expect(rows.every((x) => x.querySelector('pt-logo'))).toBe(true);
+    }
+  });
+  it('a week written before the companies were: its panel says the week only', async () => {
+    const r = await fund({ ...smh, targetHistory: smh.targetHistory!.map(({ top: _, ...w }) => w) });
+    expect(r.el.querySelectorAll('.pt-mem-week').length).toBeGreaterThan(0);
+    expect(r.el.querySelectorAll('.pt-mem-co').length).toBe(0);
+    expect(r.text()).not.toContain('Weighted target');
   });
   it("no target history (a fund under 80%, or last night's payload): no chart, one line saying so", async () => {
     const r = await fund({ ...smh, targetHistory: undefined });

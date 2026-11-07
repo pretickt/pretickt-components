@@ -111,4 +111,18 @@ describe('the target, week by week', () => {
   it('weeks out of order are refused', () => {
     expect(ok({ ...tech, targetHistory: [...tech.targetHistory!].reverse() })).toBe(false);
   });
+  it("each week names its largest companies, up to six, with each one's upside that week: the chart's panel on a dot", () => {
+    const smh = demoFor({ t: 'basket@1', params: { ticker: 'SMH' } }) as { targetHistory?: { top?: { ticker: string; upside: number }[] }[]; holdings: { ticker: string | null }[] };
+    for (const b of [tech, smh]) {
+      const on = new Set(b.holdings.map((h) => h.ticker));
+      for (const w of b.targetHistory!) {
+        expect(w.top!.length).toBeGreaterThan(0);
+        expect(w.top!.length).toBeLessThanOrEqual(6);
+        for (const c of w.top!) { expect(on.has(c.ticker)).toBe(true); expect(Number.isFinite(c.upside)).toBe(true); }
+      }
+    }
+    const week = tech.targetHistory![0]!, seven = Array.from({ length: 7 }, (_, i) => ({ ticker: tech.holdings[i]!.ticker, upside: 0.1 }));
+    expect(ok({ ...tech, targetHistory: [{ ...week, top: seven }, ...tech.targetHistory!.slice(1)] })).toBe(false);
+    expect(ok({ ...tech, targetHistory: tech.targetHistory!.map(({ top: _, ...w }) => w) })).toBe(true); // a payload of before them
+  });
 });

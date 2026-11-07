@@ -625,7 +625,8 @@
   .pt-orbit.pt-neg { stroke: var(--color-neg); }
   .pt-cl:hover .pt-orbit, .pt-cl:has(.pt-dot:focus-visible) .pt-orbit { visibility: visible; }
   /* member rows revealed one by one under the hovered dot */
-  .pt-members { @apply pointer-events-none absolute z-10 flex w-60 -translate-x-1/2 flex-col gap-1; }
+  /* centred on its dot, but never past the chart's edges: half its width (w-60) from either side, on a phone too */
+  .pt-members { @apply pointer-events-none absolute z-10 flex w-60 -translate-x-1/2 flex-col gap-1; left: clamp(7.5rem, var(--pt-x, 50%), calc(100% - 7.5rem)); }
   .pt-members-above { @apply -translate-y-full; }
   .pt-mem { @apply flex items-baseline gap-2 rounded-control border border-border bg-surface-raised px-2 py-1 text-2xs shadow-sm; opacity: 0; animation: pt-mem-in 0.3s ease-out both; }
   .pt-mem-analyst { @apply min-w-0 flex-1 truncate font-medium; }
@@ -634,6 +635,8 @@
   .pt-mem-target.pt-neg, .pt-mem-acc.pt-acc-bad, .pt-lg-down { @apply text-neg; }
   .pt-mem-date, .pt-mem-acc { @apply font-mono text-3xs tabular-nums text-ink-soft; }
   .pt-mem-more { @apply justify-center text-ink-soft; }
+  .pt-mem-week { @apply font-mono text-3xs tabular-nums text-ink-soft; }
+  .pt-mem-co { @apply items-center; }
   .pt-lg-hint { @apply text-3xs text-ink-soft/80; }
   @media (prefers-reduced-motion: no-preference) {
     .pt-sg:hover .pt-seg, .pt-cl:has(.pt-dot:hover) .pt-seg, .pt-cl:has(.pt-dot:focus-visible) .pt-seg { animation: pt-dash-flow 0.45s linear infinite; }

@@ -32,7 +32,13 @@ export const BasketMoves = z.object({ sum: Num, up: z.array(BasketMover).check(z
  * One week of the year (Romeo, 2026-11-07: the company pages' target chart on a basket): the basket's price that week and the target its holdings'
  * analysts put on it, with today's weights; `share` the weight with a target. Null target: no company had targets from 3 firms that week.
  */
-export const TargetWeek = z.object({ t: IsoDate, price: z.number(), target: Num, share: Share });
+/** How many of its largest companies a week names: the chart's panel on a dot (Romeo, 2026-11-07: «the surrounding companies with logos»). */
+export const WEEK_TOP = 6;
+/** A company of the week: its upside that week (its analysts' targets over its close then); a company's share classes count once. */
+export const WeekCompany = z.object({ ticker: Ticker, upside: z.number() });
+export const TargetWeek = z.object({ t: IsoDate, price: z.number(), target: Num, share: Share,
+  /** Its largest companies by today's weight with a target that week, largest first (absent in a payload written before them). */
+  top: z.optional(z.array(WeekCompany).check(z.refine((t) => t.length <= WEEK_TOP, 'at most six'))) });
 const ascending = (s: readonly { t: string }[]) => s.every((p, i) => i === 0 || s[i - 1]!.t < p.t);
 export const TargetHistory = z.array(TargetWeek).check(z.refine(ascending, 'oldest first, one point a week'));
 export const BasketPayload = z.object({
@@ -70,16 +76,19 @@ export type BasketQuestion = z.infer<typeof BasketQuestion>;
 export type BasketHolding = z.infer<typeof BasketHolding>;
 export type BasketTarget = z.infer<typeof BasketTarget>;
 export type TargetWeek = z.infer<typeof TargetWeek>;
+export type WeekCompany = z.infer<typeof WeekCompany>;
 
 /**
  * A made-up year of weekly targets on the demo's own price line (every 5th point back from its last, as the nightly takes its weeks): the target follows
  * the price at about `upside`, the last week is today's `target`.
  */
-export function demoTargetHistory(seed: string, points: readonly { t: string; c: number }[], target: number, upside: number): TargetWeek[] {
-  const r = prng(`${seed}:weeks`), out: TargetWeek[] = [];
+export function demoTargetHistory(seed: string, points: readonly { t: string; c: number }[], target: number, upside: number, cos: readonly string[]): TargetWeek[] {
+  const r = prng(`${seed}:weeks`), q = prng(`${seed}:week-top`), out: TargetWeek[] = [];
   for (let i = points.length - 1; i >= 0 && out.length < 52; i -= 5) out.push({ t: points[i]!.t, price: round(points[i]!.c, 2), target: 0, share: 0.97 });
   out.reverse();
-  return out.map((w, k) => ({ ...w, target: k === out.length - 1 ? target : round(w.price * (1 + upside * (0.7 + r() * 0.6)), 2) }));
+  const named = cos.slice(0, WEEK_TOP), base = named.map(() => q() * 0.5 - 0.1);
+  return out.map((w, k) => ({ ...w, target: k === out.length - 1 ? target : round(w.price * (1 + upside * (0.7 + r() * 0.6)), 2),
+    top: named.map((ticker, i) => ({ ticker, upside: round(base[i]! + (q() - 0.5) * 0.1, 3) })) }));
 }
 export type BasketConsensus = z.infer<typeof BasketConsensus>;
 export type BasketPe = z.infer<typeof BasketPe>;
@@ -109,7 +118,7 @@ export function basketDemo(p: BasketParams): Basket {
     questions: low ? null : VALUE_KEYS.map((key, i) => ({ key, pos: [0.67, 0.5, 0.62, 0.55, 0.2, 0.3][i]!, flat: [0.2, 0.3, 0.2, 0.3, 0.4, 0.3][i]!, neg: [0.13, 0.2, 0.18, 0.15, 0.4, 0.4][i]!, share: 0.98, comparable: true })),
     moves: { sum: round(rows.reduce((s, h) => s + h.weight * h.ret, 0), 5), up: movers(sorted.filter((h) => h.ret > 0).slice(0, BASKET_MOVERS)), down: movers(sorted.filter((h) => h.ret < 0).reverse().slice(0, BASKET_MOVERS)) },
     holdings: [...rows, { ticker: null, name: 'A Private Holding', logo: null, weight: 0.01, ret: null, upside: null, label: null }],
-    ...(low ? {} : { targetHistory: demoTargetHistory(p.ticker, line, round(close * (1 + upside)), upside) }),
+    ...(low ? {} : { targetHistory: demoTargetHistory(p.ticker, line, round(close * (1 + upside)), upside, rows.map((h) => h.ticker)) }),
     faq: [{ q: `What does ${p.ticker} hold?`, a: `${p.ticker} holds 27 stocks; the largest is ${rows[0]!.name}.` }],
   };
 }
