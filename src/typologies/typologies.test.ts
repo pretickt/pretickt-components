@@ -14,7 +14,7 @@ describe('the metric catalogue', () => {
 describe('typologies', () => {
   it('registers exactly the typologies of the platform', () => {
     expect(Object.keys(TYPOLOGIES).sort()).toEqual(['analysts@1', 'company@1', 'events@1', 'fundamentals@1', 'insider@1', 'metric@1', 'move-breakdown@1', 'news@1',
-      'ongoing-moves@1', 'price-series@1', 'screen@1', 'feed@1', 'value@1', 'attention@1', 'basket@1', 'alert-universe@1', 'alert-event@1'].sort());
+      'ongoing-moves@1', 'price-series@1', 'screen@1', 'feed@1', 'value@1', 'attention@1', 'basket@1', 'alert-universe@1', 'alert-event@1', 'sector@1'].sort());
     expect(getTypology('metric@2')).toBeUndefined();
   });
 

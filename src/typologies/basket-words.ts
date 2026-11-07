@@ -3,8 +3,11 @@ import { plainName } from '../ds/format';
 /*
  * A fund in words, one definition for the page and the fund's questions. In a module of their own, so they stay in pt-basket's chunk: the main bundle is full.
  */
-/** The companies behind a fund's move, in words: "SMH fell 2.75%. Nvidia took off 0.76 points, Micron 0.36." One definition for the page and the fund's FAQ. */
-export function basketMoved(ticker: string, ret: number | null, up: readonly { name: string; points: number }[], down: readonly { name: string; points: number }[]): string {
+/**
+ * The companies behind a fund's or a sector's move, in words: "SMH fell 2.75%. Nvidia took off 0.76 points, Micron 0.36." `label` is the fund's ticker or
+ * the sector's name. One definition for the page and the FAQ.
+ */
+export function basketMoved(label: string, ret: number | null, up: readonly { name: string; points: number }[], down: readonly { name: string; points: number }[]): string {
   const pts = (p: number) => Math.abs(p * 100).toFixed(2);
   const two = (list: readonly { name: string; points: number }[], verb: string) => {
     const [a, b] = list;
@@ -12,7 +15,7 @@ export function basketMoved(ticker: string, ret: number | null, up: readonly { n
   };
   if (ret == null) return `${two(up, 'added')}${two(down, 'took off')}`.trim();
   const size = `${Math.abs(ret * 100).toFixed(2)}%`;
-  return ret >= 0 ? `${ticker} rose ${size}.${two(up, 'added')}` : `${ticker} fell ${size}.${two(down, 'took off')}`;
+  return ret >= 0 ? `${label} rose ${size}.${two(up, 'added')}` : `${label} fell ${size}.${two(down, 'took off')}`;
 }
 
 /** A company with two share classes is one mover: its weights and points add up, its move is what they imply, the first line gives the ticker. "Alphabet took off 0.21 points, Alphabet 0.17" is one fact. */
@@ -30,13 +33,14 @@ export function oneMover<T extends { name: string; weight: number; points: numbe
 const BUSINESS = ['demand', 'advantage', 'economics', 'execution', 'fragility'];
 /**
  * What the holdings read on the five questions about the business, in facts: "By weight, SMH's holdings are strong on 67% of the questions about the
- * business; weakest on fragility. Each reading rests on at least 71% of the fund." Null when none of the five reads across this fund.
+ * business; weakest on fragility. Each reading rests on at least 71% of the fund." Null when none of the five reads across this fund. A sector's
+ * reads "Technology's companies … of the sector".
  */
-export function basketLead(ticker: string, questions: readonly { key: string; pos: number; comparable: boolean; share: number }[] | null): string | null {
+export function basketLead(label: string, questions: readonly { key: string; pos: number; comparable: boolean; share: number }[] | null, whole: 'fund' | 'sector' = 'fund'): string | null {
   const read = (questions ?? []).filter((q) => q.comparable && BUSINESS.includes(q.key));
   if (!read.length) return null;
   const mean = read.reduce((s, q) => s + q.pos, 0) / read.length;
   const weakest = read.reduce((a, b) => (b.pos < a.pos ? b : a));
   const base = Math.min(...read.map((q) => q.share));
-  return `By weight, ${ticker}'s holdings are strong on ${Math.round(mean * 100)}% of the questions about the business; weakest on ${weakest.key}. Each reading rests on at least ${Math.round(base * 100)}% of the fund.`;
+  return `By weight, ${label}'s ${whole === 'fund' ? 'holdings' : 'companies'} are strong on ${Math.round(mean * 100)}% of the questions about the business; weakest on ${weakest.key}. Each reading rests on at least ${Math.round(base * 100)}% of the ${whole}.`;
 }

@@ -15,6 +15,7 @@ import { ongoingMovesDemo, ongoingMovesSamples } from './ongoing-moves';
 import { priceSeriesDemo, priceSeriesSamples } from './price-series';
 import { TYPOLOGY_SCHEMAS, type TypologyKey, type TypologySchema } from './schemas';
 import { screenDemo, screenSamples } from './screen';
+import { sectorDemo, sectorSamples } from './sector';
 import { valueSamples } from './value';
 import { valueDemo } from './value-demo';
 
@@ -47,6 +48,7 @@ const EXTRAS: { [K in TypologyKey]: Extras<S[K]['params'], S[K]['payload']> } = 
   'attention@1': { demo: attentionDemo, samples: attentionSamples },
   'alert-universe@1': { demo: alertUniverseDemo, samples: alertUniverseSamples },
   'alert-event@1': { demo: alertEventDemo, samples: alertEventSamples },
+  'sector@1': { demo: sectorDemo, samples: sectorSamples },
 };
 
 function withExtras(): { [K in TypologyKey]: S[K] & Extras<S[K]['params'], S[K]['payload']> } {
@@ -76,6 +78,7 @@ export * from './analysts';
 export * from './fundamentals';
 export * from './basket';
 export * from './basket-words';
+export * from './sector';
 export * from './company';
 export * from './insider';
 export * from './attention';

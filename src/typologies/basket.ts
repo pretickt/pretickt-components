@@ -22,6 +22,11 @@ export const BasketQuestion = z.object({ key: z.enum(VALUE_KEYS), pos: Share, fl
 export const BasketHolding = z.object({ ticker: z.nullable(Ticker), name: Text, logo: z.nullable(z.string()), weight: z.number().check(z.gte(-1), z.lte(1)), ret: Num, upside: Num, label: z.nullable(z.string()) });
 
 const atMost = (n: number) => (rows: unknown[]) => rows.length <= n;
+/** What analysts' targets add up to over the basket: `price` is what they would put it at, `top` its three largest contributors. */
+export const BasketTarget = z.object({ upside: z.number(), price: z.number(), share: Share, median: Num, top: z.array(BasketContributor).check(z.refine(atMost(3), 'at most three')) });
+export const BasketConsensus = z.object({ buy: Share, hold: Share, sell: Share, n: z.number(), label: Text, share: Share });
+export const BasketPe = z.object({ value: z.number(), share: Share });
+export const BasketMoves = z.object({ sum: Num, up: z.array(BasketMover).check(z.refine(atMost(BASKET_MOVERS), 'at most five a side')), down: z.array(BasketMover).check(z.refine(atMost(BASKET_MOVERS), 'at most five a side')) });
 export const BasketPayload = z.object({
   asOf: IsoDate, ticker: Ticker, name: Text, logo: z.nullable(z.string()),
   /** Finishes the sentence "SMH …": "tracks the MVIS US Listed Semiconductor 25 Index". */
@@ -37,11 +42,11 @@ export const BasketPayload = z.object({
   /** The fund publishes rarely: the list may be a few weeks old. */
   stale: z.boolean(),
   fund: z.object({ expenseRatio: Num, assets: Num, holdings: Num, top10: Num, ret1y: Num, ret5y: Num, spy1y: Num, spy5y: Num, yield: Num }),
-  target: z.nullable(z.object({ upside: z.number(), price: z.number(), share: Share, median: Num, top: z.array(BasketContributor).check(z.refine(atMost(3), 'at most three')) })),
-  consensus: z.nullable(z.object({ buy: Share, hold: Share, sell: Share, n: z.number(), label: Text, share: Share })),
-  pe: z.nullable(z.object({ value: z.number(), share: Share })),
+  target: z.nullable(BasketTarget),
+  consensus: z.nullable(BasketConsensus),
+  pe: z.nullable(BasketPe),
   questions: z.nullable(z.array(BasketQuestion)),
-  moves: z.object({ sum: Num, up: z.array(BasketMover).check(z.refine(atMost(BASKET_MOVERS), 'at most five a side')), down: z.array(BasketMover).check(z.refine(atMost(BASKET_MOVERS), 'at most five a side')) }),
+  moves: BasketMoves,
   /** Every covered company and the 50 largest others, largest first. */
   holdings: z.array(BasketHolding),
   faq: z.array(ValueFaq),
@@ -53,6 +58,10 @@ export type BasketMover = z.infer<typeof BasketMover>;
 export type BasketContributor = z.infer<typeof BasketContributor>;
 export type BasketQuestion = z.infer<typeof BasketQuestion>;
 export type BasketHolding = z.infer<typeof BasketHolding>;
+export type BasketTarget = z.infer<typeof BasketTarget>;
+export type BasketConsensus = z.infer<typeof BasketConsensus>;
+export type BasketPe = z.infer<typeof BasketPe>;
+export type BasketMoves = z.infer<typeof BasketMoves>;
 export type Basket = z.infer<typeof BasketPayload>;
 
 export const basketSamples: z.input<typeof BasketParams>[] = [{ ticker: 'SMH' }, { ticker: 'SPY' }];

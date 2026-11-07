@@ -15,6 +15,7 @@ import { NewsParams, NewsPayload } from './news';
 import { OngoingMovesParams, OngoingMovesPayload } from './ongoing-moves';
 import { PriceSeriesParams, PriceSeriesPayload } from './price-series';
 import { ScreenParams, ScreenPayload } from './screen';
+import { SectorBasketPayload, SectorParams } from './sector';
 import { ValueParams, ValuePayload } from './value';
 
 export interface TypologySchema<P extends z.ZodMiniType = z.ZodMiniType, D extends z.ZodMiniType = z.ZodMiniType> {
@@ -49,6 +50,7 @@ export const TYPOLOGY_SCHEMAS = /* @__PURE__ */ withIds({
   'attention@1': { params: AttentionParams, payload: AttentionPayload },
   'alert-universe@1': { params: AlertUniverseParams, payload: AlertUniversePayload },
   'alert-event@1': { params: AlertEventParams, payload: AlertEventPayload },
+  'sector@1': { params: SectorParams, payload: SectorBasketPayload },
 });
 export type TypologyKey = keyof typeof TYPOLOGY_SCHEMAS;
 

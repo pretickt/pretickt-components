@@ -29,6 +29,11 @@ export const CALENDAR_MONTHS = { back: 1, ahead: 3 } as const;
 export const SECTORS = ['Technology', 'Industrials', 'Financial Services', 'Healthcare', 'Consumer Cyclical', 'Consumer Defensive', 'Utilities',
   'Real Estate', 'Basic Materials', 'Energy', 'Communication Services'] as const;
 export type Sector = (typeof SECTORS)[number];
+/** The Select Sector SPDR fund that holds each sector's S&P 500 companies: named and linked on the sector's page, never its price. */
+export const SECTOR_FUNDS: Readonly<Record<Sector, string>> = {
+  Technology: 'XLK', 'Financial Services': 'XLF', Healthcare: 'XLV', 'Consumer Cyclical': 'XLY', 'Consumer Defensive': 'XLP', Industrials: 'XLI',
+  Energy: 'XLE', 'Basic Materials': 'XLB', Utilities: 'XLU', 'Real Estate': 'XLRE', 'Communication Services': 'XLC',
+};
 /** A mega cap: a market value of $200 billion or more (pt-logo-map's mega lens, the alerts' Mega caps). */
 export const MEGA_CAP = 200e9;
 /** The undervalued list's upside: an average analyst target at least this far above the price (with a P/E under the sector's median). */

@@ -1,5 +1,6 @@
 import * as z from 'zod/mini';
 import { addDays, DEMO_ASOF, DEMO_COMPANIES, DEMO_FIRMS, demoName, HttpUrl, intParam, IsoDate, Month, Num, prng, Range, rangeStart, round, Ticker, cmp } from './common';
+import { SECTORS } from './values';
 
 /** The kind catalogue. Adding a kind is a minor version of events@1; components render unknown kinds generically. */
 export const EVENT_KINDS = ['earnings', 'dividend', 'split', 'analyst', 'macro'] as const;
@@ -8,6 +9,8 @@ export const EventsParams = z.object({
   scope: z.discriminatedUnion('by', [
     /** One ticker: events in the `range` (the last N sessions, as in price-series@1) plus `ahead` calendar days after it. */
     z.object({ by: z.literal('ticker'), ticker: Ticker, range: Range, ahead: intParam(0, 180, 90) }),
+    /** One sector (added 2026-11-07): its 5 largest companies' reports and the market's dates, in the `range` plus `ahead` days, as a fund's. */
+    z.object({ by: z.literal('sector'), sector: z.enum(SECTORS), range: Range, ahead: intParam(0, 180, 90) }),
     /**
      * The whole universe for one calendar month (calendar pages). 1.3: the month's grid (`monthGrid`, its weeks Monday to Sunday,
      * cut at the calendar window), so the days of the months around it that share a week with it come too; a month's `news` are its own.
@@ -138,6 +141,13 @@ export function eventsDemo(p: EventsParams): Events { return demoOf(p, false); }
 
 /** `own`: a month's own days only (the pieces a span is cut from). */
 function demoOf(p: EventsParams, own: boolean): Events {
+  if (p.scope.by === 'sector') {
+    // a sector: its five largest companies' reports (here the first five demo companies) and the market's dates
+    const { range, ahead } = p.scope, at = (ticker: string, kinds: EventsParams['kinds']) => demoOf({ scope: { by: 'ticker', ticker, range, ahead }, kinds }, own).items;
+    const reports = p.kinds.includes('earnings') ? DEMO_COMPANIES.slice(0, 5).flatMap(([ticker, name]) => at(ticker, ['earnings']).map((e) => ({ ...e, name }) as EventItem)) : [];
+    const macro = p.kinds.includes('macro') ? at('SPY', ['macro']) : [];
+    return { asOf: DEMO_ASOF, normal: DEMO_NORMAL, items: [...reports, ...macro].sort(byDateThenSize) };
+  }
   const items: EventItem[] = [];
   const want = new Set(p.kinds);
   if (p.scope.by === 'ticker') {
