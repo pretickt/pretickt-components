@@ -1,17 +1,18 @@
 /**
  * How does this company look right now: its price over three months and today (15 minutes late), and how the data divide between the
  * two sides, counted, never weighed and never concluded?
- * @version 1.1.0
+ * @version 1.2.0
  * @evidence design of the fund pages, 2026-11-05: a fund's header says how much of it the basket figures cover
+ * @evidence design of the sector pages, 2026-11-07: with `sector`, what its companies are worth over the year and today, the basket's badges only, the fund line
  * @evidence Romeo, 2026-11-05: the company page's header, «si capisce subito quali sono a favore di un rialzo e quali a favore di un ribasso», «senza dare mai consigli»
  * @evidence design: pretickt/docs/superpowers/specs/2026-11-05-company-header-bands-design.md
  */
 import { afterRenderEffect, Component, computed, type ElementRef, inject, input, signal, untracked, viewChild } from '@angular/core';
-import { Pt, PtLive } from '@pretickt/components/context';
+import { Pt, PtLive, type LiveBars } from '@pretickt/components/context';
 import { PtBadge, PtLogo } from '@pretickt/components/ds';
 import { date, dayMonth, level, money, num, pct, plainName, tone, usd, type Badge } from '@pretickt/components/format';
 import { bollinger, macd, rsi, smaLast } from '@pretickt/components/indicators';
-import { METRIC_KEYS, type MetricItem } from '@pretickt/components/typologies';
+import { METRIC_KEYS, sectorFundLine, type MetricItem, type Sector, type SectorBasket } from '@pretickt/components/typologies';
 
 export type Side = 'g' | 'n' | 'r';
 /** The badges whose catalogue tone already says a direction. */
@@ -122,6 +123,23 @@ export function bandRows(g: number, r: number): string {
 }
 
 export interface SessionLine { session: string; prev?: string; time: string; closed: boolean; closes: (number | null)[] }
+
+/**
+ * A sector's line of the session, from its companies' bars: at each 5-minute slot, its value at the last close times each company's close against its
+ * own last close, weighted. A company with no bar yet counts flat; a slot no company has traded is empty. Null when the bars follow another session than the
+ * payload's (its weights and closes are that session's).
+ */
+export function sectorLine(b: SectorBasket, l: LiveBars): SessionLine | null {
+  if (l.prev !== b.asOf) return null;
+  const rows = b.holdings.filter((h) => h.ticker && h.close && h.weight > 0);
+  const total = rows.reduce((s, h) => s + h.weight, 0), n = Math.max(0, ...rows.map((h) => l.bars[h.ticker!]?.length ?? 0));
+  const closes = Array.from({ length: n }, (_, i) => {
+    let traded = false;
+    const v = rows.reduce((s, h) => { const c = l.bars[h.ticker!]?.[i]; if (c != null) traded = true; return s + h.weight * (c != null ? c / h.close! : 1); }, 0);
+    return traded && total ? b.value * v / total : null;
+  });
+  return { session: l.session, prev: l.prev, time: l.time, closed: l.closed, closes };
+}
 export type SessionState = 'static' | 'running' | 'closing' | 'settled';
 export interface SessionView { hist: { t: string; c: number }[]; slots: (number | null)[]; price: number | null; prev: number | null; state: SessionState }
 
@@ -143,10 +161,13 @@ export interface Chart {
   points: { x: number; y: number; t: string | null; slot: number | null; v: number }[];
 }
 const SLOTS = 78;
+/** The least room between two month labels: "Sep" is about 20 px at the axis's size. */
+const MONTH_GAP = 26;
 const niceStep = (x: number) => { const p = 10 ** Math.floor(Math.log10(x)), f = x / p; return Math.max(1, (f <= 1.4 ? 1 : f <= 3 ? 2 : f <= 7 ? 5 : 10) * p); };
 
 /** Three months on the first 80% of the plot, the session (9:30 to 16:00) on the rest, one linear scale for both. Null with nothing to draw. */
-export function chartOf(hist: { t: string; c: number }[], slots: (number | null)[], prev: number | null, w: number, h: number, low: boolean): Chart | null {
+export function chartOf(hist: { t: string; c: number }[], slots: (number | null)[], prev: number | null, w: number, h: number, low: boolean,
+  fmt: (v: number) => string = (v) => `$${v.toFixed(0)}`): Chart | null {
   const day = slots.flatMap((v, i) => (v == null ? [] : [[i, v] as const]));
   const vals = [...hist.map((p) => p.c), ...day.map((d) => d[1])];
   if (vals.length < 2) return null;
@@ -167,13 +188,16 @@ export function chartOf(hist: { t: string; c: number }[], slots: (number | null)
   const fromPrev = day.length && prev != null ? [[zoneX, sy(prev)] as const] : [];
   const end = dayXY.at(-1) ?? histXY.at(-1);
   const months: Chart['months'] = [];
-  hist.forEach((p, i) => { if (i && p.t.slice(0, 7) !== hist[i - 1]!.t.slice(0, 7) && xh(i) < zoneX - 22) months.push({ x: f(xh(i)), label: date(p.t).slice(0, 3) }); });
+  // a month that would touch the one before is left out (a sector's year on a phone: twelve labels in 300 px)
+  hist.forEach((p, i) => {
+    if (i && p.t.slice(0, 7) !== hist[i - 1]!.t.slice(0, 7) && xh(i) < zoneX - 22 && (!months.length || xh(i) - months.at(-1)!.x >= MONTH_GAP)) months.push({ x: f(xh(i)), label: date(p.t).slice(0, 3) });
+  });
   return {
     w, h, zoneX, top, y1, lo, hi, hist: pts(histXY), day: pts([...fromPrev, ...dayXY]),
     areaHist: histXY.length ? pts([[L, y1], ...histXY, [histXY.at(-1)![0], y1]]) : '',
     areaDay: dayXY.length ? pts([[zoneX, y1], ...fromPrev, ...dayXY, [dayXY.at(-1)![0], y1]]) : '',
     dot: end ? { x: f(end[0]), y: f(end[1]) } : null,
-    ticks: ticks.map((v) => ({ y: f(sy(v)), label: `$${v.toFixed(0)}` })), months, showOpen: w - zoneX >= 62,
+    ticks: ticks.map((v) => ({ y: f(sy(v)), label: fmt(v) })), months, showOpen: w - zoneX >= 62,
     points: [...hist.map((p, i) => ({ x: xh(i), y: sy(p.c), t: p.t, slot: null, v: p.c })), ...day.map(([i, v]) => ({ x: xd(i), y: sy(v), t: null, slot: i, v }))],
   };
 }
@@ -202,16 +226,16 @@ const slotTime = (i: number) => { const t = 570 + i * 5, m = t % 60, h = Math.fl
       <section #root [class]="'pt-card pt-hdr pt-hdr-' + size()">
         <div class="pt-hdr-head">
           <div class="pt-card-id">
-            <pt-logo [ticker]="ticker()" [src]="co.value()?.logo ?? null" [size]="low ? 28 : 38" />
+            @if (ticker(); as t) {<pt-logo [ticker]="t" [src]="co.value()?.logo ?? null" [size]="low ? 28 : 38" />}
             <div class="pt-card-who">
-              @let title = co.value()?.name ? plainName(co.value()!.name) : ticker();
+              @let title = sec()?.name ?? (co.value()?.name ? plainName(co.value()!.name) : ticker() ?? '');
               <div class="pt-card-name">{{ title }}</div>
               <div class="pt-meta">{{ subLine(title) }}</div>
             </div>
           </div>
           <div class="pt-hdr-px">
             <div class="pt-hdr-price">
-              @if (price() != null) {<span class="pt-card-close">{{ money(price()) }}</span>}
+              @if (price() != null) {<span class="pt-card-close">{{ fmt(price()) }}</span>}
               @if (change() != null) {<span [class]="'pt-hdr-chg pt-t-' + tone(change())">{{ pct(change()) }}</span>}
             </div>
             <span class="pt-meta">{{ when() }}</span>
@@ -232,7 +256,7 @@ const slotTime = (i: number) => { const t = 570 + i * 5, m = t % 60, h = Math.fl
                 @for (m of g.months; track m.label) {<text class="pt-hdr-ax" [attr.x]="m.x" [attr.y]="g.h - 5">{{ m.label }}</text>}
                 @if (g.showOpen) {<text class="pt-hdr-ax" [attr.x]="g.zoneX + 3" [attr.y]="g.h - 5">9:30</text>}
                 <text class="pt-hdr-ax" [attr.x]="g.w" [attr.y]="g.h - 5" text-anchor="end">16:00</text>
-                <text class="pt-hdr-cap" x="0" y="12">3 months <tspan class="pt-hdr-capv">{{ pct(months3()) }}</tspan></text>
+                <text class="pt-hdr-cap" x="0" y="12">{{ sector() ? '1 year' : '3 months' }} <tspan class="pt-hdr-capv">{{ pct(months3()) }}</tspan></text>
                 @if (low) {
                   <text class="pt-hdr-cap" [attr.x]="g.w" y="12" text-anchor="end"><tspan class="pt-hdr-capv">{{ zoneTitle() }}</tspan> · {{ zoneNote() }}</text>
                 } @else {
@@ -287,24 +311,36 @@ const slotTime = (i: number) => { const t = 570 + i * 5, m = t % 60, h = Math.fl
             </div>
           }
         </div>
-        <p class="pt-hdr-note">{{ note() }}</p>
+        @if (sec(); as s) {
+          <p class="pt-hdr-note"><a [href]="etf(s.tracker)">{{ s.tracker }}</a>{{ fundRest() }} Updates with the 15-min delayed prices of its companies; analysts and news are from the last close. Not a forecast or investment advice.</p>
+        } @else {<p class="pt-hdr-note">{{ note() }}</p>}
       </section>
     }`,
 })
 export class PtCompanyHeader {
   private readonly pt = inject(Pt);
   private readonly live = inject(PtLive);
-  readonly ticker = input.required<string>();
+  /** A company's or a fund's ticker; or `sector`, for a sector's page (one call: its basket carries the line and the badges). */
+  readonly ticker = input<string | null>(null);
+  readonly sector = input<Sector | null>(null);
   /** full: the company's main page; low: its sub-pages, so the answer below stays high. */
   readonly size = input<'full' | 'low'>('full');
 
-  protected readonly co = this.pt.company(() => ({ ticker: this.ticker() }));
-  protected readonly metrics = this.pt.metric(() => ({ ticker: this.ticker(), metrics: [...METRIC_KEYS] }));
-  protected readonly series = this.pt.priceSeries(() => ({ tickers: [this.ticker()], range: '3m' }));
+  private readonly own = () => { const t = this.ticker(); return t && !this.sector() ? t : null; };
+  protected readonly co = this.pt.company(() => { const t = this.own(); return t ? { ticker: t } : null; });
+  protected readonly metrics = this.pt.metric(() => { const t = this.own(); return t ? { ticker: t, metrics: [...METRIC_KEYS] } : null; });
+  protected readonly series = this.pt.priceSeries(() => { const t = this.own(); return t ? { tickers: [t], range: '3m' } : null; });
+  private readonly sectorCall = this.pt.sector(() => { const s = this.sector(); return s ? { sector: s } : null; });
+  protected readonly sec = computed(() => (this.sector() ? this.sectorCall.value() ?? null : null));
   protected readonly ready = computed(() => {
-    const vs = [this.co.value(), this.metrics.value(), this.series.value()];
+    const vs = this.sector() ? [this.sectorCall.value()] : this.own() ? [this.co.value(), this.metrics.value(), this.series.value()] : [null];
     return { settled: vs.every((v) => v !== undefined), available: vs.some((v) => v != null) };
   });
+  /** A sector's worth in compact dollars ($22.4T), a price in dollars and cents. */
+  protected fmt = (v: number | null) => (v == null ? '' : this.sector() ? usd(v, { compact: true }) : money(v));
+  protected readonly etf = (t: string) => `/etfs/${t.toLowerCase()}/`;
+  /** The fund line after its ticker, which is the link. */
+  protected readonly fundRest = computed(() => { const s = this.sec(); return s ? sectorFundLine(s.name, s.tracker).slice(s.tracker.length) : ''; });
   protected readonly plainName = plainName;
   protected readonly money = money;
   protected readonly pct = pct;
@@ -312,20 +348,23 @@ export class PtCompanyHeader {
   protected readonly ROWS = ['g', 'n', 'r'] as const;
 
   private readonly lines = this.live.bars();
-  private readonly points = computed(() => (this.series.value()?.[0]?.points ?? []).map(({ t, c }) => ({ t, c })));
+  private readonly points = computed(() => (this.sector() ? this.sec()?.series ?? [] : (this.series.value()?.[0]?.points ?? []).map(({ t, c }) => ({ t, c }))));
   private readonly line = computed<SessionLine | null>(() => {
-    const l = this.lines();
-    return l && { session: l.session, ...(l.prev ? { prev: l.prev } : {}), time: l.time, closed: l.closed, closes: l.bars[this.ticker()] ?? [] };
+    const l = this.lines(), s = this.sec();
+    if (this.sector()) return l && s ? sectorLine(s, l) : null;
+    return l && { session: l.session, ...(l.prev ? { prev: l.prev } : {}), time: l.time, closed: l.closed, closes: l.bars[this.ticker() ?? ''] ?? [] };
   });
   private readonly view = computed(() => sessionView(this.points(), this.line()));
   private readonly isLive = computed(() => this.view().state === 'running' || this.view().state === 'closing');
   /** Asked only once there is a price to recompute against: never in the build, so never in the page. */
-  private readonly history = this.pt.priceSeries(() => (this.isLive() ? { tickers: [this.ticker()], range: '2y' } : null));
+  private readonly history = this.pt.priceSeries(() => { const t = this.own(); return t && this.isLive() ? { tickers: [t], range: '2y' } : null; });
   private readonly c0 = computed(() => this.points().at(-1)?.c ?? null);
+  /** The build's badges: a sector's are in its basket, the basket's own only (no technicals: its line is not a traded price). */
+  private readonly built = computed(() => (this.sector() ? this.sec()?.badges ?? [] : this.metrics.value() ?? []));
   private readonly items = computed(() => {
-    const ms = this.metrics.value() ?? [], p = this.view().price, c0 = this.c0();
+    const ms = this.built(), p = this.view().price, c0 = this.c0();
     if (!this.isLive() || p == null || c0 == null) return ms;
-    return livened(ms, p, c0, this.history.value()?.[0]?.points.map((x) => x.c) ?? null);
+    return livened(ms, p, c0, this.sector() ? null : this.history.value()?.[0]?.points.map((x) => x.c) ?? null);
   });
   private readonly byKey = computed(() => new Map(this.items().map((m) => [m.key, m])));
   protected readonly note = computed(() => {
@@ -333,18 +372,21 @@ export class PtCompanyHeader {
     if (c?.kind === 'etf') return `Basket figures cover ${level(c.coverage ?? 0, 0)} of this fund. Updates with the 15-min delayed price; analysts and news are from the last close. Not a forecast or investment advice.`;
     return this.size() === 'low' ? 'Updates with the 15-min delayed price. Not a forecast or investment advice.' : 'Updates with the 15-min delayed price; analysts, insiders and news are from the last close. Not a forecast or investment advice.';
   });
-  private readonly target = computed(() => targetOf(this.metrics.value() ?? [], this.c0()));
-  protected readonly bands = computed(() => bandsOf(this.items(), { target: this.target(), low: this.size() === 'low' }));
+  private readonly target = computed(() => targetOf(this.built(), this.c0()));
+  // a sector's target is its companies' worth in trillions: its badge says the percent only
+  protected readonly bands = computed(() => bandsOf(this.items(), { target: this.sector() ? null : this.target(), low: this.size() === 'low' }));
   protected readonly rows = computed(() => bandRows(this.bands().g.length, this.bands().r.length));
   protected readonly price = computed(() => this.view().price ?? this.byKey().get('range_52w')?.value ?? null);
   protected readonly change = computed(() => { const v = this.view(); return v.price != null && v.prev ? v.price / v.prev - 1 : null; });
   protected readonly months3 = computed(() => { const v = this.view(), first = v.hist[0]?.c; return v.price != null && first ? v.price / first - 1 : null; });
   protected readonly upside = computed(() => this.byKey().get('pt_upside')?.value ?? null);
-  protected readonly targetText = computed(() => { const t = this.target(), u = this.upside(); return t != null && u != null ? `PT ${money(t)} ${pct(u)}` : null; });
-  /** Under the name, the ticker (not when the name is the ticker in other letters) and the market value. */
+  protected readonly targetText = computed(() => { const t = this.target(), u = this.upside(); return !this.sector() && t != null && u != null ? `PT ${money(t)} ${pct(u)}` : null; });
+  /** Under the name, the ticker (not when the name is the ticker in other letters) and the market value; a sector's companies and their worth. */
   protected subLine(title: string): string {
-    const cap = this.byKey().get('market_cap')?.value;
-    return [title.toUpperCase() === this.ticker().toUpperCase() ? '' : this.ticker(), cap != null ? usd(cap, { compact: true }) : ''].filter(Boolean).join(' · ');
+    const s = this.sec();
+    if (s) return `${s.companies} ${s.companies === 1 ? 'company' : 'companies'} · ${usd(s.value, { compact: true })}`;
+    const cap = this.byKey().get('market_cap')?.value, t = this.ticker() ?? '';
+    return [title.toUpperCase() === t.toUpperCase() ? '' : t, cap != null ? usd(cap, { compact: true }) : ''].filter(Boolean).join(' · ');
   }
   protected readonly when = computed(() => {
     const v = this.view(), l = this.line();
@@ -360,14 +402,18 @@ export class PtCompanyHeader {
     return day ? dayMonth(day) : '';
   });
   protected readonly zoneNote = computed(() => (this.view().state === 'running' ? '15-min delayed' : this.view().state === 'closing' ? 'preliminary' : 'close'));
-  protected readonly chartLabel = computed(() => `${this.ticker()}: three months of closes, then ${this.isLive() ? 'today, 15 minutes delayed' : 'the last session'}. Last ${money(this.price())}.`);
+  protected readonly chartLabel = computed(() => {
+    const then = this.isLive() ? 'today, 15 minutes delayed' : 'the last session', s = this.sec();
+    return s ? `What ${s.name}'s companies are worth: today's shares at each day's adjusted close, over a year, then ${then}. Last ${this.fmt(this.price())}.`
+      : `${this.ticker()}: three months of closes, then ${then}. Last ${money(this.price())}.`;
+  });
 
   /** The chart's cell, as measured in the browser; the server draws the default and the SVG scales until then. */
   private readonly chartEl = viewChild<ElementRef<HTMLElement>>('chartEl');
   private readonly box = signal<{ w: number; h: number } | null>(null);
   protected readonly chart = computed(() => {
     const v = this.view(), low = this.size() === 'low', b = this.box();
-    return chartOf(v.hist, v.slots, v.prev, b?.w ?? 380, b?.h ?? (low ? 104 : 300), low);
+    return chartOf(v.hist, v.slots, v.prev, b?.w ?? 380, b?.h ?? (low ? 104 : 300), low, this.sector() ? (x) => usd(x, { compact: true }) : undefined);
   });
   protected readonly hover = signal<{ x: number; y: number; left: number; label: string } | null>(null);
   protected hoverAt(e: PointerEvent, g: Chart): void {
@@ -376,7 +422,7 @@ export class PtCompanyHeader {
     let near = g.points[0];
     for (const p of g.points) if (near && Math.abs(p.x - x) < Math.abs(near.x - x)) near = p;
     if (!near) return;
-    const label = `${near.t ? dayMonth(near.t) : slotTime(near.slot ?? 0)} · ${money(near.v)}`;
+    const label = `${near.t ? dayMonth(near.t) : slotTime(near.slot ?? 0)} · ${this.fmt(near.v)}`;
     this.hover.set({ x: near.x, y: near.y, left: Math.min(g.w - 60, Math.max(60, near.x)), label });
   }
 

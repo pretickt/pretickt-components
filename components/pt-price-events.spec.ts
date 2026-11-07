@@ -1,5 +1,5 @@
 import { date } from '../src/ds/format';
-import { addDays, eventsDemo, priceSeriesDemo, type EventItem } from '../src/typologies';
+import { addDays, demoFor, eventsDemo, priceSeriesDemo, type EventItem, type SectorBasket } from '../src/typologies';
 import { isEvent, layout, PLOT_W, PtPriceEvents } from './pt-price-events';
 import { basics, press, render, withData } from './_spec';
 
@@ -124,5 +124,28 @@ describe('pt-price-events', () => {
     const co = await render(PtPriceEvents, { ticker: 'NVDA', range: '1y' }, withData({ 'price-series@1': series, 'events@1': { asOf: at, items: [] } }));
     expect(co.text()).toContain('analyst');
     expect(co.text()).not.toContain('market event');
+  });
+});
+
+describe('pt-price-events, for a sector', () => {
+  const sector = demoFor({ t: 'sector@1', params: { sector: 'Technology' } }) as SectorBasket;
+  const ev = eventsDemo({ scope: { by: 'sector', sector: 'Technology', range: '1y', ahead: 90 }, kinds: ['earnings', 'macro'] });
+  basics(PtPriceEvents, { sector: 'Technology' });
+  it("a sector: the payload's line, no range toggles, earnings named by company", async () => {
+    const asked: unknown[] = [];
+    const r = await render(PtPriceEvents, { sector: 'Technology' }, async (t, p) => { asked.push([t, p]); return withData({ 'sector@1': sector, 'events@1': ev })(t, p); });
+    expect(asked).toEqual([['sector@1', { sector: 'Technology' }], ['events@1', { scope: { by: 'sector', sector: 'Technology', range: '1y', ahead: 90 }, kinds: ['earnings', 'macro'] }]]);
+    expect(r.el.querySelectorAll('path.pt-line')).toHaveLength(1);
+    expect(r.el.querySelector('[ptToggles]')).toBeNull();
+    const earnings = [...r.el.querySelectorAll('.pt-mk-earnings')].map((m) => unq(m.getAttribute('data-tip') ?? ''));
+    expect(earnings.length).toBeGreaterThan(0);
+    expect(earnings.every((t) => t.includes('Company'))).toBe(true);
+  });
+  it("the label says today's shares at each day's adjusted close; no index name; the axis in compact dollars", async () => {
+    const r = await render(PtPriceEvents, { sector: 'Technology' }, withData({ 'sector@1': sector, 'events@1': ev }));
+    const cap = r.el.querySelector('.pt-lede')!.textContent!;
+    expect(cap).toMatch(/^What Technology's companies are worth: today's shares at each day's adjusted close/);
+    expect(cap).not.toMatch(/index|\^/i);
+    expect(r.el.textContent).not.toMatch(/\$\d{1,3}(,\d{3}){3,}/);
   });
 });

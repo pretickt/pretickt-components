@@ -13,5 +13,7 @@ export class PtYAxis {
   readonly w = input.required<number>();
   readonly plotW = input.required<number>();
   readonly ticks = input.required<readonly { y: number; v: number }[]>();
-  protected price = (v: number) => usd(v, { digits: Math.abs(v) >= 100 ? 0 : 2 });
+  /** Labels in compact dollars ($22.4T): a sector's worth, not a price. */
+  readonly compact = input(false);
+  protected price = (v: number) => (this.compact() ? usd(v, { compact: true }) : usd(v, { digits: Math.abs(v) >= 100 ? 0 : 2 }));
 }

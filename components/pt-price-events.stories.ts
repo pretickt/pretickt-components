@@ -14,4 +14,6 @@ export const stories = [
   story(PtPriceEvents, { name: 'No events: the line alone', inputs: { ticker: 'NVDA' }, data: { 'events@1': quiet } }),
   story(PtPriceEvents, { name: 'No prices', inputs: { ticker: 'NVDA' }, data: { 'price-series@1': [{ ticker: 'NVDA', points: [] }] } }),
   story(PtPriceEvents, { name: 'Not available', inputs: { ticker: 'NVDA' }, data: null }),
+  story(PtPriceEvents, { name: 'A sector: what its companies are worth over the year, its 5 largest companies\' reports (demo)', inputs: { sector: 'Technology' } }),
+  story(PtPriceEvents, { name: 'A sector, not available', inputs: { sector: 'Technology' }, data: null }),
 ];

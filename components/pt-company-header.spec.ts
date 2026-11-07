@@ -1,7 +1,7 @@
 import { money, pct } from '../src/ds/format';
 import { bollinger, macd, rsi, smaLast } from '../src/indicators';
-import { METRIC_KEYS, metricDemo, priceSeriesDemo, type MetricItem } from '../src/typologies';
-import { bandRows, bandsOf, chartOf, lean, livened, overflowCount, PtCompanyHeader, sessionView, targetOf } from './pt-company-header';
+import { demoFor, METRIC_KEYS, metricDemo, priceSeriesDemo, type MetricItem, type SectorBasket } from '../src/typologies';
+import { bandRows, bandsOf, chartOf, lean, livened, overflowCount, PtCompanyHeader, sectorLine, sessionView, targetOf } from './pt-company-header';
 import { basics, demo, liveDay, render, settle, withData } from './_spec';
 
 const m = (key: string, value: number | null, o: Partial<MetricItem> = {}): MetricItem =>
@@ -488,5 +488,70 @@ describe('pt-company-header: a fund', () => {
     const t = (await render(PtCompanyHeader, { ticker: 'NVDA', size: 'full' })).text();
     expect(t).not.toContain('Basket figures');
     expect(t).toContain('analysts, insiders and news are from the last close');
+  });
+});
+
+describe('pt-company-header, for a sector', () => {
+  const base = demoFor({ t: 'sector@1', params: { sector: 'Technology' } }) as SectorBasket;
+  const h = (ticker: string, weight: number, close: number | null) => ({ ticker, name: `${ticker} Inc.`, logo: null, weight, ret: 0.01, upside: 0.1, label: 'Buy', close });
+  const TECH: SectorBasket = { ...base, value: 1e12, companies: 3, holdings: [h('AAA', 0.5, 100), h('BBB', 0.3, 50), h('CCC', 0.2, 20)],
+    series: base.series.map((p) => ({ t: p.t, c: (p.c / base.value) * 1e12 })) };
+  const bars = (o: Record<string, unknown> = {}) => ({ session: '2099-01-02', prev: TECH.asOf, asOf: '2099-01-02T18:20:00.000Z', time: '1:20 PM ET', closed: false,
+    bars: { AAA: [101, 102], BBB: [null, 51], CCC: [] as (number | null)[] }, ...o });
+  const text = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+
+  it('sectorLine: a weighted line from the companies\' bars; a company not yet traded counts flat; bars of another session give null', () => {
+    const l = sectorLine(TECH, bars())!;
+    expect(l).toMatchObject({ session: '2099-01-02', prev: TECH.asOf, time: '1:20 PM ET', closed: false });
+    expect(l.closes[0]).toBeCloseTo(1e12 * (0.5 * 1.01 + 0.3 * 1 + 0.2 * 1), -3);
+    expect(l.closes[1]).toBeCloseTo(1e12 * (0.5 * 1.02 + 0.3 * 1.02 + 0.2 * 1), -3);
+    expect(sectorLine(TECH, { ...bars(), bars: { AAA: [null, null] } })!.closes).toEqual([null, null]);
+    expect(sectorLine(TECH, bars({ prev: '2099-01-01' }))).toBeNull();
+  });
+  it("a sector's header: its name, companies and value, a year of its value, the payload's badges only, the fund line linking its page", async () => {
+    const r = await render(PtCompanyHeader, { sector: 'Technology' }, withData({ 'sector@1': TECH }));
+    expect(text(r.el.querySelector('.pt-card-name'))).toBe('Technology');
+    expect(text(r.el.querySelector('.pt-card-who .pt-meta'))).toBe('3 companies · $1T');
+    expect(text(r.el.querySelector('.pt-card-close'))).toBe('$1T');
+    expect(r.el.querySelector('.pt-hdr-cap')!.textContent).toContain('1 year');
+    expect(r.el.querySelector('.pt-hdr-svg')!.getAttribute('aria-label')).toMatch(/^What Technology's companies are worth: today's shares at each day's adjusted close/);
+    const keys = [...r.el.querySelectorAll('[data-key]')].map((x) => x.getAttribute('data-key'));
+    expect(keys.every((k) => ['pt_upside', 'consensus', 'pe', 'earnings_in', 'news'].includes(k!))).toBe(true);
+    const note = r.el.querySelector('.pt-hdr-note')!;
+    expect(text(note)).toBe("XLK holds the S&P 500's technology companies; this page weighs every technology company on pretickt. Updates with the 15-min delayed prices of its companies; analysts and news are from the last close. Not a forecast or investment advice.");
+    expect(note.querySelector('a')!.getAttribute('href')).toBe('/etfs/xlk/');
+    expect(r.calls()).toBe(1);
+  });
+  it('live: value and move follow the bars, the label says 15-min delayed', async () => {
+    const r = await render(PtCompanyHeader, { sector: 'Technology' }, withData({ 'sector@1': TECH }), { browser: true, providers: liveDay({}, { bars: () => bars() }) });
+    for (let i = 0; i < 5; i++) { await new Promise((d) => setTimeout(d)); r.f.detectChanges(); }
+    expect(text(r.el.querySelector('.pt-hdr-px'))).toContain('1:20 PM ET, 15-min delayed');
+    expect(text(r.el.querySelector('.pt-hdr-chg'))).toBe(pct(0.5 * 0.02 + 0.3 * 0.02));
+  });
+  it('nothing says stock, fund or PT', async () => {
+    const r = await render(PtCompanyHeader, { sector: 'Technology' }, withData({ 'sector@1': TECH }));
+    const t = text(r.el.querySelector('section')).replace(text(r.el.querySelector('.pt-hdr-note')), '');
+    expect(t).not.toMatch(/\bstock\b|\bfund\b|\bPT\b/);
+  });
+  it('not available', async () => {
+    expect((await render(PtCompanyHeader, { sector: 'Technology' }, withData({ 'sector@1': null }))).el.querySelector('.pt-na')).not.toBeNull();
+  });
+});
+
+describe('pt-company-header: a year on a phone', () => {
+  it('month labels keep apart: one is left out rather than overlap the one before', () => {
+    const days: { t: string; c: number }[] = [];
+    for (let d = new Date('2025-10-01T00:00:00Z'); days.length < 252; d.setUTCDate(d.getUTCDate() + 1)) if (d.getUTCDay() % 6) days.push({ t: d.toISOString().slice(0, 10), c: 100 + days.length });
+    const g = chartOf(days, [], null, 340, 300, false)!;
+    const xs = g.months.map((m) => m.x);
+    expect(xs.length).toBeGreaterThan(3);
+    for (let i = 1; i < xs.length; i++) expect(xs[i]! - xs[i - 1]!).toBeGreaterThanOrEqual(26);
+  });
+  it("a sector's target badge says its percent, never trillions of dollars", async () => {
+    const base = demoFor({ t: 'sector@1', params: { sector: 'Technology' } }) as SectorBasket;
+    const r = await render(PtCompanyHeader, { sector: 'Technology' }, withData({ 'sector@1': base }));
+    const badge = r.el.querySelector('[data-key="pt_upside"]')!.textContent!;
+    expect(badge).toMatch(/%/);
+    expect(badge).not.toMatch(/\$/);
   });
 });

@@ -1,7 +1,8 @@
 /**
  * What happened to this stock's price, and which earnings, dividends, splits and analyst moves happened along the way?
- * @version 2.3.0
+ * @version 2.4.0
  * @evidence design of the fund pages, 2026-11-05, section 7: a fund's chart marks market events, not analyst actions
+ * @evidence design of the sector pages, 2026-11-07, section 6: with `sector`, what its companies are worth over the year (our own sum, not an index), its 5 largest companies' reports
  * @evidence design of the fund pages, 2026-11-05: on a fund's chart a report is one of its holdings', and its tooltip names the company
  * @evidence beta: the price chart with event markers on the company page
  * @evidence DataForSEO: "<ticker> earnings date", "<ticker> dividend" families (launch/data)
@@ -9,8 +10,8 @@
 import { Component, computed, inject, input, linkedSignal } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
 import { applyXViewport, applyYViewport, closeAt, FULL_VIEWPORT, isoDay, linePath, monthTicks, padTime, PtChart, PtTimeAxis, PtToggles, PtYAxis, type Viewport } from '@pretickt/components/ds';
-import { amount, date, money, num, pct, plainName, tip } from '@pretickt/components/format';
-import { RANGES, type EventItem, type PriceBar, type RangeValue } from '@pretickt/components/typologies';
+import { amount, date, money, num, pct, plainName, tip, usd } from '@pretickt/components/format';
+import { RANGES, type EventItem, type PriceBar, type RangeValue, type Sector } from '@pretickt/components/typologies';
 
 // Price labels sit in the right-hand strip you can grab to stretch the scale (beta / TradingView layout).
 export const W = 720, H = 260, L = 6, R = 46, T = 12, B = 24;
@@ -66,6 +67,8 @@ const KINDS: Record<string, { glyph: string; plural: string; legend: string }> =
 };
 const legendOf = (kinds: readonly string[]) => kinds.map((k) => `${KINDS[k]!.glyph} ${KINDS[k]!.legend}`).join(' · ');
 const COMPANY_KINDS = ['earnings', 'dividend', 'split', 'analyst'] as const, FUND_KINDS = ['earnings', 'dividend', 'split', 'macro'] as const;
+/** A sector's chart: its 5 largest companies' reports and the market's dates (it pays no dividend of its own). */
+const SECTOR_KINDS = ['earnings', 'macro'] as const;
 
 function tipFor(e: EventItem, own: string): string {
   switch (e.kind) {
@@ -107,14 +110,14 @@ function tipForGroup(m: Marker, own: string): string {
   selector: 'pt-price-events',
   imports: [PtChart, PtToggles, PtYAxis, PtTimeAxis],
   template: `
-    @let s = series.value();
+    @let s = source();
     @if (s !== undefined && !g()) {<p class="pt-na">Data not available</p>}
     @else if (g(); as g) {
       <figure class="pt-chart" [class.pt-busy]="series.loading() || events.loading()">
-        <div ptToggles [value]="picked()" [options]="RANGE_TOGGLES" aria-label="Range" (choose)="pick($event)"></div>
-        <div ptChart [w]="W" [h]="H" [plotW]="PLOT_W" [plotH]="PLOT_H" [id]="'pe' + ticker()" [label]="ticker() + ' price, ' + shown()" [(view)]="view">
+        @if (!sector()) {<div ptToggles [value]="picked()" [options]="RANGE_TOGGLES" aria-label="Range" (choose)="pick($event)"></div>}
+        <div ptChart [w]="W" [h]="H" [plotW]="PLOT_W" [plotH]="PLOT_H" [id]="chartId()" [label]="chartName()" [(view)]="view">
           <svg:g ptAxes>
-            <svg:g ptYAxis [w]="W" [plotW]="PLOT_W" [ticks]="g.yTicks"></svg:g>
+            <svg:g ptYAxis [w]="W" [plotW]="PLOT_W" [ticks]="g.yTicks" [compact]="!!sector()"></svg:g>
             <svg:g ptTimeAxis [h]="H" [plotW]="PLOT_W" [ticks]="g.xTicks"></svg:g>
           </svg:g>
           <svg:g ptPlot>
@@ -133,32 +136,49 @@ function tipForGroup(m: Marker, own: string): string {
 })
 export class PtPriceEvents {
   private readonly pt = inject(Pt);
-  readonly ticker = input.required<string>();
+  /** A company's or a fund's ticker; or `sector`, for what its companies are worth over the year (from its basket: no range to pick). */
+  readonly ticker = input<string | null>(null);
+  readonly sector = input<Sector | null>(null);
   readonly range = input<RangeValue>('1y');
   /** On a fund's page: market events in place of analyst actions, which rate its holdings, not it. */
   readonly fund = input(false);
 
   /** The reader's choice (the toggle); the captions follow the data on screen (`series.params()`). */
   protected readonly picked = linkedSignal(() => this.range());
-  protected readonly series = this.pt.priceSeries(() => ({ tickers: [this.ticker()], range: this.picked(), interval: '1d', rebase: false }));
-  protected readonly events = this.pt.events(() => ({ scope: { by: 'ticker', ticker: this.ticker(), range: this.picked(), ahead: 90 }, kinds: [...(this.fund() ? FUND_KINDS : COMPANY_KINDS)] }));
-  protected readonly shown = computed(() => (this.series.params() as { range?: RangeValue } | undefined)?.range ?? this.picked());
+  private readonly own = () => { const t = this.ticker(); return t && !this.sector() ? t : null; };
+  protected readonly series = this.pt.priceSeries(() => { const t = this.own(); return t ? { tickers: [t], range: this.picked(), interval: '1d' as const, rebase: false } : null; });
+  private readonly sectorCall = this.pt.sector(() => { const s = this.sector(); return s ? { sector: s } : null; });
+  protected readonly events = this.pt.events(() => {
+    const s = this.sector(), t = this.own();
+    if (s) return { scope: { by: 'sector' as const, sector: s, range: '1y' as const, ahead: 90 }, kinds: [...SECTOR_KINDS] };
+    return t ? { scope: { by: 'ticker' as const, ticker: t, range: this.picked(), ahead: 90 }, kinds: [...(this.fund() ? FUND_KINDS : COMPANY_KINDS)] } : null;
+  });
+  /** What the chart draws, or null when there is nothing to: a sector's basket, else the price series. */
+  protected readonly source = computed(() => (this.sector() ? this.sectorCall.value() : this.own() ? this.series.value() : null));
+  protected readonly shown = computed(() => (this.sector() ? '1y' : (this.series.params() as { range?: RangeValue } | undefined)?.range ?? this.picked()));
+  protected readonly chartId = computed(() => `pe${this.ticker() ?? (this.sector() ?? '').toLowerCase().replace(/\W+/g, '-')}`);
+  protected readonly chartName = computed(() => (this.sector() ? `What ${this.sector()}'s companies are worth, ${this.shown()}` : `${this.ticker()} price, ${this.shown()}`));
   /** New data on screen: back to the full view. */
   protected readonly view = linkedSignal<unknown, Viewport>({ source: () => this.series.params(), computation: () => FULL_VIEWPORT });
 
   protected readonly W = W; protected readonly H = H; protected readonly PLOT_W = PLOT_W; protected readonly PLOT_H = PLOT_H;
   protected readonly KINDS = KINDS;
   protected readonly RANGE_TOGGLES = RANGES.map((r) => [r, r.toUpperCase()] as const);
-  protected readonly tipForGroup = (m: Marker) => tipForGroup(m, this.ticker());
+  protected readonly tipForGroup = (m: Marker) => tipForGroup(m, this.ticker() ?? '');
   protected markerClass = (m: Marker) => `pt-mk pt-mk-${KINDS[m.kind] ? m.kind : 'other'}${m.future ? ' pt-mk-future' : ''}`;
 
   protected pick(r: RangeValue) { this.picked.set(r); this.series.retry(); this.events.retry(); }
 
-  private readonly points = computed(() => this.series.value()?.[0]?.points ?? []);
+  private readonly points = computed((): PriceBar[] => {
+    if (!this.sector()) return this.series.value()?.[0]?.points ?? [];
+    return (this.sectorCall.value()?.series ?? []).map(({ t, c }) => ({ t, o: c, h: c, l: c, c, v: 0 }));
+  });
   protected readonly g = computed(() => layout(this.points(), this.events.value()?.items ?? [], this.view()));
   protected readonly caption = computed(() => {
-    const p = this.points();
+    const p = this.points(), s = this.sector();
     if (!p.length) return '';
-    return `Last close ${money(p.at(-1)!.c)} · ${pct(p.at(-1)!.c / p[0]!.c - 1)} over ${this.shown()} · ${legendOf(this.fund() ? FUND_KINDS : COMPANY_KINDS)}${this.events.value() ? '' : ' · Events not available'}`;
+    const change = `${pct(p.at(-1)!.c / p[0]!.c - 1)} over ${this.shown()}`, missing = this.events.value() ? '' : ' · Events not available';
+    if (s) return `What ${s}'s companies are worth: today's shares at each day's adjusted close, our own sum · ${usd(p.at(-1)!.c, { compact: true })} · ${change} · ${legendOf(SECTOR_KINDS)}${missing}`;
+    return `Last close ${money(p.at(-1)!.c)} · ${change} · ${legendOf(this.fund() ? FUND_KINDS : COMPANY_KINDS)}${missing}`;
   });
 }

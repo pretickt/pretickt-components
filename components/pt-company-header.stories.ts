@@ -2,8 +2,21 @@
 import { PT_LIVE } from '../src/context';
 import { liveSource } from '../src/site/live';
 import { demo, liveDay, story } from '../src/stories/story';
-import { METRIC_KEYS, type MetricItem } from '../src/typologies';
+import { demoFor, METRIC_KEYS, type MetricItem, type SectorBasket } from '../src/typologies';
 import { PtCompanyHeader } from './pt-company-header';
+
+/** A made-up sector: its companies' bars rise through the session, the largest not yet traded (it counts flat). */
+const tech = demoFor({ t: 'sector@1', params: { sector: 'Technology' } }) as SectorBasket;
+const sectorBars = (o: Record<string, unknown> = {}) => ({ session: '2099-01-02', prev: tech.asOf, asOf: '2099-01-02T18:20:00.000Z', time: '1:20 PM ET', closed: false,
+  bars: Object.fromEntries(tech.holdings.slice(1).map((h, k) => [h.ticker, Array.from({ length: 46 }, (_, i) => +((h.close ?? 100) * (1 + (k % 2 ? -1 : 1) * 0.0004 * i)).toFixed(2))])), ...o });
+const sectorStories = [
+  story(PtCompanyHeader, { name: 'A sector: its worth over the year, its basket badges, the fund line', inputs: { sector: 'Technology' }, data: { 'sector@1': tech } }),
+  story(PtCompanyHeader, { name: 'A sector, market open: its line from its companies\' bars, 15-min delayed', inputs: { sector: 'Technology' }, data: { 'sector@1': tech },
+    providers: liveDay({}, { bars: () => sectorBars() }) }),
+  story(PtCompanyHeader, { name: 'A sector, bars of another session: no line of the day', inputs: { sector: 'Technology' }, data: { 'sector@1': tech },
+    providers: liveDay({}, { bars: () => sectorBars({ prev: '2099-01-01' }) }) }),
+  story(PtCompanyHeader, { name: 'A sector, not available', inputs: { sector: 'Technology' }, data: null }),
+];
 
 const base = demo<MetricItem[]>('metric@1', { ticker: 'NVDA', metrics: [...METRIC_KEYS] });
 const points = demo<{ points: { t: string; c: number }[] }[]>('price-series@1', { tickers: ['NVDA'], range: '3m', interval: '1d', rebase: false })[0]!.points;
@@ -48,4 +61,5 @@ export const stories = [
   story(PtCompanyHeader, { name: 'www: NVDA', inputs: { ticker: 'NVDA' }, live: true, providers: wwwLines }),
   story(PtCompanyHeader, { name: 'www: KO, low', inputs: { ticker: 'KO', size: 'low' }, live: true, providers: wwwLines }),
   story(PtCompanyHeader, { name: 'Not available', inputs: { ticker: 'NVDA' }, data: null }),
+  ...sectorStories,
 ];
