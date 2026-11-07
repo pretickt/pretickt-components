@@ -28,11 +28,15 @@ export const SectorHolding = z.extend(BasketHolding, { close: Num });
 const Point = z.object({ t: IsoDate, c: z.number() });
 const ascending = (s: readonly { t: string }[]) => s.every((p, i) => i === 0 || s[i - 1]!.t < p.t);
 const badgesOnly = (b: readonly { key: string }[]) => b.every((m) => (SECTOR_BADGES as readonly string[]).includes(m.key));
+/** The companies that speak for a sector: its largest, named first; their news and reports. */
+export const TOP_COMPANIES = 10;
+export const SectorTop = z.object({ ticker: Ticker, name: Text, logo: z.nullable(z.string()), weight: z.number() });
 
 export const SectorBasketPayload = z.object({
   kind: z.literal('sector'), asOf: IsoDate, sector: z.enum(SECTORS), name: Text,
   /** The fund that holds the sector's S&P 500 companies (SECTOR_FUNDS): named and linked, never its price. */
   tracker: Ticker,
+  /** How many companies: a company listed under two tickers (GOOG and GOOGL) is one. */
   companies: z.int().check(z.gte(0)),
   /** What the sector's companies are worth at the close, dollars. */
   value: z.number(),
@@ -43,12 +47,15 @@ export const SectorBasketPayload = z.object({
   moves: BasketMoves,
   /** Every company of the sector, largest first; one with no market value at weight 0. */
   holdings: z.array(SectorHolding),
+  /** The ten largest companies, one row each: a company's share classes merged, its weight their sum, its ticker its largest class's. */
+  top: z.array(SectorTop).check(z.refine((t) => t.length <= TOP_COMPANIES, 'at most ten')),
   series: z.array(Point).check(z.refine(ascending, 'oldest first, one point a session')),
   badges: z.array(MetricItem).check(z.refine(badgesOnly, 'only the basket badges')),
   faq: z.array(ValueFaq),
 });
 export type SectorParams = z.output<typeof SectorParams>;
 export type SectorHolding = z.infer<typeof SectorHolding>;
+export type SectorTop = z.infer<typeof SectorTop>;
 export type SectorBasket = z.infer<typeof SectorBasketPayload>;
 
 export const sectorSamples: z.input<typeof SectorParams>[] = [{ sector: 'Technology' }, { sector: 'Financial Services' }];
@@ -91,7 +98,7 @@ export function sectorDemo(p: SectorParams): SectorBasket {
     questions: VALUE_KEYS.map((key, i) => off.has(key) ? { key, pos: 0, flat: 0, neg: 0, share: 0.2, comparable: false }
       : { key, pos: [0.62, 0.5, 0.58, 0.55, 0.3, 0.25][i]!, flat: [0.25, 0.3, 0.22, 0.3, 0.4, 0.35][i]!, neg: [0.13, 0.2, 0.2, 0.15, 0.3, 0.4][i]!, share: 0.97, comparable: true }),
     moves: { sum, up: movers(byPoints.filter((h) => h.ret > 0).slice(0, BASKET_MOVERS)), down: movers(byPoints.filter((h) => h.ret < 0).reverse().slice(0, BASKET_MOVERS)) },
-    holdings, series,
+    holdings, series, top: holdings.slice(0, TOP_COMPANIES).map(({ ticker, name, logo, weight }) => ({ ticker, name, logo, weight })),
     badges: metricDemo({ ticker: tracker, metrics: [...SECTOR_BADGES] }),
     faq: [{ q: `What are the largest ${p.sector} stocks?`, a: `The largest of the ${holdings.length} ${p.sector} companies on pretickt are ${holdings[0]!.name} and ${holdings[1]!.name}.` }],
   };

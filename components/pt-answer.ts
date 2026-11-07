@@ -164,7 +164,8 @@ export class PtAnswer {
     if (!this.sector()) return null;
     if (b === undefined) return PENDING;
     if (b === null) return null;
-    const top = b.holdings[0];
+    // its largest company, its share classes merged (GOOG and GOOGL are one Alphabet)
+    const top = b.top[0];
     const largest = top?.ticker ? say`; the largest is ${mention(top.ticker, top.name, top.logo)} at ${level(top.weight)}` : say``;
     const figure = b.target ? ` Analysts' targets on them average ${pct(b.target.upside)}.` : '';
     return say`${b.name} on pretickt: ${many(b.companies, 'company', 'companies')} worth ${worth(b.value)}${largest}.${figure} pretickt does not say whether to buy or sell.`;

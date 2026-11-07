@@ -274,3 +274,21 @@ describe('pt-basket, for a sector', () => {
 it('pt-basket with neither a ticker nor a sector says the data is not available', async () => {
   expect((await render(PtBasket, { section: 'moves' })).el.querySelector('.pt-na')).not.toBeNull();
 });
+
+it("a sector's facts name its largest company with its classes merged, and its top 10 as companies", async () => {
+  const base = demoFor({ t: 'sector@1', params: { sector: 'Communication Services' } }) as SectorBasket;
+  const b: SectorBasket = { ...base, top: [{ ticker: 'GOOGL', name: 'Alphabet Inc.', logo: null, weight: 0.544 }, { ticker: 'META', name: 'Meta Platforms, Inc.', logo: null, weight: 0.244 }] };
+  const r = await render(PtBasket, { sector: 'Communication Services', section: 'questions' }, withData({ 'sector@1': b }));
+  const facts = Object.fromEntries([...r.el.querySelectorAll('.pt-bk-facts div')].map((d) => [d.querySelector('dt')!.textContent, d.querySelector('dd')!.textContent!.trim()]));
+  expect(facts['Largest']).toBe('Alphabet 54.4%');
+  expect(facts['Top 10']).toBe('79% of the sector');
+});
+
+it("a split on the session is no move of the sector: a company whose delayed price is off its close by more than half counts flat, with no row", () => {
+  const base = demoFor({ t: 'sector@1', params: { sector: 'Technology' } }) as SectorBasket;
+  const co = (ticker: string, weight: number) => ({ ticker, name: `${ticker} Inc.`, logo: null, weight, ret: 0.01, upside: 0.1, label: 'Buy', close: 100 });
+  const b: SectorBasket = { ...base, holdings: [co('NVDA', 0.2), co('AAPL', 0.8)] };
+  const v = liveMoves(b, { NVDA: { r: -0.9 }, AAPL: { r: 0.01 } }, {});
+  expect(v.ret).toBeCloseTo(0.008, 9);
+  expect([...v.up, ...v.down].map((m) => m.ticker)).toEqual(['AAPL']);
+});

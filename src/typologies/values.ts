@@ -29,6 +29,8 @@ export const CALENDAR_MONTHS = { back: 1, ahead: 3 } as const;
 export const SECTORS = ['Technology', 'Industrials', 'Financial Services', 'Healthcare', 'Consumer Cyclical', 'Consumer Defensive', 'Utilities',
   'Real Estate', 'Basic Materials', 'Energy', 'Communication Services'] as const;
 export type Sector = (typeof SECTORS)[number];
+/** A delayed price further than this from the page's close is on another basis (a split, a re-based day): it moves nothing. */
+export const OTHER_BASIS = 0.5;
 /** The Select Sector SPDR fund that holds each sector's S&P 500 companies: named and linked on the sector's page, never its price. */
 export const SECTOR_FUNDS: Readonly<Record<Sector, string>> = {
   Technology: 'XLK', 'Financial Services': 'XLF', Healthcare: 'XLV', 'Consumer Cyclical': 'XLY', 'Consumer Defensive': 'XLP', Industrials: 'XLI',

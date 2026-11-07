@@ -83,3 +83,14 @@ describe('the fund line', () => {
     expect(sectorFundLine('Communication Services', 'XLC')).toBe("XLC holds the S&P 500's communication services companies; this page weighs every communication services company on pretickt.");
   });
 });
+
+describe('the largest companies, one per company', () => {
+  it('top: at most ten, largest first, the share classes of one company merged into one row', () => {
+    const t = demo('Technology').top;
+    expect(t.length).toBeGreaterThan(3);
+    expect(t.length).toBeLessThanOrEqual(10);
+    expect(t.map((x) => x.weight)).toEqual([...t.map((x) => x.weight)].sort((a, b) => b - a));
+    expect(new Set(t.map((x) => x.name)).size).toBe(t.length);
+    expect(ok({ ...tech, top: Array.from({ length: 11 }, (_, i) => ({ ...tech.top[0]!, name: `C${i}` })) })).toBe(false);
+  });
+});

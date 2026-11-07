@@ -511,7 +511,7 @@ describe('pt-company-header, for a sector', () => {
   it("a sector's header: its name, companies and value, a year of its value, the payload's badges only, the fund line linking its page", async () => {
     const r = await render(PtCompanyHeader, { sector: 'Technology' }, withData({ 'sector@1': TECH }));
     expect(text(r.el.querySelector('.pt-card-name'))).toBe('Technology');
-    expect(text(r.el.querySelector('.pt-card-who .pt-meta'))).toBe('3 companies · $1T');
+    expect(text(r.el.querySelector('.pt-card-who .pt-meta'))).toBe('3 companies');
     expect(text(r.el.querySelector('.pt-card-close'))).toBe('$1T');
     expect(r.el.querySelector('.pt-hdr-cap')!.textContent).toContain('1 year');
     expect(r.el.querySelector('.pt-hdr-svg')!.getAttribute('aria-label')).toMatch(/^What Technology's companies are worth: today's shares at each day's adjusted close/);
@@ -560,4 +560,21 @@ it("a sector header's chart label: \"What Financial Services' companies are wort
   const fin = demoFor({ t: 'sector@1', params: { sector: 'Financial Services' } }) as SectorBasket;
   const r = await render(PtCompanyHeader, { sector: 'Financial Services' }, withData({ 'sector@1': fin }));
   expect(r.el.querySelector('.pt-hdr-svg')!.getAttribute('aria-label')).toMatch(/^What Financial Services' companies are worth/);
+});
+
+describe('pt-company-header: a sector in the session, defended', () => {
+  const base = demoFor({ t: 'sector@1', params: { sector: 'Technology' } }) as SectorBasket;
+  const h = (ticker: string, weight: number) => ({ ticker, name: `${ticker} Inc.`, logo: null, weight, ret: 0.01, upside: 0.1, label: 'Buy', close: 100 });
+  const S: SectorBasket = { ...base, value: 1e12, holdings: [h('AAA', 0.5), h('BBB', 0.5)] };
+  const at = (bars: Record<string, (number | null)[]>) => sectorLine(S, { session: '2099-01-02', prev: S.asOf, asOf: '2099-01-02T18:20:00.000Z', time: '1:20 PM ET', closed: false, bars })!;
+  it('a split on the session counts flat: AAA at a tenth of its close moves nothing', () => {
+    expect(at({ AAA: [10, 10], BBB: [102, 104] }).closes).toEqual([1e12 * (0.5 + 0.5 * 1.02), 1e12 * (0.5 + 0.5 * 1.04)]);
+  });
+  it("a company whose bars stop early keeps its last close in the later slots, as the live file's own rule", () => {
+    expect(at({ AAA: [103], BBB: [100, 100] }).closes[1]).toBeCloseTo(1e12 * (0.5 * 1.03 + 0.5), -3);
+  });
+  it('the line under the name says its companies; the value is said once, as the price (the scrolled strip repeats the line)', async () => {
+    const r = await render(PtCompanyHeader, { sector: 'Technology' }, withData({ 'sector@1': { ...S, companies: 2, series: S.series.map((p) => ({ t: p.t, c: (p.c / base.value) * 1e12 })) } }));
+    expect(r.el.querySelector('.pt-card-who .pt-meta')!.textContent!.trim()).toBe('2 companies');
+  });
 });

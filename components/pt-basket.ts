@@ -11,7 +11,7 @@ import { Component, computed, inject, input, linkedSignal } from '@angular/core'
 import { Pt, PtLive } from '@pretickt/components/context';
 import { PtCompany, PtLogo } from '@pretickt/components/ds';
 import { date, href, level, money, num, pct, plainName, stockHref, tone, usd } from '@pretickt/components/format';
-import { BASKET_MIN_COVERAGE, BASKET_MOVER_MIN, BASKET_MOVERS, BASKET_SHOWN, basketLead, basketMoved, oneMover, type Basket, type BasketMover, type Sector, type SectorBasket } from '@pretickt/components/typologies';
+import { BASKET_MIN_COVERAGE, BASKET_MOVER_MIN, BASKET_MOVERS, BASKET_SHOWN, basketLead, basketMoved, OTHER_BASIS, oneMover, type Basket, type BasketMover, type Sector, type SectorBasket } from '@pretickt/components/typologies';
 
 const QUESTION: Record<string, string> = { demand: 'Demand', advantage: 'Advantage', economics: 'Economics', execution: 'Execution', fragility: 'Fragility', price: 'Price' };
 const SOURCE = 'https://advantage.factset.com/hubfs/Website/Resources%20Section/Research%20Desk/Earnings%20Insight/EarningsInsight_092322.pdf';
@@ -21,14 +21,15 @@ const isSector = (b: Basket | SectorBasket): b is SectorBasket => 'kind' in b &&
 
 /**
  * The moves at the delayed prices. A fund's holding missing from the quotes keeps its last figures, and the move is the fund's own price. A sector's
- * move is the sum of its companies' points (its weights are the last close's, so the sum is exact); a company not yet in the quotes counts flat, with no row.
+ * move is the sum of its companies' points (its weights are the last close's, so the sum is exact); a company not yet in the quotes counts flat, with no row,
+ * and so does one off its close by more than OTHER_BASIS: a split on the session (the quotes' previous close is the pre-split one), not a move.
  */
 export function liveMoves(b: Basket | SectorBasket, q: Record<string, { r: number }>, news: Record<string, { top: { title: string; url: string }[] }>): { ret: number | null; up: BasketMover[]; down: BasketMover[] } {
   const sector = isSector(b);
   const known = new Map([...b.moves.up, ...b.moves.down].map((m) => [m.ticker, m.headline]));
   const rows = oneMover(b.holdings.flatMap((h): BasketMover[] => {
     const ret = h.ticker ? q[h.ticker]?.r ?? (sector ? null : h.ret) : null;
-    if (!h.ticker || ret == null) return [];
+    if (!h.ticker || ret == null || (sector && Math.abs(ret) > OTHER_BASIS)) return [];
     const top = news[h.ticker]?.top[0];
     return [{ ticker: h.ticker, name: h.name, logo: h.logo, weight: h.weight, ret, points: h.weight * ret, headline: top ? { title: top.title, url: top.url } : known.get(h.ticker) ?? null }];
   }));
@@ -154,7 +155,7 @@ export function liveMoves(b: Basket | SectorBasket, q: Record<string, { r: numbe
               <dl class="pt-bk-facts">
                 <div><dt>Companies</dt><dd>{{ s.companies }}</dd></div>
                 <div><dt>Market value</dt><dd>{{ usd(s.value, { compact: true }) }}</dd></div>
-                @if (s.holdings[0]; as h) {<div><dt>Largest</dt><dd>{{ plainName(h.name) }} {{ level(h.weight) }}</dd></div>}
+                @if (s.top[0]; as h) {<div><dt>Largest</dt><dd>{{ plainName(h.name) }} {{ level(h.weight) }}</dd></div>}
                 <div><dt>Top 10</dt><dd>{{ level(top10(), 0) }} of the sector</dd></div>
               </dl>
             } @else if (fund(); as f) {
@@ -202,7 +203,8 @@ export class PtBasket {
   /** A fund's list opens on click; a sector's is all in the server's HTML (every company's link), its rows after the 25th hidden by CSS until then. */
   protected readonly shown = computed(() => { const h = this.data()?.holdings ?? []; return this.sec() || this.all() ? h : h.slice(0, BASKET_SHOWN); });
   protected readonly more = computed(() => (this.data()?.holdings.length ?? 0) > BASKET_SHOWN && !this.all());
-  protected readonly top10 = computed(() => (this.sec()?.holdings ?? []).slice(0, 10).reduce((s, h) => s + h.weight, 0));
+  /** The ten largest companies' share, each company once (its share classes merged). */
+  protected readonly top10 = computed(() => (this.sec()?.top ?? []).reduce((s, h) => s + h.weight, 0));
 
   private readonly view = computed(() => {
     const b = this.data(), d = this.day();

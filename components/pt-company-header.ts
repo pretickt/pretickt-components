@@ -12,7 +12,7 @@ import { Pt, PtLive, type LiveBars } from '@pretickt/components/context';
 import { PtBadge, PtLogo } from '@pretickt/components/ds';
 import { date, dayMonth, level, money, num, pct, plainName, tone, usd, type Badge } from '@pretickt/components/format';
 import { bollinger, macd, rsi, smaLast } from '@pretickt/components/indicators';
-import { METRIC_KEYS, possessive, sectorFundLine, type MetricItem, type Sector, type SectorBasket } from '@pretickt/components/typologies';
+import { METRIC_KEYS, OTHER_BASIS, possessive, sectorFundLine, type MetricItem, type Sector, type SectorBasket } from '@pretickt/components/typologies';
 
 export type Side = 'g' | 'n' | 'r';
 /** The badges whose catalogue tone already says a direction. */
@@ -32,8 +32,6 @@ export function lean(m: MetricItem): Side | null {
   return FOLLOWS_TONE.has(m.key) ? BY_TONE[m.tone] ?? 'n' : 'n';
 }
 
-/** A delayed price further than this from the page's close is on another basis (a split, a re-based day): nothing is recomputed. */
-const OTHER_BASIS = 0.5;
 const band = (v: number, pos: number, neg: number): MetricItem['tone'] => (v > pos ? 'pos' : v < neg ? 'neg' : 'flat');
 const peTone = (v: number): MetricItem['tone'] => (v < -0.1 ? 'pos' : v > 0.1 ? 'neg' : 'flat');
 const countTone = (n: number): MetricItem['tone'] => (n >= 3 ? 'pos' : n <= 1 ? 'neg' : 'flat');
@@ -126,16 +124,23 @@ export interface SessionLine { session: string; prev?: string; time: string; clo
 
 /**
  * A sector's line of the session, from its companies' bars: at each 5-minute slot, its value at the last close times each company's close against its
- * own last close, weighted. A company with no bar yet counts flat; a slot no company has traded is empty. Null when the bars follow another session than the
- * payload's (its weights and closes are that session's).
+ * own last close, weighted. A company with no bar yet counts flat; one whose bars stop early keeps its last close (the live file's own rule for a gap); a
+ * bar off its close by more than OTHER_BASIS is a split on the session and counts flat. A slot no company has traded is empty. Null when the bars follow
+ * another session than the payload's (its weights and closes are that session's).
  */
 export function sectorLine(b: SectorBasket, l: LiveBars): SessionLine | null {
   if (l.prev !== b.asOf) return null;
   const rows = b.holdings.filter((h) => h.ticker && h.close && h.weight > 0);
   const total = rows.reduce((s, h) => s + h.weight, 0), n = Math.max(0, ...rows.map((h) => l.bars[h.ticker!]?.length ?? 0));
+  const last = new Map<string, number>();
   const closes = Array.from({ length: n }, (_, i) => {
     let traded = false;
-    const v = rows.reduce((s, h) => { const c = l.bars[h.ticker!]?.[i]; if (c != null) traded = true; return s + h.weight * (c != null ? c / h.close! : 1); }, 0);
+    const v = rows.reduce((s, h) => {
+      const c = l.bars[h.ticker!]?.[i];
+      if (c != null) { traded = true; last.set(h.ticker!, c); }
+      const r = (last.get(h.ticker!) ?? h.close!) / h.close!;
+      return s + h.weight * (Math.abs(r - 1) > OTHER_BASIS ? 1 : r);
+    }, 0);
     return traded && total ? b.value * v / total : null;
   });
   return { session: l.session, prev: l.prev, time: l.time, closed: l.closed, closes };
@@ -384,7 +389,8 @@ export class PtCompanyHeader {
   /** Under the name, the ticker (not when the name is the ticker in other letters) and the market value; a sector's companies and their worth. */
   protected subLine(title: string): string {
     const s = this.sec();
-    if (s) return `${s.companies} ${s.companies === 1 ? 'company' : 'companies'} · ${usd(s.value, { compact: true })}`;
+    // its worth is the price beside it: said once (the scrolled strip copies this line)
+    if (s) return `${s.companies} ${s.companies === 1 ? 'company' : 'companies'}`;
     const cap = this.byKey().get('market_cap')?.value, t = this.ticker() ?? '';
     return [title.toUpperCase() === t.toUpperCase() ? '' : t, cap != null ? usd(cap, { compact: true }) : ''].filter(Boolean).join(' · ');
   }

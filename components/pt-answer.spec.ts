@@ -199,7 +199,7 @@ describe('a fund', () => {
 
 describe('pt-answer, a sector', () => {
   const base = demoFor({ t: 'sector@1', params: { sector: 'Technology' } }) as SectorBasket;
-  const TECH: SectorBasket = { ...base, companies: 116, value: 22.4e12, holdings: [{ ticker: 'NVDA', name: 'NVIDIA Corporation', logo: null, weight: 0.213, ret: null, upside: null, label: null, close: 180 }],
+  const TECH: SectorBasket = { ...base, companies: 116, value: 22.4e12, holdings: [{ ticker: 'NVDA', name: 'NVIDIA Corporation', logo: null, weight: 0.213, ret: null, upside: null, label: null, close: 180 }], top: [{ ticker: 'NVDA', name: 'NVIDIA Corporation', logo: null, weight: 0.213 }],
     target: { ...base.target!, upside: 0.142 } };
   const said = async (b: SectorBasket) => (await render(PtAnswer, { topic: 'sector', sector: b.sector }, withData({ 'sector@1': b }))).text().replace(/\s+/g, ' ').trim();
   basics(PtAnswer, { topic: 'sector', sector: 'Technology' });
@@ -214,4 +214,12 @@ describe('pt-answer, a sector', () => {
   it('not available', async () => {
     expect((await render(PtAnswer, { topic: 'sector', sector: 'Technology' }, withData({ 'sector@1': null }))).text()).not.toContain('companies');
   });
+});
+
+it("a sector's largest is one company, its share classes merged: Alphabet at 54.4%, not GOOG at 27.2%", async () => {
+  const base = demoFor({ t: 'sector@1', params: { sector: 'Communication Services' } }) as SectorBasket;
+  const al = (ticker: string) => ({ ticker, name: 'Alphabet Inc.', logo: null, weight: 0.272, ret: null, upside: null, label: null, close: 300 });
+  const b: SectorBasket = { ...base, companies: 18, value: 6.389e12, holdings: [al('GOOG'), al('GOOGL')], top: [{ ticker: 'GOOGL', name: 'Alphabet Inc.', logo: null, weight: 0.544 }] };
+  const t = (await render(PtAnswer, { topic: 'sector', sector: 'Communication Services' }, withData({ 'sector@1': b }))).text().replace(/\s+/g, ' ');
+  expect(t).toContain('18 companies worth $6.4 trillion; the largest is Alphabet GOOGL at 54.4%.');
 });
