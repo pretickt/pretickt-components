@@ -17,12 +17,12 @@ describe('portfolios kept in the browser', () => {
   it('saves and loads a portfolio and a watchlist', () => {
     const s = new Mem(), stored: Stored = { v: 1, active: 'b', list: [pf('a'), pf('b', { kind: 'watchlist', unit: 'equal', rows: [{ t: 'NVDA', n: null, d: null }] })] };
     expect(savePortfolios(() => s, stored)).toBe(true);
-    expect(loadPortfolios(() => s)).toEqual({ stored, saving: true });
+    expect(loadPortfolios(() => s)).toEqual({ stored, saving: true, unread: false });
     expect(JSON.parse(s.getItem(PORTFOLIO_KEY)!).v).toBe(1);
   });
 
   it('a storage that throws: works for the visit, saving false', () => {
-    expect(loadPortfolios(() => { throw new Error('denied'); })).toEqual({ stored: { v: 1, active: null, list: [] }, saving: false });
+    expect(loadPortfolios(() => { throw new Error('denied'); })).toEqual({ stored: { v: 1, active: null, list: [] }, saving: false, unread: false });
     const full = new Mem(true);
     expect(loadPortfolios(() => full).saving).toBe(false);
     expect(savePortfolios(() => full, { v: 1, active: null, list: [pf('a')] })).toBe(false);
@@ -32,7 +32,7 @@ describe('portfolios kept in the browser', () => {
     for (const raw of ['{not json', JSON.stringify({ v: 2, list: [] })]) {
       const s = new Mem();
       s.setItem(PORTFOLIO_KEY, raw);
-      expect(loadPortfolios(() => s)).toEqual({ stored: { v: 1, active: null, list: [] }, saving: true });
+      expect(loadPortfolios(() => s)).toEqual({ stored: { v: 1, active: null, list: [] }, saving: true, unread: true });
       expect(s.getItem(`${PORTFOLIO_KEY}-unread`)).toBe(raw);
       s.setItem(PORTFOLIO_KEY, '{again');
       loadPortfolios(() => s);
@@ -47,5 +47,18 @@ describe('portfolios kept in the browser', () => {
     const many = Array.from({ length: MAX_ROWS + 1 }, () => ({ t: 'AAPL', n: 1, d: null }));
     expect(withPortfolio({ v: 1, active: null, list: [] }, pf('a', { rows: many }))).toBe('A portfolio holds up to 200 lines.');
     expect(withPortfolio({ v: 1, active: null, list: [] }, pf('a'))).toEqual({ v: 1, active: 'a', list: [pf('a')] });
+  });
+});
+
+describe('what a stored value must hold to be read (2026-11-08)', () => {
+  it('a value whose lines are not lines is set aside too, and the page is told', () => {
+    const s = new Mem();
+    const bad = JSON.stringify({ v: 1, active: 'a', list: [{ id: 'a', name: 'X', kind: 'portfolio', unit: 'shares', rows: [{ t: 7, n: 'ten' }] }] });
+    s.setItem(PORTFOLIO_KEY, bad);
+    expect(loadPortfolios(() => s)).toEqual({ stored: { v: 1, active: null, list: [] }, saving: true, unread: true });
+    expect(s.getItem(`${PORTFOLIO_KEY}-unread`)).toBe(bad);
+    const ok = new Mem();
+    savePortfolios(() => ok, { v: 1, active: 'a', list: [pf('a')] });
+    expect(loadPortfolios(() => ok).unread).toBe(false);
   });
 });

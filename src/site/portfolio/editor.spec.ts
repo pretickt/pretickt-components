@@ -18,7 +18,7 @@ async function mount(stored: Stored = EMPTY, saving = true) {
   const el = f.nativeElement as HTMLElement;
   const press = async (label: string) => { [...el.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent!.trim() === label)!.click(); await settle(); };
   const type = async (sel: string, value: string) => { const i = el.querySelector<HTMLInputElement | HTMLTextAreaElement>(sel)!; i.value = value; i.dispatchEvent(new Event('input')); await settle(); };
-  return { el, out, press, type, text: () => el.textContent!.replace(/\s+/g, ' ') };
+  return { el, out, press, type, settle, text: () => el.textContent!.replace(/\s+/g, ' ') };
 }
 
 describe('pt-portfolio-editor: portfolios and watchlists kept in this browser', () => {
@@ -84,6 +84,13 @@ describe('pt-portfolio-editor: portfolios and watchlists kept in this browser', 
     await m.type('input.pt-pf-date', '2026-02-02');
     await m.press('Add');
     expect(m.out.at(-1)!.list[0]!.rows.at(-1)).toEqual({ t: 'AMD', n: 5, d: '2026-02-02' });
+    // an amount typed as a broker writes it
+    await m.type('input.pt-pf-find', 'coca');
+    [...m.el.querySelectorAll<HTMLButtonElement>('.pt-pf-matches button')].find((x) => x.textContent!.trim().startsWith('KO ·'))!.click();
+    await m.settle();
+    await m.type('input.pt-pf-amount', '1,000');
+    await m.press('Add');
+    expect(m.out.at(-1)!.list[0]!.rows.at(-1)).toEqual({ t: 'KO', n: 1000, d: null });
   });
 
   it('switches, renames, copies as text, deletes after the in-page confirm', async () => {

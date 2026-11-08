@@ -51,6 +51,14 @@ describe('a portfolio computed on the page', () => {
     expect(g.uncovered).toEqual([{ name: 'GONE', weight: 0.2 }, { name: 'Demo 500 ETF, outside the companies we cover', weight: r(0.04, 4) }]);
   });
 
+  it("a fund whose holdings list is out of date is not looked through, and says why: its old list is not tonight's companies", () => {
+    const old: FactsFile = { ...FACTS, funds: { VOO: { ...FACTS.funds.VOO!, coverage: 0, weights: [], old: true } } };
+    const b = computePortfolio(pf({ unit: 'usd', rows: [{ t: 'VOO', n: 1000, d: null }, { t: 'AAA', n: 1000, d: null }] }), old, CLOSES);
+    expect(b.coverage).toBe(0.5);
+    expect(b.uncovered).toEqual([{ name: 'Demo 500 ETF, its holdings list is out of date', weight: 0.5 }]);
+    expect(b.holdings.find((h) => h.ticker === 'VOO')).toMatchObject({ fund: true, upside: null });
+  });
+
   it('under 80% no figure, the uncovered named', () => {
     const b = computePortfolio(pf({ unit: 'usd', rows: [{ t: 'AAA', n: 1000, d: null }, { t: 'GONE', n: 1000, d: null }] }), FACTS, CLOSES);
     expect(b.coverage).toBeLessThan(BASKET_MIN_COVERAGE);
@@ -131,5 +139,27 @@ describe('what we do not cover always counts (the 80% floor)', () => {
   it('percentages under 100: the rest of the portfolio is not covered', () => {
     const b = computePortfolio(pf({ unit: 'pct', rows: [{ t: 'AAA', n: 30, d: null }, { t: 'BBB', n: 30, d: null }] }), FACTS, CLOSES);
     expect(b).toMatchObject({ coverage: 0.6, state: 'low', uncovered: [{ name: 'The rest of your portfolio', weight: 0.4 }], holdings: [{ weight: 0.3 }, { weight: 0.3 }] });
+  });
+});
+
+describe('the deferred cases of the review (2026-11-08)', () => {
+  it('lots: "bought" is the earliest date that has a close, the one the return is read from', () => {
+    const b = computePortfolio(pf({ rows: [{ t: 'LATE', n: 1, d: '2026-03-02' }, { t: 'LATE', n: 1, d: '2026-04-01' }] }), FACTS, CLOSES);
+    expect(b.holdings[0]).toMatchObject({ bought: '2026-04-01', since: r(30 / 25 - 1, 4), noSince: false });
+  });
+  it("a date in the week before a company's corporate break has no return: the close after the break is on another basis", () => {
+    const facts = { ...FACTS, breaks: { CUT: '2026-04-01' } };
+    expect(computePortfolio(pf({ rows: [{ t: 'CUT', n: 1, d: '2026-03-30' }] }), facts, CLOSES).holdings[0]).toMatchObject({ since: null, noSince: true });
+    expect(computePortfolio(pf({ rows: [{ t: 'CUT', n: 1, d: '2026-04-01' }] }), facts, CLOSES).holdings[0]!.since).toBe(r(40 / 35 - 1, 4));
+  });
+  it("a date whose year's file is not loaded yet is no missing close: no return yet, nothing said", () => {
+    const b = computePortfolio(pf({ rows: [{ t: 'AAA', n: 1, d: '2024-05-01' }] }), FACTS, CLOSES);
+    expect(b.holdings[0]).toMatchObject({ since: null, noSince: false, bought: '2024-05-01' });
+  });
+  it('earnings ahead: only the companies that weigh at least 1% of the portfolio', () => {
+    const facts: FactsFile = { ...FACTS, companies: { ...FACTS.companies, TINY: co('TINY', { nextEarnings: '2026-11-10' }) },
+      funds: { VOO: { ...FACTS.funds.VOO!, weights: [['AAA', 0.5], ['BBB', 0.395], ['TINY', 0.005]] } } };
+    const b = computePortfolio(pf({ unit: 'pct', rows: [{ t: 'VOO', n: 100, d: null }] }), facts, CLOSES);
+    expect(b.earnings.map((e) => e.ticker)).toEqual(['AAA']);
   });
 });

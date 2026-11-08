@@ -20,9 +20,15 @@ export const FactsCompany = z.object({
   headline: z.nullable(z.object({ title: Text, url: HttpUrl })),
   news: z.array(z.nullable(z.number())),
 });
-/** A fund of the site: its close and day, how much of it we cover, and its covered companies' weights (they sum to `coverage`). */
-export const FactsFund = z.object({ name: Text, logo: z.nullable(z.string()), close: z.number(), ret: Num, coverage: z.number(), weights: z.array(z.tuple([Ticker, z.number()])) });
-export const FactsFile = z.object({ v: z.literal(1), asOf: IsoDate, companies: z.record(Ticker, FactsCompany), funds: z.record(Ticker, FactsFund) });
+/**
+ * A fund of the site: its close and day, how much of it we cover, and its covered companies' weights (they sum to `coverage`). `old`: its holdings list is out
+ * of date tonight (its own page shows no figure), so it is not looked through: coverage 0, no weights, and the portfolio says why.
+ */
+export const FactsFund = z.object({ name: Text, logo: z.nullable(z.string()), close: z.number(), ret: Num, coverage: z.number(), weights: z.array(z.tuple([Ticker, z.number()])),
+  old: z.optional(z.literal(true)) });
+export const FactsFile = z.object({ v: z.literal(1), asOf: IsoDate, companies: z.record(Ticker, FactsCompany), funds: z.record(Ticker, FactsFund),
+  /** Each company's corporate break (CTVA's spin-off): a purchase before it has no return, its closes before it being on another basis. */
+  breaks: z.optional(z.record(Ticker, IsoDate)) });
 
 const ascending = (d: readonly string[]) => d.every((x, i) => i === 0 || d[i - 1]! < x);
 /** Closes on the dates, one value a date (null before a ticker's first close or before its corporate break). */

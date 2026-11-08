@@ -6,6 +6,8 @@ describe('build budget', () => {
   it('one size budget per kind, enforced where the files are produced', () => {
     expect(overBudget('main', BUDGET.main)).toBeNull();
     expect(overBudget('component', BUDGET.component + 1)).toMatch(/component bundle is \d+ bytes, over the 32000-byte budget/);
+    // a page of the app loaded on its own page only (the portfolio's): its own budget
+    expect(overBudget('page', BUDGET.page + 1)).toMatch(/page bundle is \d+ bytes, over the 48000-byte budget/);
   });
   it('the components to build are the pt-*.ts files, never their specs, their stories or the spec helpers', () => {
     const files = componentFiles(readdirSync('components'));

@@ -15,20 +15,26 @@ export const MAX_ROWS = 200;
 const EMPTY = (): Stored => ({ v: 1, active: null, list: [] });
 const PROBE = `${PORTFOLIO_KEY}-probe`;
 
+const UNITS = ['shares', 'pct', 'usd', 'equal'];
+const readableRow = (r: unknown) => typeof r === 'object' && r !== null && typeof (r as StoredRow).t === 'string'
+  && ((r as StoredRow).n === null || typeof (r as StoredRow).n === 'number') && ((r as StoredRow).d === null || typeof (r as StoredRow).d === 'string');
+/** What this build can read: the version, each portfolio's fields, each line's symbol, amount and date (a hand-edited value can break any of them). */
 const readable = (v: unknown): v is Stored =>
   typeof v === 'object' && v !== null && (v as Stored).v === 1 && Array.isArray((v as Stored).list)
-  && (v as Stored).list.every((p) => typeof p?.id === 'string' && typeof p.name === 'string' && (p.kind === 'portfolio' || p.kind === 'watchlist') && Array.isArray(p.rows));
+  && (v as Stored).list.every((p) => typeof p?.id === 'string' && typeof p.name === 'string' && (p.kind === 'portfolio' || p.kind === 'watchlist') && UNITS.includes(p.unit)
+    && Array.isArray(p.rows) && p.rows.every(readableRow));
 
-export function loadPortfolios(storage: () => Storage): { stored: Stored; saving: boolean } {
+/** `unread`: a value was there that this build could not read; it is kept aside, and the page says so. */
+export function loadPortfolios(storage: () => Storage): { stored: Stored; saving: boolean; unread: boolean } {
   let s: Storage;
-  try { s = storage(); s.setItem(PROBE, '1'); s.removeItem(PROBE); } catch { return { stored: EMPTY(), saving: false }; }
+  try { s = storage(); s.setItem(PROBE, '1'); s.removeItem(PROBE); } catch { return { stored: EMPTY(), saving: false, unread: false }; }
   const raw = s.getItem(PORTFOLIO_KEY);
-  if (raw == null) return { stored: EMPTY(), saving: true };
+  if (raw == null) return { stored: EMPTY(), saving: true, unread: false };
   let v: unknown = null;
   try { v = JSON.parse(raw); } catch { /* kept aside below */ }
-  if (readable(v)) return { stored: v, saving: true };
+  if (readable(v)) return { stored: v, saving: true, unread: false };
   try { if (s.getItem(`${PORTFOLIO_KEY}-unread`) == null) s.setItem(`${PORTFOLIO_KEY}-unread`, raw); } catch { /* nothing more to do */ }
-  return { stored: EMPTY(), saving: true };
+  return { stored: EMPTY(), saving: true, unread: true };
 }
 
 export function savePortfolios(storage: () => Storage, stored: Stored): boolean {

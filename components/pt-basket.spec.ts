@@ -306,6 +306,9 @@ describe('pt-basket, on a portfolio computed on the page (Part B)', () => {
     const a = await pfb('analysts');
     expect(a.text()).toMatch(/What analysts' targets on \d+% of your portfolio would put it at/);
     expect((await pfb('questions')).text()).toMatch(/on \d+% of your portfolio/);
+    // the questions' lead speaks of "your portfolio", never of its name in the middle of a sentence
+    expect((await pfb('questions')).text()).toMatch(/By weight, your portfolio's companies are strong/);
+    expect((await pfb('questions', demoPortfolio('watchlist'))).text()).toMatch(/By weight, the list's companies are strong/);
     expect((await pfb('faq')).el.textContent!.trim()).toBe('');
     expect((await pfb('moves')).text()).toMatch(/^Long term (rose|fell)/);
   });
@@ -330,7 +333,8 @@ describe('pt-basket, on a portfolio computed on the page (Part B)', () => {
     expect(cell.querySelector('.pt-bk-bought')!.textContent).toBe(date(h1.bought!));
     const first = r.el.querySelector('tbody tr')!;
     expect(first.textContent).toContain('—');
-    expect(first.querySelector('[title="No close within a week after this date"]')).not.toBeNull();
+    // said on the line in words, for a phone and a screen reader too (no hover-only title)
+    expect(first.querySelector('.pt-bk-bought')!.textContent).toContain('no close then');
     expect((await pfb('holdings', demoPortfolio('watchlist'))).text()).not.toContain('Since');
   });
 

@@ -1,4 +1,4 @@
-import { Component, computed, input, linkedSignal, output, signal } from '@angular/core';
+import { Component, computed, ElementRef, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { plainName, withoutSuffixes } from '@pretickt/components/format';
 import type { FactsFile } from '@pretickt/components/typologies';
 import { lookupOf, type PasteRow, type Unit } from './parse';
@@ -51,7 +51,8 @@ export function suggest(facts: FactsFile, query: string): { t: string; name: str
             @if (amounts()) {<input class="pt-pf-input pt-pf-n" inputmode="decimal" [value]="l.n" [placeholder]="unitWord()" [attr.aria-label]="unitWord()" (input)="set(l.key, 'n', val($event))" />}
             @if (dates()) {<input class="pt-pf-input pt-pf-d" type="date" [max]="today()" [value]="l.d" aria-label="Purchase date (optional)" (input)="set(l.key, 'd', val($event))" />}
             <button type="button" class="pt-pf-rm" [attr.aria-label]="'Remove ' + (l.text || 'this line')" (click)="remove(l.key)">×</button>
-            @if (e) {<span class="pt-pf-err pt-pf-lerr">{{ e }}</span>}
+            <!-- said once the reader leaves the line's symbol, not while they type it -->
+            @if (e && active() !== l.key) {<span class="pt-pf-err pt-pf-lerr">{{ e }}</span>}
           </div>
         }
       </div>
@@ -68,6 +69,7 @@ export class PtPortfolioDraft {
   readonly save = output<DraftSave>();
 
   private next = 0;
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly line = (t: string, n: number | null, d: string | null): Line => ({ key: this.next++, t, text: t, n: n == null ? '' : String(n), d: d ?? '' });
   protected readonly lines = linkedSignal(() => this.rows().map((r) => this.line(r.t, r.n, r.d)));
   protected readonly chosen = linkedSignal<Unit | null>(() => (this.kind() === 'watchlist' ? 'equal' : this.unit()));
@@ -112,7 +114,13 @@ export class PtPortfolioDraft {
   }
   protected set(key: number, field: 'n' | 'd', v: string) { this.lines.update((ls) => ls.map((l) => (l.key === key ? { ...l, [field]: v } : l))); }
   protected remove(key: number) { this.lines.update((ls) => ls.filter((l) => l.key !== key)); }
-  protected add() { const l = this.line('', null, null); this.lines.update((ls) => [...ls, l]); this.active.set(l.key); }
+  /** A new line, the cursor in its symbol once it is drawn (the next frame): the reader types at once, and leaving it says what is missing. */
+  protected add() {
+    const l = this.line('', null, null);
+    this.lines.update((ls) => [...ls, l]);
+    this.active.set(l.key);
+    globalThis.requestAnimationFrame?.(() => [...this.host.nativeElement.querySelectorAll<HTMLInputElement>('input.pt-pf-sym')].at(-1)?.focus());
+  }
   protected done() {
     const unit = this.chosen();
     if (!this.ready() || unit === null) return;

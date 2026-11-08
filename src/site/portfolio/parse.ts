@@ -150,6 +150,8 @@ function fromTable(lines: string[], look: Lookup, notOnSite: Set<string>): { hol
         const d = date >= 0 ? datesIn(c[date] ?? '')[0]?.iso ?? null : null;
         holdings.push({ line, t, known, amounts: pick ? [{ kind: pick[1], v: number(c[pick[0]]!)! }] : [], d });
       });
+      // a header whose lines do not follow it ("Symbol,Shares" then "AAPL 10"): no holding from the table, so the lines are read one by one
+      if (!holdings.length) return null;
       return { holdings, ignored, note: qty < 0 && val < 0 && pct < 0 ? NO_AMOUNT : null };
     }
   }

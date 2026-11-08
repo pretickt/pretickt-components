@@ -4,7 +4,7 @@ import { PT_STORE, PtStore } from '@pretickt/components/context';
 import { date, money } from '@pretickt/components/format';
 import { DEMO_CLOSES, DEMO_FACTS, DEMO_PORTFOLIOS, demoPortfolio } from '../../stories/fake-portfolio';
 import { PT_PORTFOLIO_FILES, PT_PORTFOLIO_STORAGE } from './files';
-import { PtPortfolioPage } from './page';
+import { localToday, PtPortfolioPage } from './page';
 import { mount as mountPage } from './start';
 import { PORTFOLIO_KEY, type Stored } from './store';
 
@@ -18,14 +18,14 @@ class Mem implements Storage {
   setItem(k: string, v: string) { this.m.set(k, v); }
 }
 
-async function mount(stored: Stored | null = null) {
+async function mount(stored: Stored | string | null = null, o: { fail?: string[] } = {}) {
   const storage = new Mem(), asked: string[] = [], events: string[] = [];
-  if (stored) storage.setItem(PORTFOLIO_KEY, JSON.stringify(stored));
+  if (stored) storage.setItem(PORTFOLIO_KEY, typeof stored === 'string' ? stored : JSON.stringify(stored));
   const listen = (e: Event) => events.push(`${(e.target as Element).closest('[data-beacon]')?.getAttribute('data-beacon')}|${(e as CustomEvent<{ action: string }>).detail.action}`);
   document.addEventListener('pt-interact', listen);
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({ providers: [
-    { provide: PT_PORTFOLIO_FILES, useValue: { facts: async () => DEMO_FACTS, closes: async (k: string) => { asked.push(k); return DEMO_CLOSES.get(k) ?? null; } } },
+    { provide: PT_PORTFOLIO_FILES, useValue: { facts: async () => DEMO_FACTS, closes: async (k: string) => { asked.push(k); return o.fail?.includes(k) ? null : DEMO_CLOSES.get(k) ?? null; } } },
     { provide: PT_PORTFOLIO_STORAGE, useValue: () => storage },
     { provide: PT_STORE, useValue: new PtStore({ server: false, resolve: async () => null }) },
   ] });
@@ -36,7 +36,7 @@ async function mount(stored: Stored | null = null) {
   const el = f.nativeElement as HTMLElement;
   const press = async (label: string) => { [...el.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent!.trim() === label)!.click(); await settle(); };
   const sum = () => Object.fromEntries([...el.querySelectorAll('.pt-pf-sum div')].map((d) => [d.querySelector('dt')!.textContent!.trim(), d.querySelector('dd')!.textContent!.trim()]));
-  return { el, storage, asked, events, press, sum, text: () => el.textContent!.replace(/\s+/g, ' '), h2: () => [...el.querySelectorAll('h2')].map((h) => h.textContent!.trim()) };
+  return { el, storage, asked, events, press, sum, settle, text: () => el.textContent!.replace(/\s+/g, ' '), h2: () => [...el.querySelectorAll('h2')].map((h) => h.textContent!.trim()) };
 }
 
 describe('the portfolio page', () => {
@@ -69,7 +69,9 @@ describe('the portfolio page', () => {
     expect(recent.asked).toEqual(['1y']);
     const old = await mount({ v: 1, active: 'old', list: [{ ...DEMO_PORTFOLIOS.shares, id: 'old', rows: [{ t: 'AAPL', n: 3, d: '2024-05-01' }] }] });
     expect(old.asked).toEqual(['1y', '2024']);
-    expect(old.text()).toContain('—'); // no close for that date in the made-up files: said on the line
+    // the 2024 file did not come: the line shows its date and no return, never a "no close" it cannot know
+    expect(old.text()).not.toContain('no close then');
+    expect(old.text()).toContain('May 1, 2024');
   });
 
   it('counts portfolios in words, never a symbol; a change in the editor is kept in this browser', async () => {
@@ -105,5 +107,31 @@ describe('the portfolio page', () => {
     expect(host.querySelector('pt-portfolio-page')).not.toBeNull();
     expect(host.querySelector('.pt-na')).toBeNull();
     globalThis.fetch = real;
+  });
+
+  it("the deferred cases of the review: a value it could not read is said, another tab's save shows, a year that does not come is said", async () => {
+    const unread = await mount('{not json');
+    expect(unread.text()).toContain('What this browser had saved could not be read: it is kept aside, and the page starts empty.');
+    const two = await mount({ v: 1, active: 'demo-shares', list: [DEMO_PORTFOLIOS.shares] });
+    two.storage.setItem(PORTFOLIO_KEY, JSON.stringify({ v: 1, active: 'demo-watch', list: [DEMO_PORTFOLIOS.shares, DEMO_PORTFOLIOS.watchlist] }));
+    window.dispatchEvent(new StorageEvent('storage', { key: PORTFOLIO_KEY }));
+    await two.settle();
+    expect(two.el.querySelector('.pt-pf-tab-on')!.textContent).toContain('Chips to watch');
+    const failed = await mount({ v: 1, active: 'demo-shares', list: [DEMO_PORTFOLIOS.shares] }, { fail: ['1y'] });
+    expect(failed.text()).toContain('The year is not available right now.');
+    expect(failed.text()).not.toContain('Loading the year');
+  });
+
+  it("a watchlist's own titles; dollars typed are called what they are", async () => {
+    const w = await mount({ v: 1, active: 'demo-watch', list: [DEMO_PORTFOLIOS.watchlist] });
+    expect(w.h2()).toEqual(expect.arrayContaining(['Companies', 'News of these companies']));
+    expect(w.h2()).not.toContain('Holdings');
+    const usd = await mount({ v: 1, active: 'demo-low', list: [DEMO_PORTFOLIOS.low] });
+    expect(usd.sum()['Value you entered']).toBeDefined();
+    expect(usd.sum()['Value at the last close']).toBeUndefined();
+  });
+
+  it("today is the reader's own date, not the UTC one", () => {
+    expect(localToday(new Date(2026, 10, 8, 23, 30))).toBe('2026-11-08');
   });
 });

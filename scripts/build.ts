@@ -51,6 +51,13 @@ const chunks = entries.map((e) => {
   if (over) throw new Error(`${e.tag}: ${over}`);
   return own[0];
 });
+// a page of the app loaded on its own page only, from a chunk of its own (the portfolio page): its own budget
+for (const entry of ['src/site/portfolio/start.ts']) {
+  const own = outputs.find(([, o]) => o.entryPoint === entry);
+  if (!own) throw new Error(`${entry}: no chunk of its own (the page app imports it lazily)`);
+  const over = overBudget('page', own[1].bytes);
+  if (over) throw new Error(`${entry}: ${over}`);
+}
 
 execFileSync('npx', ['@tailwindcss/cli', '-i', 'styles/ds.css', '-o', 'dist/ds.css', '--minify'], { stdio: 'inherit' });
 // the fonts ds.css names (/fonts/…) and the brand marks (logo, favicon): the platform publishes them beside ds.css

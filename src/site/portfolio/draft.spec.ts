@@ -84,4 +84,25 @@ describe('the preview, editable before it is saved', () => {
     await w.press('Save');
     expect(w.saved[0]!.rows).toEqual([{ t: 'AAPL', n: null, d: null }, { t: 'NVDA', n: null, d: null }, { t: 'ZZZZ', n: null, d: null }]);
   });
+
+  it('"Add a line" puts the cursor in the new line\'s symbol: the reader types at once, and leaving it says what is missing', async () => {
+    const m = await mount({ rows: [{ line: 1, t: 'AAPL', n: 1, d: null }] });
+    await m.press('Add a line');
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    await m.settle();
+    expect(document.activeElement).toBe(field(m.rows().at(-1)!, 'pt-pf-sym'));
+  });
+
+  it("a new line's missing symbol is said once the reader leaves its field, not while they type it", async () => {
+    const m = await mount({ rows: [{ line: 1, t: 'AAPL', n: 1, d: null }] });
+    await m.press('Add a line');
+    const sym = field(m.rows().at(-1)!, 'pt-pf-sym');
+    sym.dispatchEvent(new Event('focus'));
+    await m.settle();
+    expect(m.rows().at(-1)!.textContent).not.toContain('Give a symbol');
+    expect(m.saveButton().disabled).toBe(true);
+    sym.dispatchEvent(new Event('blur'));
+    await m.settle();
+    expect(m.rows().at(-1)!.textContent).toContain('Give a symbol or pick a company');
+  });
 });

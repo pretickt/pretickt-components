@@ -6,7 +6,7 @@ import { PtBasket } from '../../../components/pt-basket';
 import { closesNeeded, computePortfolio, yearLine } from './compute';
 import { PtPortfolioEditor } from './editor';
 import { PT_PORTFOLIO_FILES, PT_PORTFOLIO_STORAGE } from './files';
-import { loadPortfolios, savePortfolios, type Stored, type StoredPortfolio } from './store';
+import { loadPortfolios, PORTFOLIO_KEY, savePortfolios, type Stored, type StoredPortfolio } from './store';
 import { PtPortfolioLine } from './value-line';
 
 /**
@@ -16,6 +16,8 @@ import { PtPortfolioLine } from './value-line';
  */
 const BEACON = 'pt-portfolio@1.0.0';
 const EXAMPLE: StoredPortfolio = { id: 'example', name: 'Example', kind: 'watchlist', unit: 'equal', rows: ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL'].map((t) => ({ t, n: null, d: null })) };
+/** The reader's own date (a purchase date after it is refused): the local day, not the UTC one an evening in New York is already past. */
+export const localToday = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const holds = (n: number) => (n === 0 ? 'holds-none' : n === 1 ? 'holds-one' : n <= 3 ? 'holds-few' : 'holds-many');
 
 @Component({
@@ -32,10 +34,11 @@ const holds = (n: number) => (n === 0 ? 'holds-none' : n === 1 ? 'holds-one' : n
     @else {
       <div class="pt-pf">
         <pt-portfolio-editor [stored]="stored()" [facts]="f" [saving]="saving()" [today]="today" (changed)="keep($event)" />
+        @if (unread) {<p class="pt-note">What this browser had saved could not be read: it is kept aside, and the page starts empty.</p>}
         @if (example()) {<p class="pt-note">An example: five large companies, weighted equally. Make your own with New portfolio or New watchlist.</p>}
         @if (basket(); as b) {
           <dl class="pt-pf-sum">
-            @if (b.value != null) {<div><dt>Value at the last close</dt><dd>{{ money(b.value) }}</dd></div>}
+            @if (b.value != null) {<div><dt>{{ b.unit === 'usd' ? 'Value you entered' : 'Value at the last close' }}</dt><dd>{{ money(b.value) }}</dd></div>}
             @if (b.ret != null) {<div><dt>Last session</dt><dd [class]="'pt-t-' + tone(b.ret)">{{ pct(b.ret) }}</dd></div>}
             @if (b.since; as s) {<div><dt>Since {{ date(s.from) }}</dt><dd [class]="'pt-t-' + tone(s.ret)">{{ pct(s.ret) }}</dd></div>}
             @if (b.target; as t) {<div><dt>Analysts' target · on {{ level(t.share, 0) }}</dt><dd [class]="'pt-t-' + tone(t.upside)">{{ pct(t.upside) }}</dd></div>}
@@ -45,19 +48,19 @@ const holds = (n: number) => (n === 0 ? 'holds-none' : n === 1 ? 'holds-one' : n
             <div><dt>Covered</dt><dd>{{ unpriced(b) ? 'not known' : level(b.coverage, 0) }}</dd></div>
           </dl>
           <h2 class="pt-pf-h">Why it moved</h2><pt-basket [payload]="b" section="moves" />
-          <h2 class="pt-pf-h">Holdings</h2><pt-basket [payload]="b" section="holdings" />
+          <h2 class="pt-pf-h">{{ b.kind === 'watchlist' ? 'Companies' : 'Holdings' }}</h2><pt-basket [payload]="b" section="holdings" />
           <h2 class="pt-pf-h">Analyst price target and consensus</h2><pt-basket [payload]="b" section="analysts" />
           <h2 class="pt-pf-h">{{ b.kind === 'watchlist' ? 'What the questions say about these companies' : 'What the questions say about your holdings' }}</h2>
           <pt-basket [payload]="b" section="questions" />
           <p class="pt-note">Not investment advice: these figures add up what analysts and the questions say about each company.</p>
           <h2 class="pt-pf-h">The year</h2>
-          <div class="pt-pf-linebox" #lineBox>@if (line(); as l) {<pt-portfolio-line [line]="l" />} @else {<p class="pt-note pt-busy">Loading the year…</p>}</div>
+          <div class="pt-pf-linebox" #lineBox>@if (line(); as l) {<pt-portfolio-line [line]="l" />} @else if (failed().has('1y')) {<p class="pt-note">The year is not available right now.</p>} @else {<p class="pt-note pt-busy">Loading the year…</p>}</div>
           @if (b.earnings.length) {
             <h2 class="pt-pf-h">Earnings ahead</h2>
             <ul class="pt-pf-list">@for (e of b.earnings; track e.ticker) {<li><a [href]="stock(e.ticker)">{{ plainName(e.name) }}</a> <span class="pt-meta">{{ dayMonth(e.date) }}</span></li>}</ul>
           }
           @if (b.headlines.length) {
-            <h2 class="pt-pf-h">News of the largest holdings</h2>
+            <h2 class="pt-pf-h">{{ b.kind === 'watchlist' ? 'News of these companies' : 'News of the largest holdings' }}</h2>
             <ul class="pt-pf-list">@for (n of b.headlines; track n.ticker) {<li><a [href]="stock(n.ticker)">{{ plainName(n.name) }}</a> · <a class="pt-meta" [href]="href(n.url)" target="_blank" rel="nofollow noopener noreferrer">{{ n.title }}</a></li>}</ul>
           }
         }
@@ -70,7 +73,11 @@ export class PtPortfolioPage {
   private readonly host = inject(ElementRef<HTMLElement>);
   private readonly start = loadPortfolios(this.storage);
 
-  protected readonly today = new Date().toISOString().slice(0, 10);
+  protected readonly today = localToday();
+  /** A value this browser held that could not be read: kept aside, and said. */
+  protected readonly unread = this.start.unread;
+  /** The files that did not come: the page says so instead of waiting for them. */
+  protected readonly failed = signal<ReadonlySet<string>>(new Set());
   protected readonly facts = signal<FactsFile | null | undefined>(undefined);
   protected readonly stored = signal<Stored>(this.start.stored);
   protected readonly saving = signal(this.start.saving);
@@ -103,6 +110,10 @@ export class PtPortfolioPage {
       clean(() => io.disconnect());
     });
     afterNextRender(() => this.host.nativeElement.dispatchEvent(new CustomEvent('pt-interact', { bubbles: true, detail: { action: holds(this.start.stored.list.length) } })));
+    // another tab saved: this one shows it, so its next save does not wipe the other's
+    const other = (e: StorageEvent) => { if (e.key === PORTFOLIO_KEY || e.key === null) this.stored.set(loadPortfolios(this.storage).stored); };
+    // an effect that reads no signal runs once; its cleanup runs when the page goes (DestroyRef would cost the main bundle an export)
+    effect((clean) => { globalThis.addEventListener?.('storage', other); clean(() => globalThis.removeEventListener?.('storage', other)); });
   }
 
   protected keep(next: Stored) {
@@ -113,7 +124,10 @@ export class PtPortfolioPage {
     for (const k of keys) {
       if (this.asked.has(k)) continue;
       this.asked.add(k);
-      void this.files.closes(k).then((c) => { if (c) this.closes.set(new Map([...this.closes(), [k, c]])); });
+      void this.files.closes(k).then((c) => {
+        if (c) this.closes.set(new Map([...this.closes(), [k, c]]));
+        else this.failed.set(new Set([...this.failed(), k]));
+      });
     }
   }
 

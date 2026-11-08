@@ -104,8 +104,8 @@ export function liveMoves(b: AnyBasket, q: Record<string, { r: number }>, news: 
                       <td [class]="'pt-num pt-t-' + tone(h.upside)">{{ h.upside == null ? '' : pct(h.upside) }}</td>
                       <td class="pt-bk-lab">{{ h.label ?? '' }}</td>
                       @if (dated()) {
-                        <td [class]="'pt-num pt-t-' + tone(p?.since ?? null)">@if (p?.noSince) {<span title="No close within a week after this date">—</span>} @else {{{ p?.since == null ? '' : pct(p!.since!) }}}
-                          @if (p?.bought; as d) {<span class="pt-bk-bought">{{ date(d) }}</span>}</td>
+                        <td [class]="'pt-num pt-t-' + tone(p?.since ?? null)">@if (p?.noSince) {—} @else {{{ p?.since == null ? '' : pct(p!.since!) }}}
+                          @if (p?.bought; as d) {<span class="pt-bk-bought">{{ date(d) }}{{ p!.noSince ? ' · no close then' : '' }}</span>}</td>
                       }
                     </tr>
                   }
@@ -252,7 +252,8 @@ export class PtBasket {
     if (d) return d.closed ? `Close of ${date(d.session)}, preliminary` : `Today · ${d.time}, 15-min delayed`;
     return b ? `Close of ${date(b.asOf)}` : '';
   });
-  protected readonly lead = computed(() => basketLead(this.label(), this.data()?.questions ?? null, this.whole()));
+  // on a reader's own holdings the sentence speaks of "your portfolio" or "the list", never of its name in mid-sentence
+  protected readonly lead = computed(() => basketLead(this.pf() ? (this.pf()!.kind === 'watchlist' ? 'the list' : 'your portfolio') : this.label(), this.data()?.questions ?? null, this.whole()));
   protected readonly lowLine = computed(() => {
     const c = this.data()?.coverage ?? 0, p = this.pf();
     const unpriced = p?.uncovered.filter((u) => u.weight == null).map((u) => u.name) ?? [];

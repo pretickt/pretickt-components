@@ -13,14 +13,20 @@ const DAY = 86_400_000;
 /** A purchase date reads the first session on or after it within a week; later than that, the date is before a first close or a break. */
 const WEEK_DAYS = 7;
 const EARNINGS_DAYS = 90;
+const EARNINGS_MIN_WEIGHT = 0.01;
 /** A target's base when there is no value (percentages, equal weight, a fund line): 100, so the upside keeps its basis points (basketTarget rounds the price to cents). */
 const NO_VALUE_BASE = 100;
 const HEADLINES = 10;
 const round = (v: number, d: number) => Math.round(v * 10 ** d) / 10 ** d;
 const addDays = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * DAY).toISOString().slice(0, 10);
 
-/** The close of the first session on or after `d`, within a week; none: no close there (a date before a first close or a corporate break). */
-export function closeOn(closes: ReadonlyMap<string, ClosesFile>, t: string, d: string): number | null {
+/**
+ * The close of the first session on or after `d`, within a week. Null: no close there (a date before a first close, or before the company's corporate
+ * break `cut`: the closes after it are on another basis). Undefined: no file loaded holds the date yet (its year's file is on its way).
+ */
+export function closeOn(closes: ReadonlyMap<string, ClosesFile>, t: string, d: string, cut?: string): number | null | undefined {
+  if (![...closes.values()].some((f) => f.from <= d && d <= f.to)) return undefined;
+  if (cut && d < cut) return null;
   const until = addDays(d, WEEK_DAYS);
   const files = [...closes.values()].filter((f) => f.to >= d && f.from <= until).sort((a, b) => (a.from < b.from ? -1 : 1));
   for (const f of files) {
@@ -49,15 +55,19 @@ export function closesNeeded(p: StoredPortfolio, oneYearFrom: string | null): st
   return [...years].sort();
 }
 
-/** A line's return since its purchase dates: shares at their own closes (what they cost on the split basis), other amounts averaged by size. */
-function sinceOf(lots: readonly StoredRow[], now: number | null, then: (d: string) => number | null, shares: boolean): { since: number | null; noSince: boolean } {
-  const dated = lots.filter((l) => l.d != null);
-  if (!dated.length) return { since: null, noSince: false };
-  const read = dated.flatMap((l) => { const c = then(l.d!); return c != null && c > 0 ? [{ n: l.n ?? 1, c }] : []; });
-  if (!read.length || now == null) return { since: null, noSince: true };
+/**
+ * A line's return since its purchase dates: shares at their own closes (what they cost on the split basis), other amounts averaged by size; `bought`
+ * the earliest date read. A date whose file is still on its way leaves the line waiting (no return, nothing said); none read: no return, said.
+ */
+function sinceOf(lots: readonly StoredRow[], now: number | null, then: (d: string) => number | null | undefined, shares: boolean): { since: number | null; noSince: boolean; bought: string | null } {
+  const dated = lots.filter((l) => l.d != null).map((l) => ({ l, c: then(l.d!) })).sort((a, b) => (a.l.d! < b.l.d! ? -1 : 1));
+  if (!dated.length) return { since: null, noSince: false, bought: null };
+  if (dated.some((x) => x.c === undefined)) return { since: null, noSince: false, bought: dated[0]!.l.d };
+  const read = dated.filter((x) => x.c != null && x.c > 0).map((x) => ({ n: x.l.n ?? 1, c: x.c!, d: x.l.d! }));
+  if (!read.length || now == null) return { since: null, noSince: true, bought: dated[0]!.l.d };
   const v = shares ? read.reduce((s, x) => s + x.n * now, 0) / read.reduce((s, x) => s + x.n * x.c, 0) - 1
     : read.reduce((s, x) => s + x.n * (now / x.c - 1), 0) / read.reduce((s, x) => s + x.n, 0);
-  return { since: round(v, 4), noSince: false };
+  return { since: round(v, 4), noSince: false, bought: read[0]!.d };
 }
 
 export function computePortfolio(p: StoredPortfolio, facts: FactsFile, closes: ReadonlyMap<string, ClosesFile>): PortfolioBasket {
@@ -81,15 +91,14 @@ export function computePortfolio(p: StoredPortfolio, facts: FactsFile, closes: R
     const w = weightOf(amount), c = facts.companies[t], f = facts.funds[t];
     if (w == null || (!c && !f)) { uncovered.push({ name: t, weight: w == null ? null : round(w, 4) }); continue; }
     const now = c ? c.close : f!.close;
-    const { since, noSince } = p.kind === 'portfolio' ? sinceOf(rs, now, (d) => closeOn(closes, t, d), shares) : { since: null, noSince: false };
-    const bought = p.kind === 'portfolio' ? rs.map((r) => r.d).filter((d): d is string => d != null).sort()[0] ?? null : null;
+    const { since, noSince, bought } = p.kind === 'portfolio' ? sinceOf(rs, now, (d) => closeOn(closes, t, d, facts.breaks?.[t]), shares) : { since: null, noSince: false, bought: null };
     if (c) {
       add(t, w);
       holdings.push({ ticker: t, name: c.name, logo: c.logo, weight: round(w, 5), ret: c.ret == null ? null : round(c.ret, 5), upside: c.upside == null ? null : round(c.upside, 4),
         label: c.consensus ? consensusOf(c.consensus)?.label ?? null : null, close: c.close, fund: false, bought, since, noSince });
     } else {
       for (const [ct, fw] of f!.weights) add(ct, w * fw);
-      if (f!.coverage < 1) uncovered.push({ name: `${f!.name}, outside the companies we cover`, weight: round(w * (1 - f!.coverage), 4) });
+      if (f!.coverage < 1) uncovered.push({ name: `${f!.name}, ${f!.old ? 'its holdings list is out of date' : 'outside the companies we cover'}`, weight: round(w * (1 - f!.coverage), 4) });
       const own = basketTarget(f!.weights.flatMap(([ct, fw]): BasketLine[] => (facts.companies[ct] ? [{ ticker: ct, f: facts.companies[ct]!, weight: fw }] : [])), NO_VALUE_BASE);
       holdings.push({ ticker: t, name: f!.name, logo: f!.logo, weight: round(w, 5), ret: f!.ret == null ? null : round(f!.ret, 5), upside: own ? round(own.upside, 4) : null,
         label: null, close: f!.close, fund: true, bought, since, noSince });
@@ -108,7 +117,7 @@ export function computePortfolio(p: StoredPortfolio, facts: FactsFile, closes: R
 
   // the whole return since purchase: shares only, every line dated and read
   const dated = p.kind === 'portfolio' && shares && p.rows.length > 0 && p.rows.every((r) => r.d != null && r.n != null);
-  const then = dated ? p.rows.map((r) => ({ r, c: closeOn(closes, r.t, r.d!), now: priceOf(r.t) })) : [];
+  const then = dated ? p.rows.map((r) => ({ r, c: closeOn(closes, r.t, r.d!, facts.breaks?.[r.t]), now: priceOf(r.t) })) : [];
   const since = dated && then.every((x) => x.c != null && x.now != null)
     ? { from: p.rows.map((r) => r.d!).sort()[0]!, ret: round(then.reduce((s, x) => s + x.r.n! * x.now!, 0) / then.reduce((s, x) => s + x.r.n! * x.c!, 0) - 1, 4) } : null;
 
@@ -118,7 +127,8 @@ export function computePortfolio(p: StoredPortfolio, facts: FactsFile, closes: R
     target: ok ? basketTarget(lines, value ?? NO_VALUE_BASE) : null, consensus: ok ? basketConsensus(lines) : null, pe: ok ? basketPe(lines) : null, questions: ok ? basketQuestions(lines, coverage) : null,
     moves: { sum: moves.ret, up: moves.up, down: moves.down },
     holdings,
-    earnings: lines.filter((l) => l.f.nextEarnings != null && l.f.nextEarnings > facts.asOf && l.f.nextEarnings <= until)
+    // a company that weighs under 1% (a fund's smallest) is not this portfolio's news
+    earnings: lines.filter((l) => l.weight >= EARNINGS_MIN_WEIGHT && l.f.nextEarnings != null && l.f.nextEarnings > facts.asOf && l.f.nextEarnings <= until)
       .sort((a, b) => (a.f.nextEarnings! < b.f.nextEarnings! ? -1 : a.f.nextEarnings! > b.f.nextEarnings! ? 1 : b.weight - a.weight)).slice(0, 10)
       .map((l) => ({ ticker: l.ticker, name: l.f.name, logo: l.f.logo, date: l.f.nextEarnings! })),
     headlines: lines.filter((l) => l.f.headline).slice(0, HEADLINES).map((l) => ({ ticker: l.ticker, name: l.f.name, title: l.f.headline!.title, url: l.f.headline!.url })),

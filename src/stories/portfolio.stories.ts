@@ -1,8 +1,9 @@
 /**
  * The portfolio page (Part B) on made-up facts and portfolios (src/stories/fake-portfolio.ts): the editor with nothing saved, with a portfolio and a
- * watchlist, and in a window that keeps nothing.
+ * watchlist, and in a window that keeps nothing; the editable preview of a paste (in shares, mixed amounts, a watchlist).
  */
 import type { Provider } from '@angular/core';
+import { PtPortfolioDraft } from '../site/portfolio/draft';
 import { PtPortfolioEditor } from '../site/portfolio/editor';
 import { PT_PORTFOLIO_FILES, PT_PORTFOLIO_STORAGE } from '../site/portfolio/files';
 import { PtPortfolioPage } from '../site/portfolio/page';
@@ -31,4 +32,10 @@ export const stories = [
   story(PtPortfolioEditor, { name: 'The editor · a portfolio and a watchlist', group: GROUP,
     inputs: { stored: { v: 1, active: 'demo-shares', list: [DEMO_PORTFOLIOS.shares, DEMO_PORTFOLIOS.watchlist] }, facts: DEMO_FACTS, saving: true, today: TODAY } }),
   story(PtPortfolioEditor, { name: 'The editor · a private window (nothing is saved)', group: GROUP, inputs: { stored: { v: 1, active: null, list: [] }, facts: DEMO_FACTS, saving: false, today: TODAY } }),
+  story(PtPortfolioDraft, { name: 'The preview · a paste in shares, one symbol not on pretickt', group: GROUP,
+    inputs: { rows: [{ line: 1, t: 'AAPL', n: 40, d: '2025-03-14' }, { line: 2, t: 'NVDA', n: 12, d: null }, { line: 3, t: 'ZZZZ', n: 3, d: null }], unit: 'shares', kind: 'portfolio', facts: DEMO_FACTS, today: TODAY } }),
+  story(PtPortfolioDraft, { name: 'The preview · mixed amounts: the reader chooses', group: GROUP,
+    inputs: { rows: [{ line: 1, t: 'AAPL', n: 10, d: null }, { line: 2, t: 'MSFT', n: 20, d: null }], unit: null, kind: 'portfolio', facts: DEMO_FACTS, today: TODAY } }),
+  story(PtPortfolioDraft, { name: 'The preview · a watchlist (symbols only)', group: GROUP,
+    inputs: { rows: [{ line: 1, t: 'AMD', n: null, d: null }, { line: 2, t: 'KO', n: null, d: null }], unit: 'equal', kind: 'watchlist', facts: DEMO_FACTS, today: TODAY } }),
 ];

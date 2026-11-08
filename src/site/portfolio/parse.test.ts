@@ -138,3 +138,9 @@ describe('reading a paste, whatever its format', () => {
     }
   });
 });
+
+describe('a header whose lines do not follow it', () => {
+  it('a header line, then holdings written with spaces: read line by line, never all dropped', () => {
+    expect(got(read('Symbol,Shares\nAAPL 10\nMSFT 5'))).toEqual([['AAPL', 10, null], ['MSFT', 5, null]]);
+  });
+});

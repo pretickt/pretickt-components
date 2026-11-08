@@ -151,7 +151,7 @@ export class PtPortfolioEditor {
     this.changed.emit({ v: 1, active: list[0]?.id ?? null, list });
   }
   protected add(p: StoredPortfolio, t: string) {
-    const n = p.kind === 'portfolio' && p.unit !== 'equal' ? Number(this.amountIn()) : null;
+    const n = p.kind === 'portfolio' && p.unit !== 'equal' ? Number(this.amountIn().replace(/[$,%\s]/g, '')) : null; // "1,000" as a broker writes it
     if (n !== null && !(n > 0)) { this.error.set(`Give an amount: ${this.unitWord(p.unit).toLowerCase()}.`); return; }
     const d = p.kind === 'portfolio' && /^\d{4}-\d{2}-\d{2}$/.test(this.dateIn()) ? this.dateIn() : null;
     if (d && d > this.today()) { this.error.set(`The date ${d} is after today.`); return; }
