@@ -1095,10 +1095,18 @@
   /* a sector's companies are all in the server's HTML (every link): those after the 25th wait for "Show all" */
   .pt-bk-rows:not(.pt-bk-all) .pt-bk-later { display: none; }
   .pt-bk-other { display: block; max-width: 11rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* a long name ("Taiwan Semiconductor Manufacturing Company Limited") is cut, never a table that scrolls (820 px, 2026-11-08) */
+  .pt-bk .pt-co-n { max-width: 15rem; }
   @media (max-width: 40rem) {
     .pt-bk .pt-co-n { display: none; }
     .pt-bk .pt-table th, .pt-bk .pt-table td { padding-inline: .5rem; }
     .pt-bk-other { max-width: 7.5rem; }
+  }
+  @media (max-width: 26rem) {
+    .pt-bk .pt-table { font-size: .8125rem; }
+    .pt-bk .pt-table th, .pt-bk .pt-table td { padding-inline: .25rem; }
+    /* a holding we do not cover keeps its whole name on two lines, never a table wider than the phone */
+    .pt-bk-other { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; overflow-wrap: anywhere; max-width: 5.5rem; }
   }
   .pt-bk-figs { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
   .pt-bk-fig { display: grid; gap: .25rem; align-content: start; min-width: 0; }

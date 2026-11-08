@@ -67,8 +67,14 @@ const month = DEMO_ASOF.slice(0, 7);
 for (const topic of ['forecast', 'price-target', 'peers', 'financials', 'insiders'])
   await page(`pt-answer ${topic} of NVDA`, [{ c: 'pt-answer', props: { topic, ticker: 'NVDA' } }]);
 await page('pt-answer list', [{ c: 'pt-answer', props: { topic: 'list', list: 'biggest_losers' } }, { c: 'pt-screen', props: { list: 'biggest_losers' } }]);
-await page('fund page', [{ c: 'pt-company-header', props: { ticker: 'SMH', size: 'full' } }, { c: 'pt-answer', props: { topic: 'basket', ticker: 'SMH' } }, ...['moves', 'holdings', 'analysts', 'questions', 'faq'].map((section) => ({ c: 'pt-basket', props: { ticker: 'SMH', section } })),
+const basket = (p: Record<string, unknown>, sections: string[]) => sections.map((section) => ({ c: 'pt-basket', props: { ...p, section } }));
+await page('fund page', [{ c: 'pt-company-header', props: { ticker: 'SMH', size: 'full' } }, { c: 'pt-answer', props: { topic: 'basket', ticker: 'SMH' } }, ...basket({ ticker: 'SMH' }, ['moves']),
+  { c: 'pt-price-target', props: { ticker: 'SMH', basket: true } }, ...basket({ ticker: 'SMH' }, ['analysts', 'holdings', 'questions', 'faq']),
   { c: 'pt-price-events', props: { ticker: 'SMH', range: '1y', fund: true } }, { c: 'pt-news', props: { ticker: 'SMH', limit: 10 } }]);
+// a sector page (plant/src/generate/pages.ts sectorPage): every component takes the sector, the target chart on its value line
+await page('sector page', [{ c: 'pt-answer', props: { topic: 'sector', sector: 'Technology' } }, { c: 'pt-company-header', props: { sector: 'Technology', size: 'full' } },
+  ...basket({ sector: 'Technology' }, ['moves']), { c: 'pt-price-target', props: { sector: 'Technology' } }, ...basket({ sector: 'Technology' }, ['analysts', 'questions']),
+  { c: 'pt-price-events', props: { sector: 'Technology' } }, { c: 'pt-news', props: { sector: 'Technology', limit: 10 } }, ...basket({ sector: 'Technology' }, ['holdings', 'faq'])]);
 await page('earnings calendar page', [{ c: 'pt-answer', props: { topic: 'earnings', month } }, { c: 'pt-calendar', props: { month } }]);
 await page('dividend calendar page', [{ c: 'pt-answer', props: { topic: 'dividends', month } }, { c: 'pt-calendar', props: { month, kind: 'dividend' } }]);
 // a company page while the market is open: the card hydrates at once and loads today's file, "why it moved" hydrates once the file

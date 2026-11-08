@@ -64,6 +64,10 @@ describe("the sector scopes of news@1 and events@1", () => {
     expect(p.data!.scope).toEqual({ by: 'sector', sector: 'Energy', range: '1y', ahead: 90 });
     expect(demoFor({ t: 'events@1', params: { scope: { by: 'sector', sector: 'Energy', range: '1y', ahead: 90 }, kinds: ['earnings'] } })).toMatchObject({ items: expect.any(Array) });
   });
+  it("the sector scopes are among the typologies' samples, so the API's and the admin's checks run them too", () => {
+    expect(getTypology('events@1')!.samples.some((s) => (s as { scope: { by: string } }).scope.by === 'sector')).toBe(true);
+    expect(getTypology('news@1')!.samples.some((s) => 'sector' in (s as object))).toBe(true);
+  });
 });
 
 describe('a basket in words, for a sector', () => {

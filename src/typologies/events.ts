@@ -78,6 +78,8 @@ export const eventsSamples: z.input<typeof EventsParams>[] = [
   { scope: { by: 'universe', month: '2026-10' }, kinds: ['earnings'] },
   { scope: { by: 'universe', month: '2026-10' }, kinds: ['earnings', 'macro'] },
   { scope: { by: 'dates', from: '2026-10-05', to: '2026-10-09' }, kinds: ['earnings', 'macro'] },
+  // a sector page's price chart: its largest companies' events (Part A, 2026-11-07)
+  { scope: { by: 'sector', sector: 'Energy', range: '1y', ahead: 90 }, kinds: ['earnings', 'dividend', 'split', 'analyst'] },
 ];
 
 /** Kinds this build has never seen — one shaped like a company event, one like a market-wide date (no ticker). */
