@@ -70,7 +70,23 @@ function sinceOf(lots: readonly StoredRow[], now: number | null, then: (d: strin
   return { since: round(v, 4), noSince: false, bought: read[0]!.d };
 }
 
-export function computePortfolio(p: StoredPortfolio, facts: FactsFile, closes: ReadonlyMap<string, ClosesFile>): PortfolioBasket {
+/**
+ * A logo's file names its company (nvda.1a2b3c4d.png): fetched from this page, it would tell the server what the reader holds. So the reader's
+ * holdings show their initials here, never a logo (Romeo, 2026-11-08: the portfolio's data stay offline, in the browser). Once per facts file.
+ */
+const unbranded = new WeakMap<FactsFile, FactsFile>();
+function withoutLogos(f: FactsFile): FactsFile {
+  let out = unbranded.get(f);
+  if (!out) {
+    out = { ...f, companies: Object.fromEntries(Object.entries(f.companies).map(([t, c]) => [t, { ...c, logo: null }])),
+      funds: Object.fromEntries(Object.entries(f.funds).map(([t, x]) => [t, { ...x, logo: null }])) };
+    unbranded.set(f, out);
+  }
+  return out;
+}
+
+export function computePortfolio(p: StoredPortfolio, input: FactsFile, closes: ReadonlyMap<string, ClosesFile>): PortfolioBasket {
+  const facts = withoutLogos(input);
   const lots = new Map<string, StoredRow[]>();
   for (const row of p.rows) lots.set(row.t, [...(lots.get(row.t) ?? []), row]);
   const shares = p.unit === 'shares';

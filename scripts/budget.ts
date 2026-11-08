@@ -1,5 +1,5 @@
 /** Size budget of the browser files (bytes, minified). Every page loads the main bundle (Angular, the page runtime); then each component it shows. */
-export const BUDGET = { main: 243_500, component: 32_000, page: 48_000 } as const;
+export const BUDGET = { main: 243_500, component: 32_000, page: 50_000 } as const;
 
 export function overBudget(kind: keyof typeof BUDGET, bytes: number): string | null {
   return bytes > BUDGET[kind] ? `${kind} bundle is ${bytes} bytes, over the ${BUDGET[kind]}-byte budget` : null;

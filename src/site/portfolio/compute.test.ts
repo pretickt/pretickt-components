@@ -51,6 +51,15 @@ describe('a portfolio computed on the page', () => {
     expect(g.uncovered).toEqual([{ name: 'GONE', weight: 0.2 }, { name: 'Demo 500 ETF, outside the companies we cover', weight: r(0.04, 4) }]);
   });
 
+  it("no logo file in the payload: a logo's file names its company, so fetching one would tell the server what the reader holds", () => {
+    const logos: FactsFile = { ...FACTS,
+      companies: Object.fromEntries(Object.entries(FACTS.companies).map(([t, c]) => [t, { ...c, logo: `/logos/${t.toLowerCase()}.1a2b3c4d.png` }])),
+      funds: { VOO: { ...FACTS.funds.VOO!, logo: '/logos/voo.1a2b3c4d.png' } } };
+    const b = computePortfolio(pf({ rows: [{ t: 'AAA', n: 5, d: '2026-03-02' }, { t: 'BBB', n: 3, d: null }, { t: 'VOO', n: 1, d: null }] }), logos, CLOSES);
+    expect(b.holdings.length).toBe(3);
+    expect(JSON.stringify(b)).not.toContain('/logos/');
+  });
+
   it("a fund whose holdings list is out of date is not looked through, and says why: its old list is not tonight's companies", () => {
     const old: FactsFile = { ...FACTS, funds: { VOO: { ...FACTS.funds.VOO!, coverage: 0, weights: [], old: true } } };
     const b = computePortfolio(pf({ unit: 'usd', rows: [{ t: 'VOO', n: 1000, d: null }, { t: 'AAA', n: 1000, d: null }] }), old, CLOSES);
