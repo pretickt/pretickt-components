@@ -13,7 +13,8 @@ import type { FactsFile } from '@pretickt/components/typologies';
 export type Unit = 'shares' | 'pct' | 'usd' | 'equal';
 export interface PasteRow { line: number; t: string; n: number | null; d: string | null }
 /** `note`: how it was read when the reader should know (a file with no amount column); `ignored`: the lines that gave no holding. */
-export interface Parsed { rows: PasteRow[]; unit: Unit; refused: string | null; notOnSite: string[]; dropped: boolean; note: string | null; ignored: { line: number; text: string }[] }
+/** `mixed`: the lines gave different kinds of amount (the preview asks which they are). */
+export interface Parsed { rows: PasteRow[]; unit: Unit; refused: string | null; mixed: boolean; notOnSite: string[]; dropped: boolean; note: string | null; ignored: { line: number; text: string }[] }
 
 /** What the reading asks of the site's companies and funds. */
 export interface Lookup {
@@ -298,23 +299,20 @@ export function parsePaste(text: string, look: Lookup, today: string, kind: 'por
   const ignored = ignoredLines.map((line) => ({ line, text: source[line - 1]!.trim() })).filter((x) => x.text);
   const read = holdings.map((h) => ({ h, ...amountOf(h, look) }));
   if (kind === 'watchlist')
-    return { rows: read.map(({ h }) => ({ line: h.line, t: h.t, n: null, d: null })), unit: 'equal', refused: null, notOnSite: names, dropped: read.some((x) => x.n != null || x.h.d != null), note: null, ignored };
+    return { rows: read.map(({ h }) => ({ line: h.line, t: h.t, n: null, d: null })), unit: 'equal', refused: null, mixed: false, notOnSite: names, dropped: read.some((x) => x.n != null || x.h.d != null), note: null, ignored };
   const rows = read.map(({ h, n }) => ({ line: h.line, t: h.t, n, d: h.d }));
-  const late = rows.filter((r) => r.d != null && r.d > today);
-  if (late.length) {
-    const refused = late.length === 1 ? `Line ${late[0]!.line}: the date ${late[0]!.d} is after today.` : `${linesOf(late.map((r) => r.line), true)}: their dates are after today.`;
-    return { rows, unit: 'equal', refused, notOnSite: names, dropped: false, note, ignored };
-  }
   const groups = new Map<Kind, number[]>();
   for (const x of read) groups.set(x.kind, [...(groups.get(x.kind) ?? []), x.h.line]);
-  if (groups.size > 1) {
+  const mixed = groups.size > 1, only = [...groups.keys()][0] ?? 'none', unit: Unit = mixed || only === 'none' ? 'equal' : only;
+  if (mixed) {
     // the lines that differ first: the smaller group, on a tie the later lines
     const parts = [...groups].sort(([, a], [, b]) => a.length - b.length || b[0]! - a[0]!)
       .map(([k, n], i) => (i === 0 ? `${linesOf(n, true)} give${n.length > 1 ? '' : 's'} ${WHAT[k]}` : `${linesOf(n, false)} ${WHAT[k]}`));
-    return { rows, unit: 'equal', refused: `${parts.join(', ')}: one kind of amount per portfolio.`, notOnSite: names, dropped: false, note, ignored };
+    return { rows, unit, refused: `${parts.join(', ')}: one kind of amount per portfolio.`, mixed, notOnSite: names, dropped: false, note, ignored };
   }
-  const only = [...groups.keys()][0] ?? 'none';
-  return { rows, unit: only === 'none' ? 'equal' : only, refused: null, notOnSite: names, dropped: false, note, ignored };
+  const late = rows.filter((r) => r.d != null && r.d > today);
+  const refused = !late.length ? null : late.length === 1 ? `Line ${late[0]!.line}: the date ${late[0]!.d} is after today.` : `${linesOf(late.map((r) => r.line), true)}: their dates are after today.`;
+  return { rows, unit, refused, mixed, notOnSite: names, dropped: false, note, ignored };
 }
 
 /** A portfolio as text, one line a holding: what "Copy as text" gives and a paste reads back. */

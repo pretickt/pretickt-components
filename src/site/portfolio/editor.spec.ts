@@ -27,7 +27,10 @@ describe('pt-portfolio-editor: portfolios and watchlists kept in this browser', 
     await m.press('New portfolio');
     await m.type('textarea.pt-pf-paste', 'AAPL 10 2026-01-05\nnvda 4\nZZZZ 3\nTotal 1,234.00');
     await m.press('Read');
-    expect([...m.el.querySelectorAll('.pt-pf-preview tbody tr')].map((r) => [...r.querySelectorAll('td')].map((td) => td.textContent!.trim()).filter(Boolean).join(' '))).toEqual(['AAPL Apple 10 Jan 5, 2026', 'NVDA Nvidia 4', 'ZZZZ not on pretickt 3']);
+    // the preview's lines, each editable: symbol, company, amount, date
+    expect([...m.el.querySelectorAll('.pt-pf-dr')].map((r) => [r.querySelector<HTMLInputElement>('input.pt-pf-sym')!.value, r.querySelector('.pt-pf-co')!.textContent!.trim(),
+      r.querySelector<HTMLInputElement>('input.pt-pf-n')!.value, r.querySelector<HTMLInputElement>('input.pt-pf-d')!.value]))
+      .toEqual([['AAPL', 'Apple', '10', '2026-01-05'], ['NVDA', 'Nvidia', '4', ''], ['ZZZZ', 'not on pretickt', '3', '']]);
     expect(m.text()).toContain('Not on pretickt: ZZZZ. It counts in your total, not in the figures.');
     expect(m.text()).toContain('Not read: line 4 “Total 1,234.00”.');
     expect(m.out).toEqual([]); // nothing saved before Save
@@ -47,14 +50,29 @@ describe('pt-portfolio-editor: portfolios and watchlists kept in this browser', 
     expect(m.out[0]!.list[0]).toMatchObject({ name: 'Watchlist 1', kind: 'watchlist', unit: 'equal', rows: [{ t: 'AAPL', n: null, d: null }, { t: 'AMD', n: null, d: null }] });
   });
 
-  it('a refused paste saves nothing and names the lines', async () => {
+  it('a paste of mixed amounts names the lines and saves nothing until the reader says what the amounts are', async () => {
     const m = await mount();
     await m.press('New portfolio');
     await m.type('textarea.pt-pf-paste', 'AAPL 10\nNVDA 20%');
     await m.press('Read');
     expect(m.text()).toContain('Line 2 gives a percentage, line 1 shares: one kind of amount per portfolio.');
-    expect([...m.el.querySelectorAll('button')].some((b) => b.textContent!.trim() === 'Save')).toBe(false);
-    expect(m.out).toEqual([]);
+    const save = () => [...m.el.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent!.trim() === 'Save')!;
+    expect(save().disabled).toBe(true);
+    await m.press('Shares');
+    await m.press('Save');
+    expect(m.out[0]!.list[0]).toMatchObject({ unit: 'shares', rows: [{ t: 'AAPL', n: 10 }, { t: 'NVDA', n: 20 }] });
+  });
+
+  it("Edit lines opens a saved portfolio's lines, editable, dates included", async () => {
+    const m = await mount({ v: 1, active: 'demo-shares', list: [DEMO_PORTFOLIOS.shares] });
+    await m.press('Edit lines');
+    const first = m.el.querySelector('.pt-pf-dr')!;
+    expect(first.querySelector<HTMLInputElement>('input.pt-pf-d')!.value).toBe(DEMO_PORTFOLIOS.shares.rows[0]!.d);
+    const d = first.querySelector<HTMLInputElement>('input.pt-pf-d')!;
+    d.value = '2026-03-02';
+    d.dispatchEvent(new Event('input'));
+    await m.press('Save');
+    expect(m.out.at(-1)!.list[0]!.rows[0]).toEqual({ t: 'AAPL', n: 40, d: '2026-03-02' });
   });
 
   it('adds a line by hand with a date', async () => {

@@ -1,6 +1,6 @@
 import { Component, computed, input, output, signal } from '@angular/core';
-import { date, plainName, withoutSuffixes } from '@pretickt/components/format';
 import type { FactsFile } from '@pretickt/components/typologies';
+import { PtPortfolioDraft, suggest, type DraftSave } from './draft';
 import { lookupOf, parsePaste, serialize, type Parsed } from './parse';
 import { withPortfolio, type Stored, type StoredPortfolio } from './store';
 
@@ -12,12 +12,12 @@ import { withPortfolio, type Stored, type StoredPortfolio } from './store';
  */
 type Kind = StoredPortfolio['kind'];
 interface Form { kind: Kind; name: string; text: string; id: string | null }
-const MATCHES = 8;
 const newId = () => `pf-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 const val = (e: Event) => (e.target as HTMLInputElement).value;
 
 @Component({
   selector: 'pt-portfolio-editor',
+  imports: [PtPortfolioDraft],
   template: `
     <section class="pt-pf-ed">
       <div class="pt-pf-tabs">
@@ -38,22 +38,14 @@ const val = (e: Event) => (e.target as HTMLInputElement).value;
           </label>
           <div class="pt-pf-acts"><button type="button" (click)="read()">Read</button><button type="button" (click)="cancel()">Cancel</button></div>
           @if (parsed(); as r) {
+            <!-- the preview is editable (Romeo, 2026-11-08): what it shows when saved is what is kept -->
             @if (r.refused) {<p class="pt-pf-err" role="alert">{{ r.refused }}</p>}
-            @else {
-              @if (r.rows.length) {
-                <div class="pt-table-wrap">
-                  <table class="pt-table pt-pf-preview">
-                    <thead><tr><th>Symbol</th><th>Company</th><th class="pt-num">Amount</th><th class="pt-num">Bought</th></tr></thead>
-                    <tbody>@for (row of r.rows; track $index) {<tr><td>{{ row.t }}</td><td>{{ nameOf(row.t) }}</td><td class="pt-num">{{ amount(row.n, r.unit) }}</td><td class="pt-num">{{ row.d ? date(row.d) : '' }}</td></tr>}</tbody>
-                  </table>
-                </div>
-              } @else {<p class="pt-note">No symbol on pretickt in this text.</p>}
-              @if (r.notOnSite.length) {<p class="pt-note">Not on pretickt: {{ r.notOnSite.join(', ') }}. {{ r.notOnSite.length > 1 ? 'They count' : 'It counts' }} in your total, not in the figures.</p>}
-              @if (r.dropped) {<p class="pt-note">A watchlist keeps the symbols: amounts and dates are not kept.</p>}
-              @if (r.note; as n) {<p class="pt-note">{{ n }}</p>}
-              @if (r.ignored.length) {<p class="pt-note">Not read: {{ notRead(r) }}</p>}
-              @if (r.rows.length) {<div class="pt-pf-acts"><button type="button" class="pt-pf-go" (click)="save(r)">Save</button></div>}
-            }
+            @if (r.notOnSite.length) {<p class="pt-note">Not on pretickt: {{ r.notOnSite.join(', ') }}. {{ r.notOnSite.length > 1 ? 'They count' : 'It counts' }} in your total, not in the figures.</p>}
+            @if (r.dropped) {<p class="pt-note">A watchlist keeps the symbols: amounts and dates are not kept.</p>}
+            @if (r.note; as n) {<p class="pt-note">{{ n }}</p>}
+            @if (r.ignored.length) {<p class="pt-note">Not read: {{ notRead(r) }}</p>}
+            @if (!r.rows.length) {<p class="pt-note">No symbol in this text: add the lines below.</p>}
+            <pt-portfolio-draft [rows]="r.rows" [unit]="r.mixed ? null : r.unit" [kind]="fm.kind" [facts]="facts()" [today]="today()" (save)="saveDraft($event)" />
           }
         </div>
       }
@@ -121,20 +113,10 @@ export class PtPortfolioEditor {
   protected readonly dateIn = signal('');
 
   protected readonly active = computed(() => { const s = this.stored(); return s.list.find((p) => p.id === s.active) ?? s.list[0] ?? null; });
-  /** The site's companies and funds by symbol or name: symbols that start with the query first, then names that hold it. */
-  protected readonly matches = computed(() => {
-    const q = this.query().trim().toLowerCase(), f = this.facts();
-    if (!q) return [];
-    // the name as the company files it (Advanced Micro Devices), found by it or by its everyday name (AMD)
-    const all = [...Object.values(f.companies).map((c) => ({ t: c.ticker, name: withoutSuffixes(c.name), also: plainName(c.name).toLowerCase() })), ...Object.entries(f.funds).map(([t, x]) => ({ t, name: x.name, also: '' }))]
-      .sort((a, b) => (a.t < b.t ? -1 : 1));
-    return [...all.filter((m) => m.t.toLowerCase().startsWith(q)), ...all.filter((m) => !m.t.toLowerCase().startsWith(q) && (m.name.toLowerCase().includes(q) || m.also.includes(q)))].slice(0, MATCHES);
-  });
+  /** The site's companies and funds for the line added by hand: the same suggestions as the preview's. */
+  protected readonly matches = computed(() => suggest(this.facts(), this.query()));
 
-  protected readonly date = date;
   protected readonly val = val;
-  protected readonly nameOf = (t: string) => { const f = this.facts(); return f.companies[t] ? plainName(f.companies[t]!.name) : f.funds[t]?.name ?? 'not on pretickt'; };
-  protected readonly amount = (n: number | null, unit: string) => (n == null ? '' : unit === 'pct' ? `${n}%` : unit === 'usd' ? `$${n.toLocaleString('en-US')}` : String(n));
   /** The lines that gave no holding, the first five, as the reader wrote them. */
   protected readonly notRead = (r: Parsed) => r.ignored.slice(0, 5).map((x) => `line ${x.line} “${x.text.length > 40 ? `${x.text.slice(0, 40)}…` : x.text}”`).join(', ')
     + (r.ignored.length > 5 ? ` and ${r.ignored.length - 5} more.` : '.');
@@ -148,13 +130,13 @@ export class PtPortfolioEditor {
     const n = this.stored().list.filter((p) => p.kind === kind).length + 1;
     this.form.set({ kind, name: `${kind === 'watchlist' ? 'Watchlist' : 'Portfolio'} ${n}`, text: '', id: null });
   }
-  protected edit(p: StoredPortfolio) { this.reset(); this.form.set({ kind: p.kind, name: p.name, text: serialize(p.rows, p.unit), id: p.id }); }
+  protected edit(p: StoredPortfolio) { this.reset(); this.form.set({ kind: p.kind, name: p.name, text: serialize(p.rows, p.unit), id: p.id }); this.read(); }
   protected cancel() { this.reset(); }
   protected read() { const fm = this.form(); if (fm) this.parsed.set(parsePaste(fm.text, this.look(), this.today(), fm.kind)); }
-  protected save(r: Parsed) {
+  protected saveDraft(d: DraftSave) {
     const fm = this.form();
-    if (!fm || r.refused || !r.rows.length) return;
-    this.apply(withPortfolio(this.stored(), { id: fm.id ?? newId(), name: fm.name.trim() || 'Portfolio', kind: fm.kind, unit: r.unit, rows: r.rows.map(({ t, n, d }) => ({ t, n, d })) }));
+    if (!fm || !d.rows.length) return;
+    this.apply(withPortfolio(this.stored(), { id: fm.id ?? newId(), name: fm.name.trim() || 'Portfolio', kind: fm.kind, unit: d.unit, rows: d.rows }));
   }
   protected rename(p: StoredPortfolio) { const name = (this.renaming() ?? '').trim(); if (name) this.apply(withPortfolio(this.stored(), { ...p, name })); }
   protected copy(p: StoredPortfolio) {
