@@ -91,8 +91,8 @@ export function liveMoves(b: AnyBasket, q: Record<string, { r: number }>, news: 
               @if (f.note) {<p class="pt-note">{{ f.note }}</p>}
             }
             <div class="pt-table-wrap">
-              <table class="pt-table">
-                <thead><tr><th>{{ sec() ? 'Company' : 'Holding' }}</th><th class="pt-num">Weight</th><th class="pt-num">Day</th><th class="pt-num">Upside</th><th class="pt-bk-lab">Consensus</th>@if (dated()) {<th class="pt-num">Bought</th><th class="pt-num">Since</th>}</tr></thead>
+              <table class="pt-table" [class.pt-bk-dated]="dated()">
+                <thead><tr><th>{{ sec() ? 'Company' : 'Holding' }}</th><th class="pt-num">Weight</th><th class="pt-num">Day</th><th class="pt-num">Upside</th><th class="pt-bk-lab">Consensus</th>@if (dated()) {<th class="pt-num">Since</th>}</tr></thead>
                 <tbody [class.pt-bk-rows]="!!sec()" [class.pt-bk-all]="!!sec() && all()">
                   @for (h of shown(); track h.ticker ?? h.name; let i = $index) {
                     <tr [class.pt-bk-later]="!!sec() && i >= SHOWN">
@@ -104,8 +104,8 @@ export function liveMoves(b: AnyBasket, q: Record<string, { r: number }>, news: 
                       <td [class]="'pt-num pt-t-' + tone(h.upside)">{{ h.upside == null ? '' : pct(h.upside) }}</td>
                       <td class="pt-bk-lab">{{ h.label ?? '' }}</td>
                       @if (dated()) {
-                        <td class="pt-num pt-meta">{{ p?.bought ? date(p!.bought!) : '' }}</td>
-                        <td [class]="'pt-num pt-t-' + tone(p?.since ?? null)">@if (p?.noSince) {<span title="No close within a week after this date">—</span>} @else {{{ p?.since == null ? '' : pct(p!.since!) }}}</td>
+                        <td [class]="'pt-num pt-t-' + tone(p?.since ?? null)">@if (p?.noSince) {<span title="No close within a week after this date">—</span>} @else {{{ p?.since == null ? '' : pct(p!.since!) }}}
+                          @if (p?.bought; as d) {<span class="pt-bk-bought">{{ date(d) }}</span>}</td>
                       }
                     </tr>
                   }

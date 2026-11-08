@@ -385,6 +385,17 @@
   .pt-pf-matches { display: flex; flex-wrap: wrap; gap: .3rem; margin: 0; padding: 0; list-style: none; }
   .pt-pf-picked { font-family: var(--font-mono, monospace); font-weight: 600; color: var(--color-ink); }
   .pt-pf-amount { width: 7rem; }
+  .pt-pf { display: grid; gap: .9rem; }
+  .pt-pf-sum { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: .6rem; margin: 0; }
+  .pt-pf-sum div { display: grid; gap: .15rem; padding: .55rem .7rem; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-surface-raised); }
+  .pt-pf-sum dt { font-size: .72rem; color: var(--color-ink-soft); }
+  .pt-pf-sum dd { margin: 0; font: 600 1.05rem/1.2 var(--font-mono, monospace); color: var(--color-ink); }
+  .pt-pf-h { margin: .6rem 0 0; font-size: 1.1rem; color: var(--color-ink); }
+  .pt-pf-line { display: block; width: 100%; height: 10rem; }
+  .pt-pf-path { fill: none; stroke: var(--color-primary); stroke-width: 2; vector-effect: non-scaling-stroke; }
+  .pt-pf-axis { display: flex; justify-content: space-between; font-size: .75rem; color: var(--color-ink-soft); }
+  .pt-pf-list { display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; font-size: .9rem; }
+  .pt-pf-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem; }
   /* the page's own text that opens the editor (the generator's markup, round 16): under a list "Email me when a stock joins this list" */
   .pt-alert-cta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem 1rem; margin: 1rem 0; padding: .8rem 1rem;
     border: 1px solid color-mix(in oklab, var(--color-primary) 35%, var(--color-border)); border-radius: var(--radius-control);
@@ -1134,7 +1145,12 @@
     .pt-bk .pt-table th, .pt-bk .pt-table td { padding-inline: .25rem; }
     /* a holding we do not cover keeps its whole name on two lines, never a table wider than the phone */
     .pt-bk-other { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; overflow-wrap: anywhere; max-width: 5.5rem; }
+    /* a portfolio's dated holdings carry one more column: smaller type, the symbol without its logo */
+    .pt-bk-dated { font-size: .75rem; }
+    .pt-bk-dated .pt-logo { display: none; }
   }
+  /* a portfolio line's purchase date, under its return since then */
+  .pt-bk-bought { display: block; font-size: .68rem; font-weight: 400; color: var(--color-ink-soft); }
   .pt-bk-figs { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
   .pt-bk-fig { display: grid; gap: .25rem; align-content: start; min-width: 0; }
   .pt-bk-big { margin: 0; font-family: var(--font-mono, monospace); font-size: 1.125rem; font-weight: 600; color: var(--color-ink); }

@@ -117,3 +117,30 @@ export function computePortfolio(p: StoredPortfolio, facts: FactsFile, closes: R
     headlines: lines.filter((l) => l.f.headline).slice(0, HEADLINES).map((l) => ({ ticker: l.ticker, name: l.f.name, title: l.f.headline!.title, url: l.f.headline!.url })),
   };
 }
+
+/** The portfolio's year on the page: what today's holdings were worth each day (shares), or their weighted return since the first day (the rest). */
+export interface YearLine { unit: 'value' | 'return'; points: { t: string; v: number }[] }
+/**
+ * The year's line from the 1y closes file: with shares, Σ shares × that day's close; otherwise Σ today's weight × the return since the first day. A
+ * holding not listed yet counts at its first close (the line shows prices, not listings); one with no close in the file at tonight's.
+ */
+export function yearLine(p: StoredPortfolio, facts: FactsFile, oneYear: ClosesFile): YearLine | null {
+  if (!p.rows.length || !oneYear.dates.length) return null;
+  const series = (t: string): number[] => {
+    const c = oneYear.closes[t] ?? [], now = facts.companies[t]?.close ?? facts.funds[t]?.close ?? null;
+    const first = c.find((x) => x != null) ?? now ?? 0;
+    let last = first;
+    return oneYear.dates.map((_, i) => (last = c[i] ?? last));
+  };
+  if (p.kind === 'portfolio' && p.unit === 'shares') {
+    const n = new Map<string, number>();
+    for (const r of p.rows) n.set(r.t, (n.get(r.t) ?? 0) + (r.n ?? 0));
+    const lines = [...n].map(([t, k]) => ({ k, s: series(t) }));
+    return { unit: 'value', points: oneYear.dates.map((t, i) => ({ t, v: round(lines.reduce((s, l) => s + l.k * l.s[i]!, 0), 2) })) };
+  }
+  const b = computePortfolio(p, facts, new Map());
+  const lines = b.holdings.map((h) => ({ w: h.weight, s: series(h.ticker) })).filter((l) => l.s[0]! > 0);
+  const total = lines.reduce((s, l) => s + l.w, 0);
+  if (!total) return null;
+  return { unit: 'return', points: oneYear.dates.map((t, i) => ({ t, v: round(lines.reduce((s, l) => s + l.w * (l.s[i]! / l.s[0]! - 1), 0) / total, 4) })) };
+}

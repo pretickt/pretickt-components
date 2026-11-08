@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BASKET_MIN_COVERAGE, PortfolioBasket, type ClosesFile, type FactsCompany, type FactsFile } from '../../typologies';
-import { closesNeeded, computePortfolio } from './compute';
+import { closesNeeded, computePortfolio, yearLine } from './compute';
 import type { StoredPortfolio } from './store';
 
 const co = (ticker: string, o: Partial<FactsCompany> = {}): FactsCompany => ({
@@ -93,5 +93,19 @@ describe('a portfolio computed on the page', () => {
     expect(closesNeeded(pf({ rows: [{ t: 'AAA', n: 1, d: '2025-06-02' }, { t: 'BBB', n: 1, d: '2026-03-10' }, { t: 'AAA', n: 1, d: '2023-12-29' }] }), '2025-11-07'))
       .toEqual(['2023', '2024', '2025']);
     expect(closesNeeded(pf({ kind: 'watchlist', rows: [{ t: 'AAA', n: null, d: null }] }), '2025-11-07')).toEqual([]);
+  });
+});
+
+describe("the portfolio's year", () => {
+  it("with shares, what today's holdings were worth each day (a company not listed yet at its first close); otherwise the weighted return since the first day", () => {
+    const s = yearLine(pf({ rows: [{ t: 'AAA', n: 3, d: null }, { t: 'LATE', n: 2, d: null }] }), FACTS, ONE_YEAR)!;
+    expect(s.unit).toBe('value');
+    expect(s.points.map((p) => p.v)).toEqual([3 * 80 + 2 * 25, 3 * 82 + 2 * 25, 3 * 90 + 2 * 25, 3 * 91 + 2 * 25, 3 * 95 + 2 * 25, 3 * 100 + 2 * 30]);
+    expect(s.points.map((p) => p.t)).toEqual(DATES);
+    const w = yearLine(pf({ kind: 'watchlist', unit: 'equal', rows: [{ t: 'AAA', n: null, d: null }, { t: 'BBB', n: null, d: null }] }), FACTS, ONE_YEAR)!;
+    expect(w.unit).toBe('return');
+    expect(w.points[0]!.v).toBe(0);
+    expect(w.points.at(-1)!.v).toBe(r(0.5 * (100 / 80 - 1) + 0.5 * (50 / 40 - 1), 4));
+    expect(yearLine(pf({ rows: [] }), FACTS, ONE_YEAR)).toBeNull();
   });
 });

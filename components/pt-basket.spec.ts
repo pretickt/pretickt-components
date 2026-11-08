@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { demoFor, type Basket, type SectorBasket } from '../src/typologies';
 import { liveMoves, PtBasket } from './pt-basket';
-import { pct } from '../src/ds/format';
+import { date, pct } from '../src/ds/format';
 import { demoPortfolio } from '../src/stories/fake-portfolio';
 import { basics, liveDay, press, render, settle, withData } from './_spec';
 
@@ -322,7 +322,12 @@ describe('pt-basket, on a portfolio computed on the page (Part B)', () => {
     const b = demoPortfolio('shares');
     const lost = { ...b, holdings: b.holdings.map((h, i) => (i === 0 ? { ...h, since: null, noSince: true } : h)) };
     const r = await pfb('holdings', lost);
-    expect([...r.el.querySelectorAll('thead th')].map((t) => t.textContent)).toContain('Since');
+    // one column for both, the date under the return: five columns, as a phone can hold
+    expect([...r.el.querySelectorAll('thead th')].map((t) => t.textContent)).toEqual(['Holding', 'Weight', 'Day', 'Upside', 'Consensus', 'Since']);
+    const second = r.el.querySelectorAll('tbody tr')[1]!, h1 = b.holdings[1]!;
+    const cell = second.querySelector('td:last-child')!;
+    expect(cell.textContent!.trim().startsWith(pct(h1.since!))).toBe(true);
+    expect(cell.querySelector('.pt-bk-bought')!.textContent).toBe(date(h1.bought!));
     const first = r.el.querySelector('tbody tr')!;
     expect(first.textContent).toContain('—');
     expect(first.querySelector('[title="No close within a week after this date"]')).not.toBeNull();
