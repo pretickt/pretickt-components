@@ -25,10 +25,11 @@ describe('pt-portfolio-editor: portfolios and watchlists kept in this browser', 
   it('creates a portfolio from a paste, after its preview', async () => {
     const m = await mount();
     await m.press('New portfolio');
-    await m.type('textarea.pt-pf-paste', 'AAPL 10 2026-01-05\nnvda 4\nZZZZ 3');
+    await m.type('textarea.pt-pf-paste', 'AAPL 10 2026-01-05\nnvda 4\nZZZZ 3\nTotal 1,234.00');
     await m.press('Read');
     expect([...m.el.querySelectorAll('.pt-pf-preview tbody tr')].map((r) => [...r.querySelectorAll('td')].map((td) => td.textContent!.trim()).filter(Boolean).join(' '))).toEqual(['AAPL Apple 10 Jan 5, 2026', 'NVDA Nvidia 4', 'ZZZZ not on pretickt 3']);
     expect(m.text()).toContain('Not on pretickt: ZZZZ. It counts in your total, not in the figures.');
+    expect(m.text()).toContain('Not read: line 4 “Total 1,234.00”.');
     expect(m.out).toEqual([]); // nothing saved before Save
     await m.press('Save');
     expect(m.out[0]!.list).toEqual([expect.objectContaining({ name: 'Portfolio 1', kind: 'portfolio', unit: 'shares',

@@ -1,7 +1,7 @@
 import { Component, computed, input, output, signal } from '@angular/core';
 import { date, plainName, withoutSuffixes } from '@pretickt/components/format';
 import type { FactsFile } from '@pretickt/components/typologies';
-import { parsePaste, serialize, type Parsed } from './parse';
+import { lookupOf, parsePaste, serialize, type Parsed } from './parse';
 import { withPortfolio, type Stored, type StoredPortfolio } from './store';
 
 /**
@@ -51,6 +51,7 @@ const val = (e: Event) => (e.target as HTMLInputElement).value;
               @if (r.notOnSite.length) {<p class="pt-note">Not on pretickt: {{ r.notOnSite.join(', ') }}. {{ r.notOnSite.length > 1 ? 'They count' : 'It counts' }} in your total, not in the figures.</p>}
               @if (r.dropped) {<p class="pt-note">A watchlist keeps the symbols: amounts and dates are not kept.</p>}
               @if (r.note; as n) {<p class="pt-note">{{ n }}</p>}
+              @if (r.ignored.length) {<p class="pt-note">Not read: {{ notRead(r) }}</p>}
               @if (r.rows.length) {<div class="pt-pf-acts"><button type="button" class="pt-pf-go" (click)="save(r)">Save</button></div>}
             }
           }
@@ -134,8 +135,12 @@ export class PtPortfolioEditor {
   protected readonly val = val;
   protected readonly nameOf = (t: string) => { const f = this.facts(); return f.companies[t] ? plainName(f.companies[t]!.name) : f.funds[t]?.name ?? 'not on pretickt'; };
   protected readonly amount = (n: number | null, unit: string) => (n == null ? '' : unit === 'pct' ? `${n}%` : unit === 'usd' ? `$${n.toLocaleString('en-US')}` : String(n));
+  /** The lines that gave no holding, the first five, as the reader wrote them. */
+  protected readonly notRead = (r: Parsed) => r.ignored.slice(0, 5).map((x) => `line ${x.line} “${x.text.length > 40 ? `${x.text.slice(0, 40)}…` : x.text}”`).join(', ')
+    + (r.ignored.length > 5 ? ` and ${r.ignored.length - 5} more.` : '.');
   protected readonly unitWord = (u: string) => ({ shares: 'Shares', usd: 'Dollars', pct: 'Percent' } as Record<string, string>)[u] ?? '';
-  private readonly known = (s: string) => { const t = s.toUpperCase().replace(/[/-]/g, '.'), f = this.facts(); return f.companies[t] || f.funds[t] ? t : null; };
+  /** The site's symbols, names and closes, for reading a paste whatever its format. */
+  private readonly look = computed(() => lookupOf(this.facts()));
 
   protected choose(id: string) { this.reset(); this.changed.emit({ ...this.stored(), active: id }); }
   protected start(kind: Kind) {
@@ -145,7 +150,7 @@ export class PtPortfolioEditor {
   }
   protected edit(p: StoredPortfolio) { this.reset(); this.form.set({ kind: p.kind, name: p.name, text: serialize(p.rows, p.unit), id: p.id }); }
   protected cancel() { this.reset(); }
-  protected read() { const fm = this.form(); if (fm) this.parsed.set(parsePaste(fm.text, this.known, this.today(), fm.kind)); }
+  protected read() { const fm = this.form(); if (fm) this.parsed.set(parsePaste(fm.text, this.look(), this.today(), fm.kind)); }
   protected save(r: Parsed) {
     const fm = this.form();
     if (!fm || r.refused || !r.rows.length) return;
