@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { demoFor, type Basket, type SectorBasket } from '../src/typologies';
 import { liveMoves, PtBasket } from './pt-basket';
+import { pct } from '../src/ds/format';
+import { demoPortfolio } from '../src/stories/fake-portfolio';
 import { basics, liveDay, press, render, settle, withData } from './_spec';
 
 const demo = (t: string) => demoFor({ t: 'basket@1', params: { ticker: t } }) as Basket;
@@ -291,4 +293,55 @@ it("a split on the session is no move of the sector: a company whose delayed pri
   const v = liveMoves(b, { NVDA: { r: -0.9 }, AAPL: { r: 0.01 } }, {});
   expect(v.ret).toBeCloseTo(0.008, 9);
   expect([...v.up, ...v.down].map((m) => m.ticker)).toEqual(['AAPL']);
+});
+
+describe('pt-basket, on a portfolio computed on the page (Part B)', () => {
+  const pfb = (s: string, b = demoPortfolio('shares'), o?: Parameters<typeof render>[3]) => render(PtBasket, { payload: b, section: s }, withData({}), o);
+
+  it('a portfolio payload: no call, its sections, its words', async () => {
+    const h = await pfb('holdings');
+    expect(h.calls()).toBe(0);
+    expect(h.text()).toContain('Your lines, weighted by their value at the last close. A fund is one line here; its companies count in the figures.');
+    expect(h.el.querySelector('a[href="/etfs/demo/"]')).not.toBeNull(); // the fund's line goes to its page
+    const a = await pfb('analysts');
+    expect(a.text()).toMatch(/What analysts' targets on \d+% of your portfolio would put it at/);
+    expect((await pfb('questions')).text()).toMatch(/on \d+% of your portfolio/);
+    expect((await pfb('faq')).el.textContent!.trim()).toBe('');
+    expect((await pfb('moves')).text()).toMatch(/^Long term (rose|fell)/);
+  });
+
+  it('a watchlist says "of the list", and shows no dollar target', async () => {
+    const w = demoPortfolio('watchlist');
+    const a = await pfb('analysts', w);
+    expect(a.text()).toMatch(/on \d+% of the list/);
+    expect(a.el.querySelector('.pt-bk-big')!.textContent!.trim()).toMatch(/^[+-−]?\d/);
+    expect((await pfb('holdings', w)).text()).toContain('Your list, each company weighted equally.');
+  });
+
+  it('dated lines show Bought and Since; a line with no close says so', async () => {
+    const b = demoPortfolio('shares');
+    const lost = { ...b, holdings: b.holdings.map((h, i) => (i === 0 ? { ...h, since: null, noSince: true } : h)) };
+    const r = await pfb('holdings', lost);
+    expect([...r.el.querySelectorAll('thead th')].map((t) => t.textContent)).toContain('Since');
+    const first = r.el.querySelector('tbody tr')!;
+    expect(first.textContent).toContain('—');
+    expect(first.querySelector('[title="No close within a week after this date"]')).not.toBeNull();
+    expect((await pfb('holdings', demoPortfolio('watchlist'))).text()).not.toContain('Since');
+  });
+
+  it('under 80%: the share and the uncovered, no figure', async () => {
+    const r = await pfb('analysts', demoPortfolio('low'));
+    expect(r.text()).toContain('We cover 25% of your portfolio: its figures need 80%. Not covered: OLDCO.');
+    expect(r.el.querySelector('.pt-bk-big')).toBeNull();
+  });
+
+  it("a portfolio's moves follow the delayed prices, as a sector's do", async () => {
+    const b = demoPortfolio('shares');
+    const q = Object.fromEntries(b.holdings.map((h) => [h.ticker, { p: 1, pc: 1, r: h.ticker === 'NVDA' ? 0.05 : 0, m: 0, s: null, x: null }]));
+    const r = await pfb('moves', b, { browser: true, providers: liveDay({ session: '2026-10-01', prev: '2026-09-30', time: '11:30 AM ET', q }) });
+    await settle(r.f); await r.f.whenStable(); await settle(r.f);
+    const nvda = b.holdings.find((h) => h.ticker === 'NVDA')!;
+    expect(r.text()).toContain(`Long term rose ${pct(nvda.weight * 0.05, 2).replace('+', '')}.`);
+    expect(r.text()).toContain('15-min delayed');
+  });
 });

@@ -39,7 +39,7 @@ const BUSINESS = ['demand', 'advantage', 'economics', 'execution', 'fragility'];
 /** "Technology's", "Financial Services'": a name ending in s takes the apostrophe alone. */
 export const possessive = (name: string) => `${name}'${/s$/.test(name) ? '' : 's'}`;
 
-export function basketLead(label: string, questions: readonly { key: string; pos: number; comparable: boolean; share: number }[] | null, whole: 'fund' | 'sector' = 'fund'): string | null {
+export function basketLead(label: string, questions: readonly { key: string; pos: number; comparable: boolean; share: number }[] | null, whole: 'fund' | 'sector' | 'portfolio' | 'list' = 'fund'): string | null {
   const read = (questions ?? []).filter((q) => q.comparable && BUSINESS.includes(q.key));
   if (!read.length) return null;
   const mean = read.reduce((s, q) => s + q.pos, 0) / read.length;

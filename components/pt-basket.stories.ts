@@ -1,4 +1,5 @@
 import { demoFor, type Basket, type SectorBasket } from '../src/typologies';
+import { demoPortfolio } from '../src/stories/fake-portfolio';
 import { liveDay, story } from '../src/stories/story';
 import { PtBasket } from './pt-basket';
 
@@ -16,6 +17,7 @@ const fin = demoFor({ t: 'sector@1', params: { sector: 'Financial Services' } })
 const utl = demoFor({ t: 'sector@1', params: { sector: 'Utilities' } }) as SectorBasket;
 // a company not yet traded: the largest one is left out of the quotes, and counts flat
 const sectorOpen = liveDay({ session: '2026-10-01', prev: '2026-09-30', time: '11:30 AM ET', q: quotes(tech.holdings.slice(1).map((h) => h.ticker)) });
+const portfolio = (name: string, k: Parameters<typeof demoPortfolio>[0]) => (['moves', 'holdings', 'analysts', 'questions'] as const).map((section) => story(PtBasket, { name: `${name}: ${section}`, inputs: { payload: demoPortfolio(k), section }, data: {} }));
 const sector = (name: string, data: SectorBasket | null) => (['moves', 'holdings', 'analysts', 'questions', 'faq'] as const).map((section) => story(PtBasket, { name: `${name}: ${section}`, inputs: { sector: data?.sector ?? 'Technology', section }, data: { 'sector@1': data } }));
 
 export const stories = [
@@ -32,4 +34,9 @@ export const stories = [
   story(PtBasket, { name: 'Financial Services: Advantage and Fragility not comparable', inputs: { sector: 'Financial Services', section: 'questions' }, data: { 'sector@1': fin } }),
   story(PtBasket, { name: 'Utilities: Fragility not comparable', inputs: { sector: 'Utilities', section: 'questions' }, data: { 'sector@1': utl } }),
   story(PtBasket, { name: 'A sector, not available', inputs: { sector: 'Technology', section: 'holdings' }, data: null }),
+  // a reader's portfolio computed on the page (Part B): made-up facts and holdings, nothing fetched
+  ...portfolio('A portfolio in shares, with purchase dates and a fund', 'shares'),
+  ...portfolio('A watchlist', 'watchlist'),
+  story(PtBasket, { name: 'A portfolio we cover under 80%: analysts', inputs: { payload: demoPortfolio('low'), section: 'analysts' }, data: {} }),
+  story(PtBasket, { name: 'A portfolio that is one fund, looked through: analysts', inputs: { payload: demoPortfolio('fund'), section: 'analysts' }, data: {} }),
 ];
