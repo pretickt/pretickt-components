@@ -1,5 +1,7 @@
 import * as z from 'zod/mini';
+import { BasketConsensus, BasketMoves, BasketPe, BasketQuestion, BasketTarget } from './basket';
 import { HttpUrl, IsoDate, Num, Ticker } from './common';
+import { SectorHolding } from './sector';
 import { VALUE_KEYS, VALUE_TONES } from './value';
 
 /**
@@ -28,6 +30,28 @@ export const ClosesFile = z.object({
   v: z.literal(1), from: IsoDate, to: IsoDate, dates: z.array(IsoDate).check(z.refine(ascending, 'oldest first')),
   closes: z.record(Ticker, z.array(z.nullable(z.number()))),
 }).check(z.refine((f) => Object.values(f.closes).every((c) => c.length === f.dates.length), 'one close a date'));
+
+/**
+ * A reader's portfolio or watchlist computed on the page from the files above (never sent anywhere): the funds' and sectors' figures on its lines,
+ * a fund looked through to its covered companies. `holdings` are the reader's own lines (a fund as one line, `fund` true), each with its purchase
+ * date and its return since then (split basis; `noSince` when the date has no close within a week after it); `since` the whole portfolio's, for
+ * dated shares only. Weights and returns are fractions.
+ */
+export const PortfolioHolding = z.extend(SectorHolding, { ticker: Ticker, fund: z.boolean(), bought: z.nullable(IsoDate), since: Num, noSince: z.boolean() });
+export const PortfolioBasket = z.object({
+  kind: z.enum(['portfolio', 'watchlist']), name: Text, asOf: IsoDate, unit: z.enum(['shares', 'pct', 'usd', 'equal']),
+  value: Num, ret: Num, since: z.nullable(z.object({ from: IsoDate, ret: z.number() })),
+  coverage: z.number(), state: z.enum(['ok', 'low']),
+  /** What the figures cannot see: a fund's companies we do not cover, a symbol no longer on the site (weight null: no price to weigh it). */
+  uncovered: z.array(z.object({ name: Text, weight: Num })),
+  target: z.nullable(BasketTarget), consensus: z.nullable(BasketConsensus), pe: z.nullable(BasketPe), questions: z.nullable(z.array(BasketQuestion)),
+  moves: BasketMoves,
+  holdings: z.array(PortfolioHolding),
+  earnings: z.array(z.object({ ticker: Ticker, name: Text, logo: z.nullable(z.string()), date: IsoDate })),
+  headlines: z.array(z.object({ ticker: Ticker, name: Text, title: Text, url: HttpUrl })),
+});
+export type PortfolioHolding = z.infer<typeof PortfolioHolding>;
+export type PortfolioBasket = z.infer<typeof PortfolioBasket>;
 
 export type FactsCompany = z.infer<typeof FactsCompany>;
 export type FactsFund = z.infer<typeof FactsFund>;
