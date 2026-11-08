@@ -48,8 +48,9 @@ const val = (e: Event) => (e.target as HTMLInputElement).value;
                   </table>
                 </div>
               } @else {<p class="pt-note">No symbol on pretickt in this text.</p>}
-              @if (r.notOnSite.length) {<p class="pt-note">Not on pretickt, left out: {{ r.notOnSite.join(', ') }}.</p>}
+              @if (r.notOnSite.length) {<p class="pt-note">Not on pretickt: {{ r.notOnSite.join(', ') }}. {{ r.notOnSite.length > 1 ? 'They count' : 'It counts' }} in your total, not in the figures.</p>}
               @if (r.dropped) {<p class="pt-note">A watchlist keeps the symbols: amounts and dates are not kept.</p>}
+              @if (r.note; as n) {<p class="pt-note">{{ n }}</p>}
               @if (r.rows.length) {<div class="pt-pf-acts"><button type="button" class="pt-pf-go" (click)="save(r)">Save</button></div>}
             }
           }
@@ -131,7 +132,7 @@ export class PtPortfolioEditor {
 
   protected readonly date = date;
   protected readonly val = val;
-  protected readonly nameOf = (t: string) => { const f = this.facts(); return f.companies[t] ? plainName(f.companies[t]!.name) : f.funds[t]?.name ?? t; };
+  protected readonly nameOf = (t: string) => { const f = this.facts(); return f.companies[t] ? plainName(f.companies[t]!.name) : f.funds[t]?.name ?? 'not on pretickt'; };
   protected readonly amount = (n: number | null, unit: string) => (n == null ? '' : unit === 'pct' ? `${n}%` : unit === 'usd' ? `$${n.toLocaleString('en-US')}` : String(n));
   protected readonly unitWord = (u: string) => ({ shares: 'Shares', usd: 'Dollars', pct: 'Percent' } as Record<string, string>)[u] ?? '';
   private readonly known = (s: string) => { const t = s.toUpperCase().replace(/[/-]/g, '.'), f = this.facts(); return f.companies[t] || f.funds[t] ? t : null; };

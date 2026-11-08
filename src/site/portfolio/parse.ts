@@ -1,11 +1,13 @@
 /**
  * A pasted portfolio read line by line (design 2026-11-07 Part B, amended 2026-11-08): one holding per line — a symbol, at most one amount (shares
  * `AAPL 10`, a percentage `AAPL 25%`, a dollar value `AAPL $5,000`, or none: equal weight) and on a portfolio an optional purchase date (ISO or a
- * broker's US date) — or a broker's CSV export, read by its header. One kind of amount per portfolio; a watchlist keeps the symbols only.
+ * broker's US date) — or a broker's CSV export, read by its header. One kind of amount per portfolio; a watchlist keeps the symbols only. A symbol we
+ * do not cover is kept as a line and named: it counts in the portfolio's total, never in its figures.
  */
 export type Unit = 'shares' | 'pct' | 'usd' | 'equal';
 export interface PasteRow { line: number; t: string; n: number | null; d: string | null }
-export interface Parsed { rows: PasteRow[]; unit: Unit; refused: string | null; notOnSite: string[]; dropped: boolean }
+/** `note`: what the reader should know about how it was read (a broker's file with no amount column). */
+export interface Parsed { rows: PasteRow[]; unit: Unit; refused: string | null; notOnSite: string[]; dropped: boolean; note: string | null }
 
 type Kind = 'shares' | 'pct' | 'usd' | 'none';
 interface Read { line: number; t: string; n: number | null; d: string | null; kind: Kind }
@@ -40,26 +42,31 @@ function cells(line: string, sep: string): string[] {
 const list = (n: number[]) => (n.length === 1 ? String(n[0]) : `${n.slice(0, -1).join(', ')} and ${n.at(-1)}`);
 const lines = (n: number[], first: boolean) => `${first ? 'L' : 'l'}ine${n.length > 1 ? 's' : ''} ${list(n)}`;
 
-/** The holdings a broker's export lists, by its header's columns. Null: no header with a symbol column. */
-function fromCsv(all: string[], known: (s: string) => string | null, notOnSite: Set<string>): Read[] | null {
+const NO_AMOUNT = 'This file has no column of shares, values or percentages: each line weighs the same.';
+/**
+ * The holdings a broker's export lists, by its header's columns, each found by what it holds (Schwab writes "Qty (Quantity)", "Mkt Val (Market
+ * Value)", "% of Acct (% of Account)"). Null: no header with a symbol column.
+ */
+function fromCsv(all: string[], known: (s: string) => string | null, notOnSite: Set<string>): { rows: Read[]; note: string | null } | null {
   for (let h = 0; h < all.length; h++) {
     const sep = all[h]!.includes('\t') ? '\t' : all[h]!.includes(';') && !all[h]!.includes(',') ? ';' : ',';
     const head = cells(all[h]!, sep).map((c) => c.toLowerCase());
     const col = (re: RegExp) => head.findIndex((c) => re.test(c));
-    const sym = col(/^(symbol|ticker)$/);
+    const sym = col(/^(symbol|ticker)\b/);
     if (sym < 0) continue;
-    const qty = col(/^(quantity|shares|qty)$/), val = col(/^(market value|current value|value|amount)$/), wgt = col(/^(weight|percent|%|% of account|percent of account)$/);
-    const date = col(/^(date|acquired|date acquired|purchase date|trade date|open date)$/);
+    const qty = col(/\b(qty|quantity|shares)\b/), val = col(/mkt val|market value|current value|^value$|^amount$/), wgt = col(/% of acc|percent of acc|^weight|^percent$|^%$/);
+    const date = col(/acquired|purchase date|trade date|open date|^date$/);
     const out: Read[] = [];
     all.slice(h + 1).forEach((raw, k) => {
       const c = cells(raw, sep), s = (c[sym] ?? '').trim();
       if (!SYMBOL.test(s) || IGNORE.has(s.toLowerCase())) return;
-      const t = known(s);
-      if (!t) { notOnSite.add(s.toUpperCase()); return; }
+      // a symbol we do not cover stays a line: it counts in the total, never in the figures (the 80% floor)
+      const t = known(s) ?? s.toUpperCase();
+      if (t === s.toUpperCase() && !known(s)) notOnSite.add(t);
       const pick = ([[qty, 'shares'], [val, 'usd'], [wgt, 'pct']] as const).find(([i]) => i >= 0 && number(c[i] ?? '') != null);
       out.push({ line: h + 2 + k, t, n: pick ? number(c[pick[0]]!) : null, d: date >= 0 ? isoDate(c[date] ?? '') : null, kind: pick ? pick[1] : 'none' });
     });
-    return out;
+    return { rows: out, note: qty < 0 && val < 0 && wgt < 0 ? NO_AMOUNT : null };
   }
   return null;
 }
@@ -74,8 +81,8 @@ function fromLines(all: string[], known: (s: string) => string | null, notOnSite
     const norm = line.replace(/[\t;]/g, ' ').replace(/([A-Za-z])\s*,/g, '$1 ').replace(/,(?!\d{3}(?:\D|$))/g, ' ').replace(/\s+%/g, '%').replace(/\$\s+/g, '$');
     const [first, ...rest] = norm.split(/\s+/);
     if (!first || !SYMBOL.test(first) || IGNORE.has(first.toLowerCase())) return;
-    const t = known(first);
-    if (!t) { notOnSite.add(first.toUpperCase()); return; }
+    const t = known(first) ?? first.toUpperCase();
+    if (!known(first)) notOnSite.add(t);
     const amount = rest.find((x) => AMOUNT.test(x) && number(x) != null);
     const d = rest.map(isoDate).find((x) => x != null) ?? null;
     out.push({ line: k + 1, t, n: amount ? number(amount) : null, d, kind: amount ? kindOf(amount) : 'none' });
@@ -85,15 +92,15 @@ function fromLines(all: string[], known: (s: string) => string | null, notOnSite
 
 export function parsePaste(text: string, known: (symbol: string) => string | null, today: string, kind: 'portfolio' | 'watchlist'): Parsed {
   const all = text.split(/\r?\n/), notOnSite = new Set<string>();
-  const read = fromCsv(all, known, notOnSite) ?? fromLines(all, known, notOnSite);
+  const csv = fromCsv(all, known, notOnSite), read = csv?.rows ?? fromLines(all, known, notOnSite), note = csv?.note ?? null;
   const names = [...notOnSite];
   if (kind === 'watchlist')
-    return { rows: read.map(({ line, t }) => ({ line, t, n: null, d: null })), unit: 'equal', refused: null, notOnSite: names, dropped: read.some((r) => r.n != null || r.d != null) };
+    return { rows: read.map(({ line, t }) => ({ line, t, n: null, d: null })), unit: 'equal', refused: null, notOnSite: names, dropped: read.some((r) => r.n != null || r.d != null), note: null };
   const rows = read.map(({ line, t, n, d }) => ({ line, t, n, d }));
   const late = read.filter((r) => r.d != null && r.d > today);
   if (late.length) {
     const refused = late.length === 1 ? `Line ${late[0]!.line}: the date ${late[0]!.d} is after today.` : `${lines(late.map((r) => r.line), true)}: their dates are after today.`;
-    return { rows, unit: 'equal', refused, notOnSite: names, dropped: false };
+    return { rows, unit: 'equal', refused, notOnSite: names, dropped: false, note };
   }
   const groups = new Map<Kind, number[]>();
   for (const r of read) groups.set(r.kind, [...(groups.get(r.kind) ?? []), r.line]);
@@ -101,10 +108,10 @@ export function parsePaste(text: string, known: (symbol: string) => string | nul
     // the lines that differ first: the smaller group, on a tie the later lines
     const parts = [...groups].sort(([, a], [, b]) => a.length - b.length || b[0]! - a[0]!)
       .map(([k, n], i) => (i === 0 ? `${lines(n, true)} give${n.length > 1 ? '' : 's'} ${WHAT[k]}` : `${lines(n, false)} ${WHAT[k]}`));
-    return { rows, unit: 'equal', refused: `${parts.join(', ')}: one kind of amount per portfolio.`, notOnSite: names, dropped: false };
+    return { rows, unit: 'equal', refused: `${parts.join(', ')}: one kind of amount per portfolio.`, notOnSite: names, dropped: false, note };
   }
   const only = [...groups.keys()][0] ?? 'none';
-  return { rows, unit: only === 'none' ? 'equal' : only, refused: null, notOnSite: names, dropped: false };
+  return { rows, unit: only === 'none' ? 'equal' : only, refused: null, notOnSite: names, dropped: false, note };
 }
 
 /** A portfolio as text, one line a holding: what "Copy as text" gives and a paste reads back. */

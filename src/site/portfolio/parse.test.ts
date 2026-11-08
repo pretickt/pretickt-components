@@ -32,9 +32,18 @@ describe('reading a paste', () => {
       'Pending activity,,,,"-$20.00",',
       'Account Total,,,,"$276,250.00",',
     ].join('\n');
-    expect(rows(csv)).toEqual({ unit: 'shares', refused: null, notOnSite: [], dropped: false, rows: [
+    expect(rows(csv)).toEqual({ unit: 'shares', refused: null, notOnSite: [], dropped: false, note: null, rows: [
       { line: 4, t: 'AAPL', n: 1250, d: '2025-03-14' }, { line: 5, t: 'BRK.B', n: 12, d: null },
     ] });
+  });
+
+  it("reads a broker's headers by what they hold (Schwab's \"Qty (Quantity)\", \"Mkt Val (Market Value)\"); a file with no amount column says so", () => {
+    const schwab = ['"Positions for account ...123"', '"Symbol","Description","Qty (Quantity)","Price","Mkt Val (Market Value)","% of Acct (% of Account)"',
+      '"AAPL","APPLE INC","100","$215.20","$21,520.00","40%"', '"NVDA","NVIDIA CORP","5","$180.00","$900.00","2%"'].join('\n');
+    expect(rows(schwab)).toMatchObject({ unit: 'shares', note: null, rows: [{ t: 'AAPL', n: 100 }, { t: 'NVDA', n: 5 }] });
+    const bare = rows('Symbol,Description\nAAPL,APPLE INC\nNVDA,NVIDIA CORP');
+    expect(bare).toMatchObject({ unit: 'equal', rows: [{ t: 'AAPL', n: null }, { t: 'NVDA', n: null }] });
+    expect(bare.note).toBe('This file has no column of shares, values or percentages: each line weighs the same.');
   });
 
   it('refuses mixed units, naming the lines', () => {
@@ -42,12 +51,12 @@ describe('reading a paste', () => {
     expect(rows('AAPL 10\nMSFT').refused).toBe('Line 2 gives no amount, line 1 shares: one kind of amount per portfolio.');
   });
 
-  it('names the symbols not on pretickt', () => {
-    expect(rows('AAPL 10\nTSLAX 4\nnvda 2')).toMatchObject({ notOnSite: ['TSLAX'], rows: [{ t: 'AAPL' }, { t: 'NVDA' }] });
+  it('names the symbols not on pretickt and keeps them as lines: they count in the total, never in the figures', () => {
+    expect(rows('AAPL 10\nTSLAX 4\nnvda 2')).toMatchObject({ notOnSite: ['TSLAX'], rows: [{ t: 'AAPL', n: 10 }, { t: 'TSLAX', n: 4 }, { t: 'NVDA', n: 2 }] });
   });
 
   it('a watchlist keeps the symbols and says it dropped the rest', () => {
-    expect(rows('AAPL 10 2025-03-14\nNVDA 20%', 'watchlist')).toEqual({ unit: 'equal', refused: null, notOnSite: [], dropped: true,
+    expect(rows('AAPL 10 2025-03-14\nNVDA 20%', 'watchlist')).toEqual({ unit: 'equal', refused: null, notOnSite: [], dropped: true, note: null,
       rows: [{ line: 1, t: 'AAPL', n: null, d: null }, { line: 2, t: 'NVDA', n: null, d: null }] });
     expect(rows('AAPL\nNVDA', 'watchlist').dropped).toBe(false);
   });

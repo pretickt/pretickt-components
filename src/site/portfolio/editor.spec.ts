@@ -27,12 +27,12 @@ describe('pt-portfolio-editor: portfolios and watchlists kept in this browser', 
     await m.press('New portfolio');
     await m.type('textarea.pt-pf-paste', 'AAPL 10 2026-01-05\nnvda 4\nZZZZ 3');
     await m.press('Read');
-    expect([...m.el.querySelectorAll('.pt-pf-preview tbody tr')].map((r) => [...r.querySelectorAll('td')].map((td) => td.textContent!.trim()).filter(Boolean).join(' '))).toEqual(['AAPL Apple 10 Jan 5, 2026', 'NVDA Nvidia 4']);
-    expect(m.text()).toContain('Not on pretickt, left out: ZZZZ.');
+    expect([...m.el.querySelectorAll('.pt-pf-preview tbody tr')].map((r) => [...r.querySelectorAll('td')].map((td) => td.textContent!.trim()).filter(Boolean).join(' '))).toEqual(['AAPL Apple 10 Jan 5, 2026', 'NVDA Nvidia 4', 'ZZZZ not on pretickt 3']);
+    expect(m.text()).toContain('Not on pretickt: ZZZZ. It counts in your total, not in the figures.');
     expect(m.out).toEqual([]); // nothing saved before Save
     await m.press('Save');
     expect(m.out[0]!.list).toEqual([expect.objectContaining({ name: 'Portfolio 1', kind: 'portfolio', unit: 'shares',
-      rows: [{ t: 'AAPL', n: 10, d: '2026-01-05' }, { t: 'NVDA', n: 4, d: null }] })]);
+      rows: [{ t: 'AAPL', n: 10, d: '2026-01-05' }, { t: 'NVDA', n: 4, d: null }, { t: 'ZZZZ', n: 3, d: null }] })]);
     expect(m.out[0]!.active).toBe(m.out[0]!.list[0]!.id);
   });
 

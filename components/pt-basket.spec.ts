@@ -334,6 +334,11 @@ describe('pt-basket, on a portfolio computed on the page (Part B)', () => {
     expect((await pfb('holdings', demoPortfolio('watchlist'))).text()).not.toContain('Since');
   });
 
+  it('a holding we cannot price: the line says why no figure shows, never a coverage it cannot know', async () => {
+    const b = demoPortfolio('shares'), r = await pfb('analysts', { ...b, state: 'low' as const, target: null, consensus: null, pe: null, questions: null, uncovered: [{ name: 'GONE', weight: null }] });
+    expect(r.text()).toContain('We cannot price GONE, so we cannot say how much of your portfolio we cover: its figures need 80%.');
+  });
+
   it('under 80%: the share and the uncovered, no figure', async () => {
     const r = await pfb('analysts', demoPortfolio('low'));
     expect(r.text()).toContain('We cover 25% of your portfolio: its figures need 80%. Not covered: OLDCO.');

@@ -34,7 +34,7 @@ describe('a portfolio computed on the page', () => {
     expect(shares.holdings.map((h) => [h.ticker, h.weight])).toEqual([['AAA', 0.6], ['BBB', 0.4]]);
     expect(shares.coverage).toBe(1);
     expect(computePortfolio(pf({ unit: 'usd', rows: [{ t: 'AAA', n: 1000, d: null }, { t: 'BBB', n: 3000, d: null }] }), FACTS, CLOSES)).toMatchObject({ value: 4000, holdings: [{ ticker: 'BBB', weight: 0.75 }, { ticker: 'AAA', weight: 0.25 }] });
-    expect(computePortfolio(pf({ unit: 'pct', rows: [{ t: 'AAA', n: 30, d: null }, { t: 'BBB', n: 10, d: null }] }), FACTS, CLOSES)).toMatchObject({ value: null, holdings: [{ weight: 0.75 }, { weight: 0.25 }] });
+    expect(computePortfolio(pf({ unit: 'pct', rows: [{ t: 'AAA', n: 75, d: null }, { t: 'BBB', n: 25, d: null }] }), FACTS, CLOSES)).toMatchObject({ value: null, holdings: [{ weight: 0.75 }, { weight: 0.25 }] });
     expect(computePortfolio(pf({ unit: 'equal', rows: [{ t: 'AAA', n: null, d: null }, { t: 'BBB', n: null, d: null }] }), FACTS, CLOSES).holdings.map((h) => h.weight)).toEqual([0.5, 0.5]);
   });
 
@@ -107,5 +107,29 @@ describe("the portfolio's year", () => {
     expect(w.points[0]!.v).toBe(0);
     expect(w.points.at(-1)!.v).toBe(r(0.5 * (100 / 80 - 1) + 0.5 * (50 / 40 - 1), 4));
     expect(yearLine(pf({ rows: [] }), FACTS, ONE_YEAR)).toBeNull();
+  });
+});
+
+describe('the target upside without a value', () => {
+  it("is the weighted upside to the basis point, as a fund's: never cut to whole percents by a base of 1", () => {
+    const b = computePortfolio(pf({ unit: 'pct', rows: [{ t: 'AAA', n: 75, d: null }, { t: 'BBB', n: 25, d: null }] }), FACTS, CLOSES);
+    expect(b.target!.upside).toBeCloseTo(0.75 * 0.2 + 0.25 * 0.1, 4); // 0.175, not 0.18
+    const f = computePortfolio(pf({ unit: 'pct', rows: [{ t: 'VOO', n: 100, d: null }] }), FACTS, CLOSES);
+    expect(f.holdings[0]!.upside).toBe(r((0.5 * 0.2 + 0.4 * 0.1) / 0.9, 4)); // the fund line's own, 0.1556, not 0.16
+  });
+});
+
+describe('what we do not cover always counts (the 80% floor)', () => {
+  it('a holding not on pretickt counts in the total: 60% in a mutual fund leaves 40% covered, and no figure', () => {
+    const b = computePortfolio(pf({ unit: 'pct', rows: [{ t: 'VTSAX', n: 60, d: null }, { t: 'AAA', n: 20, d: null }, { t: 'BBB', n: 20, d: null }] }), FACTS, CLOSES);
+    expect(b).toMatchObject({ coverage: 0.4, state: 'low', target: null, uncovered: [{ name: 'VTSAX', weight: 0.6 }] });
+  });
+  it('shares with a holding we cannot price: its value is unknown, so is the coverage; no figure, the holding named', () => {
+    const b = computePortfolio(pf({ rows: [{ t: 'AAA', n: 1, d: null }, { t: 'GONE', n: 1000, d: null }] }), FACTS, CLOSES);
+    expect(b).toMatchObject({ state: 'low', target: null, consensus: null, uncovered: [{ name: 'GONE', weight: null }] });
+  });
+  it('percentages under 100: the rest of the portfolio is not covered', () => {
+    const b = computePortfolio(pf({ unit: 'pct', rows: [{ t: 'AAA', n: 30, d: null }, { t: 'BBB', n: 30, d: null }] }), FACTS, CLOSES);
+    expect(b).toMatchObject({ coverage: 0.6, state: 'low', uncovered: [{ name: 'The rest of your portfolio', weight: 0.4 }], holdings: [{ weight: 0.3 }, { weight: 0.3 }] });
   });
 });

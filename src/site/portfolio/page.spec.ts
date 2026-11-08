@@ -81,6 +81,20 @@ describe('the portfolio page', () => {
     expect((JSON.parse(m.storage.getItem(PORTFOLIO_KEY)!) as Stored).list.map((p) => p.id)).toEqual(['demo-watch', 'demo-low']);
   });
 
+  it("hovering a company never reaches the site's hover cards, which would ask the API for that ticker: the holdings stay in the browser", async () => {
+    const m = await mount({ v: 1, active: 'demo-shares', list: [DEMO_PORTFOLIOS.shares] });
+    const seen: string[] = [];
+    const listen = (e: Event) => seen.push((e.target as Element).getAttribute('href') ?? '');
+    document.body.appendChild(m.el);
+    document.addEventListener('pointerover', listen);
+    const link = m.el.querySelector('a[href^="/stocks/"]')!;
+    link.dispatchEvent(new Event('pointerover', { bubbles: true }));
+    document.removeEventListener('pointerover', listen);
+    m.el.remove();
+    expect(link).not.toBeNull();
+    expect(seen).toEqual([]);
+  });
+
   it("mounts in the generator's placeholder, replacing its note", () => {
     TestBed.configureTestingModule({ providers: [{ provide: PT_STORE, useValue: new PtStore({ server: false, resolve: async () => null }) }] });
     const real = globalThis.fetch;

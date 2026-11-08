@@ -13,6 +13,8 @@ const DAY = 86_400_000;
 /** A purchase date reads the first session on or after it within a week; later than that, the date is before a first close or a break. */
 const WEEK_DAYS = 7;
 const EARNINGS_DAYS = 90;
+/** A target's base when there is no value (percentages, equal weight, a fund line): 100, so the upside keeps its basis points (basketTarget rounds the price to cents). */
+const NO_VALUE_BASE = 100;
 const HEADLINES = 10;
 const round = (v: number, d: number) => Math.round(v * 10 ** d) / 10 ** d;
 const addDays = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * DAY).toISOString().slice(0, 10);
@@ -68,7 +70,9 @@ export function computePortfolio(p: StoredPortfolio, facts: FactsFile, closes: R
     const n = rs.reduce((s, r) => s + (r.n ?? 0), 0), price = priceOf(t);
     return { t, rs, amount: p.unit === 'equal' ? 1 : shares ? (price != null ? n * price : null) : n };
   });
-  const total = amounts.reduce((s, a) => s + (a.amount ?? 0), 0);
+  // percentages that add up to less than 100 leave the rest of the portfolio out: it counts, not covered
+  const typed = amounts.reduce((s, a) => s + (a.amount ?? 0), 0);
+  const total = p.unit === 'pct' ? Math.max(100, typed) : typed;
   const weightOf = (a: number | null) => (a == null || !total ? null : a / total);
 
   const covered = new Map<string, number>(), uncovered: PortfolioBasket['uncovered'] = [], holdings: PortfolioHolding[] = [];
@@ -86,16 +90,19 @@ export function computePortfolio(p: StoredPortfolio, facts: FactsFile, closes: R
     } else {
       for (const [ct, fw] of f!.weights) add(ct, w * fw);
       if (f!.coverage < 1) uncovered.push({ name: `${f!.name}, outside the companies we cover`, weight: round(w * (1 - f!.coverage), 4) });
-      const own = basketTarget(f!.weights.flatMap(([ct, fw]): BasketLine[] => (facts.companies[ct] ? [{ ticker: ct, f: facts.companies[ct]!, weight: fw }] : [])), 1);
+      const own = basketTarget(f!.weights.flatMap(([ct, fw]): BasketLine[] => (facts.companies[ct] ? [{ ticker: ct, f: facts.companies[ct]!, weight: fw }] : [])), NO_VALUE_BASE);
       holdings.push({ ticker: t, name: f!.name, logo: f!.logo, weight: round(w, 5), ret: f!.ret == null ? null : round(f!.ret, 5), upside: own ? round(own.upside, 4) : null,
         label: null, close: f!.close, fund: true, bought, since, noSince });
     }
   }
+  if (p.unit === 'pct' && typed < 100) uncovered.push({ name: 'The rest of your portfolio', weight: round(1 - typed / 100, 4) });
   holdings.sort((a, b) => b.weight - a.weight);
   uncovered.sort((a, b) => (b.weight ?? -1) - (a.weight ?? -1));
 
   const lines: BasketLine[] = [...covered].map(([t, weight]) => ({ ticker: t, f: facts.companies[t]!, weight })).sort((a, b) => b.weight - a.weight);
-  const coverage = round(lines.reduce((s, l) => s + l.weight, 0), 4), ok = coverage >= BASKET_MIN_COVERAGE;
+  // a holding in shares we cannot price has an unknown value: so is the share we cover, and no figure can say what it rests on
+  const unpriced = uncovered.some((u) => u.weight == null);
+  const coverage = round(lines.reduce((s, l) => s + l.weight, 0), 4), ok = coverage >= BASKET_MIN_COVERAGE && !unpriced;
   const value = shares || p.unit === 'usd' ? round(total, 2) : null;
   const moves = valueMoves(holdings.map((h) => ({ ticker: h.ticker, name: h.name, logo: h.logo, value: h.weight, ret: h.ret, headline: facts.companies[h.ticker]?.headline ?? null })));
 
@@ -108,7 +115,7 @@ export function computePortfolio(p: StoredPortfolio, facts: FactsFile, closes: R
   const until = addDays(facts.asOf, EARNINGS_DAYS);
   return {
     kind: p.kind, name: p.name, asOf: facts.asOf, unit: p.unit, value, ret: moves.ret, since, coverage, state: ok ? 'ok' : 'low', uncovered,
-    target: ok ? basketTarget(lines, value ?? 1) : null, consensus: ok ? basketConsensus(lines) : null, pe: ok ? basketPe(lines) : null, questions: ok ? basketQuestions(lines, coverage) : null,
+    target: ok ? basketTarget(lines, value ?? NO_VALUE_BASE) : null, consensus: ok ? basketConsensus(lines) : null, pe: ok ? basketPe(lines) : null, questions: ok ? basketQuestions(lines, coverage) : null,
     moves: { sum: moves.ret, up: moves.up, down: moves.down },
     holdings,
     earnings: lines.filter((l) => l.f.nextEarnings != null && l.f.nextEarnings > facts.asOf && l.f.nextEarnings <= until)

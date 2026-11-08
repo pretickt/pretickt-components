@@ -255,6 +255,8 @@ export class PtBasket {
   protected readonly lead = computed(() => basketLead(this.label(), this.data()?.questions ?? null, this.whole()));
   protected readonly lowLine = computed(() => {
     const c = this.data()?.coverage ?? 0, p = this.pf();
+    const unpriced = p?.uncovered.filter((u) => u.weight == null).map((u) => u.name) ?? [];
+    if (unpriced.length) return `We cannot price ${unpriced.join(', ')}, so we cannot say how much of ${this.of()} we cover: its figures need ${level(BASKET_MIN_COVERAGE, 0)}.`;
     if (p) return `We cover ${level(c, 0)} of ${this.of()}: its figures need ${level(BASKET_MIN_COVERAGE, 0)}.${p.uncovered.length ? ` Not covered: ${p.uncovered.slice(0, 5).map((u) => u.name).join(', ')}.` : ''}`;
     return c < BASKET_MIN_COVERAGE ? `We cover ${level(c, 0)} of this fund, under the ${level(BASKET_MIN_COVERAGE, 0)} these figures need.`
       : 'We have no good read of this fund\'s holdings in the last 7 days, so these figures are off for now.';

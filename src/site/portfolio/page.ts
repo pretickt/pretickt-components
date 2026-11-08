@@ -23,7 +23,8 @@ const holds = (n: number) => (n === 0 ? 'holds-none' : n === 1 ? 'holds-one' : n
   imports: [PtBasket, PtPortfolioEditor, PtPortfolioLine],
   // pt-basket's context (a placement gets it from its slot): with a payload it asks nothing
   providers: [Pt],
-  host: { 'data-beacon': BEACON },
+  // the site's hover cards listen on the document and ask the API for the ticker they show: here a hover stays inside, so no request names a holding
+  host: { 'data-beacon': BEACON, '(pointerover)': '$event.stopPropagation()', '(pointerout)': '$event.stopPropagation()' },
   template: `
     @let f = facts();
     @if (f === undefined) {<p class="pt-note pt-busy">Loading the companies…</p>}
@@ -41,7 +42,7 @@ const holds = (n: number) => (n === 0 ? 'holds-none' : n === 1 ? 'holds-one' : n
             @if (b.consensus; as c) {<div><dt>Consensus · on {{ level(c.share, 0) }}</dt><dd>{{ c.label }}</dd></div>}
             @if (b.pe; as p) {<div><dt>P/E · on {{ level(p.share, 0) }}</dt><dd>{{ num(p.value, 1) }}x</dd></div>}
             @if (b.earnings[0]; as e) {<div><dt>Next earnings</dt><dd>{{ plainName(e.name) }} {{ dayMonth(e.date) }}</dd></div>}
-            <div><dt>Covered</dt><dd>{{ level(b.coverage, 0) }}</dd></div>
+            <div><dt>Covered</dt><dd>{{ unpriced(b) ? 'not known' : level(b.coverage, 0) }}</dd></div>
           </dl>
           <h2 class="pt-pf-h">Why it moved</h2><pt-basket [payload]="b" section="moves" />
           <h2 class="pt-pf-h">Holdings</h2><pt-basket [payload]="b" section="holdings" />
@@ -126,4 +127,6 @@ export class PtPortfolioPage {
   protected readonly plainName = plainName;
   protected readonly stock = stockHref;
   protected readonly tone = tone;
+  /** A holding in shares we cannot price: the share we cover is not known. */
+  protected readonly unpriced = (b: { uncovered: { weight: number | null }[] }) => b.uncovered.some((u) => u.weight == null);
 }
