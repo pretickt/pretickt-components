@@ -19,6 +19,7 @@ export type * from './metric';
 export type * from './move-breakdown';
 export type * from './news';
 export type * from './ongoing-moves';
+export type * from './portfolio';
 export type * from './price-series';
 export type * from './screen';
 export type * from './sector';
