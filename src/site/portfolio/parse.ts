@@ -256,9 +256,10 @@ function amountOf(r: Holding, look: Lookup): { kind: Kind; n: number | null } {
       const left = bare.filter((x) => !priceLike(x)), values = [...bare, ...usd].filter((v) => !priceLike(v));
       const fits = left.flatMap((q) => values.filter((v) => v !== q).map((v) => ({ q, miss: Math.abs(v / (q * c) - 1) }))).filter((f) => f.miss <= 0.35);
       if (fits.length) return { kind: 'shares', n: fits.sort((a, b) => a.miss - b.miss)[0]!.q };
-      if (left.length) return { kind: 'shares', n: left[0]! };
+      // no fit (a price far from tonight's close: an old export): shares are whole numbers far more often than prices
+      if (left.length) return { kind: 'shares', n: left.find((x) => Number.isInteger(x)) ?? left[0]! };
     }
-    return { kind: 'shares', n: bare[0]! };
+    return { kind: 'shares', n: bare.find((x) => Number.isInteger(x)) ?? bare[0]! };
   }
   if (usd.length) { const v = usd.filter((x) => !priceLike(x)); return { kind: 'usd', n: (v.length ? v : usd).at(-1)! }; }
   const pct = r.amounts.find((a) => a.kind === 'pct');

@@ -98,6 +98,8 @@ describe('reading a paste, whatever its format', () => {
   it('rows copied from finance sites: an unsigned change and its percent, a price paid, a symbol in brackets, a class after a space, an exchange list', () => {
     expect(got(read('Apple Inc AAPL 215.20 1.05 0.49% 10 2,152.00'))).toEqual([['AAPL', 10, null]]);
     expect(got(read('AAPL 215.20 +1.05 +0.49% 100 $180.00 $21,520.00'))).toEqual([['AAPL', 100, null]]);
+    // a price far from tonight's close (an old export): with no fit, the whole number is the shares, the one with cents the price
+    expect(got(read('NVDA 280.10 +2.15 +1.21% 25'))).toEqual([['NVDA', 25, null]]);
     expect(got(read('Apple (AAPL): 10 shares\nBRK B 4'))).toEqual([['AAPL', 10, null], ['BRK.B', 4, null]]);
     expect(got(read('NASDAQ:AAPL,NYSE:KO,NASDAQ:NVDA'))).toEqual([['AAPL', null, null], ['KO', null, null], ['NVDA', null, null]]);
   });
