@@ -303,20 +303,21 @@ export const stories = [
 
 ## Existing components (`dist/index.json`)
 `pt-company-header` (first on each company page, `size` full on the main page, low on the sub-pages: price over three months and the session, badges in Bullish / Neutral / Bearish bands that
-follow the delayed price while the page is open; keeps its height at every update; the rule is `lean`, not the catalogue's tone; the strip below reads its classes) ·
+follow the delayed price while the page is open; keeps its height at every update; the rule is `lean`, not the catalogue's tone; the strip below reads its classes; with `sector`, the sector's value line and its basket's badges) ·
 `pt-basket` (a fund's sections, one per placement, `section` moves | holdings | analysts | questions | faq: why it moved with the companies behind it, keeping its height when the delayed prices arrive; what it holds; target, consensus and P/E, each saying how much of the fund it rests on; the questions about the business as shares of the weight, never a yes or a no; a fund we cover under 80% shows none of those figures; with `sector` in place of `ticker`, the same sections for a sector's companies, weighted by market value, its move the sum of their points, every company in the server's HTML) · `pt-company-card` (the company at a glance — logo, price over 60 sessions, 52-week range, consensus, PT, tags with "Show all";
 `size` wide = page header, compact = the hover card; once the wide card has scrolled under the header, the page app shows the
 company in the header — `src/site/cobar.ts` copies the text of `.pt-card-name`, `.pt-card-who .pt-meta`, `.pt-card-close` and
 `.pt-card-pt`, so keep those classes) · `pt-metric` (badge strip of the catalogue) · `pt-price-events` (price line +
-E/D/S/A markers grouped per day, range toggles, zoom & pan) · `pt-price-target` (the targets upright first — a rail from the lowest to the highest target, green above today's price and red
-below, a dot per firm's latest target, today as a dark pill, low/average/median/high with their distance from today — then beta's
-pt-chart: clustered target dots, gradient segments, hover panel of the analysts, zoom & pan) · `pt-answer` (the page's question answered first, in a sentence or two, from the data the page already asks for; `topic` forecast |
-price-target | peers | financials | insiders | basket with `ticker`, list with `list` and optional `sector`, earnings | dividends with `month`) ·
+E/D/S/A markers grouped per day, range toggles, zoom & pan; `fund` for a fund's ticker; with `sector`, the sector's value line and its largest companies' events) · `pt-price-target` (beta's
+pt-chart: clustered target dots, gradient segments from the price when posted, the last close and the high, average and low targets on the price axis, the consensus by month
+below, hover panel of the analysts, zoom & pan; with `basket` and a fund's ticker, or with `sector`, the basket's target week by week on its line, the panel naming the week's
+largest companies with their logos and upside then) · `pt-answer` (the page's question answered first, in a sentence or two, from the data the page already asks for; `topic` forecast |
+price-target | peers | financials | insiders | basket with `ticker`, sector with `sector`, list with `list` and optional `sector`, earnings | dividends with `month`) ·
 `pt-calendar` (month grid + macro dates + full list, previous/next month; `kind`
 earnings|dividend; `view: 'week'` + `start` = five sessions for the home page; "+N more" opens the whole day) · `pt-why-today`
 (answer-first sentence + market/sector/stock bars + news spike) · `pt-screen` (ranked table with list-specific column and sparklines;
 `list` or `peersOf`, optional `sector`; grows by 20 up to every company) · `pt-financials` (quarterly revenue/FCF bars + margins table) · `pt-news` (headlines with AI sentiment dots,
-nofollow links) · `pt-insiders` (buy/sell totals + Form 4 table) · `pt-movers` (beta's "Ongoing moves" tornado for the home: this
+nofollow links; `ticker`, or `sector` for its 10 largest companies' stories) · `pt-insiders` (buy/sell totals + Form 4 table) · `pt-movers` (beta's "Ongoing moves" tornado for the home: this
 week's losers left, gainers right, the largest — or with the toggle the biggest moves — in the middle; week / 30 / 90 days in three
 shades with a legend, ⚠ when the industry moves too, the market chip; each bar links its company with its numbers as tooltip rows;
 while a session newer than the data runs, a thin dark line per company for today's delayed move, read once when the page opens, with its time and delay in the legend;
