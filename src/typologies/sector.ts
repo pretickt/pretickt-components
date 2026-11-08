@@ -19,8 +19,8 @@ const Text = z.string().check(z.minLength(1));
 export const SECTOR_BADGES = ['pt_upside', 'consensus', 'pe', 'earnings_in', 'news', 'market_cap'] as const;
 /** The questions whose rule does not read a sector's business: banks get no Advantage and a Fragility of holders only (design 2026-11-07). */
 export const SECTOR_NOT_COMPARABLE: Readonly<Partial<Record<Sector, readonly ValueKey[]>>> = { 'Financial Services': ['advantage', 'fragility'] };
-/** Who Fragility's base leaves out (the Altman score reads their normal debt as distress): a sector made of them reads it not comparable. */
-export const FRAGILITY_NOT_READ: readonly Sector[] = ['Utilities', 'Real Estate'];
+export { FRAGILITY_NOT_READ } from './values';
+import { FRAGILITY_NOT_READ } from './values';
 
 export const SectorParams = z.object({ sector: z.enum(SECTORS) });
 /** A company of the sector, with its close at `asOf`: the browser draws the sector's line of the session from the companies' bars. */

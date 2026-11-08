@@ -78,6 +78,7 @@ export * from './analysts';
 export * from './fundamentals';
 export * from './basket';
 export * from './basket-words';
+export * from './basket-math';
 export * from './sector';
 export * from './company';
 export * from './insider';

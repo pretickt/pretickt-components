@@ -81,6 +81,11 @@ export const FEED_DAYS = { back: 120, ahead: 60 } as const;
 /** A card's chart: at most this many closes (around a past event, or the last ones before a coming event). */
 export const FEED_SPARK_MAX = 40;
 
+/** The six questions of pt-value, in their order. */
+export const VALUE_KEYS = ['demand', 'advantage', 'economics', 'execution', 'fragility', 'price'] as const;
+/** Who Fragility's base leaves out (the Altman score reads their normal debt as distress): a sector made of them reads it not comparable. */
+export const FRAGILITY_NOT_READ: readonly Sector[] = ['Utilities', 'Real Estate'];
+
 /** A fund's share on the site under which no basket figure is shown (design 2026-11-05). */
 export const BASKET_MIN_COVERAGE = 0.8;
 /** The companies behind a fund's move, a side. */

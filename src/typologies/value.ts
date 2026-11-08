@@ -7,7 +7,9 @@ import { IsoDate, Ticker } from './common';
  * names the company, the number and the date. A fact without data has no card and a question without cards is left out: never a
  * placeholder on a public page. The nightly reads the numbers (FMP, SEC EDGAR, the agents' facts); the resolver writes the words.
  */
-export const VALUE_KEYS = ['demand', 'advantage', 'economics', 'execution', 'fragility', 'price'] as const;
+// the six questions' keys live with the zod-free constants (values.ts), so the basket math reaches the browser without zod
+export { VALUE_KEYS } from './values';
+import { VALUE_KEYS } from './values';
 export const VALUE_TONES = ['pos', 'flat', 'neg', 'na'] as const;
 /** The nine Piotroski checks, in their order (the nightly counts them from the statements: `piotroski_checks`). */
 export const PIOTROSKI_CHECKS = ['roa', 'cfo', 'droa', 'accruals', 'leverage', 'liquidity', 'shares', 'margin', 'turnover'] as const;
