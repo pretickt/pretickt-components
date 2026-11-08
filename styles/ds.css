@@ -478,9 +478,11 @@
 
   /* companies: logo, ticker, name */
   .pt-logo { @apply inline-block shrink-0 rounded-md object-contain align-middle; }
-  /* a white logo on the white page (Nike, Visa, Boeing, IBM): the shadow draws its outline; on the others it is a faint edge.
-     It follows the image's own shape, so the logo has no background of its own. */
-  img.pt-logo, .pt-mv-co image, .pt-lm-logo { filter: drop-shadow(0 0 0.5px color-mix(in oklab, var(--color-ink) 75%, transparent)) drop-shadow(0 0px 1.5px color-mix(in oklab, var(--color-ink) 28%, transparent)); }
+  /* a white logo on the white page (Nike, Visa, Boeing, IBM): the shadow draws its outline, following the image's own shape. Only there (Romeo,
+     2026-11-08: «I loghi a cui non serve l'ombra toglila»): the nightly names those files `.light.` (48 of 602), the portfolio page marks their
+     cut-outs `light=1`; every other logo shows on white by itself. */
+  img.pt-logo:is([src*=".light."], [src^="data:image/png;light=1;"]), .pt-mv-co image[href*=".light."], .pt-lm-logo[href*=".light."] {
+    filter: drop-shadow(0 0 0.5px color-mix(in oklab, var(--color-ink) 75%, transparent)) drop-shadow(0 0px 1.5px color-mix(in oklab, var(--color-ink) 28%, transparent)); }
   .pt-logo-initials { @apply inline-flex items-center justify-center bg-primary/10 text-[0.6rem] font-semibold leading-none text-primary; }
   .pt-co { @apply inline-flex min-w-0 items-center gap-1.5 text-ink no-underline hover:text-primary; }
   /* a company named in a sentence (PtMention): its logo, its name, its ticker, kept on one line; its card opens on hover */
