@@ -29,10 +29,11 @@ export const FactsFund = z.object({ name: Text, logo: z.nullable(z.string()), cl
 /**
  * Every logo on one sheet (`/logos/sprite.<hash>.webp`), the same file for every reader: a company's own logo file names it, so the page never asks for
  * one (the facts' own `logo` is not used there). `px`-square cells, `cols` a row, in the order of `tickers`; the page cuts out its lines' logos.
- * `light`: the white logos, which keep the outline the stylesheet draws (the others show on white by themselves).
+ * How a logo shows on the white page, as the stylesheet draws it: `white`, the white logos, drawn dark; `light`, the pale ones with a colour of their own,
+ * outlined (the others show by themselves).
  */
 export const FactsSprite = z.object({ file: z.string().check(z.regex(/^\/logos\/sprite\.[0-9a-f]{8}\.webp$/)), px: z.int().check(z.positive()), cols: z.int().check(z.positive()),
-  tickers: z.array(Ticker), light: z.optional(z.array(Ticker)) });
+  tickers: z.array(Ticker), light: z.optional(z.array(Ticker)), white: z.optional(z.array(Ticker)) });
 export const FactsFile = z.object({ v: z.literal(1), asOf: IsoDate, companies: z.record(Ticker, FactsCompany), funds: z.record(Ticker, FactsFund),
   /** Each company's corporate break (CTVA's spin-off): a purchase before it has no return, its closes before it being on another basis. */
   breaks: z.optional(z.record(Ticker, IsoDate)), sprite: z.optional(FactsSprite) });

@@ -11,8 +11,8 @@ export class PtLogo {
   readonly ticker = input.required<string>();
   readonly src = input<string | null>(null);
   readonly size = input(20);
-  // only the site's own logo paths, or a PNG the portfolio page cut out of the site's sheet of logos (no request; `light=1` a white one, outlined
-  // like a `.light.` file): anything else (an external URL from old data) draws the initials
-  protected readonly site = computed(() => { const s = this.src(); return s && /^(\/logos\/[a-z0-9.-]{1,40}|data:image\/png(;light=1)?;base64,[\w+/=]+)$/.test(s) ? s : null; });
+  // only the site's own logo paths, or a PNG the portfolio page cut out of the site's sheet of logos (no request; `white=1` / `light=1` drawn like a
+  // `.white.` / `.light.` file): anything else (an external URL from old data) draws the initials
+  protected readonly site = computed(() => { const s = this.src(); return s && /^(\/logos\/[a-z0-9.-]{1,40}|data:image\/png(;(light|white)=1)?;base64,[\w+/=]+)$/.test(s) ? s : null; });
   protected readonly initials = computed(() => this.ticker().replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase());
 }

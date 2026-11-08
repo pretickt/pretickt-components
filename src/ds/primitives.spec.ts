@@ -83,7 +83,8 @@ describe('PtBadge', () => {
     <pt-logo ticker="BRK.B" src="/logos/brk.b.1a2b3c4d.webp" />
     <pt-logo ticker="AAPL" src="data:image/png;base64,iVBORw0KGgo=" />
     <pt-logo ticker="AAPL" src="data:image/svg+xml;base64,PHN2Zz4=" />
-    <pt-logo ticker="NKE" src="data:image/png;light=1;base64,iVBORw0KGgo=" />
+    <pt-logo ticker="MCD" src="data:image/png;light=1;base64,iVBORw0KGgo=" />
+    <pt-logo ticker="NKE" src="data:image/png;white=1;base64,iVBORw0KGgo=" />
     <a ptCompany ticker="NVDA" name="NVIDIA Corporation" logo="/logos/nvda"></a>
     <a ptCompany ticker="AMD" [logo]="null"></a>`,
 })
@@ -103,8 +104,9 @@ describe('PtLogo / PtCompany', () => {
     // a logo the portfolio page cut out of the sheet of every logo: a PNG in the page itself, no request; never another kind of data
     expect(logos[4]!.querySelector('img')!.getAttribute('src')).toBe('data:image/png;base64,iVBORw0KGgo=');
     expect(logos[5]!.querySelector('img')).toBeNull();
-    // a white logo's cut-out, marked for the outline the stylesheet draws on white logos only
+    // cut-outs marked for how the stylesheet draws them: a pale coloured logo outlined, a white one drawn dark
     expect(logos[6]!.querySelector('img')!.getAttribute('src')).toBe('data:image/png;light=1;base64,iVBORw0KGgo=');
+    expect(logos[7]!.querySelector('img')!.getAttribute('src')).toBe('data:image/png;white=1;base64,iVBORw0KGgo=');
     const [nvda, amd] = [...el.querySelectorAll('a')];
     expect([nvda!.className, nvda!.getAttribute('href'), nvda!.querySelector('.pt-co-t')!.textContent, nvda!.querySelector('.pt-co-n')!.textContent])
       .toEqual(['pt-co', '/stocks/nvda/', 'NVDA', 'NVIDIA Corporation']);

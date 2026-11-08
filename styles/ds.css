@@ -478,10 +478,12 @@
 
   /* companies: logo, ticker, name */
   .pt-logo { @apply inline-block shrink-0 rounded-md object-contain align-middle; }
-  /* a white logo on the white page (Nike, Visa, Boeing, IBM): the shadow draws its outline, following the image's own shape. Only there (Romeo,
-     2026-11-08: «I loghi a cui non serve l'ombra toglila»): the nightly names those files `.light.` (48 of 602), the portfolio page marks their
-     cut-outs `light=1`; every other logo shows on white by itself. */
-  img.pt-logo:is([src*=".light."], [src^="data:image/png;light=1;"]), .pt-mv-co image[href*=".light."], .pt-lm-logo[href*=".light."] {
+  /* logos that vanish on the white page (Romeo, 2026-11-08: «I loghi a cui non serve l'ombra toglila», «ibm si vede proprio male»): the nightly
+     names their files, the portfolio page marks its cut-outs. A white one (`.white.`, `white=1`: Nike, IBM, Visa… 47 of 602) is drawn dark, as a
+     one-colour logo is printed; a pale one with a colour of its own (`.light.`, `light=1`: McDonald's) keeps it, with an outline that follows its
+     shape. Every other logo shows on white by itself. The market map's logos sit on tiles coloured by the move: every one keeps the outline there. */
+  img.pt-logo:is([src*=".white."], [src^="data:image/png;white=1;"]), .pt-mv-co image[href*=".white."] { filter: brightness(0) invert(13%); }
+  img.pt-logo:is([src*=".light."], [src^="data:image/png;light=1;"]), .pt-mv-co image[href*=".light."], .pt-lm-logo {
     filter: drop-shadow(0 0 0.5px color-mix(in oklab, var(--color-ink) 75%, transparent)) drop-shadow(0 0px 1.5px color-mix(in oklab, var(--color-ink) 28%, transparent)); }
   .pt-logo-initials { @apply inline-flex items-center justify-center bg-primary/10 text-[0.6rem] font-semibold leading-none text-primary; }
   .pt-co { @apply inline-flex min-w-0 items-center gap-1.5 text-ink no-underline hover:text-primary; }

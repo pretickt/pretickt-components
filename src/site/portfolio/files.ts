@@ -46,9 +46,9 @@ export function fetchFiles(buildId: string, f: typeof fetch = fetch, image: (src
         if (n < 0) continue;
         g.clearRect(0, 0, s.px, s.px);
         g.drawImage(img, (n % s.cols) * s.px, Math.floor(n / s.cols) * s.px, s.px, s.px, 0, 0, s.px, s.px);
-        // a white logo keeps its outline: marked in its data URL, where the stylesheet finds it as it finds a `.light.` file
-        const url = c.toDataURL();
-        out.set(t, s.light?.includes(t) ? url.replace('data:image/png;base64,', 'data:image/png;light=1;base64,') : url);
+        // a white or pale logo is marked in its data URL, where the stylesheet finds it as it finds a `.white.` or `.light.` file
+        const kind = s.white?.includes(t) ? 'white' : s.light?.includes(t) ? 'light' : null;
+        out.set(t, kind ? c.toDataURL().replace('data:image/png;base64,', `data:image/png;${kind}=1;base64,`) : c.toDataURL());
       }
       return out;
     },
