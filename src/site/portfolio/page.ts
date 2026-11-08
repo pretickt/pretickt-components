@@ -83,16 +83,27 @@ export class PtPortfolioPage {
   protected readonly saving = signal(this.start.saving);
   private readonly closes = signal<ReadonlyMap<string, ClosesFile>>(new Map());
   private readonly asked = new Set<string>();
+  /** The lines' logos, cut out of the one sheet every reader loads (a company's own logo file would name it). */
+  private readonly logos = signal<ReadonlyMap<string, string>>(new Map());
+  private readonly cut = new Set<string>();
   private readonly needLine = signal(false);
   private readonly lineBox = viewChild<ElementRef<HTMLElement>>('lineBox');
 
   protected readonly current = computed(() => { const s = this.stored(); return s.list.find((p) => p.id === s.active) ?? s.list[0] ?? EXAMPLE; });
   protected readonly example = computed(() => this.current() === EXAMPLE);
-  protected readonly basket = computed(() => { const f = this.facts(); return f ? computePortfolio(this.current(), f, this.closes()) : null; });
+  protected readonly basket = computed(() => { const f = this.facts(); return f ? computePortfolio(this.current(), f, this.closes(), this.logos()) : null; });
   protected readonly line = computed(() => { const f = this.facts(), one = this.closes().get('1y'); return f && one ? yearLine(this.current(), f, one) : null; });
 
   constructor() {
     void this.files.facts().then((f) => this.facts.set(f));
+    // the logos of the lines on the sheet, each cut once
+    effect(() => {
+      const s = this.facts()?.sprite;
+      const want = s ? [...new Set(this.current().rows.map((r) => r.t))].filter((t) => !this.cut.has(t) && s.tickers.includes(t)) : [];
+      if (!s || !want.length) return;
+      for (const t of want) this.cut.add(t);
+      void this.files.logos(s, want).then((m) => { if (m.size) this.logos.set(new Map([...this.logos(), ...m])); });
+    });
     // the year's file when the line comes into view, or at once for purchase dates; then the calendar years older dates need
     effect(() => {
       const p = this.current(), f = this.facts();

@@ -71,22 +71,23 @@ function sinceOf(lots: readonly StoredRow[], now: number | null, then: (d: strin
 }
 
 /**
- * A logo's file names its company (nvda.1a2b3c4d.png): fetched from this page, it would tell the server what the reader holds. So the reader's
- * holdings show their initials here, never a logo (Romeo, 2026-11-08: the portfolio's data stay offline, in the browser). Once per facts file.
+ * A logo's file names its company (nvda.1a2b3c4d.png): fetched from this page, it would tell the server what the reader holds (Romeo, 2026-11-08:
+ * the portfolio's data stay offline, in the browser). So the logos here are the ones the page cut out of the sheet every reader loads (`cut`, as
+ * data URLs), never a facts file's own; a line without one shows its initials. Once per facts file and set of logos.
  */
-const unbranded = new WeakMap<FactsFile, FactsFile>();
-function withoutLogos(f: FactsFile): FactsFile {
-  let out = unbranded.get(f);
-  if (!out) {
-    out = { ...f, companies: Object.fromEntries(Object.entries(f.companies).map(([t, c]) => [t, { ...c, logo: null }])),
-      funds: Object.fromEntries(Object.entries(f.funds).map(([t, x]) => [t, { ...x, logo: null }])) };
-    unbranded.set(f, out);
-  }
+const NO_LOGOS: ReadonlyMap<string, string> = new Map();
+const branded = new WeakMap<FactsFile, { cut: ReadonlyMap<string, string>; out: FactsFile }>();
+function withLogos(f: FactsFile, cut: ReadonlyMap<string, string>): FactsFile {
+  const was = branded.get(f);
+  if (was?.cut === cut) return was.out;
+  const out = { ...f, companies: Object.fromEntries(Object.entries(f.companies).map(([t, c]) => [t, { ...c, logo: cut.get(t) ?? null }])),
+    funds: Object.fromEntries(Object.entries(f.funds).map(([t, x]) => [t, { ...x, logo: cut.get(t) ?? null }])) };
+  branded.set(f, { cut, out });
   return out;
 }
 
-export function computePortfolio(p: StoredPortfolio, input: FactsFile, closes: ReadonlyMap<string, ClosesFile>): PortfolioBasket {
-  const facts = withoutLogos(input);
+export function computePortfolio(p: StoredPortfolio, input: FactsFile, closes: ReadonlyMap<string, ClosesFile>, logos = NO_LOGOS): PortfolioBasket {
+  const facts = withLogos(input, logos);
   const lots = new Map<string, StoredRow[]>();
   for (const row of p.rows) lots.set(row.t, [...(lots.get(row.t) ?? []), row]);
   const shares = p.unit === 'shares';

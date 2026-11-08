@@ -26,9 +26,15 @@ export const FactsCompany = z.object({
  */
 export const FactsFund = z.object({ name: Text, logo: z.nullable(z.string()), close: z.number(), ret: Num, coverage: z.number(), weights: z.array(z.tuple([Ticker, z.number()])),
   old: z.optional(z.literal(true)) });
+/**
+ * Every logo on one sheet (`/logos/sprite.<hash>.webp`), the same file for every reader: a company's own logo file names it, so the page never asks for
+ * one (the facts' own `logo` is not used there). `px`-square cells, `cols` a row, in the order of `tickers`; the page cuts out its lines' logos.
+ */
+export const FactsSprite = z.object({ file: z.string().check(z.regex(/^\/logos\/sprite\.[0-9a-f]{8}\.webp$/)), px: z.int().check(z.positive()), cols: z.int().check(z.positive()),
+  tickers: z.array(Ticker) });
 export const FactsFile = z.object({ v: z.literal(1), asOf: IsoDate, companies: z.record(Ticker, FactsCompany), funds: z.record(Ticker, FactsFund),
   /** Each company's corporate break (CTVA's spin-off): a purchase before it has no return, its closes before it being on another basis. */
-  breaks: z.optional(z.record(Ticker, IsoDate)) });
+  breaks: z.optional(z.record(Ticker, IsoDate)), sprite: z.optional(FactsSprite) });
 
 const ascending = (d: readonly string[]) => d.every((x, i) => i === 0 || d[i - 1]! < x);
 /** Closes on the dates, one value a date (null before a ticker's first close or before its corporate break). */
@@ -62,4 +68,5 @@ export type PortfolioBasket = z.infer<typeof PortfolioBasket>;
 export type FactsCompany = z.infer<typeof FactsCompany>;
 export type FactsFund = z.infer<typeof FactsFund>;
 export type FactsFile = z.infer<typeof FactsFile>;
+export type FactsSprite = z.infer<typeof FactsSprite>;
 export type ClosesFile = z.infer<typeof ClosesFile>;

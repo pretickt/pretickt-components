@@ -18,14 +18,17 @@ class Mem implements Storage {
   setItem(k: string, v: string) { this.m.set(k, v); }
 }
 
-async function mount(stored: Stored | string | null = null, o: { fail?: string[] } = {}) {
-  const storage = new Mem(), asked: string[] = [], events: string[] = [];
+async function mount(stored: Stored | string | null = null, o: { fail?: string[]; sheet?: string[] } = {}) {
+  const storage = new Mem(), asked: string[] = [], events: string[] = [], logos: string[][] = [];
+  const facts = o.sheet ? { ...DEMO_FACTS, sprite: { file: '/logos/sprite.1a2b3c4d.webp', px: 40, cols: 25, tickers: o.sheet } } : DEMO_FACTS;
+  // a logo cut out of the sheet, as the browser gives it (here its ticker in base64, so a test can tell whose it is)
+  const cut = async (_s: unknown, ts: readonly string[]) => { logos.push([...ts]); return new Map(ts.map((t) => [t, `data:image/png;base64,${btoa(t)}`])); };
   if (stored) storage.setItem(PORTFOLIO_KEY, typeof stored === 'string' ? stored : JSON.stringify(stored));
   const listen = (e: Event) => events.push(`${(e.target as Element).closest('[data-beacon]')?.getAttribute('data-beacon')}|${(e as CustomEvent<{ action: string }>).detail.action}`);
   document.addEventListener('pt-interact', listen);
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({ providers: [
-    { provide: PT_PORTFOLIO_FILES, useValue: { facts: async () => DEMO_FACTS, closes: async (k: string) => { asked.push(k); return o.fail?.includes(k) ? null : DEMO_CLOSES.get(k) ?? null; } } },
+    { provide: PT_PORTFOLIO_FILES, useValue: { facts: async () => facts, closes: async (k: string) => { asked.push(k); return o.fail?.includes(k) ? null : DEMO_CLOSES.get(k) ?? null; }, logos: cut } },
     { provide: PT_PORTFOLIO_STORAGE, useValue: () => storage },
     { provide: PT_STORE, useValue: new PtStore({ server: false, resolve: async () => null }) },
   ] });
@@ -36,7 +39,7 @@ async function mount(stored: Stored | string | null = null, o: { fail?: string[]
   const el = f.nativeElement as HTMLElement;
   const press = async (label: string) => { [...el.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent!.trim() === label)!.click(); await settle(); };
   const sum = () => Object.fromEntries([...el.querySelectorAll('.pt-pf-sum div')].map((d) => [d.querySelector('dt')!.textContent!.trim(), d.querySelector('dd')!.textContent!.trim()]));
-  return { el, storage, asked, events, press, sum, settle, text: () => el.textContent!.replace(/\s+/g, ' '), h2: () => [...el.querySelectorAll('h2')].map((h) => h.textContent!.trim()) };
+  return { el, storage, asked, events, logos, press, sum, settle, text: () => el.textContent!.replace(/\s+/g, ' '), h2: () => [...el.querySelectorAll('h2')].map((h) => h.textContent!.trim()) };
 }
 
 describe('the portfolio page', () => {
@@ -129,6 +132,22 @@ describe('the portfolio page', () => {
     const usd = await mount({ v: 1, active: 'demo-low', list: [DEMO_PORTFOLIOS.low] });
     expect(usd.sum()['Value you entered']).toBeDefined();
     expect(usd.sum()['Value at the last close']).toBeUndefined();
+  });
+
+  it("the lines' logos, cut out of the one sheet every reader loads: asked once for the lines on it, shown in the table", async () => {
+    const m = await mount({ v: 1, active: 'demo-watch', list: [DEMO_PORTFOLIOS.watchlist, DEMO_PORTFOLIOS.low] }, { sheet: ['AAPL', 'AMD', 'NVDA', 'ZZZ'] });
+    expect(m.logos).toEqual([['NVDA', 'AMD']]);
+    const shown = () => [...m.el.querySelectorAll('pt-basket img')].map((i) => i.getAttribute('src'));
+    expect(shown()).toEqual(expect.arrayContaining([`data:image/png;base64,${btoa('NVDA')}`, `data:image/png;base64,${btoa('AMD')}`]));
+    // another portfolio: only its own new lines are asked
+    await m.press('Mostly elsewhere Portfolio');
+    expect(m.logos).toEqual([['NVDA', 'AMD'], ['AAPL']]);
+    expect(shown()).toContain(`data:image/png;base64,${btoa('AAPL')}`);
+    expect(shown().join(' ')).not.toContain('/logos/');
+    // facts with no sheet: no logo asked, the initials
+    const none = await mount({ v: 1, active: 'demo-watch', list: [DEMO_PORTFOLIOS.watchlist] });
+    expect(none.logos).toEqual([]);
+    expect(none.el.querySelectorAll('pt-basket img')).toHaveLength(0);
   });
 
   it("today is the reader's own date, not the UTC one", () => {

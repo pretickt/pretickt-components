@@ -81,6 +81,8 @@ describe('PtBadge', () => {
     <pt-logo ticker="BRK.B" [src]="null" />
     <pt-logo ticker="NVDA" src="https://evil.example/x.png" />
     <pt-logo ticker="BRK.B" src="/logos/brk.b.1a2b3c4d.webp" />
+    <pt-logo ticker="AAPL" src="data:image/png;base64,iVBORw0KGgo=" />
+    <pt-logo ticker="AAPL" src="data:image/svg+xml;base64,PHN2Zz4=" />
     <a ptCompany ticker="NVDA" name="NVIDIA Corporation" logo="/logos/nvda"></a>
     <a ptCompany ticker="AMD" [logo]="null"></a>`,
 })
@@ -97,6 +99,9 @@ describe('PtLogo / PtCompany', () => {
     expect([initials.className, initials.textContent, initials.style.width, initials.getAttribute('aria-hidden')]).toEqual(['pt-logo pt-logo-initials', 'BR', '20px', 'true']);
     expect(logos[2]!.querySelector('img')).toBeNull(); // only the site's own logo paths
     expect(logos[3]!.querySelector('img')!.getAttribute('src')).toBe('/logos/brk.b.1a2b3c4d.webp');
+    // a logo the portfolio page cut out of the sheet of every logo: a PNG in the page itself, no request; never another kind of data
+    expect(logos[4]!.querySelector('img')!.getAttribute('src')).toBe('data:image/png;base64,iVBORw0KGgo=');
+    expect(logos[5]!.querySelector('img')).toBeNull();
     const [nvda, amd] = [...el.querySelectorAll('a')];
     expect([nvda!.className, nvda!.getAttribute('href'), nvda!.querySelector('.pt-co-t')!.textContent, nvda!.querySelector('.pt-co-n')!.textContent])
       .toEqual(['pt-co', '/stocks/nvda/', 'NVDA', 'NVIDIA Corporation']);

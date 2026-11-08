@@ -14,4 +14,14 @@ describe("the portfolio page's files", () => {
     expect(await fetchFiles('b', (async () => new Response('', { status: 404 })) as unknown as typeof fetch).facts()).toBeNull();
     expect(await fetchFiles('b', (async () => { throw new Error('offline'); }) as unknown as typeof fetch).facts()).toBeNull();
   });
+
+  it('loads the one sheet of logos once, never a file that names a company; a sheet that does not come is no logo', async () => {
+    const loaded: string[] = [];
+    const files = fetchFiles('b', fetch, async (src) => { loaded.push(src); return null; });
+    const sheet = { file: '/logos/sprite.1a2b3c4d.webp', px: 40, cols: 25, tickers: ['AAPL', 'MSFT'] };
+    expect(await files.logos({ ...sheet, file: '/logos/aapl.1a2b3c4d.webp' }, ['AAPL'])).toEqual(new Map());
+    expect(await files.logos(sheet, ['AAPL'])).toEqual(new Map());
+    expect(await files.logos(sheet, ['MSFT'])).toEqual(new Map());
+    expect(loaded).toEqual(['/logos/sprite.1a2b3c4d.webp']);
+  });
 });

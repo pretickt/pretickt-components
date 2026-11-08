@@ -60,6 +60,17 @@ describe('a portfolio computed on the page', () => {
     expect(JSON.stringify(b)).not.toContain('/logos/');
   });
 
+  it("the logos come from the one sheet every reader loads, cut out on the page: each line's own, never a company's file", () => {
+    const named: FactsFile = { ...FACTS, companies: { ...FACTS.companies, AAA: { ...FACTS.companies.AAA!, logo: '/logos/aaa.1a2b3c4d.png' } } };
+    const cut = new Map([['AAA', 'data:image/png;base64,QUFB'], ['VOO', 'data:image/png;base64,Vk9P']]);
+    const b = computePortfolio(pf({ rows: [{ t: 'AAA', n: 5, d: null }, { t: 'BBB', n: 3, d: null }, { t: 'VOO', n: 1, d: null }] }), named, CLOSES, cut);
+    expect(Object.fromEntries(b.holdings.map((h) => [h.ticker, h.logo]))).toEqual({ AAA: 'data:image/png;base64,QUFB', BBB: null, VOO: 'data:image/png;base64,Vk9P' });
+    expect(JSON.stringify(b)).not.toContain('/logos/');
+    // the same facts with more logos cut: the page shows them, the earlier result is not reused
+    const more = computePortfolio(pf({ rows: [{ t: 'BBB', n: 3, d: null }] }), named, CLOSES, new Map([...cut, ['BBB', 'data:image/png;base64,QkJC']]));
+    expect(more.holdings[0]!.logo).toBe('data:image/png;base64,QkJC');
+  });
+
   it("a fund whose holdings list is out of date is not looked through, and says why: its old list is not tonight's companies", () => {
     const old: FactsFile = { ...FACTS, funds: { VOO: { ...FACTS.funds.VOO!, coverage: 0, weights: [], old: true } } };
     const b = computePortfolio(pf({ unit: 'usd', rows: [{ t: 'VOO', n: 1000, d: null }, { t: 'AAA', n: 1000, d: null }] }), old, CLOSES);
