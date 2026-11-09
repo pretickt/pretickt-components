@@ -1,11 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 import { DEMO_FACTS, DEMO_PORTFOLIOS } from '../../stories/fake-portfolio';
+import { PT_PORTFOLIO_AI, type AiAnswer, type AiReader } from './ai';
 import { PtPortfolioEditor } from './editor';
 import type { Stored } from './store';
 
 const EMPTY: Stored = { v: 1, active: null, list: [] };
 
-async function mount(stored: Stored = EMPTY, saving = true) {
+async function mount(stored: Stored = EMPTY, saving = true, ai?: AiReader) {
+  if (ai) TestBed.configureTestingModule({ providers: [{ provide: PT_PORTFOLIO_AI, useValue: ai }] });
   const f = TestBed.createComponent(PtPortfolioEditor);
   f.componentRef.setInput('stored', stored);
   f.componentRef.setInput('facts', DEMO_FACTS);
@@ -111,5 +113,73 @@ describe('pt-portfolio-editor: portfolios and watchlists kept in this browser', 
   it('private window: it works and says nothing is saved', async () => {
     expect((await mount(EMPTY, false)).text()).toContain('This browser does not keep data: nothing is saved after this visit.');
     expect((await mount(EMPTY, true)).text()).toContain("Saved only in this browser. Clearing the site's data removes it.");
+  });
+});
+
+describe("pt-portfolio-editor: Read asks the site's AI (Romeo, 2026-11-09: «Per il parsing dobbiamo usare sicuramente una LLM»)", () => {
+  const asked: [string, string][] = [];
+  const reader = (answer: AiAnswer | Promise<AiAnswer>): AiReader => ({ read: async (text, kind) => { asked.push([text, kind]); return answer; } });
+  const rows = (el: HTMLElement) => [...el.querySelectorAll('.pt-pf-dr')].map((r) => [r.querySelector<HTMLInputElement>('input.pt-pf-sym')!.value, r.querySelector<HTMLInputElement>('input.pt-pf-n')!.value]);
+  const PASTE = 'APPLE INC;US0378331005;12\nNVIDIA CORP;US67066G1040;30\nISHARES CORE S&P 500;IE00B5BMR087;20';
+  beforeEach(() => { asked.length = 0; });
+
+  it("sends the pasted text and its kind, shows the AI's lines, and how many AI readings are left today", async () => {
+    const m = await mount(EMPTY, true, reader({ ok: true, left: 4, ignored: [], holdings: [
+      { line: 1, symbol: 'AAPL', name: 'APPLE INC', amount: 12, unit: 'shares', date: null }, { line: 2, symbol: null, name: 'NVIDIA CORP', amount: 30, unit: 'shares', date: null },
+      { line: 3, symbol: 'CSSPX', name: 'ISHARES CORE S&P 500', amount: 20, unit: 'shares', date: null }] }));
+    await m.press('New portfolio');
+    expect(m.text()).toContain('Read by AI: what you paste is sent to pretickt and to an AI service to be turned into lines, and is not kept. 5 readings a day.');
+    await m.type('textarea.pt-pf-paste', PASTE);
+    await m.press('Read');
+    expect(asked).toEqual([[PASTE, 'portfolio']]);
+    expect(rows(m.el)).toEqual([['AAPL', '12'], ['NVDA', '30'], ['CSSPX', '20']]);
+    expect(m.text()).toContain('Read by AI · 4 AI readings left today. Check the lines before you save.');
+    expect(m.text()).toContain('Not on pretickt: CSSPX.');
+  });
+  it("the day's five used: read in the browser, and said", async () => {
+    const m = await mount(EMPTY, true, reader({ ok: false, reason: 'limit' }));
+    await m.press('New portfolio');
+    await m.type('textarea.pt-pf-paste', 'AAPL 10\nNVDA 4');
+    await m.press('Read');
+    expect(rows(m.el)).toEqual([['AAPL', '10'], ['NVDA', '4']]);
+    expect(m.text()).toContain("Today's 5 AI readings are used: read without AI. Check the lines before you save.");
+  });
+  it('the AI not answering: read in the browser, and said', async () => {
+    const m = await mount(EMPTY, true, reader({ ok: false, reason: 'network' }));
+    await m.press('New watchlist');
+    await m.type('textarea.pt-pf-paste', 'AAPL\nNVDA');
+    await m.press('Read');
+    expect(asked).toEqual([['AAPL\nNVDA', 'watchlist']]);
+    expect([...m.el.querySelectorAll<HTMLInputElement>('input.pt-pf-sym')].map((i) => i.value)).toEqual(['AAPL', 'NVDA']);
+    expect(m.text()).toContain('The AI reader did not answer: read without AI. Check the lines before you save.');
+  });
+  it('while it reads: Reading…, the button off; a second press asks nothing more', async () => {
+    let done!: (a: AiAnswer) => void;
+    const m = await mount(EMPTY, true, reader(new Promise<AiAnswer>((r) => { done = r; })));
+    await m.press('New portfolio');
+    await m.type('textarea.pt-pf-paste', 'AAPL 10');
+    await m.press('Read');
+    const btn = [...m.el.querySelectorAll<HTMLButtonElement>('.pt-pf-form button')].find((b) => b.textContent!.trim() === 'Reading…')!;
+    expect(btn.disabled).toBe(true);
+    done({ ok: true, left: 2, ignored: [], holdings: [{ line: 1, symbol: 'AAPL', name: null, amount: 10, unit: 'shares', date: null }] });
+    await m.settle();
+    expect(asked).toHaveLength(1);
+    expect(rows(m.el)).toEqual([['AAPL', '10']]);
+  });
+  it('Edit lines reads the saved lines in the browser: nothing is sent', async () => {
+    const m = await mount({ v: 1, active: 'demo-shares', list: [DEMO_PORTFOLIOS.shares] }, true, reader({ ok: false, reason: 'off' }));
+    await m.press('Edit lines');
+    expect(rows(m.el)[0]).toEqual(['AAPL', '40']);
+    expect(asked).toEqual([]);
+    expect(m.text()).not.toContain('Read by AI ·');
+    expect(m.text()).not.toContain('without AI');
+  });
+  it('a paste over 20,000 characters is read in the browser, and said', async () => {
+    const m = await mount(EMPTY, true, reader({ ok: false, reason: 'off' }));
+    await m.press('New portfolio');
+    await m.type('textarea.pt-pf-paste', `AAPL 10\n${'#'.repeat(20_000)}`);
+    await m.press('Read');
+    expect(asked).toEqual([]);
+    expect(m.text()).toContain('Over 20,000 characters: read without AI.');
   });
 });

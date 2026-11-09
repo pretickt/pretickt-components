@@ -3,7 +3,8 @@ import type { ClosesFile, FactsFile, FactsSprite } from '@pretickt/components/ty
 
 /**
  * Where the portfolio page reads its data: the nightly's files under /data/, the same for every reader (design 2026-11-07 Part B), and the one sheet
- * of every logo. A request names a file — the facts, the year, a calendar year, the sheet — never a symbol: a reader's holdings never leave the browser.
+ * of every logo. A request names a file — the facts, the year, a calendar year, the sheet — never a symbol: a reader's saved holdings never leave the
+ * browser (the only request that carries what the reader typed is the paste they ask the site's AI to read, ai.ts).
  * `logos`: the lines' logos cut out of the sheet, as data URLs (a ticker the sheet lacks, or a sheet that does not come, is no logo: its initials).
  */
 export interface PortfolioFiles {

@@ -1,16 +1,26 @@
-import { Component, computed, input, output, signal } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import type { FactsFile } from '@pretickt/components/typologies';
 import { PtPortfolioDraft, suggest, type DraftSave } from './draft';
-import { lookupOf, parsePaste, serialize, type Parsed } from './parse';
+import { MAX_AI_TEXT, PT_PORTFOLIO_AI } from './ai';
+import { fromAi, lookupOf, parsePaste, serialize, type Parsed } from './parse';
 import { withPortfolio, type Stored, type StoredPortfolio } from './store';
 
 /**
  * The reader's portfolios and watchlists (design 2026-11-07 Part B, amended 2026-11-08: «possibilità di crearne altri per monitoraggio, dicendolo
  * esplicitamente»): a switcher, "New portfolio" and "New watchlist" (the kind is chosen there, never guessed), a paste read into a preview before it is
  * saved, a line added by hand with its amount and purchase date, rename, copy as text, delete after a confirm in the page. A part of the page app, not
- * a placeable component; it emits every change and the page keeps it in this browser.
+ * a placeable component; it emits every change and the page keeps it in this browser. Read asks the site's AI for the paste's lines when the page
+ * has it (Romeo, 2026-11-09: «Per il parsing dobbiamo usare sicuramente una LLM»), and reads in the browser when it does not answer them; Edit lines
+ * reads the saved lines in the browser, sending nothing.
  */
 type Kind = StoredPortfolio['kind'];
+/** Which reader read the paste: the AI, with the readings left today, or the browser, and why the AI did not. */
+type How = { by: 'ai'; left: number } | { by: 'local'; why: 'limit' | 'unavailable' | 'long' };
+const HOW_LOCAL: Record<'limit' | 'unavailable' | 'long', string> = {
+  limit: "Today's 5 AI readings are used: read without AI. Check the lines before you save.",
+  unavailable: 'The AI reader did not answer: read without AI. Check the lines before you save.',
+  long: 'Over 20,000 characters: read without AI. Check the lines before you save.',
+};
 interface Form { kind: Kind; name: string; text: string; id: string | null }
 const newId = () => `pf-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 const val = (e: Event) => (e.target as HTMLInputElement).value;
@@ -34,9 +44,11 @@ const val = (e: Event) => (e.target as HTMLInputElement).value;
           <label class="pt-pf-label">Name <input class="pt-pf-input pt-pf-title" [value]="fm.name" (input)="form.set({ ...fm, name: val($event) })" /></label>
           <label class="pt-pf-label">
             {{ fm.kind === 'watchlist' ? 'Symbols, one a line' : 'Your holdings, one a line — AAPL 10, AAPL 25% or AAPL $5,000, and a purchase date if you like (AAPL 10 2025-03-14) — or a broker\\'s CSV export' }}
-            <textarea class="pt-pf-paste" rows="8" [value]="fm.text" (input)="form.set({ ...fm, text: val($event) }); parsed.set(null)"></textarea>
+            <textarea class="pt-pf-paste" rows="8" [value]="fm.text" (input)="form.set({ ...fm, text: val($event) }); parsed.set(null); how.set(null)"></textarea>
           </label>
-          <div class="pt-pf-acts"><button type="button" (click)="read()">Read</button><button type="button" (click)="cancel()">Cancel</button></div>
+          @if (ai) {<p class="pt-note">Read by AI: what you paste is sent to pretickt and to an AI service to be turned into lines, and is not kept. 5 readings a day.</p>}
+          <div class="pt-pf-acts"><button type="button" (click)="read()" [disabled]="reading()">{{ reading() ? 'Reading…' : 'Read' }}</button><button type="button" (click)="cancel()">Cancel</button></div>
+          @if (how(); as h) {<p class="pt-note">{{ howText(h) }}</p>}
           @if (parsed(); as r) {
             <!-- the preview is editable (Romeo, 2026-11-08): what it shows when saved is what is kept -->
             @if (r.refused) {<p class="pt-pf-err" role="alert">{{ r.refused }}</p>}
@@ -102,6 +114,10 @@ export class PtPortfolioEditor {
 
   protected readonly form = signal<Form | null>(null);
   protected readonly parsed = signal<Parsed | null>(null);
+  /** The site's AI reader, when the page has one (absent in the stories): Read asks it first. */
+  protected readonly ai = inject(PT_PORTFOLIO_AI, { optional: true });
+  protected readonly reading = signal(false);
+  protected readonly how = signal<How | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly renaming = signal<string | null>(null);
   protected readonly confirming = signal(false);
@@ -120,6 +136,8 @@ export class PtPortfolioEditor {
   /** The lines that gave no holding, the first five, as the reader wrote them. */
   protected readonly notRead = (r: Parsed) => r.ignored.slice(0, 5).map((x) => `line ${x.line} “${x.text.length > 40 ? `${x.text.slice(0, 40)}…` : x.text}”`).join(', ')
     + (r.ignored.length > 5 ? ` and ${r.ignored.length - 5} more.` : '.');
+  protected readonly howText = (h: How) => (h.by === 'ai'
+    ? `Read by AI · ${h.left === 0 ? 'no AI readings' : h.left === 1 ? '1 AI reading' : `${h.left} AI readings`} left today. Check the lines before you save.` : HOW_LOCAL[h.why]);
   protected readonly unitWord = (u: string) => ({ shares: 'Shares', usd: 'Dollars', pct: 'Percent' } as Record<string, string>)[u] ?? '';
   /** The site's symbols, names and closes, for reading a paste whatever its format. */
   private readonly look = computed(() => lookupOf(this.facts()));
@@ -130,9 +148,28 @@ export class PtPortfolioEditor {
     const n = this.stored().list.filter((p) => p.kind === kind).length + 1;
     this.form.set({ kind, name: `${kind === 'watchlist' ? 'Watchlist' : 'Portfolio'} ${n}`, text: '', id: null });
   }
-  protected edit(p: StoredPortfolio) { this.reset(); this.form.set({ kind: p.kind, name: p.name, text: serialize(p.rows, p.unit), id: p.id }); this.read(); }
+  protected edit(p: StoredPortfolio) { this.reset(); this.form.set({ kind: p.kind, name: p.name, text: serialize(p.rows, p.unit), id: p.id }); this.readHere(); }
   protected cancel() { this.reset(); }
-  protected read() { const fm = this.form(); if (fm) this.parsed.set(parsePaste(fm.text, this.look(), this.today(), fm.kind)); }
+  /** The reader in the browser: the saved lines, and the paste whenever the AI does not answer its lines. */
+  private readHere() { const fm = this.form(); if (fm) this.parsed.set(parsePaste(fm.text, this.look(), this.today(), fm.kind)); }
+  protected async read() {
+    const fm = this.form();
+    if (!fm || this.reading()) return;
+    if (!this.ai || !fm.text.trim()) { this.readHere(); return; }
+    if (fm.text.length > MAX_AI_TEXT) { this.readHere(); this.how.set({ by: 'local', why: 'long' }); return; }
+    this.reading.set(true);
+    const a = await this.ai.read(fm.text, fm.kind);
+    this.reading.set(false);
+    // the reader typed again or left while it read: this answer is not for the text in the box
+    if (this.form()?.text !== fm.text || this.form()?.kind !== fm.kind) return;
+    if (a.ok) {
+      this.parsed.set(fromAi(fm.text, a.holdings, a.ignored, this.look(), this.today(), fm.kind));
+      this.how.set({ by: 'ai', left: a.left });
+    } else {
+      this.readHere();
+      this.how.set({ by: 'local', why: a.reason === 'limit' ? 'limit' : 'unavailable' });
+    }
+  }
   protected saveDraft(d: DraftSave) {
     const fm = this.form();
     if (!fm || !d.rows.length) return;
@@ -164,7 +201,7 @@ export class PtPortfolioEditor {
     this.changed.emit(next);
   }
   private reset() {
-    this.form.set(null); this.parsed.set(null); this.error.set(null); this.renaming.set(null); this.confirming.set(false); this.copied.set(null);
+    this.form.set(null); this.parsed.set(null); this.how.set(null); this.error.set(null); this.renaming.set(null); this.confirming.set(false); this.copied.set(null);
     this.query.set(''); this.picked.set(null); this.amountIn.set(''); this.dateIn.set('');
   }
 }

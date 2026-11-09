@@ -297,14 +297,41 @@ export function parsePaste(text: string, look: Lookup, today: string, kind: 'por
     });
     for (const h of holdings) if (!h.known) notOnSite.add(h.t);
   }
+  return finish(source, holdings.map((h) => ({ line: h.line, t: h.t, d: h.d, ...amountOf(h, look) })), ignoredLines, note, notOnSite, today, kind);
+}
+
+/** A holding as a language model read it (the site's AI, 2026-11-09): the line of its name, its symbol and name as given, an amount of one kind, a date. */
+export interface AiHolding { line: number; symbol: string | null; name: string | null; amount: number | null; unit: 'shares' | 'usd' | 'pct' | null; date: string | null }
+
+/**
+ * The AI's reading of a paste (Romeo, 2026-11-09: «Per il parsing dobbiamo usare sicuramente una LLM»), checked against the site's companies and funds
+ * as the reader in the browser checks its own: the symbol when it is the site's, else the name; a holding the site does not cover keeps its symbol (or
+ * its name) and is named; then the same rules — one kind of amount, no date after today, a watchlist keeps the symbols.
+ */
+export function fromAi(text: string, holdings: readonly AiHolding[], ignoredLines: readonly number[], look: Lookup, today: string, kind: 'portfolio' | 'watchlist'): Parsed {
+  const notOnSite = new Set<string>();
+  const read = holdings.flatMap((h) => {
+    let t = h.symbol ? look.symbol(h.symbol) : null;
+    if (!t && h.name) { const w = clean(h.name), m = look.name(w, 0); if (m) t = m.t; }
+    const known = t != null;
+    t ??= h.symbol ?? h.name?.toUpperCase().slice(0, 40) ?? null;
+    if (!t) return [];
+    if (!known) notOnSite.add(t);
+    return [{ line: h.line, t, d: h.date, kind: (h.amount == null ? 'none' : h.unit ?? 'none') as Kind, n: h.amount }];
+  });
+  return finish(text.split(/\r?\n/), read, [...ignoredLines], null, notOnSite, today, kind);
+}
+
+/** What both readers end with: the lines, their one kind of amount (or the lines that differ), the dates after today, what was not read. */
+function finish(source: string[], read: { line: number; t: string; d: string | null; kind: Kind; n: number | null }[], ignoredLines: number[], note: string | null,
+  notOnSite: Set<string>, today: string, kind: 'portfolio' | 'watchlist'): Parsed {
   const names = [...notOnSite];
-  const ignored = ignoredLines.map((line) => ({ line, text: source[line - 1]!.trim() })).filter((x) => x.text);
-  const read = holdings.map((h) => ({ h, ...amountOf(h, look) }));
+  const ignored = ignoredLines.map((line) => ({ line, text: source[line - 1]?.trim() ?? '' })).filter((x) => x.text);
   if (kind === 'watchlist')
-    return { rows: read.map(({ h }) => ({ line: h.line, t: h.t, n: null, d: null })), unit: 'equal', refused: null, mixed: false, notOnSite: names, dropped: read.some((x) => x.n != null || x.h.d != null), note: null, ignored };
-  const rows = read.map(({ h, n }) => ({ line: h.line, t: h.t, n, d: h.d }));
+    return { rows: read.map((x) => ({ line: x.line, t: x.t, n: null, d: null })), unit: 'equal', refused: null, mixed: false, notOnSite: names, dropped: read.some((x) => x.n != null || x.d != null), note: null, ignored };
+  const rows = read.map((x) => ({ line: x.line, t: x.t, n: x.n, d: x.d }));
   const groups = new Map<Kind, number[]>();
-  for (const x of read) groups.set(x.kind, [...(groups.get(x.kind) ?? []), x.h.line]);
+  for (const x of read) groups.set(x.kind, [...(groups.get(x.kind) ?? []), x.line]);
   const mixed = groups.size > 1, only = [...groups.keys()][0] ?? 'none', unit: Unit = mixed || only === 'none' ? 'equal' : only;
   if (mixed) {
     // the lines that differ first: the smaller group, on a tie the later lines

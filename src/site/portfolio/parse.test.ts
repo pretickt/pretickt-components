@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FactsCompany, FactsFile } from '../../typologies';
-import { lookupOf, parsePaste, serialize, type Parsed } from './parse';
+import { fromAi, lookupOf, parsePaste, serialize, type AiHolding, type Parsed } from './parse';
 
 // made-up facts: real tickers and names, made-up closes
 const co = (ticker: string, name: string, close: number): FactsCompany => ({ ticker, name, logo: null, sector: null, close, ret: 0, upside: null, firms: 0,
@@ -142,5 +142,31 @@ describe('reading a paste, whatever its format', () => {
 describe('a header whose lines do not follow it', () => {
   it('a header line, then holdings written with spaces: read line by line, never all dropped', () => {
     expect(got(read('Symbol,Shares\nAAPL 10\nMSFT 5'))).toEqual([['AAPL', 10, null], ['MSFT', 5, null]]);
+  });
+});
+
+describe("reading the AI's answer (Romeo, 2026-11-09: «Per il parsing dobbiamo usare sicuramente una LLM»)", () => {
+  const h = (line: number, symbol: string | null, name: string | null, amount: number | null = null, unit: AiHolding['unit'] = null, date: string | null = null): AiHolding =>
+    ({ line, symbol, name, amount, unit, date });
+  const TEXT = 'Titolo;ISIN;Quantità\nAPPLE INC;US0378331005;12\nNVIDIA CORP;US67066G1040;30\nISHARES CORE S&P 500;IE00B5BMR087;20\nBERKSHIRE HATHAWAY INC CL B;;4\nLiquidità;;1.250,00';
+  it("the site's symbols as given, a name read when the symbol is not the site's, a holding the site does not cover kept and named, the lines not read listed", () => {
+    const p = fromAi(TEXT, [h(2, 'AAPL', 'APPLE INC', 12, 'shares'), h(3, null, 'NVIDIA CORP', 30, 'shares'), h(4, 'CSSPX', 'ISHARES CORE S&P 500', 20, 'shares'),
+      h(5, null, 'BERKSHIRE HATHAWAY INC CL B', 4, 'shares')], [1, 6], LOOKUP, TODAY, 'portfolio');
+    expect(got(p)).toEqual([['AAPL', 12, null], ['NVDA', 30, null], ['CSSPX', 20, null], ['BRK.B', 4, null]]);
+    expect(p).toMatchObject({ unit: 'shares', refused: null, mixed: false, notOnSite: ['CSSPX'], dropped: false });
+    expect(p.ignored).toEqual([{ line: 1, text: 'Titolo;ISIN;Quantità' }, { line: 6, text: 'Liquidità;;1.250,00' }]);
+  });
+  it('a holding with neither a symbol the site has nor a name it knows keeps the name it was given', () => {
+    expect(got(fromAi('Vanguard FTSE All-World 40', [h(1, null, 'Vanguard FTSE All-World', 40, 'shares')], [], LOOKUP, TODAY, 'portfolio'))).toEqual([['VANGUARD FTSE ALL-WORLD', 40, null]]);
+  });
+  it('the same rules as the reader in the browser: one kind of amount, no date after today, no amount at all is equal weights', () => {
+    expect(fromAi('AAPL 10\nMSFT $5,000', [h(1, 'AAPL', null, 10, 'shares'), h(2, 'MSFT', null, 5000, 'usd')], [], LOOKUP, TODAY, 'portfolio'))
+      .toMatchObject({ mixed: true, refused: 'Line 2 gives a dollar value, line 1 shares: one kind of amount per portfolio.' });
+    expect(fromAi('AAPL 10 2027-01-01', [h(1, 'AAPL', null, 10, 'shares', '2027-01-01')], [], LOOKUP, TODAY, 'portfolio').refused).toBe('Line 1: the date 2027-01-01 is after today.');
+    expect(fromAi('Apple\nKO', [h(1, 'AAPL', 'Apple'), h(2, 'KO', null)], [], LOOKUP, TODAY, 'portfolio')).toMatchObject({ unit: 'equal', refused: null, rows: [{ t: 'AAPL', n: null }, { t: 'KO', n: null }] });
+  });
+  it('a watchlist keeps the symbols, and says when amounts were left out', () => {
+    const p = fromAi('AAPL 10\nNVDA', [h(1, 'AAPL', null, 10, 'shares'), h(2, 'NVDA', null)], [], LOOKUP, TODAY, 'watchlist');
+    expect(p).toMatchObject({ unit: 'equal', dropped: true, rows: [{ t: 'AAPL', n: null, d: null }, { t: 'NVDA', n: null, d: null }] });
   });
 });
