@@ -35,7 +35,7 @@
 @layer components {
   /* page */
   .pt-page { @apply min-h-screen bg-surface font-sans text-ink antialiased; }
-  /* the fixed header: brand, sector menu, company search (under tooltips and hover cards: z-40, z-50) */
+  /* the fixed header: brand, sections, company search (under tooltips and hover cards: z-40, z-50) */
   .pt-header { @apply sticky top-0 z-30 border-b border-border bg-surface-raised px-4 py-2.5 sm:px-6; }
   .pt-header-in { @apply mx-auto flex max-w-5xl items-center gap-3; }
   .pt-brand-word { @apply hidden sm:inline; }
@@ -46,15 +46,25 @@
   .pt-menu[open] > summary { @apply bg-surface text-ink; }
   .pt-menu ul { @apply absolute left-0 top-full z-40 m-0 mt-1 grid w-max list-none grid-cols-1 gap-0.5 rounded-control border border-border bg-surface-raised p-2 text-sm shadow-lg sm:grid-cols-2; }
   .pt-menu a { @apply block rounded-md px-2 py-1 text-ink no-underline hover:bg-surface hover:text-primary; }
-  /* the home's links beside the sector menu; under 48rem their own row under the search, which stays beside the menu */
+  /* the sections after the brand on every page (Romeo, 2026-11-09: «Sectors, ETFs, My Portfolio»), the reader's own marked */
+  .pt-sections { @apply flex items-center gap-1; }
+  .pt-sections > a { @apply rounded-md px-2 py-1 text-sm whitespace-nowrap text-ink-soft no-underline hover:bg-surface hover:text-ink; }
+  .pt-sections :is(a, summary)[aria-current] { @apply font-semibold text-ink; }
+  /* the home's links after the sections; under 64rem their own row under the search, which stays beside the sections */
   .pt-header-links { @apply flex items-center gap-1 text-sm; }
   .pt-header-links a { @apply rounded-md px-2 py-1 whitespace-nowrap text-ink-soft no-underline hover:bg-surface hover:text-ink; }
-  @media (width < 48rem) {
+  @media (width < 64rem) {
     .pt-header-in:has(.pt-header-links) { @apply flex-wrap gap-y-1; }
     .pt-header-in:has(.pt-header-links) .pt-search { @apply w-auto max-w-none min-w-0 flex-1; }
     .pt-header-links { @apply order-last w-full overflow-x-auto; }
   }
   .pt-search { @apply relative ml-auto w-full max-w-xs; }
+  /* a phone: the brand and the sections fill the first row, the search takes the next one, whole (then the home's links) */
+  @media (width < 40rem) {
+    .pt-header-in { @apply flex-wrap gap-y-2; }
+    .pt-header-in .pt-search, .pt-header-in:has(.pt-header-links) .pt-search { @apply order-1 w-full max-w-none flex-none; }
+    .pt-header-links { @apply order-2; }
+  }
   .pt-search input { @apply w-full rounded-control border border-border bg-surface px-3 py-1.5 text-sm text-ink outline-none focus:border-primary; }
   .pt-search-list { @apply absolute right-0 top-full z-40 mt-1 w-full min-w-64 overflow-hidden rounded-control border border-border bg-surface-raised py-1 shadow-lg; }
   .pt-search-opt { @apply flex items-baseline gap-2 px-3 py-1.5 text-sm text-ink no-underline hover:bg-surface; }
