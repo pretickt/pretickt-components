@@ -1,13 +1,16 @@
-import { Component, computed, ElementRef, inject, input, linkedSignal, output, signal } from '@angular/core';
+import { Component, computed, effect, ElementRef, inject, input, linkedSignal, output, signal } from '@angular/core';
+import { PtLogo } from '@pretickt/components/ds';
 import { plainName, withoutSuffixes } from '@pretickt/components/format';
 import type { FactsFile } from '@pretickt/components/typologies';
+import { PortfolioLogos } from './logos';
 import { lookupOf, type PasteRow, type Unit } from './parse';
 import type { StoredRow } from './store';
 
 /**
  * The preview of a paste, editable before it is saved (Romeo, 2026-11-08: «anteprima anche modificabile con aggiunta e rimozione e autocomplete»,
  * «date editabili»): each line's symbol with suggestions by symbol or name, its amount, its purchase date, a line removed or added; what the amounts
- * are, chosen by the reader when the paste mixed kinds. Save gives exactly what it shows.
+ * are, chosen by the reader when the paste mixed kinds. Save gives exactly what it shows. A company or fund found shows its logo beside its name (Romeo,
+ * 2026-11-09: «quando trovi le aziende, metti il logo pure»), from the cut-outs the page shares, its initials off the sheet.
  */
 export interface DraftSave { unit: Unit; rows: StoredRow[] }
 interface Line { key: number; t: string; text: string; n: string; d: string }
@@ -28,6 +31,7 @@ export function suggest(facts: FactsFile, query: string): { t: string; name: str
 
 @Component({
   selector: 'pt-portfolio-draft',
+  imports: [PtLogo],
   template: `
     <div class="pt-pf-draft">
       @if (kind() === 'portfolio') {
@@ -43,7 +47,7 @@ export function suggest(facts: FactsFile, query: string): { t: string; name: str
             <div class="pt-pf-dsym">
               <input class="pt-pf-input pt-pf-sym" [value]="l.text" aria-label="Symbol or company" autocomplete="off" spellcheck="false"
                 (input)="typed(l.key, val($event))" (focus)="active.set(l.key)" (blur)="left(l.key)" (keydown.enter)="first(l.key, $event)" />
-              <span class="pt-pf-co">{{ nameOf(l.t) }}</span>
+              <span class="pt-pf-co">@if (found(l.t)) {<pt-logo [ticker]="l.t" [src]="logoOf(l.t)" [size]="16" />} @else {<span class="pt-pf-nologo"></span>}<span class="pt-pf-cn">{{ nameOf(l.t) }}</span></span>
               @if (active() === l.key && suggestions().length) {
                 <ul class="pt-pf-sugg">@for (s of suggestions(); track s.t) {<li><button type="button" (mousedown)="$event.preventDefault()" (click)="pick(l.key, s.t)">{{ s.t }} · {{ s.name }}</button></li>}</ul>
               }
@@ -70,6 +74,8 @@ export class PtPortfolioDraft {
 
   private next = 0;
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  /** The page's cut-outs of the sheet (absent in the stories: initials). */
+  private readonly logos = inject(PortfolioLogos, { optional: true });
   private readonly line = (t: string, n: number | null, d: string | null): Line => ({ key: this.next++, t, text: t, n: n == null ? '' : String(n), d: d ?? '' });
   protected readonly lines = linkedSignal(() => this.rows().map((r) => this.line(r.t, r.n, r.d)));
   protected readonly chosen = linkedSignal<Unit | null>(() => (this.kind() === 'watchlist' ? 'equal' : this.unit()));
@@ -90,7 +96,14 @@ export class PtPortfolioDraft {
 
   protected readonly UNITS = UNITS;
   protected readonly val = val;
+  protected readonly found = (t: string) => !!t && (!!this.facts().companies[t] || !!this.facts().funds[t]);
+  protected readonly logoOf = (t: string) => this.logos?.map().get(t) ?? null;
   protected readonly nameOf = (t: string) => { const f = this.facts(); return !t ? '' : f.companies[t] ? plainName(f.companies[t]!.name) : f.funds[t]?.name ?? 'not on pretickt'; };
+
+  constructor() {
+    // each line's logo, cut once the line names a company on the sheet
+    effect(() => this.logos?.want(this.facts().sprite, this.lines().map((l) => l.t).filter(this.found)));
+  }
 
   protected typed(key: number, text: string) {
     this.active.set(key);

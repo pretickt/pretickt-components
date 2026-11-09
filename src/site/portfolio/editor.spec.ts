@@ -20,7 +20,9 @@ async function mount(stored: Stored = EMPTY, saving = true, ai?: AiReader) {
   const el = f.nativeElement as HTMLElement;
   const press = async (label: string) => { [...el.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent!.trim() === label)!.click(); await settle(); };
   const type = async (sel: string, value: string) => { const i = el.querySelector<HTMLInputElement | HTMLTextAreaElement>(sel)!; i.value = value; i.dispatchEvent(new Event('input')); await settle(); };
-  return { el, out, press, type, settle, text: () => el.textContent!.replace(/\s+/g, ' ') };
+  // a paste, as the browser says it: the text in the box, then an input event that names how it came
+  const paste = async (value: string) => { const i = el.querySelector<HTMLTextAreaElement>('textarea.pt-pf-paste')!; i.value = value; i.dispatchEvent(new InputEvent('input', { inputType: 'insertFromPaste' })); await settle(); };
+  return { el, out, press, type, paste, settle, text: () => el.textContent!.replace(/\s+/g, ' ') };
 }
 
 describe('pt-portfolio-editor: portfolios and watchlists kept in this browser', () => {
@@ -30,7 +32,7 @@ describe('pt-portfolio-editor: portfolios and watchlists kept in this browser', 
     await m.type('textarea.pt-pf-paste', 'AAPL 10 2026-01-05\nnvda 4\nZZZZ 3\nTotal 1,234.00');
     await m.press('Read');
     // the preview's lines, each editable: symbol, company, amount, date
-    expect([...m.el.querySelectorAll('.pt-pf-dr')].map((r) => [r.querySelector<HTMLInputElement>('input.pt-pf-sym')!.value, r.querySelector('.pt-pf-co')!.textContent!.trim(),
+    expect([...m.el.querySelectorAll('.pt-pf-dr')].map((r) => [r.querySelector<HTMLInputElement>('input.pt-pf-sym')!.value, r.querySelector('.pt-pf-cn')!.textContent!.trim(),
       r.querySelector<HTMLInputElement>('input.pt-pf-n')!.value, r.querySelector<HTMLInputElement>('input.pt-pf-d')!.value]))
       .toEqual([['AAPL', 'Apple', '10', '2026-01-05'], ['NVDA', 'Nvidia', '4', ''], ['ZZZZ', 'not on pretickt', '3', '']]);
     expect(m.text()).toContain('Not on pretickt: ZZZZ. It counts in your total, not in the figures.');
@@ -128,7 +130,10 @@ describe("pt-portfolio-editor: Read asks the site's AI (Romeo, 2026-11-09: «Per
       { line: 1, symbol: 'AAPL', name: 'APPLE INC', amount: 12, unit: 'shares', date: null }, { line: 2, symbol: null, name: 'NVIDIA CORP', amount: 30, unit: 'shares', date: null },
       { line: 3, symbol: 'CSSPX', name: 'ISHARES CORE S&P 500', amount: 20, unit: 'shares', date: null }] }));
     await m.press('New portfolio');
-    expect(m.text()).toContain('Read by AI: what you paste is sent to pretickt and to an AI service to be turned into lines, and is not kept. 5 readings a day.');
+    expect(m.text()).toContain('Read by AI as soon as you paste: the text is sent to pretickt and to an AI service to be turned into lines, and is not kept. 5 readings a day.');
+    // said before the box, where the reader is before they paste
+    const note = [...m.el.querySelectorAll('.pt-note')].find((n) => n.textContent!.startsWith('Read by AI as soon as you paste'))!;
+    expect(note.compareDocumentPosition(m.el.querySelector('textarea.pt-pf-paste')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     await m.type('textarea.pt-pf-paste', PASTE);
     await m.press('Read');
     expect(asked).toEqual([[PASTE, 'portfolio']]);
@@ -177,7 +182,7 @@ describe("pt-portfolio-editor: Read asks the site's AI (Romeo, 2026-11-09: «Per
   it("Edit lines, changed and read again, reads in the browser: the saved portfolio is never sent (the privacy policy: «nothing you saved»)", async () => {
     const m = await mount({ v: 1, active: 'demo-shares', list: [DEMO_PORTFOLIOS.shares] }, true, reader({ ok: false, reason: 'off' }));
     await m.press('Edit lines');
-    expect(m.text()).not.toContain('Read by AI:');
+    expect(m.text()).not.toContain('Read by AI as soon as you paste');
     await m.type('textarea.pt-pf-paste', 'AAPL 41\nNVDA 30');
     await m.press('Read');
     expect(asked).toEqual([]);
@@ -190,6 +195,46 @@ describe("pt-portfolio-editor: Read asks the site's AI (Romeo, 2026-11-09: «Per
     await m.press('Read');
     expect(rows(m.el)).toEqual([['AAPL', '10'], ['NVDA', '4']]);
     expect(m.text()).toContain('The AI reader found no holdings: read without AI. Check the lines before you save.');
+  });
+  it("a paste is read at once, with no Read to press (Romeo, 2026-11-09: «l'analisi parte appena si incolla il messaggio»)", async () => {
+    const m = await mount(EMPTY, true, reader({ ok: true, left: 4, ignored: [], holdings: [{ line: 1, symbol: 'AAPL', name: null, amount: 12, unit: 'shares', date: null }] }));
+    await m.press('New portfolio');
+    await m.paste('AAPL 12');
+    expect(asked).toEqual([['AAPL 12', 'portfolio']]);
+    expect(rows(m.el)).toEqual([['AAPL', '12']]);
+    expect(m.text()).toContain('Read by AI · 4 AI readings left today.');
+  });
+  it('text typed in the box waits for Read', async () => {
+    const m = await mount(EMPTY, true, reader({ ok: true, left: 4, ignored: [], holdings: [{ line: 1, symbol: 'AAPL', name: null, amount: 12, unit: 'shares', date: null }] }));
+    await m.press('New portfolio');
+    await m.type('textarea.pt-pf-paste', 'AAPL 12');
+    expect(asked).toEqual([]);
+    expect(rows(m.el)).toEqual([]);
+    await m.press('Read');
+    expect(asked).toEqual([['AAPL 12', 'portfolio']]);
+  });
+  it('a second paste while the AI reads the first: the first answer is dropped, the box as it is now is read when it comes', async () => {
+    const waits: ((a: AiAnswer) => void)[] = [];
+    const m = await mount(EMPTY, true, { read: (text, kind) => { asked.push([text, kind]); return new Promise<AiAnswer>((r) => { waits.push(r); }); } });
+    await m.press('New portfolio');
+    await m.paste('AAPL 12');
+    await m.paste('AAPL 12\nNVDA 3');
+    expect(asked).toHaveLength(1);
+    waits[0]!({ ok: true, left: 4, ignored: [], holdings: [{ line: 1, symbol: 'AAPL', name: null, amount: 12, unit: 'shares', date: null }] });
+    await m.settle();
+    expect(asked).toEqual([['AAPL 12', 'portfolio'], ['AAPL 12\nNVDA 3', 'portfolio']]);
+    expect(rows(m.el)).toEqual([]);
+    waits[1]!({ ok: true, left: 3, ignored: [], holdings: [{ line: 1, symbol: 'AAPL', name: null, amount: 12, unit: 'shares', date: null }, { line: 2, symbol: 'NVDA', name: null, amount: 3, unit: 'shares', date: null }] });
+    await m.settle();
+    expect(rows(m.el)).toEqual([['AAPL', '12'], ['NVDA', '3']]);
+    expect(m.text()).toContain('Read by AI · 3 AI readings left today.');
+  });
+  it('a paste into a saved portfolio\'s lines is read in the browser: nothing is sent', async () => {
+    const m = await mount({ v: 1, active: 'demo-shares', list: [DEMO_PORTFOLIOS.shares] }, true, reader({ ok: false, reason: 'off' }));
+    await m.press('Edit lines');
+    await m.paste('AAPL 41\nNVDA 30');
+    expect(asked).toEqual([]);
+    expect(rows(m.el)).toEqual([['AAPL', '41'], ['NVDA', '30']]);
   });
   it('a paste over 20,000 characters is read in the browser, and said', async () => {
     const m = await mount(EMPTY, true, reader({ ok: false, reason: 'off' }));

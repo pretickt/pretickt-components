@@ -150,6 +150,18 @@ describe('the portfolio page', () => {
     expect(none.el.querySelectorAll('pt-basket img')).toHaveLength(0);
   });
 
+  it("the preview of a paste shows the logos from the same cut-outs as the table: a logo the table already has is not asked again", async () => {
+    const m = await mount({ v: 1, active: 'demo-watch', list: [DEMO_PORTFOLIOS.watchlist] }, { sheet: ['AAPL', 'AMD', 'NVDA'] });
+    expect(m.logos).toEqual([['NVDA', 'AMD']]);
+    await m.press('New portfolio');
+    const box = m.el.querySelector<HTMLTextAreaElement>('textarea.pt-pf-paste')!;
+    box.value = 'NVDA 3\nAAPL 2';
+    box.dispatchEvent(new Event('input'));
+    await m.press('Read');
+    expect(m.logos).toEqual([['NVDA', 'AMD'], ['AAPL']]);
+    expect([...m.el.querySelectorAll('.pt-pf-dr img.pt-logo')].map((i) => i.getAttribute('src'))).toEqual([`data:image/png;base64,${btoa('NVDA')}`, `data:image/png;base64,${btoa('AAPL')}`]);
+  });
+
   it("today is the reader's own date, not the UTC one", () => {
     expect(localToday(new Date(2026, 10, 8, 23, 30))).toBe('2026-11-08');
   });

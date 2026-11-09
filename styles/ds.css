@@ -406,7 +406,9 @@
   .pt-pf-drows { display: grid; gap: .35rem; }
   .pt-pf-dr { display: grid; grid-template-columns: minmax(9rem, 2fr) minmax(5rem, 1fr) minmax(8.5rem, 1fr) 2rem; gap: .35rem .5rem; align-items: start; }
   .pt-pf-dsym { position: relative; display: grid; gap: .1rem; min-width: 0; }
-  .pt-pf-co { overflow: hidden; font-size: .74rem; color: var(--color-ink-soft); text-overflow: ellipsis; white-space: nowrap; }
+  .pt-pf-co { display: flex; align-items: center; gap: .3rem; min-width: 0; font-size: .74rem; color: var(--color-ink-soft); }
+  .pt-pf-co .pt-logo, .pt-pf-nologo { @apply h-4 w-4 shrink-0 text-[0.45rem]; }
+  .pt-pf-cn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pt-pf-sym { font-family: var(--font-mono, monospace); text-transform: uppercase; }
   .pt-pf-n { min-width: 0; text-align: right; font-family: var(--font-mono, monospace); }
   .pt-pf-d { min-width: 0; }

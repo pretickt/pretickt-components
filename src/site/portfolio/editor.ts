@@ -9,9 +9,9 @@ import { withPortfolio, type Stored, type StoredPortfolio } from './store';
  * The reader's portfolios and watchlists (design 2026-11-07 Part B, amended 2026-11-08: «possibilità di crearne altri per monitoraggio, dicendolo
  * esplicitamente»): a switcher, "New portfolio" and "New watchlist" (the kind is chosen there, never guessed), a paste read into a preview before it is
  * saved, a line added by hand with its amount and purchase date, rename, copy as text, delete after a confirm in the page. A part of the page app, not
- * a placeable component; it emits every change and the page keeps it in this browser. Read asks the site's AI for the paste's lines when the page
- * has it (Romeo, 2026-11-09: «Per il parsing dobbiamo usare sicuramente una LLM»), and reads in the browser when it does not answer them; Edit lines
- * reads the saved lines in the browser, changed or not, sending nothing.
+ * a placeable component; it emits every change and the page keeps it in this browser. A paste, or Read, asks the site's AI for the paste's lines when
+ * the page has it (Romeo, 2026-11-09: «Per il parsing dobbiamo usare sicuramente una LLM»; «l'analisi parte appena si incolla il messaggio»), and
+ * reads in the browser when it does not answer them; Edit lines reads the saved lines in the browser, changed or not, sending nothing.
  */
 type Kind = StoredPortfolio['kind'];
 /** Which reader read the paste: the AI, with the readings left today, or the browser, and why the AI did not. */
@@ -43,11 +43,12 @@ const val = (e: Event) => (e.target as HTMLInputElement).value;
       @if (form(); as fm) {
         <div class="pt-pf-form">
           <label class="pt-pf-label">Name <input class="pt-pf-input pt-pf-title" [value]="fm.name" (input)="form.set({ ...fm, name: val($event) })" /></label>
-          <label class="pt-pf-label">
-            {{ fm.kind === 'watchlist' ? 'Symbols, one a line' : 'Your holdings, one a line — AAPL 10, AAPL 25% or AAPL $5,000, and a purchase date if you like (AAPL 10 2025-03-14) — or a broker\\'s CSV export' }}
-            <textarea class="pt-pf-paste" rows="8" [value]="fm.text" (input)="form.set({ ...fm, text: val($event) }); parsed.set(null); how.set(null)"></textarea>
-          </label>
-          @if (ai && !fm.id) {<p class="pt-note">Read by AI: what you paste is sent to pretickt and to an AI service to be turned into lines, and is not kept. 5 readings a day.</p>}
+          <div class="pt-pf-label">
+            <label for="pt-pf-paste">{{ fm.kind === 'watchlist' ? 'Symbols, one a line' : 'Your holdings, one a line — AAPL 10, AAPL 25% or AAPL $5,000, and a purchase date if you like (AAPL 10 2025-03-14) — or a broker\\'s CSV export' }}</label>
+            <!-- said before the box: a paste is sent at once -->
+            @if (ai && !fm.id) {<p class="pt-note" id="pt-pf-ai">Read by AI as soon as you paste: the text is sent to pretickt and to an AI service to be turned into lines, and is not kept. 5 readings a day.</p>}
+            <textarea id="pt-pf-paste" class="pt-pf-paste" rows="8" [value]="fm.text" [attr.aria-describedby]="ai && !fm.id ? 'pt-pf-ai' : null" (input)="text($event)"></textarea>
+          </div>
           <div class="pt-pf-acts"><button type="button" (click)="read()" [disabled]="reading()">{{ reading() ? 'Reading…' : 'Read' }}</button><button type="button" (click)="cancel()">Cancel</button></div>
           @if (how(); as h) {<p class="pt-note">{{ howText(h) }}</p>}
           @if (parsed(); as r) {
@@ -118,6 +119,8 @@ export class PtPortfolioEditor {
   /** The site's AI reader, when the page has one (absent in the stories): Read asks it first. */
   protected readonly ai = inject(PT_PORTFOLIO_AI, { optional: true });
   protected readonly reading = signal(false);
+  /** A paste while the AI read the text before it: the box is read again when that answer comes. */
+  private again = false;
   protected readonly how = signal<How | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly renaming = signal<string | null>(null);
@@ -151,19 +154,31 @@ export class PtPortfolioEditor {
   }
   protected edit(p: StoredPortfolio) { this.reset(); this.form.set({ kind: p.kind, name: p.name, text: serialize(p.rows, p.unit), id: p.id }); this.readHere(); }
   protected cancel() { this.reset(); }
+  /** The box changed: its old reading goes; a paste is read at once, typed text when the reader presses Read. */
+  protected text(e: Event) {
+    const fm = this.form();
+    if (!fm) return;
+    this.form.set({ ...fm, text: val(e) });
+    this.parsed.set(null);
+    this.how.set(null);
+    if ((e as InputEvent).inputType === 'insertFromPaste') void this.read();
+  }
   /** The reader in the browser: the saved lines, and the paste whenever the AI does not answer its lines. */
   private readHere() { const fm = this.form(); if (fm) this.parsed.set(parsePaste(fm.text, this.look(), this.today(), fm.kind)); }
   protected async read() {
     const fm = this.form();
-    if (!fm || this.reading()) return;
+    if (!fm) return;
+    if (this.reading()) { this.again = true; return; }
     // a saved portfolio's lines are read here, changed or not: what is saved never leaves the browser (the privacy policy)
     if (!this.ai || !fm.text.trim() || fm.id) { this.readHere(); return; }
     if (fm.text.length > MAX_AI_TEXT) { this.readHere(); this.how.set({ by: 'local', why: 'long' }); return; }
     this.reading.set(true);
     const a = await this.ai.read(fm.text, fm.kind);
     this.reading.set(false);
-    // the reader typed again or left while it read: this answer is not for the text in the box
-    if (this.form()?.text !== fm.text || this.form()?.kind !== fm.kind) return;
+    // the reader typed again or left while it read: this answer is not for the text in the box (a paste meanwhile is read now)
+    const again = this.again;
+    this.again = false;
+    if (this.form()?.text !== fm.text || this.form()?.kind !== fm.kind) { if (again) void this.read(); return; }
     if (a.ok && a.holdings.length) {
       this.parsed.set(fromAi(fm.text, a.holdings, a.ignored, this.look(), this.today(), fm.kind));
       this.how.set({ by: 'ai', left: a.left });
@@ -206,7 +221,7 @@ export class PtPortfolioEditor {
     this.changed.emit(next);
   }
   private reset() {
-    this.form.set(null); this.parsed.set(null); this.how.set(null); this.error.set(null); this.renaming.set(null); this.confirming.set(false); this.copied.set(null);
+    this.form.set(null); this.parsed.set(null); this.how.set(null); this.error.set(null); this.again = false; this.renaming.set(null); this.confirming.set(false); this.copied.set(null);
     this.query.set(''); this.picked.set(null); this.amountIn.set(''); this.dateIn.set('');
   }
 }

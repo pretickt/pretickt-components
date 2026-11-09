@@ -1,16 +1,23 @@
 import { TestBed } from '@angular/core/testing';
 import { DEMO_FACTS } from '../../stories/fake-portfolio';
 import { PtPortfolioDraft, type DraftSave } from './draft';
+import { PT_PORTFOLIO_FILES } from './files';
+import { PortfolioLogos } from './logos';
 import type { PasteRow, Unit } from './parse';
 
 const ROWS: PasteRow[] = [{ line: 1, t: 'AAPL', n: 10, d: '2026-01-05' }, { line: 2, t: 'NVDA', n: 4, d: null }, { line: 3, t: 'ZZZZ', n: 3, d: null }];
 
-async function mount(o: { rows?: PasteRow[]; unit?: Unit | null; kind?: 'portfolio' | 'watchlist' } = {}) {
+async function mount(o: { rows?: PasteRow[]; unit?: Unit | null; kind?: 'portfolio' | 'watchlist'; sheet?: string[]; cut?: string[][] } = {}) {
+  if (o.sheet) {
+    // a logo cut out of the sheet, as the browser gives it (here its ticker in base64, so a test can tell whose it is)
+    const logos = async (_s: unknown, ts: readonly string[]) => { o.cut?.push([...ts]); return new Map(ts.map((t) => [t, `data:image/png;base64,${btoa(t)}`])); };
+    TestBed.configureTestingModule({ providers: [PortfolioLogos, { provide: PT_PORTFOLIO_FILES, useValue: { logos } }] });
+  }
   const f = TestBed.createComponent(PtPortfolioDraft);
   f.componentRef.setInput('rows', o.rows ?? ROWS);
   f.componentRef.setInput('unit', o.unit === undefined ? 'shares' : o.unit);
   f.componentRef.setInput('kind', o.kind ?? 'portfolio');
-  f.componentRef.setInput('facts', DEMO_FACTS);
+  f.componentRef.setInput('facts', o.sheet ? { ...DEMO_FACTS, sprite: { file: '/logos/sprite.1a2b3c4d.webp', px: 40, cols: 25, tickers: o.sheet } } : DEMO_FACTS);
   f.componentRef.setInput('today', '2026-11-08');
   const saved: DraftSave[] = [];
   f.componentInstance.save.subscribe((s) => saved.push(s));
@@ -28,7 +35,7 @@ const field = (row: Element, cls: string) => row.querySelector<HTMLInputElement>
 describe('the preview, editable before it is saved', () => {
   it('shows each line with its company, amount and date; a symbol not on pretickt is marked', async () => {
     const m = await mount();
-    expect(m.rows().map((r) => [field(r, 'pt-pf-sym').value, r.querySelector('.pt-pf-co')!.textContent!.trim(), field(r, 'pt-pf-n').value, field(r, 'pt-pf-d').value]))
+    expect(m.rows().map((r) => [field(r, 'pt-pf-sym').value, r.querySelector('.pt-pf-cn')!.textContent!.trim(), field(r, 'pt-pf-n').value, field(r, 'pt-pf-d').value]))
       .toEqual([['AAPL', 'Apple', '10', '2026-01-05'], ['NVDA', 'Nvidia', '4', ''], ['ZZZZ', 'not on pretickt', '3', '']]);
   });
 
@@ -43,7 +50,7 @@ describe('the preview, editable before it is saved', () => {
     expect([...fresh.querySelectorAll('.pt-pf-sugg button')].map((b) => b.textContent!.trim())).toEqual(['AMD · Advanced Micro Devices', 'MSFT · Microsoft']);
     await m.press('AMD · Advanced Micro Devices', fresh);
     expect(field(m.rows().at(-1)!, 'pt-pf-sym').value).toBe('AMD');
-    expect(m.rows().at(-1)!.querySelector('.pt-pf-co')!.textContent!.trim()).toBe('AMD');
+    expect(m.rows().at(-1)!.querySelector('.pt-pf-cn')!.textContent!.trim()).toBe('AMD');
     await m.type(field(m.rows().at(-1)!, 'pt-pf-n'), '3');
     await m.press('Save');
     expect(m.saved).toEqual([{ unit: 'shares', rows: [{ t: 'AAPL', n: 12, d: '2026-01-05' }, { t: 'NVDA', n: 4, d: '2026-02-02' }, { t: 'AMD', n: 3, d: null }] }]);
@@ -52,7 +59,7 @@ describe('the preview, editable before it is saved', () => {
   it('a symbol typed in full needs no pick; Enter takes the first suggestion', async () => {
     const m = await mount({ rows: [{ line: 1, t: 'AAPL', n: 1, d: null }] });
     await m.type(field(m.rows()[0]!, 'pt-pf-sym'), 'ko');
-    expect(m.rows()[0]!.querySelector('.pt-pf-co')!.textContent!.trim()).toBe('Coca-Cola');
+    expect(m.rows()[0]!.querySelector('.pt-pf-cn')!.textContent!.trim()).toBe('Coca-Cola');
     await m.type(field(m.rows()[0]!, 'pt-pf-sym'), 'nvid');
     field(m.rows()[0]!, 'pt-pf-sym').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     await m.settle();
@@ -91,6 +98,27 @@ describe('the preview, editable before it is saved', () => {
     await new Promise((r) => requestAnimationFrame(() => r(null)));
     await m.settle();
     expect(document.activeElement).toBe(field(m.rows().at(-1)!, 'pt-pf-sym'));
+  });
+
+  it("a company found shows its logo, cut out of the sheet the page loads, each once; one off the sheet its initials; a symbol not on pretickt none (Romeo, 2026-11-09: «quando trovi le aziende, metti il logo pure»)", async () => {
+    const cut: string[][] = [];
+    const m = await mount({ sheet: ['AAPL', 'KO', 'MSFT'], cut });
+    const logo = (r: Element) => r.querySelector('img.pt-logo')?.getAttribute('src') ?? r.querySelector('.pt-logo-initials')?.textContent ?? null;
+    expect(m.rows().map(logo)).toEqual([`data:image/png;base64,${btoa('AAPL')}`, 'NV', null]);
+    expect(cut).toEqual([['AAPL']]);
+    // a line changed to another company: its logo, asked once
+    await m.type(field(m.rows()[2]!, 'pt-pf-sym'), 'ko');
+    expect(logo(m.rows()[2]!)).toBe(`data:image/png;base64,${btoa('KO')}`);
+    await m.type(field(m.rows()[1]!, 'pt-pf-sym'), 'ko');
+    expect(cut).toEqual([['AAPL'], ['KO']]);
+    // the name beside it, as before
+    expect(m.rows().map((r) => r.querySelector('.pt-pf-cn')!.textContent!.trim())).toEqual(['Apple', 'Coca-Cola', 'Coca-Cola']);
+  });
+
+  it('with no sheet (the stories), the companies found show their initials and nothing is asked', async () => {
+    const m = await mount();
+    expect(m.rows().map((r) => r.querySelector('.pt-logo-initials')?.textContent ?? null)).toEqual(['AA', 'NV', null]);
+    expect(m.el.querySelector('img')).toBeNull();
   });
 
   it("a new line's missing symbol is said once the reader leaves its field, not while they type it", async () => {
