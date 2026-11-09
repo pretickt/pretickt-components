@@ -11,12 +11,13 @@ import { withPortfolio, type Stored, type StoredPortfolio } from './store';
  * saved, a line added by hand with its amount and purchase date, rename, copy as text, delete after a confirm in the page. A part of the page app, not
  * a placeable component; it emits every change and the page keeps it in this browser. Read asks the site's AI for the paste's lines when the page
  * has it (Romeo, 2026-11-09: «Per il parsing dobbiamo usare sicuramente una LLM»), and reads in the browser when it does not answer them; Edit lines
- * reads the saved lines in the browser, sending nothing.
+ * reads the saved lines in the browser, changed or not, sending nothing.
  */
 type Kind = StoredPortfolio['kind'];
 /** Which reader read the paste: the AI, with the readings left today, or the browser, and why the AI did not. */
-type How = { by: 'ai'; left: number } | { by: 'local'; why: 'limit' | 'unavailable' | 'long' };
-const HOW_LOCAL: Record<'limit' | 'unavailable' | 'long', string> = {
+type How = { by: 'ai'; left: number } | { by: 'local'; why: 'limit' | 'unavailable' | 'long' | 'none' };
+const HOW_LOCAL: Record<'limit' | 'unavailable' | 'long' | 'none', string> = {
+  none: 'The AI reader found no holdings: read without AI. Check the lines before you save.',
   limit: "Today's 5 AI readings are used: read without AI. Check the lines before you save.",
   unavailable: 'The AI reader did not answer: read without AI. Check the lines before you save.',
   long: 'Over 20,000 characters: read without AI. Check the lines before you save.',
@@ -46,7 +47,7 @@ const val = (e: Event) => (e.target as HTMLInputElement).value;
             {{ fm.kind === 'watchlist' ? 'Symbols, one a line' : 'Your holdings, one a line — AAPL 10, AAPL 25% or AAPL $5,000, and a purchase date if you like (AAPL 10 2025-03-14) — or a broker\\'s CSV export' }}
             <textarea class="pt-pf-paste" rows="8" [value]="fm.text" (input)="form.set({ ...fm, text: val($event) }); parsed.set(null); how.set(null)"></textarea>
           </label>
-          @if (ai) {<p class="pt-note">Read by AI: what you paste is sent to pretickt and to an AI service to be turned into lines, and is not kept. 5 readings a day.</p>}
+          @if (ai && !fm.id) {<p class="pt-note">Read by AI: what you paste is sent to pretickt and to an AI service to be turned into lines, and is not kept. 5 readings a day.</p>}
           <div class="pt-pf-acts"><button type="button" (click)="read()" [disabled]="reading()">{{ reading() ? 'Reading…' : 'Read' }}</button><button type="button" (click)="cancel()">Cancel</button></div>
           @if (how(); as h) {<p class="pt-note">{{ howText(h) }}</p>}
           @if (parsed(); as r) {
@@ -155,16 +156,20 @@ export class PtPortfolioEditor {
   protected async read() {
     const fm = this.form();
     if (!fm || this.reading()) return;
-    if (!this.ai || !fm.text.trim()) { this.readHere(); return; }
+    // a saved portfolio's lines are read here, changed or not: what is saved never leaves the browser (the privacy policy)
+    if (!this.ai || !fm.text.trim() || fm.id) { this.readHere(); return; }
     if (fm.text.length > MAX_AI_TEXT) { this.readHere(); this.how.set({ by: 'local', why: 'long' }); return; }
     this.reading.set(true);
     const a = await this.ai.read(fm.text, fm.kind);
     this.reading.set(false);
     // the reader typed again or left while it read: this answer is not for the text in the box
     if (this.form()?.text !== fm.text || this.form()?.kind !== fm.kind) return;
-    if (a.ok) {
+    if (a.ok && a.holdings.length) {
       this.parsed.set(fromAi(fm.text, a.holdings, a.ignored, this.look(), this.today(), fm.kind));
       this.how.set({ by: 'ai', left: a.left });
+    } else if (a.ok) {
+      this.readHere();
+      this.how.set({ by: 'local', why: 'none' });
     } else {
       this.readHere();
       this.how.set({ by: 'local', why: a.reason === 'limit' ? 'limit' : 'unavailable' });

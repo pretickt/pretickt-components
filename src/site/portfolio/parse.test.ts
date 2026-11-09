@@ -156,6 +156,16 @@ describe("reading the AI's answer (Romeo, 2026-11-09: «Per il parsing dobbiamo 
     expect(p).toMatchObject({ unit: 'shares', refused: null, mixed: false, notOnSite: ['CSSPX'], dropped: false });
     expect(p.ignored).toEqual([{ line: 1, text: 'Titolo;ISIN;Quantità' }, { line: 6, text: 'Liquidità;;1.250,00' }]);
   });
+  it("the model's own symbol for a company the site does not cover stands: a name that only starts like one of the site's is not that company", () => {
+    const p = fromAi('APLE 10\nApple Hospitality REIT 5', [h(1, 'APLE', 'Apple Hospitality REIT', 10, 'shares'), h(2, null, 'Apple Hospitality REIT', 5, 'shares')], [], LOOKUP, TODAY, 'portfolio');
+    expect(got(p)).toEqual([['APLE', 10, null], ['APPLE HOSPITALITY REIT', 5, null]]);
+    expect(p.notOnSite).toEqual(['APLE', 'APPLE HOSPITALITY REIT']);
+  });
+  it('a line the model left out that the browser reads as a holding is listed as not read; a line of figures under a card is not', () => {
+    const p = fromAi('AAPL 10\nMSFT 5\nNVDA\n15 shares\n$2,839.50', [h(1, 'AAPL', null, 10, 'shares'), h(3, 'NVDA', null, 15, 'shares')], [4, 5], LOOKUP, TODAY, 'portfolio');
+    expect(got(p)).toEqual([['AAPL', 10, null], ['NVDA', 15, null]]);
+    expect(p.ignored).toEqual([{ line: 2, text: 'MSFT 5' }]);
+  });
   it('a holding with neither a symbol the site has nor a name it knows keeps the name it was given', () => {
     expect(got(fromAi('Vanguard FTSE All-World 40', [h(1, null, 'Vanguard FTSE All-World', 40, 'shares')], [], LOOKUP, TODAY, 'portfolio'))).toEqual([['VANGUARD FTSE ALL-WORLD', 40, null]]);
   });

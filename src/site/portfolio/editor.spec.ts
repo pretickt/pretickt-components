@@ -174,6 +174,23 @@ describe("pt-portfolio-editor: Read asks the site's AI (Romeo, 2026-11-09: «Per
     expect(m.text()).not.toContain('Read by AI ·');
     expect(m.text()).not.toContain('without AI');
   });
+  it("Edit lines, changed and read again, reads in the browser: the saved portfolio is never sent (the privacy policy: «nothing you saved»)", async () => {
+    const m = await mount({ v: 1, active: 'demo-shares', list: [DEMO_PORTFOLIOS.shares] }, true, reader({ ok: false, reason: 'off' }));
+    await m.press('Edit lines');
+    expect(m.text()).not.toContain('Read by AI:');
+    await m.type('textarea.pt-pf-paste', 'AAPL 41\nNVDA 30');
+    await m.press('Read');
+    expect(asked).toEqual([]);
+    expect(rows(m.el)).toEqual([['AAPL', '41'], ['NVDA', '30']]);
+  });
+  it('the AI finding no holding: read in the browser, and said', async () => {
+    const m = await mount(EMPTY, true, reader({ ok: true, left: 3, ignored: [1, 2], holdings: [] }));
+    await m.press('New portfolio');
+    await m.type('textarea.pt-pf-paste', 'AAPL 10\nNVDA 4');
+    await m.press('Read');
+    expect(rows(m.el)).toEqual([['AAPL', '10'], ['NVDA', '4']]);
+    expect(m.text()).toContain('The AI reader found no holdings: read without AI. Check the lines before you save.');
+  });
   it('a paste over 20,000 characters is read in the browser, and said', async () => {
     const m = await mount(EMPTY, true, reader({ ok: false, reason: 'off' }));
     await m.press('New portfolio');

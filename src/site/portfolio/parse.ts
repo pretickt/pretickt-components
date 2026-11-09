@@ -305,21 +305,28 @@ export interface AiHolding { line: number; symbol: string | null; name: string |
 
 /**
  * The AI's reading of a paste (Romeo, 2026-11-09: «Per il parsing dobbiamo usare sicuramente una LLM»), checked against the site's companies and funds
- * as the reader in the browser checks its own: the symbol when it is the site's, else the name; a holding the site does not cover keeps its symbol (or
- * its name) and is named; then the same rules — one kind of amount, no date after today, a watchlist keeps the symbols.
+ * as the reader in the browser checks its own: the symbol when it is the site's, else — when the model gave none — the whole name; a holding the site
+ * does not cover keeps its symbol (or its name) and is named; then the same rules — one kind of amount, no date after today, a watchlist keeps the
+ * symbols. Listed as not read: the lines the model set aside that hold words (an app card's figures do not), and any line it left out that the
+ * browser reads as a holding — nothing is dropped silently.
  */
 export function fromAi(text: string, holdings: readonly AiHolding[], ignoredLines: readonly number[], look: Lookup, today: string, kind: 'portfolio' | 'watchlist'): Parsed {
   const notOnSite = new Set<string>();
   const read = holdings.flatMap((h) => {
     let t = h.symbol ? look.symbol(h.symbol) : null;
-    if (!t && h.name) { const w = clean(h.name), m = look.name(w, 0); if (m) t = m.t; }
+    // the name only when the model gave no symbol, and only the whole name: Apple Hospitality REIT (APLE) is not Apple
+    if (!t && !h.symbol && h.name) { const w = clean(h.name), m = look.name(w, 0); if (m && m.n >= w.length) t = m.t; }
     const known = t != null;
     t ??= h.symbol ?? h.name?.toUpperCase().slice(0, 40) ?? null;
     if (!t) return [];
     if (!known) notOnSite.add(t);
     return [{ line: h.line, t, d: h.date, kind: (h.amount == null ? 'none' : h.unit ?? 'none') as Kind, n: h.amount }];
   });
-  return finish(text.split(/\r?\n/), read, [...ignoredLines], null, notOnSite, today, kind);
+  const source = text.split(/\r?\n/);
+  const cited = new Set([...holdings.map((h) => h.line), ...ignoredLines]);
+  const missed = source.flatMap((l, k) => { const t = l.trim(); return t && !cited.has(k + 1) && fromLine(t, k + 1, look).holdings.length ? [k + 1] : []; });
+  const notRead = [...new Set([...ignoredLines.filter((n) => wordsLeft(source[n - 1] ?? '').length > 0), ...missed])].sort((a, b) => a - b);
+  return finish(source, read, notRead, null, notOnSite, today, kind);
 }
 
 /** What both readers end with: the lines, their one kind of amount (or the lines that differ), the dates after today, what was not read. */
