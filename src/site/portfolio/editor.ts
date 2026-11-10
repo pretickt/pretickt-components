@@ -68,7 +68,7 @@ const val = (e: Event) => (e.target as HTMLInputElement).value;
       @if (active(); as p) {
         @if (!form()) {
           <div class="pt-pf-acts">
-            <button type="button" (click)="edit(p)">Edit lines</button>
+            <button type="button" class="pt-pf-go" (click)="edit(p)">Edit lines</button>
             <button type="button" (click)="renaming.set(p.name)">Rename</button>
             <button type="button" (click)="copy(p)">Copy as text</button>
             <button type="button" (click)="confirming.set(true)">Delete</button>

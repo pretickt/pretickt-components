@@ -378,7 +378,11 @@
   .pt-pf-tab:hover, .pt-pf-new:hover, .pt-pf-acts button:hover, .pt-pf-matches button:hover { border-color: var(--color-primary); color: var(--color-primary); }
   .pt-pf-tab-on { border-color: var(--color-primary); background: color-mix(in oklab, var(--color-primary) 8%, var(--color-surface)); font-weight: 600; }
   .pt-pf-kind { margin-left: .35rem; font-size: .66rem; font-weight: 600; text-transform: uppercase; color: var(--color-ink-soft); }
-  .pt-pf-new { border-style: dashed; color: var(--color-ink-soft); }
+  /* the buttons that start something are the design system's main button, a + before New (Romeo, 2026-11-10: «i pulsanti New... e edit devono essere
+     più decisi. rispettiamo il design system»); the transparent border keeps them as tall as the quiet buttons beside them */
+  .pt-pf-new, .pt-pf-acts .pt-pf-go, .pt-pf-go { border: 1px solid transparent; background: var(--color-primary); font-weight: 600; color: var(--color-primary-ink); }
+  .pt-pf-new:hover, .pt-pf-acts .pt-pf-go:hover { border-color: transparent; background: var(--color-primary-hover); color: var(--color-primary-ink); }
+  .pt-pf-new::before { content: '+' / ''; margin-right: .3rem; font-weight: 700; }
   .pt-pf-form { display: grid; gap: .6rem; padding: .8rem; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-surface-raised); }
   .pt-pf-label { display: grid; gap: .3rem; font-size: .84rem; color: var(--color-ink-soft); }
   .pt-pf-input, .pt-pf-paste { min-width: 0; padding: .4rem .55rem; border: 1px solid var(--color-border); border-radius: .4rem; background: var(--color-surface);
@@ -386,8 +390,6 @@
   .pt-pf-paste { width: 100%; font-family: var(--font-mono, monospace); font-size: .82rem; resize: vertical; }
   .pt-pf-title { max-width: 20rem; }
   .pt-pf-acts { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
-  .pt-pf-acts .pt-pf-go, .pt-pf-go { border: 0; background: var(--color-primary); font-weight: 600; color: var(--color-primary-ink); }
-  .pt-pf-acts .pt-pf-go:hover { background: var(--color-primary-hover); color: var(--color-primary-ink); }
   .pt-pf-acts .pt-pf-go:disabled { opacity: .45; cursor: default; }
   .pt-pf-err { margin: 0; font-size: .86rem; font-weight: 600; color: var(--color-neg); }
   .pt-pf-ask { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: 0; padding: .6rem .7rem; border-radius: var(--radius-control);

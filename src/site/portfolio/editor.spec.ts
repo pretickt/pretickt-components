@@ -112,6 +112,13 @@ describe('pt-portfolio-editor: portfolios and watchlists kept in this browser', 
     expect(m.out.at(-1)).toEqual({ v: 1, active: 'demo-watch', list: [DEMO_PORTFOLIOS.watchlist] });
   });
 
+  it("the buttons that start something are the design system's main buttons: New portfolio, New watchlist, Edit lines; Rename, Copy as text and Delete stay quiet (Romeo, 2026-11-10: «i pulsanti New... e edit devono essere più decisi. rispettiamo il design system»)", async () => {
+    const m = await mount({ v: 1, active: 'demo-shares', list: [DEMO_PORTFOLIOS.shares] });
+    const button = (label: string) => [...m.el.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent!.trim() === label)!;
+    expect(['New portfolio', 'New watchlist'].map((l) => button(l).className)).toEqual(['pt-pf-new', 'pt-pf-new']);
+    expect(['Edit lines', 'Rename', 'Copy as text', 'Delete'].map((l) => button(l).classList.contains('pt-pf-go'))).toEqual([true, false, false, false]);
+  });
+
   it('private window: it works and says nothing is saved', async () => {
     expect((await mount(EMPTY, false)).text()).toContain('This browser does not keep data: nothing is saved after this visit.');
     expect((await mount(EMPTY, true)).text()).toContain("Saved only in this browser. Clearing the site's data removes it.");
