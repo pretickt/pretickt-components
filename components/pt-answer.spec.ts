@@ -22,6 +22,8 @@ describe('pt-answer', () => {
   basics(PtAnswer, { topic: 'earnings', start: '2026-10-19' });
   basics(PtAnswer, { topic: 'earnings-day', start: '2026-10-22' });
   basics(PtAnswer, { topic: 'earnings-date', ticker: 'NVDA' });
+  basics(PtAnswer, { topic: 'dividend', ticker: 'NVDA' });
+  basics(PtAnswer, { topic: 'stock-split', ticker: 'NVDA' });
 
   it('names companies as people search them', () => {
     expect(['NVIDIA Corporation', 'Eli Lilly and Company', 'The Coca-Cola Company', 'Merck & Co., Inc.', 'Alphabet Inc. Class A'].map(plainName))
@@ -217,6 +219,50 @@ describe('pt-answer', () => {
     const r = await render(PtAnswer, { topic: 'earnings-date', ticker: 'NVDA' });
     expect(Object.keys(r.record).sort()).toEqual(['company@1|{"ticker":"NVDA"}',
       'events@1|{"kinds":["earnings"],"scope":{"ahead":120,"by":"ticker","range":"2y","ticker":"NVDA"}}']);
+  });
+  it('a company\'s dividend (`dividend`): whether it pays, the latest payment, the next one, the last 12 months with the yield, the change from a year earlier', async () => {
+    const company = { ticker: 'AAPL', name: 'Apple Inc.', sector: 'Technology', industry: 'Consumer Electronics', logo: null };
+    const d = (date: string, amount: number, payDate: string | null = null) => ({ date, ticker: 'AAPL', name: 'Apple Inc.', logo: null, mcap: 5e12, kind: 'dividend', meta: { amount, payDate } });
+    const series = [{ ticker: 'AAPL', points: [{ t: '2026-10-15', o: 266, h: 268, l: 265, c: 267, v: 1 }, { t: ASOF, o: 268, h: 270, l: 267, c: 268.47, v: 1 }] }];
+    const answers = (items: unknown[]) => ({ 'events@1': { asOf: ASOF, items }, 'company@1': company, 'price-series@1': series });
+    const paid = [d('2025-08-11', 0.26, '2025-08-14'), d('2025-11-10', 0.26, '2025-11-13'), d('2026-02-09', 0.26, '2026-02-12'), d('2026-05-11', 0.27, '2026-05-14'), d('2026-08-10', 0.27, '2026-08-13')];
+    expect(await text({ topic: 'dividend', ticker: 'AAPL' }, answers([...paid, d('2026-11-12', 0.27, '2026-11-16')]))).toBe(
+      'Apple AAPL pays a dividend: $0.27 a share at its latest payment, with ex-dividend date Aug 10, 2026 and payment on Aug 13, 2026, up 3.8% from $0.26 a year earlier. ' +
+      'The next is $0.27 a share: ex-dividend on Thursday, Nov 12, 2026, paid Nov 16, 2026; shares bought before the ex-dividend date receive it. ' +
+      'Over the last 12 months it paid $1.06 a share in 4 payments, a yield of 0.4% on the last close of $268.47.');
+    // no next date announced, the same amount as a year before, no close on the page
+    expect(await text({ topic: 'dividend', ticker: 'AAPL' }, { ...answers([d('2025-08-11', 0.27), ...paid.slice(1, 5)]), 'price-series@1': null })).toBe(
+      'Apple AAPL pays a dividend: $0.27 a share at its latest payment, with ex-dividend date Aug 10, 2026 and payment on Aug 13, 2026, the same as a year earlier. ' +
+      'Over the last 12 months it paid $1.06 a share in 4 payments.');
+    // stopped: the last one long ago
+    expect(await text({ topic: 'dividend', ticker: 'AAPL' }, answers([d('2023-02-09', 0.5), d('2023-05-11', 0.5, '2023-05-14')]))).toBe(
+      'Apple AAPL paid its last dividend, $0.50 a share, with ex-dividend date May 11, 2023; it has paid none since.');
+    expect(await text({ topic: 'dividend', ticker: 'AAPL' }, answers([]))).toBe('Apple AAPL has paid no dividend in the last five years.');
+    // its first one, still to come
+    expect(await text({ topic: 'dividend', ticker: 'AAPL' }, answers([d('2026-11-12', 0.1, null)]))).toBe(
+      'Apple AAPL has declared a dividend. The next is $0.10 a share: ex-dividend on Thursday, Nov 12, 2026; shares bought before the ex-dividend date receive it.');
+  });
+  it('a company\'s stock splits (`stock-split`): the last one in words, the next if announced, every one on record and what one share became', async () => {
+    const company = { ticker: 'NVDA', name: 'NVIDIA Corporation', sector: 'Technology', industry: 'Semiconductors', logo: null };
+    const sp = (date: string, numerator: number, denominator: number) => ({ date, ticker: 'NVDA', name: 'NVIDIA Corporation', logo: null, mcap: 4e12, kind: 'split', meta: { numerator, denominator } });
+    const answers = (items: unknown[]) => ({ 'events@1': { asOf: ASOF, items }, 'company@1': company });
+    expect(await text({ topic: 'stock-split', ticker: 'NVDA' }, answers([sp('2000-06-27', 2, 1), sp('2006-04-07', 3, 2), sp('2021-07-20', 4, 1), sp('2024-06-10', 10, 1)]))).toBe(
+      'Nvidia NVDA last split its stock 10-for-1 on Jun 10, 2024: every share became 10. It has split 4 times since 2000: 10-for-1 on Jun 10, 2024, 4-for-1 on Jul 20, 2021, ' +
+      '3-for-2 on Apr 7, 2006 and 2-for-1 on Jun 27, 2000. One share held before the first of them is 120 shares today.');
+    // one split, and one announced
+    expect(await text({ topic: 'stock-split', ticker: 'NVDA' }, answers([sp('2024-06-10', 10, 1), sp('2026-12-01', 5, 1)]))).toBe(
+      'Nvidia NVDA last split its stock 10-for-1 on Jun 10, 2024: every share became 10. Its next split, 5-for-1, takes effect on Dec 1, 2026.');
+    // a reverse split says so
+    expect(await text({ topic: 'stock-split', ticker: 'NVDA' }, answers([sp('2020-03-02', 1, 8)]))).toBe(
+      'Nvidia NVDA last split its stock 1-for-8 on Mar 2, 2020, a reverse split: every 8 shares became 1.');
+    expect(await text({ topic: 'stock-split', ticker: 'NVDA' }, answers([]))).toBe('No stock split of Nvidia NVDA is on record.');
+  });
+  it('the dividend answer asks for five years of its dividends, the next 120 days and the header\'s own price call; the split answer for every split on record', async () => {
+    const d = await render(PtAnswer, { topic: 'dividend', ticker: 'NVDA' });
+    expect(Object.keys(d.record).sort()).toEqual(['company@1|{"ticker":"NVDA"}',
+      'events@1|{"kinds":["dividend"],"scope":{"ahead":120,"by":"ticker","range":"5y","ticker":"NVDA"}}', 'price-series@1|{"range":"3m","tickers":["NVDA"]}']);
+    const s = await render(PtAnswer, { topic: 'stock-split', ticker: 'NVDA' });
+    expect(Object.keys(s.record).sort()).toEqual(['company@1|{"ticker":"NVDA"}', 'events@1|{"kinds":["split"],"scope":{"by":"splits","ticker":"NVDA"}}']);
   });
   it('a calendar\'s answer asks what the calendar under it asks (its kind with the market dates): the page carries one month, not two', async () => {
     const e = await render(PtAnswer, { topic: 'earnings', month: '2026-10' });

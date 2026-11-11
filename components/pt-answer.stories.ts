@@ -22,6 +22,10 @@ export const stories = [
   story(PtAnswer, { name: 'Earnings on a day (demo)', inputs: { topic: 'earnings-day', start: '2026-10-22' } }),
   // a company's earnings page (/stocks/<t>/earnings/): its next date, the estimates, its record and usual move, its last report
   story(PtAnswer, { name: 'Earnings date (demo)', inputs: { topic: 'earnings-date', ticker: 'NVDA' } }),
+  // a company's dividend and stock-split pages (/stocks/<t>/dividend/, /stocks/<t>/stock-split/)
+  story(PtAnswer, { name: 'Dividend (demo)', inputs: { topic: 'dividend', ticker: 'KO' } }),
+  story(PtAnswer, { name: 'Stock splits (demo)', inputs: { topic: 'stock-split', ticker: 'NVDA' } }),
+  story(PtAnswer, { name: 'No split on record', inputs: { topic: 'stock-split', ticker: 'NVDA' }, data: { 'events@1': { asOf: '2026-10-16', items: [] } } }),
   story(PtAnswer, { name: 'Earnings on a day with none', inputs: { topic: 'earnings-day', start: '2026-10-24' }, data: { 'events@1': { asOf: '2026-10-16', items: [] } } }),
   story(PtAnswer, { name: 'www: forecast, NVDA', inputs: { topic: 'forecast', ticker: 'NVDA' }, live: true }),
   story(PtAnswer, { name: 'www: technicals, NVDA', inputs: { topic: 'technicals', ticker: 'NVDA' }, live: true }),
@@ -31,6 +35,8 @@ export const stories = [
   story(PtAnswer, { name: 'www: earnings on Nov 19', inputs: { topic: 'earnings-day', start: '2026-11-19' }, live: true }),
   story(PtAnswer, { name: 'www: NVDA earnings date', inputs: { topic: 'earnings-date', ticker: 'NVDA' }, live: true }),
   story(PtAnswer, { name: 'www: WMT earnings date', inputs: { topic: 'earnings-date', ticker: 'WMT' }, live: true }),
+  story(PtAnswer, { name: 'www: KO dividend', inputs: { topic: 'dividend', ticker: 'KO' }, live: true }),
+  story(PtAnswer, { name: 'www: AMZN dividend (none)', inputs: { topic: 'dividend', ticker: 'AMZN' }, live: true }),
   story(PtAnswer, { name: 'No target in a year is an answer too', inputs: { topic: 'price-target', ticker: 'NVDA' },
     data: { 'analysts@1': { ...nvda, summary: null, targets: [], consensus: null, history: [] } } }),
   story(PtAnswer, { name: 'Not available', inputs: { topic: 'forecast', ticker: 'NVDA' }, data: null }),

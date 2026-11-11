@@ -16,6 +16,11 @@ export const EventsParams = z.object({
      * cut at the calendar window), so the days of the months around it that share a week with it come too; a month's `news` are its own.
      */
     z.object({ by: z.literal('universe'), month: Month }),
+    /**
+     * One company's every stock split on record, whatever its date (its stock-split page: Apple's last one, in 2020, is older than any
+     * `range`): splits only, no window. Added in 1.4 (2026-11-11).
+     */
+    z.object({ by: z.literal('splits'), ticker: Ticker }),
     /** The whole universe between two dates, at most 14 days apart (a week on the home page). Added in 1.1. */
     // strict calendar dates (no 2026-11-31 rolling into December), refused before the span check can read them
     z.object({ by: z.literal('dates'), from: z.iso.date({ abort: true }), to: z.iso.date({ abort: true }) })
@@ -80,6 +85,8 @@ export const eventsSamples: z.input<typeof EventsParams>[] = [
   { scope: { by: 'dates', from: '2026-10-05', to: '2026-10-09' }, kinds: ['earnings', 'macro'] },
   // a sector page's price chart: its largest companies' events (Part A, 2026-11-07)
   { scope: { by: 'sector', sector: 'Energy', range: '1y', ahead: 90 }, kinds: ['earnings', 'dividend', 'split', 'analyst'] },
+  // a company's stock-split page: every split on record (1.4)
+  { scope: { by: 'splits', ticker: 'NVDA' }, kinds: ['split'] },
 ];
 
 /** Kinds this build has never seen — one shaped like a company event, one like a market-wide date (no ticker). */
@@ -143,6 +150,17 @@ export function eventsDemo(p: EventsParams): Events { return demoOf(p, false); }
 
 /** `own`: a month's own days only (the pieces a span is cut from). */
 function demoOf(p: EventsParams, own: boolean): Events {
+  if (p.scope.by === 'splits') {
+    // a company's splits on record: none to three, years apart, the oldest long before any range
+    const { ticker } = p.scope, r = prng(`${ticker}:splits`), n = Math.floor(r() * 4);
+    const co = { ticker, name: demoName(ticker), logo: null, mcap: round(1e10 + r() * 1e12, 0) };
+    const ratios = [[4, 1], [2, 1], [3, 2], [10, 1]] as const;
+    const items = p.kinds.includes('split') ? Array.from({ length: n }, (_, i): EventItem => {
+      const [numerator, denominator] = ratios[Math.floor(r() * ratios.length)]!;
+      return { ...co, date: addDays(DEMO_ASOF, -(400 + i * 1500 + Math.floor(r() * 300))), kind: 'split', meta: { numerator, denominator } };
+    }) : [];
+    return { asOf: DEMO_ASOF, items: items.sort(byDateThenSize) };
+  }
   if (p.scope.by === 'sector') {
     // a sector: its five largest companies' reports (here the first five demo companies) and the market's dates
     const { range, ahead } = p.scope, at = (ticker: string, kinds: EventsParams['kinds']) => demoOf({ scope: { by: 'ticker', ticker, range, ahead }, kinds }, own).items;

@@ -3,13 +3,15 @@
  * price target, its peers, its latest quarter, its insiders, its next earnings date; who leads a market list; a calendar month, week or day at a glance.
  * Company topics name the company as people search it, with its ticker ("Nvidia NVDA"): the sentence an answer engine quotes stands on its own.
  * Each company a sentence names is a link with its logo (PtSay, PtMention): on the site its card opens on hover, the page's own company too.
- * @version 1.8.0
+ * @version 1.9.0
  * @evidence design of the fund pages, 2026-11-05: `topic: 'basket'`, the page's first sentence about a fund
  * @evidence design of the sector pages, 2026-11-07: `topic: 'sector'`, the sector's companies, what they are worth and what the targets on them average
  * @evidence DataForSEO round 14 (2026-10-31): "earnings today" 27,100/month, "earnings this week" 18,100, "earnings calendar this week" 8,100,
  *   "earnings next week" 2,900 (launch/data/14-summary.json): `start` gives a week's answer, `earnings-day` a day's
  * @evidence DataForSEO round 13 (launch/RESEARCH.md §9): "{company} earnings date" and "when does {company} report earnings" 440,250 searches/month on
  *   147 companies, AI Overview on 92%: `earnings-date`, the company's next report with its time, the estimates and how the stock moved after the last ones
+ * @evidence DataForSEO round 13 (launch/RESEARCH.md §9), on 25 companies: "{company} stock split" 59,120 searches/month, "does {company} pay dividends"
+ *   21,230: `stock-split` (every split on record, events@1.4's `splits` scope) and `dividend` (the latest and next payment, the year's sum and yield)
  * @evidence DataForSEO: "<ticker> stock forecast" 151k/month, "<ticker> price target" 103k/month, "earnings calendar" 153k/month, list queries (launch/data/08c-serp-*.json)
  * @evidence SEO measurement 2026-10-09: list and company subpages of ~80–200 words; the answer belongs in the first lines, with its numbers
  * @evidence DataForSEO round 16 (2026-11-02): "<ticker> 200 day moving average" 4,080/month on 9 tickers, 50-day 1,550, 52-week high 1,300; the AI
@@ -23,7 +25,7 @@ import { INSIDER_WINDOW_DAYS, type EventItem, type ScreenList, type ScreenRow, t
 
 export { plainName } from '@pretickt/components/format';
 
-type Topic = 'forecast' | 'price-target' | 'peers' | 'financials' | 'insiders' | 'earnings-date' | 'list' | 'earnings' | 'earnings-day' | 'dividends' | 'technicals' | 'basket' | 'sector';
+type Topic = 'forecast' | 'price-target' | 'peers' | 'financials' | 'insiders' | 'earnings-date' | 'dividend' | 'stock-split' | 'list' | 'earnings' | 'earnings-day' | 'dividends' | 'technicals' | 'basket' | 'sector';
 type Named = { ticker: string; name: string; logo?: string | null };
 
 /** A company the answer names: a link with its logo ("Apple AAPL"), its card on hover. */
@@ -50,6 +52,14 @@ const DAY_NAMES = 10;
 /** EPS beats the estimate beyond 2% of it (pt-calendar's verdict, the resolver's record); the usual move needs four moves of the last eight. */
 const SURPRISE = 0.02, REPORTS = 8, MIN_MOVES = 4;
 const beat = (actual: number, est: number) => (est === 0 ? actual : (actual - est) / Math.abs(est)) > SURPRISE;
+/** A company still pays while its last ex-dividend date is within this many days (a yearly payer included). */
+const PAYING_DAYS = 400;
+/** A split's figure: "10", "1.5". */
+const fig = (v: number) => String(Math.round(v * 1000) / 1000);
+type Split = Extract<EventItem, { kind: 'split' }>;
+const ratio = (s: Split) => `${fig(s.meta.numerator)}-for-${fig(s.meta.denominator)}`;
+/** The splits a history names at most, the newest first. */
+const SPLITS_NAMED = 8;
 const median = (v: number[]) => { const s = [...v].sort((a, b) => a - b); const m = s.length / 2; return s.length % 2 ? s[Math.floor(m)]! : (s[m - 1]! + s[m]!) / 2; };
 const finite = (v: number | null | undefined): v is number => typeof v === 'number' && Number.isFinite(v);
 /** Still waiting: nothing on screen yet. Not available: the na box. */
@@ -118,7 +128,7 @@ export class PtAnswer {
   private readonly of = (...topics: Topic[]) => (topics.includes(this.topic()) ? this.ticker() ?? null : null);
   /** The company's name for the company topics: the card at the top of every company page asks for it too (the same call). */
   protected readonly company = this.pt.company(() => {
-    const t = this.of('forecast', 'price-target', 'peers', 'financials', 'insiders', 'technicals', 'earnings-date');
+    const t = this.of('forecast', 'price-target', 'peers', 'financials', 'insiders', 'technicals', 'earnings-date', 'dividend', 'stock-split');
     return t ? { ticker: t } : null;
   });
   protected readonly basket = this.pt.basket(() => { const t = this.of('basket'); return t ? { ticker: t } : null; });
@@ -128,6 +138,12 @@ export class PtAnswer {
   protected readonly peers = this.pt.screen(() => { const t = this.of('peers'); return t ? { scope: { peersOf: t }, limit: 12 } : null; });
   protected readonly quarters = this.pt.fundamentals(() => { const t = this.of('financials'); return t ? { ticker: t, periods: 12 } : null; });
   protected readonly insiders = this.pt.insider(() => { const t = this.of('insiders'); return t ? { ticker: t, days: 365 } : null; });
+  // five years of the company's dividends and the next 120 days, where a declared one is
+  protected readonly payouts = this.pt.events(() => { const t = this.of('dividend'); return t ? { scope: { by: 'ticker' as const, ticker: t, range: '5y' as const, ahead: 120 }, kinds: ['dividend' as const] } : null; });
+  // the last close, for the yield: the three months the company's header above draws (the same call)
+  protected readonly recent = this.pt.priceSeries(() => { const t = this.of('dividend'); return t ? { tickers: [t], range: '3m' as const } : null; });
+  // every split on record, whatever its date
+  protected readonly splits = this.pt.events(() => { const t = this.of('stock-split'); return t ? { scope: { by: 'splits' as const, ticker: t }, kinds: ['split' as const] } : null; });
   // two years of the company's reports (about eight) and the next 120 days, where its next date is
   protected readonly reports = this.pt.events(() => { const t = this.of('earnings-date'); return t ? { scope: { by: 'ticker' as const, ticker: t, range: '2y' as const, ahead: 120 }, kinds: ['earnings' as const] } : null; });
   // the year's daily bars of the hub's price chart (pt-price-events asks the same): the averages and the range come from them
@@ -160,6 +176,8 @@ export class PtAnswer {
       case 'financials': return this.quarterAnswer();
       case 'insiders': return this.insiderAnswer();
       case 'earnings-date': return this.earningsDateAnswer();
+      case 'dividend': return this.dividendAnswer();
+      case 'stock-split': return this.splitAnswer();
       case 'list': return this.listAnswer();
       case 'technicals': return this.technicalsAnswer();
       case 'basket': return this.basketAnswer();
@@ -351,6 +369,59 @@ export class PtAnswer {
       if (parts.length) lastSaid = ` The last report, on ${date(last.date)}: ${and(parts)}${move}.`;
     }
     return say`${lead}${record}${lastSaid}`;
+  }
+
+  /**
+   * Whether the company pays a dividend: its latest payment against the one a year earlier, the next one once declared, what the last
+   * 12 months add up to and the yield on the last close. One that stopped says when it last paid.
+   */
+  private dividendAnswer(): Said | null {
+    const e = this.payouts.value(), t = this.ticker();
+    if (!t) return null;
+    if (e === undefined) return PENDING;
+    if (e === null) return null;
+    const n = this.named(t);
+    if (n === undefined) return PENDING;
+    const all = e.items.filter((i): i is Extract<EventItem, { kind: 'dividend' }> => i.kind === 'dividend' && i.ticker === t);
+    if (!all.length) return say`${n} has paid no dividend in the last five years.`;
+    const past = all.filter((i) => i.date <= e.asOf), next = all.find((i) => i.date > e.asOf), last = past.at(-1);
+    const paid = (i: { meta: { payDate: string | null } }, word: string) => (i.meta.payDate ? `${word} ${date(i.meta.payDate)}` : '');
+    const coming = next ? ` The next is ${amount(next.meta.amount)} a share: ex-dividend on ${weekday(next.date)}, ${next.date.slice(0, 4)}${paid(next, ', paid')}; shares bought before the ex-dividend date receive it.` : '';
+    if (!last) return say`${n} has declared a dividend.${coming}`;
+    const was = `with ex-dividend date ${date(last.date)}`;
+    if (!next && last.date < plusDays(e.asOf, -PAYING_DAYS)) return say`${n} paid its last dividend, ${amount(last.meta.amount)} a share, ${was}; it has paid none since.`;
+    // the payment of the same quarter a year before: the closest to 365 days earlier, within six weeks of it
+    const then = plusDays(last.date, -365), near = (i: { date: string }) => Math.abs(ms(i.date) - ms(then));
+    const before = past.filter((i) => near(i) <= 45 * 86_400_000).sort((a, b) => near(a) - near(b))[0];
+    const change = !before || before.meta.amount <= 0 ? '' : Math.abs(last.meta.amount / before.meta.amount - 1) < 0.0005 ? ', the same as a year earlier'
+      : `, ${growth(last.meta.amount / before.meta.amount - 1)} from ${amount(before.meta.amount)} a year earlier`;
+    const year = past.filter((i) => i.date > plusDays(e.asOf, -365)), sum = year.reduce((a, i) => a + i.meta.amount, 0);
+    const close = this.recent.value()?.[0]?.points.at(-1)?.c;
+    const yielding = finite(close) && close > 0 ? `, a yield of ${level(sum / close)} on the last close of ${money(close)}` : '';
+    const total = year.length ? ` Over the last 12 months it paid ${money(sum)} a share in ${many(year.length, 'payment')}${yielding}.` : '';
+    return say`${n} pays a dividend: ${amount(last.meta.amount)} a share at its latest payment, ${was}${paid(last, ' and payment on')}${change}.${coming}${total}`;
+  }
+
+  /** The company's stock splits: the last one in words, the next once announced, every one on record and what one share became. */
+  private splitAnswer(): Said | null {
+    const e = this.splits.value(), t = this.ticker();
+    if (!t) return null;
+    if (e === undefined) return PENDING;
+    if (e === null) return null;
+    const n = this.named(t);
+    if (n === undefined) return PENDING;
+    const all = e.items.filter((i): i is Split => i.kind === 'split' && i.ticker === t && i.meta.numerator > 0 && i.meta.denominator > 0);
+    if (!all.length) return say`No stock split of ${n} is on record.`;
+    const past = all.filter((i) => i.date <= e.asOf), next = all.find((i) => i.date > e.asOf), last = past.at(-1);
+    const coming = next ? `${last ? ' Its next split' : 'A split'}, ${ratio(next)}, takes effect on ${date(next.date)}.` : '';
+    if (!last) return say`${n} has never split its stock so far. ${coming}`;
+    const { numerator: to, denominator: from } = last.meta;
+    const became = `${to < from ? ', a reverse split' : ''}: every ${from === 1 ? 'share' : `${fig(from)} shares`} became ${fig(to)}`;
+    const named = [...past].reverse().slice(0, SPLITS_NAMED).map((i) => `${ratio(i)} on ${date(i.date)}`);
+    const worth = past.reduce((a, i) => a * (i.meta.numerator / i.meta.denominator), 1);
+    const history = past.length < 2 ? '' : ` It has split ${past.length} times since ${past[0]!.date.slice(0, 4)}: ${and(named)}${past.length > SPLITS_NAMED ? ' and earlier ones' : ''}.` +
+      (worth > 1 ? ` One share held before the first of them is ${fig(worth)} shares today.` : '');
+    return say`${n} last split its stock ${ratio(last)} on ${date(last.date)}${became}.${history}${coming}`;
   }
 
   /** The earnings of a week, or of one day: the calendar's five sessions, the day's reports by their time. */
