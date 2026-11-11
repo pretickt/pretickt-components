@@ -1,5 +1,5 @@
 /** Size budget of the browser files (bytes, minified). Every page loads the main bundle (Angular, the page runtime); then each component it shows. */
-// main: 243,500 until 2026-11-11, +100 for pt-answer's `start` (the week's and the day's earnings pages: its binding in the page template) — PENDING Romeo's OK
+// main: 243,500 until 2026-11-11, +100 for pt-answer's `start` (the week's and the day's earnings pages: its binding in the page template) (Romeo, 2026-11-11: «OK al tetto del bundle a 243.600 byte»)
 // page: 50,000 until 2026-11-09, +4,000 for the paste read by the site's AI
 export const BUDGET = { main: 243_600, component: 32_000, page: 54_000 } as const;
 
