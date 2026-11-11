@@ -23,7 +23,7 @@ import { PtWhyToday } from '../../components/pt-why-today';
 
 /** Every component: its version, and props it can render with (the build renders each once before any page, see warmUp). */
 export const REGISTRY: Record<string, { version: string; sample: Record<string, unknown> }> = {
-  'pt-answer': { version: '1.6.0', sample: {} },
+  'pt-answer': { version: '1.7.0', sample: {} },
   'pt-basket': { version: '1.2.0', sample: {} },
   'pt-calendar': { version: '3.1.0', sample: { month: '2026-09' } },
   'pt-company-card': { version: '1.2.2', sample: { ticker: 'NVDA' } },
@@ -54,7 +54,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
   host: { class: 'pt-island', '[attr.data-island]': 'id()', '[class.pt-island-error]': 'pt.failed()' },
   template: `
     @switch (c()) {
-      @case ('pt-answer') { @defer (hydrate on viewport) {<pt-answer [topic]="$any(p()).topic ?? 'forecast'" [ticker]="$any(p()).ticker" [list]="$any(p()).list ?? 'biggest_losers'" [sector]="$any(p()).sector" [month]="$any(p()).month" />} }
+      @case ('pt-answer') { @defer (hydrate on viewport) {<pt-answer [topic]="$any(p()).topic ?? 'forecast'" [ticker]="$any(p()).ticker" [list]="$any(p()).list ?? 'biggest_losers'" [sector]="$any(p()).sector" [month]="$any(p()).month" [start]="$any(p()).start" />} }
       @case ('pt-basket') { @defer (hydrate on viewport) {<pt-basket [ticker]="$any(p()).ticker ?? null" [sector]="$any(p()).sector ?? null" [section]="$any(p()).section ?? 'moves'" [payload]="$any(p()).payload ?? null" />} }
       @case ('pt-calendar') { @defer (hydrate on viewport) {<pt-calendar [month]="$any(p()).month" [kind]="$any(p()).kind ?? 'earnings'" [view]="$any(p()).view ?? 'month'" [start]="$any(p()).start" />} }
       @case ('pt-company-card') { @defer (hydrate on viewport) {<pt-company-card [ticker]="$any(p()).ticker" [size]="$any(p()).size ?? 'wide'" [extra]="$any(p()).extra ?? null" />} }

@@ -1,11 +1,13 @@
 /**
  * The page's question answered first, in a sentence or two, from the data the page shows below it: a stock's analyst forecast and
- * price target, its peers, its latest quarter, its insiders; who leads a market list; a calendar month at a glance.
+ * price target, its peers, its latest quarter, its insiders; who leads a market list; a calendar month, week or day at a glance.
  * Company topics name the company as people search it, with its ticker ("Nvidia NVDA"): the sentence an answer engine quotes stands on its own.
  * Each company a sentence names is a link with its logo (PtSay, PtMention): on the site its card opens on hover, the page's own company too.
- * @version 1.6.0
+ * @version 1.7.0
  * @evidence design of the fund pages, 2026-11-05: `topic: 'basket'`, the page's first sentence about a fund
  * @evidence design of the sector pages, 2026-11-07: `topic: 'sector'`, the sector's companies, what they are worth and what the targets on them average
+ * @evidence DataForSEO round 14 (2026-10-31): "earnings today" 27,100/month, "earnings this week" 18,100, "earnings calendar this week" 8,100,
+ *   "earnings next week" 2,900 (launch/data/14-summary.json): `start` gives a week's answer, `earnings-day` a day's
  * @evidence DataForSEO: "<ticker> stock forecast" 151k/month, "<ticker> price target" 103k/month, "earnings calendar" 153k/month, list queries (launch/data/08c-serp-*.json)
  * @evidence SEO measurement 2026-10-09: list and company subpages of ~80–200 words; the answer belongs in the first lines, with its numbers
  * @evidence DataForSEO round 16 (2026-11-02): "<ticker> 200 day moving average" 4,080/month on 9 tickers, 50-day 1,550, 52-week high 1,300; the AI
@@ -19,7 +21,7 @@ import { INSIDER_WINDOW_DAYS, type EventItem, type ScreenList, type ScreenRow, t
 
 export { plainName } from '@pretickt/components/format';
 
-type Topic = 'forecast' | 'price-target' | 'peers' | 'financials' | 'insiders' | 'list' | 'earnings' | 'dividends' | 'technicals' | 'basket' | 'sector';
+type Topic = 'forecast' | 'price-target' | 'peers' | 'financials' | 'insiders' | 'list' | 'earnings' | 'earnings-day' | 'dividends' | 'technicals' | 'basket' | 'sector';
 type Named = { ticker: string; name: string; logo?: string | null };
 
 /** A company the answer names: a link with its logo ("Apple AAPL"), its card on hover. */
@@ -32,6 +34,17 @@ const versus = (f: number) => (Math.abs(f) < 0.0005 ? 'in line with' : `${level(
 const growth = (f: number) => (Math.abs(f) < 0.0005 ? 'flat' : `${f > 0 ? 'up' : 'down'} ${level(Math.abs(f))}`);
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const monthName = (ym: string) => `${MONTHS[Number(ym.slice(5, 7)) - 1] ?? ym} ${ym.slice(0, 4)}`;
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const ms = (iso: string) => Date.parse(`${iso}T00:00:00Z`);
+const plusDays = (iso: string, n: number) => new Date(ms(iso) + n * 86_400_000).toISOString().slice(0, 10);
+/** The Monday of a date's week (the week calendar's): a week's answer and its calendar ask for the same five sessions. */
+const mondayOf = (iso: string) => plusDays(iso, -((new Date(ms(iso)).getUTCDay() + 6) % 7));
+/** "Thursday, Oct 22": a day of the week the answer names. */
+const weekday = (iso: string) => `${DAYS[new Date(ms(iso)).getUTCDay()]}, ${date(iso).replace(/, \d{4}$/, '')}`;
+const SESSION = { bmo: 'before the open', amc: 'after the close' } as const;
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+/** A day's reports listed by their time, up to ten names each, the rest counted. */
+const DAY_NAMES = 10;
 const median = (v: number[]) => { const s = [...v].sort((a, b) => a - b); const m = s.length / 2; return s.length % 2 ? s[Math.floor(m)]! : (s[m - 1]! + s[m]!) / 2; };
 const finite = (v: number | null | undefined): v is number => typeof v === 'number' && Number.isFinite(v);
 /** Still waiting: nothing on screen yet. Not available: the na box. */
@@ -93,6 +106,8 @@ export class PtAnswer {
   readonly list = input<ScreenList>('biggest_losers');
   readonly sector = input<Sector>();
   readonly month = input<string>();
+  /** With `earnings`, a date: its week (Monday to Friday, as the week calendar shows it) in place of the month; with `earnings-day`, the day. */
+  readonly start = input<string>();
 
   /** The company of a company topic, or null: each call below is made only for the topic that reads it (the page asked for the same). */
   private readonly of = (...topics: Topic[]) => (topics.includes(this.topic()) ? this.ticker() ?? null : null);
@@ -117,11 +132,17 @@ export class PtAnswer {
     const s = this.sector();
     return { scope: s ? { list: this.list(), sector: s } : { list: this.list() }, limit: 20 };
   });
-  // the same call as pt-calendar's under it (its kind with the market dates): the page carries one month, not two
+  // the same call as pt-calendar's under it (its kind with the market dates): the page carries one month (or one week), not two
   protected readonly calendar = this.pt.events(() => {
-    const t = this.topic(), m = this.month();
+    const t = this.topic(), m = this.month(), w = this.week();
+    if (w) return { scope: { by: 'dates' as const, from: w, to: plusDays(w, 4) }, kinds: ['earnings' as const, 'macro' as const] };
     return (t === 'earnings' || t === 'dividends') && m
       ? { scope: { by: 'universe' as const, month: m }, kinds: [t === 'earnings' ? 'earnings' as const : 'dividend' as const, 'macro' as const] } : null;
+  });
+  /** The Monday of the week an earnings answer is about (`start` with `earnings` or `earnings-day`), else null: a month's answer. */
+  private readonly week = computed(() => {
+    const t = this.topic(), s = this.start();
+    return (t === 'earnings' || t === 'earnings-day') && s && ISO_DAY.test(s) ? mondayOf(s) : null;
   });
 
   /** The answer: a sentence (or two); null when the data is not available (or the placement lacks the company or month its topic needs); '' while it is on its way. */
@@ -283,8 +304,36 @@ export class PtAnswer {
     return l.rows.length ? rule.say(sec, d, andSaid(l.rows.slice(0, 3).map(rule.item))) : [rule.none(sec, d)];
   }
 
+  /** The earnings of a week, or of one day: the calendar's five sessions, the day's reports by their time. */
+  private weekAnswer(w: string): Said | null {
+    const e = this.calendar.value(), day = this.topic() === 'earnings-day' ? this.start()! : null;
+    if (e === undefined) return PENDING;
+    if (e === null) return null;
+    const items = e.items.filter((i): i is Extract<EventItem, { kind: 'earnings' }> => i.kind === 'earnings' && (day ? i.date === day : i.date >= w && i.date <= plusDays(w, 4)));
+    const bySize = (a: { mcap: number | null }, b: { mcap: number | null }) => (b.mcap ?? 0) - (a.mcap ?? 0);
+    const companies = new Set(items.map((i) => i.ticker)).size;
+    if (day) {
+      const label = `${weekday(day)}, ${day.slice(0, 4)}`;
+      if (!items.length) return [`No earnings report is scheduled for ${label}.`];
+      const groups = ([['bmo', 'Before the open'], ['amc', 'After the close'], [null, 'Time not announced']] as const).map(([time, head]) => {
+        const list = items.filter((i) => i.meta.time === time).sort(bySize);
+        const rest = list.length - DAY_NAMES;
+        return list.length ? say` ${head}: ${andSaid([...list.slice(0, DAY_NAMES).map((i) => [who(i)] as Said), ...(rest > 0 ? [[`${rest} more`] as Said] : [])])}.` : say``;
+      });
+      return say`${many(companies, 'company reports', 'companies report')} earnings on ${label}.${groups[0]}${groups[1]}${groups[2]}`;
+    }
+    if (!items.length) return [`No earnings report is scheduled for the week of ${date(w)} yet.`];
+    const top = [...items].sort(bySize).slice(0, 3).map((i) => say`${who(i)} on ${weekday(i.date)}${i.meta.time ? ` ${SESSION[i.meta.time]}` : ''}`);
+    const days = new Map<string, number>();
+    for (const i of items) days.set(i.date, (days.get(i.date) ?? 0) + 1);
+    const [busiest, n] = [...days].sort(([a, x], [b, y]) => y - x || (a < b ? -1 : 1))[0]!;
+    return say`${many(companies, 'company reports', 'companies report')} earnings the week of ${date(w)}. The largest: ${andSaid(top)}. The busiest day is ${weekday(busiest)}, with ${many(n, 'report')}.`;
+  }
+
   private calendarAnswer(): Said | null {
-    const e = this.calendar.value(), m = this.month();
+    const e = this.calendar.value(), m = this.month(), w = this.week();
+    if (w) return this.weekAnswer(w);
+    if (this.topic() === 'earnings-day') return null;
     if (!m) return null;
     if (e === undefined) return PENDING;
     if (e === null) return null;

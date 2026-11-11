@@ -19,6 +19,8 @@ describe('pt-answer', () => {
   basics(PtAnswer, { topic: 'price-target', ticker: 'NVDA' });
   basics(PtAnswer, { topic: 'list', list: 'biggest_gainers' });
   basics(PtAnswer, { topic: 'earnings', month: '2026-10' });
+  basics(PtAnswer, { topic: 'earnings', start: '2026-10-19' });
+  basics(PtAnswer, { topic: 'earnings-day', start: '2026-10-22' });
 
   it('names companies as people search them', () => {
     expect(['NVIDIA Corporation', 'Eli Lilly and Company', 'The Coca-Cola Company', 'Merck & Co., Inc.', 'Alphabet Inc. Class A'].map(plainName))
@@ -155,6 +157,32 @@ describe('pt-answer', () => {
     expect(Object.keys(t.record).map((k) => k.split('|')[0]).sort()).toEqual(['analysts@1', 'company@1', 'metric@1']);
     const l = await render(PtAnswer, { topic: 'list', list: 'biggest_gainers' });
     expect(Object.keys(l.record).map((k) => k.split('|')[0])).toEqual(['screen@1']);
+  });
+  it('a week of earnings (`start`): how many companies, the largest with their day and time, the busiest day', async () => {
+    const e = (date: string, ticker: string, name: string, mcap: number, time: 'bmo' | 'amc' | null) =>
+      ({ date, ticker, name, logo: null, mcap, kind: 'earnings', meta: { time, epsEst: null, epsActual: null, revEst: null, revActual: null } });
+    const week: Events = { asOf: ASOF, items: [e('2026-10-20', 'NFLX', 'Netflix, Inc.', 5e11, 'amc'), e('2026-10-21', 'TSLA', 'Tesla, Inc.', 1.4e12, 'amc'),
+      e('2026-10-22', 'INTC', 'Intel Corporation', 1e11, 'amc'), e('2026-10-22', 'T', 'AT&T Inc.', 1.8e11, 'bmo'), e('2026-10-22', 'DOW', 'Dow Inc.', 2e10, null),
+      e('2026-10-27', 'MSFT', 'Microsoft Corporation', 3.4e12, 'amc'), { date: '2026-10-21', kind: 'macro', meta: { label: 'CPI', event: 'CPI', impact: 'High' } }] as Events['items'] };
+    expect(await text({ topic: 'earnings', start: '2026-10-21' }, { 'events@1': week })).toBe(
+      '5 companies report earnings the week of Oct 19, 2026. The largest: Tesla TSLA on Wednesday, Oct 21 after the close, Netflix NFLX on Tuesday, ' +
+      'Oct 20 after the close and AT&T T on Thursday, Oct 22 before the open. The busiest day is Thursday, Oct 22, with 3 reports.');
+    expect(await text({ topic: 'earnings', start: '2026-11-02' }, { 'events@1': { asOf: ASOF, items: [] } })).toBe('No earnings report is scheduled for the week of Nov 2, 2026 yet.');
+  });
+  it('a day of earnings (`earnings-day`): every report of the day by its time, largest first, the rest counted', async () => {
+    const e = (ticker: string, mcap: number, time: 'bmo' | 'amc' | null, date = '2026-10-22') =>
+      ({ date, ticker, name: `${ticker} Inc.`, logo: null, mcap, kind: 'earnings', meta: { time, epsEst: null, epsActual: null, revEst: null, revActual: null } });
+    const many = Array.from({ length: 12 }, (_, i) => e(`B${String.fromCharCode(65 + i)}`, 1e11 - i * 1e9, 'bmo'));
+    const day: Events = { asOf: ASOF, items: [...many, e('INTC', 1e11, 'amc'), e('DOW', 2e10, null), e('TSLA', 1.4e12, 'amc', '2026-10-21')] as Events['items'] };
+    expect(await text({ topic: 'earnings-day', start: '2026-10-22' }, { 'events@1': day })).toBe(
+      '14 companies report earnings on Thursday, Oct 22, 2026. Before the open: BA, BB, BC, BD, BE, BF, BG, BH, BI, BJ and 2 more. ' +
+      'After the close: INTC. Time not announced: DOW.');
+    expect(await text({ topic: 'earnings-day', start: '2026-10-23' }, { 'events@1': day })).toBe('No earnings report is scheduled for Friday, Oct 23, 2026.');
+  });
+  it('a week\'s or a day\'s answer asks what the week calendar under it asks: one payload on the page', async () => {
+    const c = await render(PtCalendar, { month: '2026-10', kind: 'earnings', view: 'week', start: '2026-10-22' });
+    expect(Object.keys((await render(PtAnswer, { topic: 'earnings', start: '2026-10-22' })).record)).toEqual(Object.keys(c.record));
+    expect(Object.keys((await render(PtAnswer, { topic: 'earnings-day', start: '2026-10-22' })).record)).toEqual(Object.keys(c.record));
   });
   it('a calendar\'s answer asks what the calendar under it asks (its kind with the market dates): the page carries one month, not two', async () => {
     const e = await render(PtAnswer, { topic: 'earnings', month: '2026-10' });
