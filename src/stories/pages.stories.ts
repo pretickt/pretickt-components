@@ -61,8 +61,8 @@ const LIST_NAV = [
 const sectorPath = (s: Sector) => `/sectors/${s.toLowerCase().replace(/\s+/g, '-')}/`;
 const hub = (t: string) => `/stocks/${t.toLowerCase()}/`;
 const metric = (ticker: string, metrics: readonly MetricKey[]) => ({ c: PtMetric, inputs: { ticker, metrics } });
-const SUBPAGES = [['value', 'Value'], ['why-moving', 'Why it moved'], ['price-target', 'Price target'], ['peers', 'Peers'], ['financials', 'Financials'],
-  ['news', 'News'], ['insiders', 'Insiders']] as const;
+const SUBPAGES = [['value', 'Value'], ['why-moving', 'Why it moved'], ['price-target', 'Price target'], ['earnings', 'Earnings'], ['peers', 'Peers'],
+  ['financials', 'Financials'], ['news', 'News'], ['insiders', 'Insiders']] as const;
 
 /** The NYSE week the home looks forward to: the first weekday from today (the generator's nextSession of the last close). */
 function weekStart(now = new Date()): string {

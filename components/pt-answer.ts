@@ -326,8 +326,9 @@ export class PtAnswer {
     const short = n.name ? commonName(n.name) : t;
     const items = e.items.filter((i): i is Extract<EventItem, { kind: 'earnings' }> => i.kind === 'earnings' && i.ticker === t);
     if (!items.length) return say`No earnings report of ${n} is on record yet.`;
-    const next = items.find((i) => i.date > e.asOf);
-    const past = items.filter((i) => i.date <= e.asOf && (finite(i.meta.epsActual) || finite(i.meta.move))).slice(-REPORTS);
+    // the latest session's own report still counts as next until its numbers are in (the page is built that evening)
+    const next = items.find((i) => i.date > e.asOf || (i.date === e.asOf && !finite(i.meta.epsActual)));
+    const past = items.filter((i) => i !== next && i.date <= e.asOf && (finite(i.meta.epsActual) || finite(i.meta.move))).slice(-REPORTS);
     let lead: Said;
     if (next) {
       const m = next.meta, when = `${weekday(next.date)}, ${next.date.slice(0, 4)}${m.time ? `, ${SESSION[m.time]}` : ''}`;
