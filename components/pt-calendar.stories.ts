@@ -51,6 +51,9 @@ export const stories = [
   story(PtCalendar, { name: 'Dividends, October (demo)', inputs: { month: '2026-10', kind: 'dividend' } }),
   story(PtCalendar, { name: 'The home\'s week, across a month end (demo)', inputs: { month: '2026-10', view: 'week', start: '2026-09-28' } }),
   story(PtCalendar, { name: 'A week without a start: its month\'s first', inputs: { month: '2026-10', view: 'week' } }),
+  // the earnings-today page: the day's rows first, every one, then the rest of the week
+  story(PtCalendar, { name: 'A day: Oct 27 first, then the rest of its week (made-up outlook)', inputs: { month: '2026-10', view: 'day', start: '2026-10-27' }, data: { 'events@1': october } }),
+  story(PtCalendar, { name: 'www: a day, Nov 12', inputs: { month: '2026-11', view: 'day', start: '2026-11-12' }, live: true }),
   story(PtCalendar, { name: 'www: earnings this month (no outlook yet: the date and the estimate)', inputs: { month: '2026-10' }, live: true }),
   story(PtCalendar, { name: 'www: dividends next month', inputs: { month: '2026-11', kind: 'dividend' }, live: true }),
   story(PtCalendar, { name: 'www: next week', inputs: { month: '2026-11', view: 'week', start: '2026-11-02' }, live: true }),

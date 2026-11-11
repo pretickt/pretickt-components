@@ -307,6 +307,42 @@ describe('pt-calendar rows: what to expect from each event', () => {
     expect(week.rows).toHaveLength(10);
     expect(week.r.el.querySelector('h4.pt-cal-rows-title')!.textContent).toBe('Important earnings and economic data, week of Oct 12');
   });
+  it('a day (`view: \'day\'`, Romeo 2026-11-11: «le aziende di oggi per prime, non la settimana per dimensione»): its week\'s grid with the day marked, the day\'s rows first, every one, then the rest of the week', async () => {
+    // Wed Oct 14: twelve small reports and the CPI; Thu Oct 15: two much larger ones; Mon Oct 12: one already out
+    const day = Array.from({ length: 12 }, (_, i) => co(`D${String.fromCharCode(65 + i)}`, `Day ${i}`, '2026-10-14', 'amc', 5e10 - i * 1e9, { epsEst: 1 }));
+    const big = [co('BIGA', 'Big A', '2026-10-15', 'bmo', 3e12, { epsEst: 2 }), co('BIGB', 'Big B', '2026-10-15', 'amc', 2e12, { epsEst: 2 })];
+    const out = co('OUTA', 'Out A', '2026-10-12', 'bmo', 1e12, { epsEst: 1, epsActual: 1.1, move: 0.02 });
+    const data = { asOf: '2026-10-13', normal: 0.0068, items: [...day, ...big, out, { ...CPI, meta: { ...CPI.meta, headline: { ...CPI.meta.headline, actual: null }, move: null } }] };
+    const { r, rows, line } = await rowsOf(data, { month: '2026-10', view: 'day', start: '2026-10-14' });
+    expect(r.el.querySelector('h3.pt-section-title')!.textContent).toBe('Week of Oct 12, 2026');
+    expect(r.el.querySelector('h4.pt-cal-rows-title')!.textContent).toBe('Earnings and economic data on Wed, Oct 14');
+    // the day's cell is the one marked, not the latest session's
+    expect([...r.el.querySelectorAll('.pt-cal-asof')].map((c) => c.textContent!.includes('DA'))).toEqual([true]);
+    // every row of the day (the market's date first, then by size), more than a week's ten; nothing of another day yet
+    expect(rows).toHaveLength(13);
+    expect(rows.map((x) => line(x, 'pt-cal-row-who'))).toEqual(['Consumer prices', ...day.map((d) => `${d.name} ${d.ticker}`)]);
+    expect(r.el.querySelector('.pt-cal-rows-sep')).toBeNull();
+    // the rest of the week comes after, under its own line, the largest first, those already out last
+    await click(r, r.el.querySelector('pt-more button'));
+    const all = [...r.el.querySelectorAll<HTMLElement>('.pt-cal-rows > li')].map((li) => (li.classList.contains('pt-cal-rows-sep') ? `— ${li.textContent}` : line(li, 'pt-cal-row-who')));
+    expect(all.slice(13)).toEqual(['— The rest of the week', 'Big A BIGA', 'Big B BIGB', '— Already reported', 'Out A OUTA']);
+    // a day with few reports: the week's ten rows, the day's first
+    const few = await rowsOf({ ...data, items: [...day.slice(0, 2), ...big, out] }, { month: '2026-10', view: 'day', start: '2026-10-14' });
+    expect(few.rows.map((x) => few.line(x, 'pt-cal-row-who'))).toEqual(['Day 0 DA', 'Day 1 DB', 'Big A BIGA', 'Big B BIGB', 'Out A OUTA']);
+    // a day with none, or another week on screen: the week as it is
+    const none = await rowsOf({ ...data, items: [...big, out] }, { month: '2026-10', view: 'day', start: '2026-10-14' });
+    expect(none.r.el.querySelector('h4.pt-cal-rows-title')!.textContent).toBe('Important earnings and economic data, week of Oct 12');
+    expect(none.rows.map((x) => none.line(x, 'pt-cal-row-who'))).toEqual(['Big A BIGA', 'Big B BIGB', 'Out A OUTA']);
+    // dividends: the day's ex-dividend dates
+    const ko = { date: '2026-10-14', ticker: 'KO', name: 'Coca-Cola', logo: null, mcap: 3e11, kind: 'dividend' as const, meta: { amount: 0.51, payDate: '2026-10-30' } };
+    const div = await rowsOf({ asOf: '2026-10-13', items: [ko] }, { month: '2026-10', kind: 'dividend', view: 'day', start: '2026-10-14' });
+    expect(div.r.el.querySelector('h4.pt-cal-rows-title')!.textContent).toBe('Ex-dividend dates on Wed, Oct 14');
+  });
+  it('a day asks what its week asks: the same call as the week view', async () => {
+    const d = await render(PtCalendar, { month: '2026-10', view: 'day', start: '2026-10-14' });
+    const w = await render(PtCalendar, { month: '2026-10', view: 'week', start: '2026-10-14' });
+    expect(Object.keys(d.record)).toEqual(Object.keys(w.record));
+  });
   it('a dividend calendar: the amount and when it is paid, the largest first, no market dates; holidays are no rows', async () => {
     const ko = { date: '2026-10-15', ticker: 'KO', name: 'Coca-Cola', logo: null, mcap: 3e11, kind: 'dividend' as const, meta: { amount: 0.51, payDate: '2026-10-30' } };
     const closed = { date: '2026-10-12', kind: 'macro' as const, meta: { label: 'Closed', event: 'Columbus Day', impact: null } };

@@ -11,7 +11,9 @@
  * HTML. The outlook fields are events@1.2's, optional: without them a row says the date and the EPS estimate, nothing made up.
  * On a month, every date stays in the list by day under the rows. The grid's grey cells, the days of the months around it that share
  * its weeks, show their events too (Romeo, 2026-11-02: "non vedo i passati di ottobre nelle celle grigie"); rows and list are the month's.
- * @version 3.1.0
+ * With `view: 'day'` and `start`, a day: its week's grid with the day marked, and the day's rows first, every one, then the rest of the
+ * week (Romeo, 2026-11-11, on the earnings-today page: "le aziende di oggi per prime, non la settimana per dimensione").
+ * @version 3.2.0
  * @evidence DataForSEO: "earnings calendar" ~153k searches/month, SERP without AI overview (reports/Funzioni pretickt da tenere e aggiungere.md)
  * @evidence DataForSEO: "dividend calendar" in launch/data/08c-serp-dividend-calendar.json
  * @evidence DataForSEO round 14 (2026-10-31, launch/data/14-summary.json): beyond the date, "who is expected to beat earnings this week?" (AI 574), "is it better to buy before or after earnings?" (357), "fed rate decision" 40,500, "important earnings this week" 590
@@ -381,6 +383,7 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
           </div>
           <ol class="pt-cal-rows">
             @for (row of visible(); track row.key; let i = $index) {
+              @if (i === dayCount() && i) {<li class="pt-cal-rows-sep">The rest of the week</li>}
               @if (i === firstOut()) {<li class="pt-cal-rows-sep">{{ kind() === 'dividend' ? 'Already ex-dividend' : 'Already reported' }}</li>}
               <li>
                 <details class="pt-cal-row" [class.pt-cal-row-unconf]="row.unconfirmed" (toggle)="opened($event)">
@@ -434,10 +437,11 @@ export class PtCalendar {
   private readonly pt = inject(Pt);
   readonly month = input.required<string>();
   readonly kind = input<Kind>('earnings');
-  readonly view = input<'month' | 'week'>('month');
+  readonly view = input<'month' | 'week' | 'day'>('month');
   readonly start = input<string>();
 
-  protected readonly isWeek = computed(() => this.view() === 'week');
+  /** A week's five sessions: the week view, and the day view (its week, the day first in the rows). */
+  protected readonly isWeek = computed(() => this.view() !== 'month');
   private readonly kinds = computed(() => [this.kind(), 'macro'] as ['earnings' | 'dividend', 'macro']);
   /** The month (or week) the reader asked for; what is on screen follows the data (`params()` of the answer shown). */
   private readonly pickedMonth = linkedSignal(() => this.month());
@@ -493,13 +497,28 @@ export class PtCalendar {
   /** The rows of the days shown (the month's, the week's), in their order; a month's twenty at first, a week's ten, then twenty more. */
   protected readonly rows = computed(() => {
     const mine = new Set(this.cells().filter((c) => c.inMonth).flatMap((c) => [...c.macro, ...c.items]).map(rowKey));
-    return this.gridRows().filter((r) => mine.has(r.key));
+    const rows = this.gridRows().filter((r) => mine.has(r.key)), day = this.dayKeys();
+    // a day view: the day's rows first, in their order, then the rest of the week in its own
+    return day.size ? [...rows.filter((r) => day.has(r.key)), ...rows.filter((r) => !day.has(r.key))] : rows;
   });
-  private readonly shown = linkedSignal({ source: () => this.rows(), computation: (): number => (this.isWeek() ? WEEK_ROWS : MORE_STEP) });
+  /** A day view's day (`start`), while its week is the one on screen; null on a week, a month, or once the reader moved to another week. */
+  private readonly day = computed(() => {
+    const s = this.start();
+    return this.view() === 'day' && s && /^\d{4}-\d{2}-\d{2}$/.test(s) && mondayOf(s) === this.shownWeek() ? s : null;
+  });
+  private readonly dayKeys = computed(() => {
+    const d = this.day();
+    return new Set(d ? this.week().filter((c) => c.date === d).flatMap((c) => [...c.macro, ...c.items]).map(rowKey) : []);
+  });
+  /** How many rows are the day's (they come first): 0 outside a day view, or on a day with nothing. */
+  protected readonly dayCount = computed(() => this.rows().filter((r) => this.dayKeys().has(r.key)).length);
+  // a day shows every row of its own, however many
+  private readonly shown = linkedSignal({ source: () => this.rows(), computation: (): number => (this.isWeek() ? Math.max(WEEK_ROWS, this.dayCount()) : MORE_STEP) });
   protected readonly visible = computed(() => this.rows().slice(0, this.shown()));
   /** Some row has a usual move (its last moves, four at least): the legend says what ± and the bars are. */
   protected readonly hasOutlook = computed(() => this.rows().some((r) => r.bars !== null));
-  protected readonly firstOut = computed(() => this.visible().findIndex((r) => r.out));
+  // "Already reported" opens the rows already out; under a day's rows, those of the rest of the week
+  protected readonly firstOut = computed(() => this.visible().findIndex((r, i) => i >= this.dayCount() && r.out));
   protected readonly hasMore = computed(() => this.rows().length > this.shown());
   protected readonly moreCount = computed(() => Math.min(MORE_STEP, this.rows().length - this.shown()));
   protected showMore() { this.shown.update((n) => n + MORE_STEP); }
@@ -508,6 +527,8 @@ export class PtCalendar {
   protected rowOf = (e: EventItem): Row | null => this.rowsByKey().get(rowKey(e)) ?? null;
   protected chipCue = (r: Row | null) => `pt-cal-cue${r && r.cueTone !== 'est' ? ` pt-t-${r.cueTone}` : ''}`;
   protected readonly rowsTitle = computed(() => {
+    const d = this.day();
+    if (d && this.dayCount()) return `${this.kind() === 'dividend' ? 'Ex-dividend dates' : 'Earnings and economic data'} on ${dayLabel(d)}`;
     const what = this.kind() === 'dividend' ? 'The largest ex-dividend dates' : 'Important earnings and economic data';
     return this.isWeek() ? `${what}, week of ${dayMonth(this.shownWeek())}` : `${what} in ${this.cal().label}`;
   });
@@ -516,7 +537,8 @@ export class PtCalendar {
     const d = e.target as HTMLDetailsElement;
     if (d.open) d.dispatchEvent(new CustomEvent('pt-interact', { bubbles: true, detail: { action: 'open' } }));
   }
-  protected dayClass = (c: Cell) => `pt-cal-day${c.inMonth ? '' : ' pt-cal-out'}${c.isAsOf ? ' pt-cal-asof' : ''}`;
+  // the marked cell: the latest session; on a day view, the day
+  protected dayClass = (c: Cell) => `pt-cal-day${c.inMonth ? '' : ' pt-cal-out'}${(this.day() ? c.date === this.day() : c.isAsOf) ? ' pt-cal-asof' : ''}`;
 
   protected go(m: string) { this.close(); this.pickedMonth.set(m); this.monthEvents.retry(); }
   protected goWeek(delta: number) { this.close(); this.pickedWeek.set(addDays(this.shownWeek(), 7 * delta)); this.weekEvents.retry(); }

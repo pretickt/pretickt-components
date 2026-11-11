@@ -79,7 +79,7 @@ await page('earnings calendar page', [{ c: 'pt-answer', props: { topic: 'earning
 await page('dividend calendar page', [{ c: 'pt-answer', props: { topic: 'dividends', month } }, { c: 'pt-calendar', props: { month, kind: 'dividend' } }]);
 // the week's and the day's earnings pages (/earnings-this-week/, /earnings-today/): the answer and the week calendar on one call
 await page('earnings this week page', [{ c: 'pt-answer', props: { topic: 'earnings', start: DEMO_ASOF } }, { c: 'pt-calendar', props: { month, view: 'week', start: DEMO_ASOF } }]);
-await page('earnings today page', [{ c: 'pt-answer', props: { topic: 'earnings-day', start: DEMO_ASOF } }, { c: 'pt-calendar', props: { month, view: 'week', start: DEMO_ASOF } }]);
+await page('earnings today page', [{ c: 'pt-answer', props: { topic: 'earnings-day', start: DEMO_ASOF } }, { c: 'pt-calendar', props: { month, view: 'day', start: DEMO_ASOF } }]);
 // a company page while the market is open: the card hydrates at once and loads today's file, "why it moved" hydrates once the file
 // is in (every sign flipped against the demo, so a server class left beside today's shows)
 {

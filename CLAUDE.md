@@ -315,7 +315,7 @@ largest companies with their logos and upside then) · `pt-answer` (the page's q
 price-target | peers | financials | insiders | earnings-date | basket with `ticker`, sector with `sector`, list with `list` and optional `sector`, earnings | dividends with `month`,
 earnings with `start` (that date's week), earnings-day with `start` (that day's reports by their time)) ·
 `pt-calendar` (month grid + macro dates + full list, previous/next month; `kind`
-earnings|dividend; `view: 'week'` + `start` = five sessions for the home page; "+N more" opens the whole day) · `pt-why-today`
+earnings|dividend; `view: 'week'` + `start` = five sessions for the home page; `view: 'day'` + `start` = that week with the day marked and the day's rows first, every one; "+N more" opens the whole day) · `pt-why-today`
 (answer-first sentence + market/sector/stock bars + news spike) · `pt-screen` (ranked table with list-specific column and sparklines;
 `list` or `peersOf`, optional `sector`; grows by 20 up to every company) · `pt-financials` (quarterly revenue/FCF bars + margins table) · `pt-news` (headlines with AI sentiment dots,
 nofollow links; `ticker`, or `sector` for its 10 largest companies' stories) · `pt-insiders` (buy/sell totals + Form 4 table) · `pt-movers` (beta's "Ongoing moves" tornado for the home: this
