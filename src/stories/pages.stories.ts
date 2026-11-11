@@ -105,8 +105,8 @@ export function companyPage(t: string, legal: string, sector: Sector, drafts: { 
   const n = named(legal, t);
   return {
     path: hub(t),
-    title: fitTitle(`${n} stock: forecast, price target, earnings`, `${n} stock forecast and price target`, `${n} stock forecast`, `${t} stock: forecast, price target, earnings`),
-    description: (`${n} stock forecast: analyst price targets, why it moved, next earnings, insider trades and technicals. Data as of {date}.`),
+    title: fitTitle(`${n} stock: forecast, prediction, price target`, `${n} stock forecast and price target`, `${n} stock forecast`, `${t} stock: forecast, prediction, price target`),
+    description: (`${n} stock forecast and price prediction: analyst price targets, why it moved, next earnings, insiders and technicals. As of {date}.`),
     h1: `${n} stock`,
     lede: `${legal} · ${sector} · end-of-day data as of {date}`,
     crumbs: [HOME, { label: sector, href: sectorPath(sector) }, { label: n }],
@@ -114,7 +114,7 @@ export function companyPage(t: string, legal: string, sector: Sector, drafts: { 
     sections: [
       { id: 'card', items: [{ c: PtCompanyHeader, inputs: { ticker: t } }] },
       { id: 'answer', items: [{ c: PtAnswer, inputs: { topic: 'forecast', ticker: t } }] },
-      { id: 'targets', title: 'Analyst price targets', items: [{ c: PtPriceTarget, inputs: { ticker: t } }] },
+      { id: 'targets', title: 'Analyst price targets and predictions', items: [{ c: PtPriceTarget, inputs: { ticker: t } }] },
       ...(drafts.value ? [{ id: 'value', isNew: true, note: 'pt-value in its compact form: the full one is its own page, /stocks/<t>/value/', items: [{ c: PtValue, inputs: { ticker: t, compact: true } }] }] : []),
       { id: 'snapshot', title: 'Snapshot', items: [metric(t, METRIC_GROUPS.snapshot)] },
       { id: 'why', title: 'Why it moved', items: [{ c: PtWhyToday, inputs: { ticker: t, window: '1d' } }] },
