@@ -20,6 +20,8 @@ export const stories = [
   // round 14: the week's and the day's earnings pages (/earnings-this-week/, /earnings-today/), the week calendar's call
   story(PtAnswer, { name: 'Earnings this week (demo)', inputs: { topic: 'earnings', start: '2026-10-19' } }),
   story(PtAnswer, { name: 'Earnings on a day (demo)', inputs: { topic: 'earnings-day', start: '2026-10-22' } }),
+  // a company's earnings page (/stocks/<t>/earnings/): its next date, the estimates, its record and usual move, its last report
+  story(PtAnswer, { name: 'Earnings date (demo)', inputs: { topic: 'earnings-date', ticker: 'NVDA' } }),
   story(PtAnswer, { name: 'Earnings on a day with none', inputs: { topic: 'earnings-day', start: '2026-10-24' }, data: { 'events@1': { asOf: '2026-10-16', items: [] } } }),
   story(PtAnswer, { name: 'www: forecast, NVDA', inputs: { topic: 'forecast', ticker: 'NVDA' }, live: true }),
   story(PtAnswer, { name: 'www: technicals, NVDA', inputs: { topic: 'technicals', ticker: 'NVDA' }, live: true }),
@@ -27,6 +29,8 @@ export const stories = [
   story(PtAnswer, { name: 'www: earnings this month', inputs: { topic: 'earnings', month: '2026-10' }, live: true }),
   story(PtAnswer, { name: 'www: earnings the week of Nov 16', inputs: { topic: 'earnings', start: '2026-11-16' }, live: true }),
   story(PtAnswer, { name: 'www: earnings on Nov 19', inputs: { topic: 'earnings-day', start: '2026-11-19' }, live: true }),
+  story(PtAnswer, { name: 'www: NVDA earnings date', inputs: { topic: 'earnings-date', ticker: 'NVDA' }, live: true }),
+  story(PtAnswer, { name: 'www: WMT earnings date', inputs: { topic: 'earnings-date', ticker: 'WMT' }, live: true }),
   story(PtAnswer, { name: 'No target in a year is an answer too', inputs: { topic: 'price-target', ticker: 'NVDA' },
     data: { 'analysts@1': { ...nvda, summary: null, targets: [], consensus: null, history: [] } } }),
   story(PtAnswer, { name: 'Not available', inputs: { topic: 'forecast', ticker: 'NVDA' }, data: null }),

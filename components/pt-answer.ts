@@ -1,13 +1,15 @@
 /**
  * The page's question answered first, in a sentence or two, from the data the page shows below it: a stock's analyst forecast and
- * price target, its peers, its latest quarter, its insiders; who leads a market list; a calendar month, week or day at a glance.
+ * price target, its peers, its latest quarter, its insiders, its next earnings date; who leads a market list; a calendar month, week or day at a glance.
  * Company topics name the company as people search it, with its ticker ("Nvidia NVDA"): the sentence an answer engine quotes stands on its own.
  * Each company a sentence names is a link with its logo (PtSay, PtMention): on the site its card opens on hover, the page's own company too.
- * @version 1.7.0
+ * @version 1.8.0
  * @evidence design of the fund pages, 2026-11-05: `topic: 'basket'`, the page's first sentence about a fund
  * @evidence design of the sector pages, 2026-11-07: `topic: 'sector'`, the sector's companies, what they are worth and what the targets on them average
  * @evidence DataForSEO round 14 (2026-10-31): "earnings today" 27,100/month, "earnings this week" 18,100, "earnings calendar this week" 8,100,
  *   "earnings next week" 2,900 (launch/data/14-summary.json): `start` gives a week's answer, `earnings-day` a day's
+ * @evidence DataForSEO round 13 (launch/RESEARCH.md §9): "{company} earnings date" and "when does {company} report earnings" 440,250 searches/month on
+ *   147 companies, AI Overview on 92%: `earnings-date`, the company's next report with its time, the estimates and how the stock moved after the last ones
  * @evidence DataForSEO: "<ticker> stock forecast" 151k/month, "<ticker> price target" 103k/month, "earnings calendar" 153k/month, list queries (launch/data/08c-serp-*.json)
  * @evidence SEO measurement 2026-10-09: list and company subpages of ~80–200 words; the answer belongs in the first lines, with its numbers
  * @evidence DataForSEO round 16 (2026-11-02): "<ticker> 200 day moving average" 4,080/month on 9 tickers, 50-day 1,550, 52-week high 1,300; the AI
@@ -21,7 +23,7 @@ import { INSIDER_WINDOW_DAYS, type EventItem, type ScreenList, type ScreenRow, t
 
 export { plainName } from '@pretickt/components/format';
 
-type Topic = 'forecast' | 'price-target' | 'peers' | 'financials' | 'insiders' | 'list' | 'earnings' | 'earnings-day' | 'dividends' | 'technicals' | 'basket' | 'sector';
+type Topic = 'forecast' | 'price-target' | 'peers' | 'financials' | 'insiders' | 'earnings-date' | 'list' | 'earnings' | 'earnings-day' | 'dividends' | 'technicals' | 'basket' | 'sector';
 type Named = { ticker: string; name: string; logo?: string | null };
 
 /** A company the answer names: a link with its logo ("Apple AAPL"), its card on hover. */
@@ -45,6 +47,9 @@ const SESSION = { bmo: 'before the open', amc: 'after the close' } as const;
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 /** A day's reports listed by their time, up to ten names each, the rest counted. */
 const DAY_NAMES = 10;
+/** EPS beats the estimate beyond 2% of it (pt-calendar's verdict, the resolver's record); the usual move needs four moves of the last eight. */
+const SURPRISE = 0.02, REPORTS = 8, MIN_MOVES = 4;
+const beat = (actual: number, est: number) => (est === 0 ? actual : (actual - est) / Math.abs(est)) > SURPRISE;
 const median = (v: number[]) => { const s = [...v].sort((a, b) => a - b); const m = s.length / 2; return s.length % 2 ? s[Math.floor(m)]! : (s[m - 1]! + s[m]!) / 2; };
 const finite = (v: number | null | undefined): v is number => typeof v === 'number' && Number.isFinite(v);
 /** Still waiting: nothing on screen yet. Not available: the na box. */
@@ -113,7 +118,7 @@ export class PtAnswer {
   private readonly of = (...topics: Topic[]) => (topics.includes(this.topic()) ? this.ticker() ?? null : null);
   /** The company's name for the company topics: the card at the top of every company page asks for it too (the same call). */
   protected readonly company = this.pt.company(() => {
-    const t = this.of('forecast', 'price-target', 'peers', 'financials', 'insiders', 'technicals');
+    const t = this.of('forecast', 'price-target', 'peers', 'financials', 'insiders', 'technicals', 'earnings-date');
     return t ? { ticker: t } : null;
   });
   protected readonly basket = this.pt.basket(() => { const t = this.of('basket'); return t ? { ticker: t } : null; });
@@ -123,6 +128,8 @@ export class PtAnswer {
   protected readonly peers = this.pt.screen(() => { const t = this.of('peers'); return t ? { scope: { peersOf: t }, limit: 12 } : null; });
   protected readonly quarters = this.pt.fundamentals(() => { const t = this.of('financials'); return t ? { ticker: t, periods: 12 } : null; });
   protected readonly insiders = this.pt.insider(() => { const t = this.of('insiders'); return t ? { ticker: t, days: 365 } : null; });
+  // two years of the company's reports (about eight) and the next 120 days, where its next date is
+  protected readonly reports = this.pt.events(() => { const t = this.of('earnings-date'); return t ? { scope: { by: 'ticker' as const, ticker: t, range: '2y' as const, ahead: 120 }, kinds: ['earnings' as const] } : null; });
   // the year's daily bars of the hub's price chart (pt-price-events asks the same): the averages and the range come from them
   protected readonly bars = this.pt.priceSeries(() => { const t = this.of('technicals'); return t ? { tickers: [t], range: '1y', interval: '1d', rebase: false } : null; });
   /** the 52-week range the company card shows beside the answer: traded highs and lows (the series' bars are adjusted for dividends) */
@@ -152,6 +159,7 @@ export class PtAnswer {
       case 'peers': return this.peerAnswer();
       case 'financials': return this.quarterAnswer();
       case 'insiders': return this.insiderAnswer();
+      case 'earnings-date': return this.earningsDateAnswer();
       case 'list': return this.listAnswer();
       case 'technicals': return this.technicalsAnswer();
       case 'basket': return this.basketAnswer();
@@ -302,6 +310,46 @@ export class PtAnswer {
     const rule = LISTS[this.list()] ?? LISTS.biggest_losers;
     const sec = this.sector() ? `${this.sector()} ` : '', d = date(l.asOf);
     return l.rows.length ? rule.say(sec, d, andSaid(l.rows.slice(0, 3).map(rule.item))) : [rule.none(sec, d)];
+  }
+
+  /**
+   * When the company reports next (its time, whether it confirmed the date), what analysts expect, its record against the EPS estimate and
+   * the stock's usual move the session after, over its last eight reports, then the last report's numbers.
+   */
+  private earningsDateAnswer(): Said | null {
+    const e = this.reports.value(), t = this.ticker();
+    if (!t) return null;
+    if (e === undefined) return PENDING;
+    if (e === null) return null;
+    const n = this.named(t);
+    if (n === undefined) return PENDING;
+    const short = n.name ? commonName(n.name) : t;
+    const items = e.items.filter((i): i is Extract<EventItem, { kind: 'earnings' }> => i.kind === 'earnings' && i.ticker === t);
+    if (!items.length) return say`No earnings report of ${n} is on record yet.`;
+    const next = items.find((i) => i.date > e.asOf);
+    const past = items.filter((i) => i.date <= e.asOf && (finite(i.meta.epsActual) || finite(i.meta.move))).slice(-REPORTS);
+    let lead: Said;
+    if (next) {
+      const m = next.meta, when = `${weekday(next.date)}, ${next.date.slice(0, 4)}${m.time ? `, ${SESSION[m.time]}` : ''}`;
+      const sure = m.confirmed === true ? ', a date the company has confirmed' : ', an estimated date the company has not confirmed yet';
+      const eps = finite(m.epsEst) ? `EPS of ${money(m.epsEst)}` : null, rev = finite(m.revEst) ? `revenue of ${usd(m.revEst, { compact: true })}` : null;
+      const expect = eps || rev ? ` Analysts expect ${eps && rev ? `${eps} on ${rev}` : eps ?? rev}.` : '';
+      lead = say`${n} reports its next earnings on ${when}${sure}.${expect}`;
+    } else lead = say`${n} has not scheduled its next earnings report yet.`;
+    const rated = past.filter((i) => finite(i.meta.epsActual) && finite(i.meta.epsEst));
+    const moves = past.map((i) => i.meta.move).filter(finite);
+    const usual = moves.length >= MIN_MOVES ? `, and the stock moved ±${level(moves.reduce((s, m) => s + Math.abs(m), 0) / moves.length)} on average the session after` : '';
+    const record = rated.length ? ` ${short} beat the EPS estimate in ${rated.filter((i) => beat(i.meta.epsActual!, i.meta.epsEst!)).length} of its last ${many(rated.length, 'report')}${usual}.` : '';
+    const last = past.at(-1);
+    let lastSaid = '';
+    if (last) {
+      const m = last.meta, parts: string[] = [];
+      if (finite(m.epsActual)) parts.push(`EPS of ${money(m.epsActual)}${finite(m.epsEst) ? ` against ${money(m.epsEst)} expected` : ''}`);
+      if (finite(m.revActual)) parts.push(`revenue of ${usd(m.revActual, { compact: true })}${finite(m.revEst) ? ` against ${usd(m.revEst, { compact: true })}` : ''}`);
+      const move = finite(m.move) ? `; the stock ${Math.abs(m.move) < 0.0005 ? 'was flat' : `${m.move > 0 ? 'rose' : 'fell'} ${level(Math.abs(m.move))}`} the next session` : '';
+      if (parts.length) lastSaid = ` The last report, on ${date(last.date)}: ${and(parts)}${move}.`;
+    }
+    return say`${lead}${record}${lastSaid}`;
   }
 
   /** The earnings of a week, or of one day: the calendar's five sessions, the day's reports by their time. */

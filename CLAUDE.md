@@ -312,7 +312,8 @@ E/D/S/A markers grouped per day, range toggles, zoom & pan; `fund` for a fund's 
 pt-chart: clustered target dots, gradient segments from the price when posted, the last close and the high, average and low targets on the price axis, the consensus by month
 below, hover panel of the analysts, zoom & pan; with `basket` and a fund's ticker, or with `sector`, the basket's target week by week on its line, the panel naming the week's
 largest companies with their logos and upside then) · `pt-answer` (the page's question answered first, in a sentence or two, from the data the page already asks for; `topic` forecast |
-price-target | peers | financials | insiders | basket with `ticker`, sector with `sector`, list with `list` and optional `sector`, earnings | dividends with `month`) ·
+price-target | peers | financials | insiders | earnings-date | basket with `ticker`, sector with `sector`, list with `list` and optional `sector`, earnings | dividends with `month`,
+earnings with `start` (that date's week), earnings-day with `start` (that day's reports by their time)) ·
 `pt-calendar` (month grid + macro dates + full list, previous/next month; `kind`
 earnings|dividend; `view: 'week'` + `start` = five sessions for the home page; "+N more" opens the whole day) · `pt-why-today`
 (answer-first sentence + market/sector/stock bars + news spike) · `pt-screen` (ranked table with list-specific column and sparklines;

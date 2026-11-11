@@ -21,6 +21,7 @@ describe('pt-answer', () => {
   basics(PtAnswer, { topic: 'earnings', month: '2026-10' });
   basics(PtAnswer, { topic: 'earnings', start: '2026-10-19' });
   basics(PtAnswer, { topic: 'earnings-day', start: '2026-10-22' });
+  basics(PtAnswer, { topic: 'earnings-date', ticker: 'NVDA' });
 
   it('names companies as people search them', () => {
     expect(['NVIDIA Corporation', 'Eli Lilly and Company', 'The Coca-Cola Company', 'Merck & Co., Inc.', 'Alphabet Inc. Class A'].map(plainName))
@@ -183,6 +184,36 @@ describe('pt-answer', () => {
     const c = await render(PtCalendar, { month: '2026-10', kind: 'earnings', view: 'week', start: '2026-10-22' });
     expect(Object.keys((await render(PtAnswer, { topic: 'earnings', start: '2026-10-22' })).record)).toEqual(Object.keys(c.record));
     expect(Object.keys((await render(PtAnswer, { topic: 'earnings-day', start: '2026-10-22' })).record)).toEqual(Object.keys(c.record));
+  });
+  it('a company\'s earnings date (`earnings-date`): the next report with its time and whether it is confirmed, the estimates, its record, the usual move, the last report', async () => {
+    const company = { ticker: 'NVDA', name: 'NVIDIA Corporation', sector: 'Technology', industry: 'Semiconductors', logo: null };
+    const r = (date: string, o: Record<string, unknown>) => ({ date, ticker: 'NVDA', name: 'NVIDIA Corporation', logo: null, mcap: 4e12, kind: 'earnings',
+      meta: { time: 'amc', confirmed: true, epsEst: null, epsActual: null, revEst: null, revActual: null, ...o } });
+    const past = [r('2025-11-20', { epsEst: 0.75, epsActual: 0.81, move: -0.032 }), r('2026-02-26', { epsEst: 0.85, epsActual: 0.89, move: 0.081 }),
+      r('2026-05-28', { epsEst: 0.93, epsActual: 0.96, move: 0.032 }), r('2026-08-27', { epsEst: 1.01, epsActual: 1.05, revEst: 46.0e9, revActual: 46.7e9, move: -0.008 })];
+    const next = r('2026-11-19', { epsEst: 1.25, revEst: 54.6e9 });
+    const answers = (items: unknown[]) => ({ 'events@1': { asOf: ASOF, items }, 'company@1': company });
+    expect(await text({ topic: 'earnings-date', ticker: 'NVDA' }, answers([...past, next]))).toBe(
+      'Nvidia NVDA reports its next earnings on Thursday, Nov 19, 2026, after the close, a date the company has confirmed. Analysts expect EPS of ' +
+      '$1.25 on revenue of $54.6B. Nvidia beat the EPS estimate in 4 of its last 4 reports, and the stock moved ±3.8% on average the session after. ' +
+      'The last report, on Aug 27, 2026: EPS of $1.05 against $1.01 expected and revenue of $46.7B against $46B; the stock fell 0.8% the next session.');
+    // an estimated date, no estimates yet, a miss: said as they are
+    const guess = r('2026-11-19', { time: null, confirmed: false });
+    const missed = [...past.slice(0, 3), r('2026-08-27', { epsEst: 1.01, epsActual: 0.9, move: null })];
+    expect(await text({ topic: 'earnings-date', ticker: 'NVDA' }, answers([...missed, guess]))).toBe(
+      'Nvidia NVDA reports its next earnings on Thursday, Nov 19, 2026, an estimated date the company has not confirmed yet. Nvidia beat the EPS ' +
+      'estimate in 3 of its last 4 reports. The last report, on Aug 27, 2026: EPS of $0.90 against $1.01 expected.');
+    // no date ahead
+    expect(await text({ topic: 'earnings-date', ticker: 'NVDA' }, answers(past))).toBe(
+      'Nvidia NVDA has not scheduled its next earnings report yet. Nvidia beat the EPS estimate in 4 of its last 4 reports, and the stock moved ±3.8% ' +
+      'on average the session after. The last report, on Aug 27, 2026: EPS of $1.05 against $1.01 expected and revenue of $46.7B against $46B; ' +
+      'the stock fell 0.8% the next session.');
+    expect(await text({ topic: 'earnings-date', ticker: 'NVDA' }, answers([]))).toBe('No earnings report of Nvidia NVDA is on record yet.');
+  });
+  it('a company\'s earnings date asks for two years of its reports and the next 120 days, and its name (the card above asks the same)', async () => {
+    const r = await render(PtAnswer, { topic: 'earnings-date', ticker: 'NVDA' });
+    expect(Object.keys(r.record).sort()).toEqual(['company@1|{"ticker":"NVDA"}',
+      'events@1|{"kinds":["earnings"],"scope":{"ahead":120,"by":"ticker","range":"2y","ticker":"NVDA"}}']);
   });
   it('a calendar\'s answer asks what the calendar under it asks (its kind with the market dates): the page carries one month, not two', async () => {
     const e = await render(PtAnswer, { topic: 'earnings', month: '2026-10' });
