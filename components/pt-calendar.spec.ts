@@ -16,9 +16,33 @@ describe('pt-calendar', () => {
     expect(m.weeks[0]![0]!.date).toBe('2026-09-28');
     expect(m.weeks.flat().filter((c) => c.inMonth)).toHaveLength(31);
     expect(m.label).toBe('October 2026');
-    expect(m.weeks.flat().find((c) => c.date === '2026-10-02')!.isAsOf).toBe(true);
+    expect(m.weeks.flat().find((c) => c.date === '2026-10-02')!.marked).toBe(true);
     expect(shiftMonth('2026-12', 1)).toBe('2027-01');
     expect(shiftMonth('2026-01', -1)).toBe('2025-12');
+  });
+  it('marks the reader\'s day: the session after the latest close (`asOf`), weekends and closed days skipped (Romeo, 2026-11-11: «perché evidenzia il 10 novembre se oggi è 11?»)', async () => {
+    const marked = async (asOf: string, inputs: Record<string, unknown>, items: unknown[] = []) => {
+      const r = await render(PtCalendar, inputs, withData({ 'events@1': { asOf, items } }));
+      const heads = [...r.el.querySelectorAll('.pt-cal-dow')].map((d) => d.textContent);
+      return [...r.el.querySelectorAll('.pt-cal-day')].flatMap((d, i) => (d.classList.contains('pt-cal-asof') ? [inputs['view'] ? heads[i] : d.firstElementChild!.textContent] : []));
+    };
+    const week = (start: string) => ({ month: start.slice(0, 7), view: 'week', start });
+    // the data is Tuesday's close and the page is read on Wednesday
+    expect(await marked('2026-11-10', week('2026-11-09'))).toEqual(['Wed 11']);
+    expect(await marked('2026-11-10', { month: '2026-11' })).toEqual(['11']);
+    // after Friday's close the day is Monday: nothing in the week just over, the first cell of the next
+    expect(await marked('2026-11-13', week('2026-11-09'))).toEqual([]);
+    expect(await marked('2026-11-13', week('2026-11-16'))).toEqual(['Mon 16']);
+    // a closed day is not a session: after Wednesday's close before Thanksgiving, Friday
+    const closed = { date: '2026-11-26', kind: 'macro', meta: { label: 'Closed', event: 'Thanksgiving Day', impact: null } };
+    expect(await marked('2026-11-25', week('2026-11-23'), [closed])).toEqual(['Fri 27']);
+    expect(await marked('2026-11-25', { month: '2026-11' }, [closed])).toEqual(['27']);
+    // a closed Friday is in the month's grid (Monday marked), not in the next week's answer: that week view marks nothing
+    const xmas = { date: '2026-12-25', kind: 'macro', meta: { label: 'Closed', event: 'Christmas Day', impact: null } };
+    expect(await marked('2026-12-24', { month: '2026-12' }, [xmas])).toEqual(['28']);
+    expect(await marked('2026-12-24', week('2026-12-28'))).toEqual([]);
+    // no answer yet, no mark
+    expect(await marked('', week('2026-11-09'))).toEqual([]);
   });
   it('caps each day at four chips and reports the overflow', async () => {
     const { el } = await render(PtCalendar, { month: '2026-10' }, withData({ 'events@1': { asOf: '2026-10-02', items: many } }));

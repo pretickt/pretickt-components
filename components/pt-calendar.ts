@@ -13,7 +13,9 @@
  * its weeks, show their events too (Romeo, 2026-11-02: "non vedo i passati di ottobre nelle celle grigie"); rows and list are the month's.
  * With `view: 'day'` and `start`, a day: its week's grid with the day marked, and the day's rows first, every one, then the rest of the
  * week (Romeo, 2026-11-11, on the earnings-today page: "le aziende di oggi per prime, non la settimana per dimensione").
- * @version 3.2.0
+ * The grid marks the reader's day, the session after the latest close: the data is the last close's and the page is read the day after
+ * (Romeo, 2026-11-11: "perché evidenzia il 10 novembre se oggi è 11?"); on a day view, the day.
+ * @version 3.2.1
  * @evidence DataForSEO: "earnings calendar" ~153k searches/month, SERP without AI overview (reports/Funzioni pretickt da tenere e aggiungere.md)
  * @evidence DataForSEO: "dividend calendar" in launch/data/08c-serp-dividend-calendar.json
  * @evidence DataForSEO round 14 (2026-10-31, launch/data/14-summary.json): beyond the date, "who is expected to beat earnings this week?" (AI 574), "is it better to buy before or after earnings?" (357), "fed rate decision" 40,500, "important earnings this week" 590
@@ -53,10 +55,10 @@ type Company = Exclude<EventItem, { kind: 'macro' }>;
 type Macro = Extract<EventItem, { kind: 'macro' }>;
 /** Unknown future kinds may lack a ticker: those are skipped rather than breaking the page. */
 const isCompany = (e: EventItem): e is Company => e.kind !== 'macro' && typeof (e as { ticker?: unknown }).ticker === 'string';
-export interface Cell { date: string; day: number; inMonth: boolean; isAsOf: boolean; items: Company[]; macro: Macro[] }
+export interface Cell { date: string; day: number; inMonth: boolean; marked: boolean; items: Company[]; macro: Macro[] }
 
-/** Monday-first weeks for `month`; `asOf` (latest session) is highlighted instead of a clock-based "today". */
-export function buildMonth(month: string, items: EventItem[], asOf: string) {
+/** Monday-first weeks for `month`; `mark` is the day to highlight (the reader's day, from the data's date: no clock). */
+export function buildMonth(month: string, items: EventItem[], mark: string) {
   const [y, m] = month.split('-').map(Number);
   const m0 = m! - 1;
   const byDay = new Map<string, Company[]>();
@@ -70,7 +72,7 @@ export function buildMonth(month: string, items: EventItem[], asOf: string) {
   const total = Math.ceil((lead + days) / 7) * 7;
   const cells: Cell[] = Array.from({ length: total }, (_, i) => {
     const date = iso(y!, m0, 1 - lead + i);
-    return { date, day: Number(date.slice(8)), inMonth: date.slice(0, 7) === month, isAsOf: date === asOf, items: byDay.get(date) ?? [], macro: macroByDay.get(date) ?? [] };
+    return { date, day: Number(date.slice(8)), inMonth: date.slice(0, 7) === month, marked: date === mark, items: byDay.get(date) ?? [], macro: macroByDay.get(date) ?? [] };
   });
   const weeks: Cell[][] = [];
   for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
@@ -78,11 +80,11 @@ export function buildMonth(month: string, items: EventItem[], asOf: string) {
 }
 
 /** The five sessions (Mon–Fri) of the week starting `start`, with their events. */
-export function buildWeek(start: string, items: EventItem[], asOf: string): Cell[] {
+export function buildWeek(start: string, items: EventItem[], mark: string): Cell[] {
   return Array.from({ length: 5 }, (_, i) => {
     const date = addDays(start, i);
     const day = items.filter((e) => e.date === date);
-    return { date, day: Number(date.slice(8)), inMonth: true, isAsOf: date === asOf, items: day.filter(isCompany), macro: day.filter((e): e is Macro => e.kind === 'macro') };
+    return { date, day: Number(date.slice(8)), inMonth: true, marked: date === mark, items: day.filter(isCompany), macro: day.filter((e): e is Macro => e.kind === 'macro') };
   });
 }
 export { isCompany };
@@ -130,6 +132,7 @@ const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const dayLabel = (d: string) => `${WEEKDAY[weekday(d)]}, ${dayMonth(d)}`;
 const TIME = { bmo: 'before the open', amc: 'after the close' } as const;
 /** The next session after `d`: a weekday the market is open (the calendar's own "Closed" dates are its holidays). */
+const closedDays = (items: EventItem[]): Set<string> => new Set(items.filter((e): e is Macro => e.kind === 'macro' && e.meta.label === 'Closed').map((e) => e.date));
 function nextSession(d: string, closed: ReadonlySet<string>): string {
   let x = addDays(d, 1);
   while (weekday(x) % 6 === 0 || closed.has(x)) x = addDays(x, 1);
@@ -260,7 +263,7 @@ function dividendRow(e: Dividend, asOf: string): Row {
  * companies by market value; those still ahead before those already out (`asOf`, the latest session, and before it).
  */
 export function calendarRows(items: EventItem[], kind: Kind, asOf: string, normal: number | null): Row[] {
-  const closed = new Set(items.filter((e): e is Macro => e.kind === 'macro' && e.meta.label === 'Closed').map((e) => e.date));
+  const closed = closedDays(items);
   const mine = items.filter((e) => (e.kind === 'macro' ? kind === 'earnings' && e.meta.label !== 'Closed' : isCompany(e) && e.kind === kind));
   const size = (e: EventItem) => (e.kind === 'macro' ? Infinity : e.mcap ?? 0);
   const order = (a: EventItem, b: EventItem) => size(b) - size(a) || cmp(a.date, b.date) || cmp(isCompany(a) ? a.ticker : '', isCompany(b) ? b.ticker : '');
@@ -468,14 +471,23 @@ export class PtCalendar {
   protected readonly href = href;
   protected readonly dayMonth = dayMonth;
 
+  /**
+   * The reader's day: the session after the latest close (`asOf`), as the pages that place the calendar count it (the home's week,
+   * /earnings-today/). The holidays are the answer's own "Closed" dates, so a week view does not see a closed Friday in the week before
+   * the one on screen: over that long weekend the next week has no cell marked (a month has the Friday in its grid, and marks Monday).
+   */
+  private readonly today = computed(() => {
+    const d = this.data();
+    return d?.asOf ? nextSession(d.asOf, closedDays(d.items)) : '';
+  });
   private readonly weekItems = computed(() => (this.weekEvents.value()?.items ?? []).filter((e) => e.kind === 'macro' || e.kind === this.kind()));
-  protected readonly week = computed(() => (this.isWeek() ? buildWeek(this.shownWeek(), this.weekItems(), this.weekEvents.value()?.asOf ?? '') : []));
+  protected readonly week = computed(() => (this.isWeek() ? buildWeek(this.shownWeek(), this.weekItems(), this.today()) : []));
   protected readonly hasCompanies = computed(() => this.weekItems().some(isCompany));
   protected readonly cal = computed(() => {
     const m = this.shownMonth();
     // the grid's every day (events@1.3 answers a month with its weeks): the grey cells show the months around it too
     const items = (this.monthEvents.value()?.items ?? []).filter((e) => e.kind === 'macro' || (isCompany(e) && e.kind === this.kind()));
-    return buildMonth(m, items, this.monthEvents.value()?.asOf ?? '');
+    return buildMonth(m, items, this.today());
   });
   protected readonly cells = computed(() => (this.isWeek() ? this.week() : this.cal().weeks.flat()));
   protected readonly prev = computed(() => shiftMonth(this.shownMonth(), -1));
@@ -537,8 +549,8 @@ export class PtCalendar {
     const d = e.target as HTMLDetailsElement;
     if (d.open) d.dispatchEvent(new CustomEvent('pt-interact', { bubbles: true, detail: { action: 'open' } }));
   }
-  // the marked cell: the latest session; on a day view, the day
-  protected dayClass = (c: Cell) => `pt-cal-day${c.inMonth ? '' : ' pt-cal-out'}${(this.day() ? c.date === this.day() : c.isAsOf) ? ' pt-cal-asof' : ''}`;
+  // the marked cell: the reader's day; on a day view, the day
+  protected dayClass = (c: Cell) => `pt-cal-day${c.inMonth ? '' : ' pt-cal-out'}${(this.day() ? c.date === this.day() : c.marked) ? ' pt-cal-asof' : ''}`;
 
   protected go(m: string) { this.close(); this.pickedMonth.set(m); this.monthEvents.retry(); }
   protected goWeek(delta: number) { this.close(); this.pickedWeek.set(addDays(this.shownWeek(), 7 * delta)); this.weekEvents.retry(); }
