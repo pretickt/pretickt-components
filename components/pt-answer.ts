@@ -54,6 +54,18 @@ const SURPRISE = 0.02, REPORTS = 8, MIN_MOVES = 4;
 const beat = (actual: number, est: number) => (est === 0 ? actual : (actual - est) / Math.abs(est)) > SURPRISE;
 /** A company still pays while its last ex-dividend date is within this many days (a yearly payer included). */
 const PAYING_DAYS = 400;
+/**
+ * A year of dividends: as many of the latest payments as the company makes in a year, by the usual gap between its ex-dividend dates
+ * (4 for a quarterly payer), so a payment a day past a 365-day window is not lost (Apple on 2026-11-10: three of its four). With
+ * fewer than three payments on record, or a rhythm that does not hold, those of the last 365 days.
+ */
+function yearOf<T extends { date: string }>(past: readonly T[], asOf: string): T[] {
+  const within = past.filter((i) => i.date > plusDays(asOf, -365));
+  const lastSix = past.slice(-6), gaps = lastSix.slice(1).map((i, k) => (ms(i.date) - ms(lastSix[k]!.date)) / 86_400_000).sort((a, b) => a - b);
+  if (gaps.length < 2) return within;
+  const per = Math.min(12, Math.max(1, Math.round(365 / gaps[Math.floor(gaps.length / 2)]!))), latest = past.slice(-per);
+  return latest.length === per && latest[0]!.date > plusDays(asOf, -PAYING_DAYS) ? latest : within;
+}
 /** A split's figure: "10", "1.5". */
 const fig = (v: number) => String(Math.round(v * 1000) / 1000);
 type Split = Extract<EventItem, { kind: 'split' }>;
@@ -394,8 +406,10 @@ export class PtAnswer {
     const then = plusDays(last.date, -365), near = (i: { date: string }) => Math.abs(ms(i.date) - ms(then));
     const before = past.filter((i) => near(i) <= 45 * 86_400_000).sort((a, b) => near(a) - near(b))[0];
     const change = !before || before.meta.amount <= 0 ? '' : Math.abs(last.meta.amount / before.meta.amount - 1) < 0.0005 ? ', the same as a year earlier'
+      // a payment that at least doubled reads by its amounts, not as "up 2,400.0%"
+      : last.meta.amount >= 2 * before.meta.amount ? `, up from ${amount(before.meta.amount)} a year earlier`
       : `, ${growth(last.meta.amount / before.meta.amount - 1)} from ${amount(before.meta.amount)} a year earlier`;
-    const year = past.filter((i) => i.date > plusDays(e.asOf, -365)), sum = year.reduce((a, i) => a + i.meta.amount, 0);
+    const year = yearOf(past, e.asOf), sum = year.reduce((a, i) => a + i.meta.amount, 0);
     const close = this.recent.value()?.[0]?.points.at(-1)?.c;
     const yielding = finite(close) && close > 0 ? `, a yield of ${level(sum / close)} on the last close of ${money(close)}` : '';
     const total = year.length ? ` Over the last 12 months it paid ${money(sum)} a share in ${many(year.length, 'payment')}${yielding}.` : '';

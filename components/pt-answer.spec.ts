@@ -234,6 +234,11 @@ describe('pt-answer', () => {
     expect(await text({ topic: 'dividend', ticker: 'AAPL' }, { ...answers([d('2025-08-11', 0.27), ...paid.slice(1, 5)]), 'price-series@1': null })).toBe(
       'Apple AAPL pays a dividend: $0.27 a share at its latest payment, with ex-dividend date Aug 10, 2026 and payment on Aug 13, 2026, the same as a year earlier. ' +
       'Over the last 12 months it paid $1.06 a share in 4 payments.');
+    // a year is the company's usual number of payments: the one of a year ago, a day past a 365-day window, still counts (Apple, 2026-11-10)
+    const edge = [d('2025-08-11', 0.26), d('2025-10-15', 0.26), d('2026-01-14', 0.26), d('2026-04-15', 0.27), d('2026-07-15', 0.27)];
+    expect(await text({ topic: 'dividend', ticker: 'AAPL' }, answers(edge))).toContain('Over the last 12 months it paid $1.06 a share in 4 payments, a yield of 0.4%');
+    // a payment that at least doubled reads by its amounts
+    expect(await text({ topic: 'dividend', ticker: 'AAPL' }, answers([d('2025-08-11', 0.01), ...paid.slice(1)]))).toContain('at its latest payment, with ex-dividend date Aug 10, 2026 and payment on Aug 13, 2026, up from $0.01 a year earlier.');
     // stopped: the last one long ago
     expect(await text({ topic: 'dividend', ticker: 'AAPL' }, answers([d('2023-02-09', 0.5), d('2023-05-11', 0.5, '2023-05-14')]))).toBe(
       'Apple AAPL paid its last dividend, $0.50 a share, with ex-dividend date May 11, 2023; it has paid none since.');
