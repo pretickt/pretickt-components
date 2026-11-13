@@ -7,6 +7,7 @@ import { PtBasket } from '../../components/pt-basket';
 import { PtCalendar } from '../../components/pt-calendar';
 import { PtCompanyCard } from '../../components/pt-company-card';
 import { PtCompanyHeader } from '../../components/pt-company-header';
+import { PtDaily } from '../../components/pt-daily';
 import { PtFeed } from '../../components/pt-feed';
 import { PtFinancials } from '../../components/pt-financials';
 import { PtInsiders } from '../../components/pt-insiders';
@@ -28,6 +29,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
   'pt-calendar': { version: '3.2.1', sample: { month: '2026-09' } },
   'pt-company-card': { version: '1.2.2', sample: { ticker: 'NVDA' } },
   'pt-company-header': { version: '1.2.0', sample: {} },
+  'pt-daily': { version: '1.0.0', sample: { ticker: 'NVDA' } },
   'pt-feed': { version: '1.0.0', sample: {} },
   'pt-financials': { version: '2.4.0', sample: { ticker: 'NVDA' } },
   'pt-insiders': { version: '2.3.0', sample: { ticker: 'NVDA' } },
@@ -49,7 +51,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
  */
 @Component({
   selector: 'div[ptSlot]',
-  imports: [PtAnswer, PtBasket, PtCalendar, PtCompanyCard, PtCompanyHeader, PtFeed, PtFinancials, PtInsiders, PtLogoMap, PtMetric, PtMovers, PtNews, PtPriceEvents, PtPriceTarget, PtQuality, PtScreen, PtValue, PtWhyToday],
+  imports: [PtAnswer, PtBasket, PtCalendar, PtCompanyCard, PtCompanyHeader, PtDaily, PtFeed, PtFinancials, PtInsiders, PtLogoMap, PtMetric, PtMovers, PtNews, PtPriceEvents, PtPriceTarget, PtQuality, PtScreen, PtValue, PtWhyToday],
   providers: [Pt, { provide: PT_SLOT, useFactory: () => { const injector = inject(Injector); return () => injector.get(PtSlot).id(); } }],
   host: { class: 'pt-island', '[attr.data-island]': 'id()', '[class.pt-island-error]': 'pt.failed()' },
   template: `
@@ -59,6 +61,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
       @case ('pt-calendar') { @defer (hydrate on viewport) {<pt-calendar [month]="$any(p()).month" [kind]="$any(p()).kind ?? 'earnings'" [view]="$any(p()).view ?? 'month'" [start]="$any(p()).start" />} }
       @case ('pt-company-card') { @defer (hydrate on viewport) {<pt-company-card [ticker]="$any(p()).ticker" [size]="$any(p()).size ?? 'wide'" [extra]="$any(p()).extra ?? null" />} }
       @case ('pt-company-header') { @defer (hydrate on viewport) {<pt-company-header [ticker]="$any(p()).ticker ?? null" [sector]="$any(p()).sector ?? null" [size]="$any(p()).size ?? 'full'" />} }
+      @case ('pt-daily') { @defer (hydrate on viewport) {<pt-daily [ticker]="$any(p()).ticker" />} }
       @case ('pt-feed') { @defer (hydrate on viewport) {<pt-feed [ticker]="$any(p()).ticker" [sector]="$any(p()).sector" />} }
       @case ('pt-financials') { @defer (hydrate on viewport) {<pt-financials [ticker]="$any(p()).ticker" [periods]="$any(p()).periods ?? 8" />} }
       @case ('pt-insiders') { @defer (hydrate on viewport) {<pt-insiders [ticker]="$any(p()).ticker" [days]="$any(p()).days ?? 365" />} }

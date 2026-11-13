@@ -855,6 +855,13 @@
   .pt-news-item { @apply flex items-baseline gap-2 text-sm; }
   .pt-news-item a { @apply text-ink hover:text-primary hover:underline; }
 
+  /* the card of the day (pt-daily): the message as the section's sentence, the body under it, then the dated facts it rests on */
+  .pt-daily { @apply max-w-3xl; }
+  .pt-daily-message { @apply m-0 mt-1 text-lg leading-snug font-semibold text-ink; }
+  .pt-daily-body { @apply m-0 mt-1 text-sm leading-relaxed text-ink; }
+  .pt-daily-facts { @apply m-0 mt-3 list-none space-y-1.5 border-l-2 border-border p-0 pl-3 text-xs leading-relaxed text-ink-soft; }
+  .pt-daily-was { @apply block opacity-80; }
+
   /* financials */
   .pt-fin-chart { @apply my-2; }
   .pt-fin-rev { @apply cursor-pointer fill-primary; }

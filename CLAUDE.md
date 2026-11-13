@@ -91,6 +91,7 @@ for "no call". **Params must be deterministic** (never the clock or randomness):
 | `pt.feed` | `{scope: {by:'ticker',ticker} \| {by:'sector',sector: one of SECTORS} \| {by:'market'}}` | `{asOf, items[{date,group technical\|fundamental\|news\|market,kind,ticker\|null,name,logo,label,sub,text,impact,impactKind day\|since\|expected\|typical\|null,session,href,spark{closes ≤ 40,at}\|null}]}` — the events of the last `FEED_DAYS.back` (120) days and the next `FEED_DAYS.ahead` (60), at most `FEED_MAX` (40) by relevance, in date order; `kind` is open (`FEED_KINDS` today), `ticker` null = the market's own (macro, SPY); `text` is the sentence (tooltip, indexed), `href` a site path |
 | `pt.ongoingMoves` | `{sort: cap\|move}` (default cap) | `{asOf, threshold, market: bullish\|bearish\|sideways\|null, rows[{ticker,name,logo,marketCap,kind rally\|drawdown,since,days,move,close,week,month,quarter,industry{median,peers[{ticker,move}]}\|null}]}` — the moves above 4% still running (beta's zigzag), this week's losers then gainers, each most important first, ≤ MOVES_PER_SIDE (14) a side |
 | `pt.basket` | `{ticker}` | `{asOf, ticker, name, logo, tracks, group, same[], note, close, ret, coverage, state ok\|low, stale, fund{expenseRatio,assets,holdings,top10,ret1y,ret5y,spy1y,spy5y,yield}, target{upside,price,share,median,top[]}\|null, consensus{buy,hold,sell,n,label,share}\|null, pe{value,share}\|null, questions[{key,pos,flat,neg,share,comparable}]\|null, moves{sum,up[],down[]}, holdings[{ticker\|null,name,logo,weight,ret,upside,label}], faq[]}` — a fund's whole basket, as the nightly computed it; state `low` (under 80% on the site, or no good file in 7 days) carries no basket figure |
+| `pt.daily` | `{ticker}` | `{asOf, ticker, name, card{session,writtenAt,message,body,facts[{kind,date,text,was?}]}\|null, facts[{kind,date,text,was?}]}` — the company's latest kept card of the last five sessions (worded by an AI model, checked against the facts it cites) or, without one, the session's new facts (≤4); both empty = nothing new; notfound while the cards are switched off |
 | `pt.sector` | `{sector}` | `{kind 'sector', asOf, sector, name, tracker, companies, value, ret, coverage 1, state ok, target\|null, consensus\|null, pe\|null, questions[]\|null, moves{sum,up[],down[]}, holdings[{ticker,name,logo,weight,ret,upside,label,close}], series[{t,c}], badges[MetricItem], faq[]}` — a sector's whole basket: every company on the site weighted by market value, its value over the year (today's shares at each day's adjusted close, not an index) and the header's badges; `tracker` is the SPDR fund named and linked, never its price. `news@1` takes `{sector, limit}` and `events@1` the scope `{by:'sector', sector, range, ahead}` (its 10 and 5 largest companies) |
 
 **The reader's picks** (`PtPicks`, same entry): a component that asks the reader to call an open outcome ("Beat" / "Miss")
@@ -184,7 +185,10 @@ change in this repo, reviewed like any other).
   `<style>`, `<iframe>`, `<form>` in a template; no `ld+json` either (structured data is the generator's, in `<head>`).
 - **Null & unknown**: every call can answer `null` → render the `pt-na` state (or a reduced view). Payload lists may contain entries
   you don't know (new metric keys, new event kinds, events **without ticker**): render them generically or skip them, never throw.
-- **Public copy is US English**, templated from data. **No LLM prose** on pages. Never show index symbols (`^…`); "the market" is SPY.
+- **Public copy is US English**, templated from data. **No LLM prose** on pages — with one exception, pt-daily: its card (a message and
+  a short body) is worded each night by an AI model. It is acceptable there because the platform's own dated facts are shown under it, the
+  server keeps a card only when every figure and date in it is in a fact it cites and it neither advises nor predicts, and the line under
+  the card says who wrote it. No other component shows a model's sentences. Never show index symbols (`^…`); "the market" is SPY.
 
 ## Alerts (`@pretickt/components/alerts`, `src/site/alerts/`)
 Email alerts (spec `pretickt/docs/superpowers/specs/2026-11-01-email-alerts-design.md`): on a page with alerts a bell under every
@@ -206,7 +210,7 @@ email, no account.
   (`turnstile.ts`, the page model's `turnstile` site key) loads Cloudflare's script from its own address only when the email field is
   first touched; the widget is invisible unless Cloudflare asks for a tap, a failed save asks for a fresh token (each is good once),
   the Worker verifies it before writing anything. The made-up backends have no check; the stories use Cloudflare's public test keys.
-- **The main bundle is full** (about 242 KB of 243,500 bytes on 2026-11-05; Romeo raised the budget from 240 KB for pt-company-header, the design of the baskets to 243,500, pt-answer's `start` to 243,600): a registry component costs it about 1 KB, so the alerts' parts
+- **The main bundle is full** (about 242 KB of 243,500 bytes on 2026-11-05; Romeo raised the budget from 240 KB for pt-company-header, the design of the baskets to 243,500, pt-answer's `start` to 243,600, pt-daily to 243,900): a registry component costs it about 1 KB, so the alerts' parts
   are not placeable components, and what they add to the main bundle stays a few bytes. Two traps: a `document:` host listener puts
   Angular's resolver in main (add such a listener by hand), and every symbol a chunk imports from main lengthens main's export list.
 
@@ -253,7 +257,7 @@ bars they read. Fields named `*Pct` are in percent (2.5 = +2.5%), not fractions:
   data renders, missing data shows `pt-na`), `press(f, el, label)` for interactions, `column(el, n)` for tables.
 - `npm test` = Vitest for the plain TypeScript (typologies, indicators, checks, scripts) + `ng test` for the components.
 - `npm run build`: the lint and the metadata of every component, inputs read by the TypeScript checker, the generated registry
-  (`src/site/registry.generated.ts` — never edit it), `ng build`, budgets (main bundle ≤ 243.6 KB, a component's own chunk ≤ 32 KB).
+  (`src/site/registry.generated.ts` — never edit it), `ng build`, budgets (main bundle ≤ 243.9 KB, a component's own chunk ≤ 32 KB).
 - `npm run check` (after the build): for props sampled from the inputs' types, demo data renders with safe markup, missing data
   renders `pt-na`, unknown catalogue entries are tolerated; concurrent page renders are whole; each page **hydrates keeping every
   element of the server HTML** (development build: Angular validates every node; production build: as shipped) without one data
@@ -318,7 +322,7 @@ earnings with `start` (that date's week), earnings-day with `start` (that day's 
 earnings|dividend; `view: 'week'` + `start` = five sessions for the home page; `view: 'day'` + `start` = that week with the day marked and the day's rows first, every one; "+N more" opens the whole day) · `pt-why-today`
 (answer-first sentence + market/sector/stock bars + news spike) · `pt-screen` (ranked table with list-specific column and sparklines;
 `list` or `peersOf`, optional `sector`; grows by 20 up to every company) · `pt-financials` (quarterly revenue/FCF bars + margins table) · `pt-news` (headlines with AI sentiment dots,
-nofollow links; `ticker`, or `sector` for its 10 largest companies' stories) · `pt-insiders` (buy/sell totals + Form 4 table) · `pt-movers` (beta's "Ongoing moves" tornado for the home: this
+nofollow links; `ticker`, or `sector` for its 10 largest companies' stories) · `pt-daily` (a company's card of the day: what changed since the session before in a sentence and a short body worded by an AI model, the platform's dated facts it rests on under it, a changed one with what it was; an older card says `Latest:` with its date; without a card the day's facts alone) · `pt-insiders` (buy/sell totals + Form 4 table) · `pt-movers` (beta's "Ongoing moves" tornado for the home: this
 week's losers left, gainers right, the largest — or with the toggle the biggest moves — in the middle; week / 30 / 90 days in three
 shades with a legend, ⚠ when the industry moves too, the market chip; each bar links its company with its numbers as tooltip rows;
 while a session newer than the data runs, a thin dark line per company for today's delayed move, read once when the page opens, with its time and delay in the legend;

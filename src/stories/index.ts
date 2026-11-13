@@ -7,6 +7,7 @@ import { stories as answer } from '../../components/pt-answer.stories';
 import { stories as calendar } from '../../components/pt-calendar.stories';
 import { stories as companyCard } from '../../components/pt-company-card.stories';
 import { stories as companyHeader } from '../../components/pt-company-header.stories';
+import { stories as daily } from '../../components/pt-daily.stories';
 import { stories as feed } from '../../components/pt-feed.stories';
 import { stories as drafts } from '../../components/drafts/home.stories';
 import { stories as value } from '../../components/pt-value.stories';
@@ -28,6 +29,6 @@ import { stories as whyToday } from '../../components/pt-why-today.stories';
 import type { StoryConfiguration } from './story';
 
 export const STORIES: StoryConfiguration[] = [
-  ...companyHeader, ...basket, ...companyCard, ...answer, ...quality, ...whyToday, ...priceTarget, ...priceEvents, ...metric, ...financials, ...insiders, ...news,
+  ...companyHeader, ...basket, ...companyCard, ...answer, ...daily, ...quality, ...whyToday, ...priceTarget, ...priceEvents, ...metric, ...financials, ...insiders, ...news,
   ...screen, ...calendar, ...movers, ...logoMap, ...feed, ...value, ...alertEditor, ...alertManage, ...portfolio, ...peopleAsk, ...outlook, ...alertEvent, ...drafts, ...pages,
 ];
