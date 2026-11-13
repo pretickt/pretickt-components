@@ -1,4 +1,4 @@
-/** pt-daily: a company's card of the day — today's, an older one, a quiet day of a main company, a quoted headline, the longest a card can be, the facts alone, nothing new. Made up. */
+/** pt-daily: a company's card of the day — today's, an older one, a quiet day of a main company, a quoted headline, the longest a card can be, the facts alone, a night that did not read the company. Made up. */
 import type { Daily } from '@pretickt/components/typologies';
 import { demo, story } from '../src/stories/story';
 import { PtDaily } from './pt-daily';
@@ -30,6 +30,6 @@ export const stories = [
   story(PtDaily, { name: 'The longest card: 90 and 320 characters, four facts', inputs: { ticker: 'NVDA' }, data: { 'daily@1': card({ message: LONG_MESSAGE, body: LONG_BODY,
     facts: [CUT, base.card!.facts[0]!, WEEK, MOVE] }, ex) } }),
   story(PtDaily, { name: 'No card: the day\'s facts alone', inputs: { ticker: 'NVDA' }, data: { 'daily@1': { ...ex, card: null, facts: [MOVE, WEEK, base.card!.facts[0]!, CUT] } } }),
-  story(PtDaily, { name: 'Nothing new recorded', inputs: { ticker: 'NVDA' }, data: { 'daily@1': { ...base, card: null, facts: [] } } }),
+  story(PtDaily, { name: 'No summary: the night did not read the company', inputs: { ticker: 'NVDA' }, data: { 'daily@1': { ...base, card: null, facts: [] } } }),
   story(PtDaily, { name: 'Not available', inputs: { ticker: 'NVDA' }, data: null }),
 ];

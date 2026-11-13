@@ -6,8 +6,8 @@ import { DEMO_ASOF, DEMO_COMPANIES, demoName, IsoDate, Ticker } from './common';
  * facts it rests on. The card is worded each night by an AI model from the platform's own facts — the same sentences the site's pages
  * show — and kept only when every figure and date in it is in a fact it cites; the facts are the platform's. `card` is the company's
  * latest kept card of the last five sessions (its `session` says which: a quiet company keeps an older one), null without one; then
- * `facts` are the session's new and changed facts, at most four — what the page shows without a card. Both empty: nothing new was
- * recorded. `asOf` is the latest session.
+ * `facts` are the session's new and changed facts, at most four — what the page shows without a card. Both empty: the night did not
+ * read the company (every night's facts hold something new, the day's move). `asOf` is the latest session.
  */
 export const DailyParams = z.object({ ticker: Ticker });
 /** A dated sentence of the platform; `was` is the same fact's sentence the session before, when its value moved. */

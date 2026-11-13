@@ -32,7 +32,10 @@ import { date, named } from '@pretickt/components/format';
           }
           @if (c) {<p class="pt-note">Wording by an AI model from pretickt's data; the dated facts under it are the platform's own. Not investment advice.</p>}
         </section>
-      } @else {<p class="pt-na">Nothing new recorded for {{ named(d.name, d.ticker) }} on {{ date(d.asOf) }}</p>}
+      } @else {
+        <!-- every night's facts hold something new (the day's move): no card and no fact means the night did not read this company, so the line claims nothing about it -->
+        <p class="pt-na">No daily summary for {{ named(d.name, d.ticker) }} on {{ date(d.asOf) }}</p>
+      }
     }`,
 })
 export class PtDaily {

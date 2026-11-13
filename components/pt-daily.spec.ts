@@ -43,9 +43,10 @@ describe('pt-daily', () => {
     expect(r.text()).not.toContain('AI');
     expect(r.html()).not.toContain('pt-na');
   });
-  it('neither: the nothing-new line, not an empty section', async () => {
+  it('neither: a line that claims nothing about the company — the night did not read it — not an empty section', async () => {
     const r = await show({ card: null, facts: [] });
-    expect(r.el.querySelector('.pt-na')!.textContent!.trim()).toBe('Nothing new recorded for Nvidia NVDA on Nov 12, 2026');
+    expect(r.el.querySelector('.pt-na')!.textContent!.trim()).toBe('No daily summary for Nvidia NVDA on Nov 12, 2026');
+    expect(r.text()).not.toContain('Nothing new');
     expect(r.el.querySelector('.pt-daily-facts')).toBeNull();
     expect(r.text()).not.toContain('AI');
   });
