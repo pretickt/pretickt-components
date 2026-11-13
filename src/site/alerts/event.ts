@@ -2,7 +2,7 @@ import { type ApplicationRef, Component, computed, createComponent, type Environ
 import { FAILED, PT_STORE } from '@pretickt/components/context';
 import { PtIcon, PtLogo } from '@pretickt/components/ds';
 import { dayMonth, named } from '@pretickt/components/format';
-import { CONDITIONS } from '../../alerts/catalog';
+import { CONDITIONS, seenOf } from '../../alerts/catalog';
 import { SECTION_OF } from '../../alerts/sources';
 import type { AlertEvent } from '../../typologies/alerts';
 import { landingOf } from './landing';
@@ -42,7 +42,7 @@ export class PtAlertEvent {
     .filter((x) => CONDITIONS[x.c] && CONDITIONS[x.c].group !== 'universe')
     .map((x) => {
       const section = SECTION_OF[x.c];
-      return { fact: CONDITIONS[x.c].fact(x.p, x.value), href: section ? `#${section}` : null, label: section ? SECTION_LABEL[section] ?? 'See it' : '' };
+      return { fact: CONDITIONS[x.c].fact(x.p, x.value, seenOf(x)), href: section ? `#${section}` : null, label: section ? SECTION_LABEL[section] ?? 'See it' : '' };
     })
     .filter((l) => l.fact));
   protected readonly headline = computed(() => {

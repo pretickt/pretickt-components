@@ -28,6 +28,15 @@ export type ParamSpec =
 /** A piece of a card's sentence: text, or a pill showing (and changing) one param. */
 export type SayPart = string | { key: string };
 export interface Test { pass: boolean; value: number | null }
+/**
+ * When the check saw a value during the session, and the price then (15 minutes delayed): "9:31 AM ET", 149.27. An event's fact keeps
+ * them, so its sentence still holds once the price has moved on (2026-11-12: Nvidia closed its first minute 14% down and was 8% down
+ * when the email arrived — "fell 14% in the session" read as wrong).
+ */
+export interface Seen { at: string; price: number }
+/** The time and price a stored fact carries, when it has both. */
+export const seenOf = (f: { at?: string | undefined; price?: number | undefined }): Seen | undefined =>
+  (typeof f.at === 'string' && f.at && typeof f.price === 'number' ? { at: f.at, price: f.price } : undefined);
 export interface Condition {
   id: ConditionId; group: Group; name: string; freq: Freq; chart: ChartKind;
   /** measured on the session's own numbers (its move, volume, stories, posts): each session starts again, so the check re-arms it
@@ -39,8 +48,9 @@ export interface Condition {
   say(p: Params): SayPart[];
   /** a few words for the alert's proposed name */
   short(p: Params): string;
-  /** what happened, for the event's line and the email: "fell 7.9% in the session" */
-  fact(p: Params, value: number | null): string;
+  /** what happened, for the event's line and the email: "fell 7.9% in the session"; a move seen while the session ran says when and
+   *  at what price ("was down 7.9% at 9:31 AM ET ($151.07)") */
+  fact(p: Params, value: number | null, seen?: Seen): string;
   test(row: AlertRow, p: Params): Test;
 }
 
@@ -87,7 +97,8 @@ const TECHNICAL: Condition[] = [
     params: [choice('dir', [['down', 'Falls'], ['up', 'Rises']]), pct('pct', 1, 20, 0.5)], defaults: { dir: 'down', pct: 5 },
     say: () => [{ key: 'dir' }, ' more than ', { key: 'pct' }, ' in one session'],
     short: (p) => `${s(p, 'dir') === 'up' ? 'Jumps' : 'Drops'} ${fixed(n(p, 'pct'))}%+`,
-    fact: (_, v) => (v === null ? '' : `${v < 0 ? 'fell' : 'rose'} ${abs(v)} in the session`),
+    fact: (_, v, seen) => (v === null ? '' : seen ? `was ${v < 0 ? 'down' : 'up'} ${abs(v)} at ${seen.at} (${price(seen.price)})`
+      : `${v < 0 ? 'fell' : 'rose'} ${abs(v)} in the session`),
     test: (r, p) => {
       if (r.move === null) return NO;
       const t = n(p, 'pct') / 100;

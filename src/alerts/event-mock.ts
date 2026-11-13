@@ -11,6 +11,12 @@ export const AE_AMD: AlertEvent = {
     { c: 'mega-caps', p: {}, value: 310e9 },
   ],
 };
+/** A move read during the session: the line says when and at what price, so a rebound after it does not contradict it. */
+export const AE_SEEN: AlertEvent = {
+  id: 'e-demo-4', name: 'Drops 5%+', ticker: 'NVDA', companyName: 'NVIDIA Corporation', logo: '/logos/nvda.55199575.webp',
+  session: '2026-10-30', firedAt: '9:49 AM ET',
+  conditions: [{ c: 'session-move', p: { dir: 'down', pct: 5 }, value: -0.118, at: '9:33 AM ET', price: 153.5 }],
+};
 /** One condition: news. */
 export const AE_ONE: AlertEvent = {
   id: 'e-demo-2', name: 'News 3× · NVDA', ticker: 'NVDA', companyName: 'NVIDIA Corporation', logo: '/logos/nvda.55199575.webp',

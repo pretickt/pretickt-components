@@ -144,6 +144,14 @@ describe('the catalog: technical and universe conditions', () => {
     expect(f('below-average', -0.245)).toBe('trades 25% below its 50-day average');
     expect(f('mega-caps', 310e9)).toBe('is a mega cap ($310B)');
   });
+
+  it('a session move seen during the session says when and at what price: a rebound after it does not contradict it', () => {
+    const f = CONDITIONS['session-move'].fact;
+    expect(f({ dir: 'down', pct: 5 }, -0.1408, { at: '9:31 AM ET', price: 149.27 })).toBe('was down 14% at 9:31 AM ET ($149.27)');
+    expect(f({ dir: 'up', pct: 5 }, 0.051, { at: '2:15 PM ET', price: 212.4 })).toBe('was up 5.1% at 2:15 PM ET ($212.40)');
+    // the nightly's check reads the close: the session is over, its move is the session's
+    expect(f({ dir: 'down', pct: 5 }, -0.079)).toBe('fell 7.9% in the session');
+  });
 });
 
 describe('the catalog: fundamental, news and social conditions', () => {

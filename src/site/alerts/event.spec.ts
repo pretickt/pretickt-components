@@ -36,6 +36,13 @@ describe('pt-alert-event: the alert that fired, at the top of the company page',
     expect(items[0]!.querySelector('a')!.textContent).toContain('Why it moved');
   });
 
+  it('a move seen during the session carries its time and price', () => {
+    const seen = { ...AE_AMD, conditions: [{ ...AE_AMD.conditions[0]!, at: '9:31 AM ET', price: 151.07 }, ...AE_AMD.conditions.slice(1)] };
+    const { el, text } = render(seen);
+    expect(text()).toContain('AMD was down 7.9% at 9:31 AM ET ($151.07) on Oct 30, fired at 3:45 PM ET');
+    expect(el.querySelector('.pt-alev-l li span')!.textContent!.trim()).toBe('was down 7.9% at 9:31 AM ET ($151.07)');
+  });
+
   it('a condition the page does not show has no link', () => {
     const { el } = render(AE_FIVE);
     const social = [...el.querySelectorAll('.pt-alev-l li')].find((li) => li.textContent!.includes('Reddit'))!;

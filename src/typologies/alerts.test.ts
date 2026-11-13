@@ -17,4 +17,11 @@ describe('the alerts typologies', () => {
     expect(Object.keys(ev).sort()).toEqual(['companyName', 'conditions', 'firedAt', 'id', 'logo', 'name', 'session', 'ticker']);
     expect(AlertEventPayload.parse(ev)).toEqual(ev);
   });
+
+  it("alert-event@1 keeps when and at what price a condition's value was seen", () => {
+    const ev = alertEventDemo({ id: 'AbCdEf0123456789_-xy' });
+    const seen = { ...ev, conditions: [{ ...ev.conditions[0]!, at: '9:31 AM ET', price: 149.27 }, ...ev.conditions.slice(1)] };
+    expect(AlertEventPayload.parse(seen).conditions[0]).toEqual({ c: 'session-move', p: { dir: 'down', pct: 5 }, value: -0.079, at: '9:31 AM ET', price: 149.27 });
+    expect(AlertEventPayload.parse(ev).conditions[0]).toEqual(ev.conditions[0]);
+  });
 });

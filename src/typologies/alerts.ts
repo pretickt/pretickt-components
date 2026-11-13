@@ -8,7 +8,8 @@ import { DEMO_ASOF, IsoDate, Num, Ticker } from './common';
  * `alert-universe@1`: every company of the site with its last two closes and the numbers each condition of the catalog tests (the
  * editor's "Today: N of M" and its cards; the check on the VM reads the same rows) — once a day, cached at the edge.
  * `alert-event@1`: an alert that fired, by the id its email carries — the alert's name, the company, the session and the time, each
- * condition's value then; never who set it (alerts.public_events).
+ * condition's value then (with the time and the price it was seen at, for a value read during the session); never who set it
+ * (alerts.public_events).
  */
 export const AlertUniverseParams = z.object({});
 export const AlertUniverseRow = z.object({
@@ -43,6 +44,8 @@ export const AlertEventPayload = z.object({
   session: IsoDate, firedAt: z.string(),
   conditions: z.array(z.object({
     c: z.enum(CONDITION_IDS as [ConditionId, ...ConditionId[]]), p: z.record(z.string(), z.union([z.string(), z.number()])), value: Num,
+    /** a value read during the session: when ("9:31 AM ET") and the price then; absent for the nightly's and for older events */
+    at: z.optional(z.string()), price: z.optional(z.number()),
   })),
 });
 export type AlertEventParams = z.output<typeof AlertEventParams>;
