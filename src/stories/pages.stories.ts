@@ -11,13 +11,14 @@ import { AE_AMD } from '../alerts/event-mock';
 import { PtAlertManage } from '../site/alerts/manage';
 import { fakeAlerts } from './fake-alerts';
 import { named, plainName } from '@pretickt/components/format';
-import { METRIC_GROUPS, type MetricKey, type ScreenList, type Sector } from '@pretickt/components/typologies';
+import { METRIC_GROUPS, type Daily, type MetricKey, type ScreenList, type Sector } from '@pretickt/components/typologies';
 import { HOT } from '../../components/drafts/mock';
 import { PA_NVDA_HUB } from '../../components/drafts/people-ask-mock';
 import { PtHot } from '../../components/drafts/pt-hot';
 import { PtPeopleAsk, type PeopleAsk } from '../../components/drafts/pt-people-ask';
 import { PtValue } from '../../components/pt-value';
 import { PtAnswer } from '../../components/pt-answer';
+import { PtDaily } from '../../components/pt-daily';
 import { PtBasket } from '../../components/pt-basket';
 import { PtCalendar } from '../../components/pt-calendar';
 import { PtCompanyHeader } from '../../components/pt-company-header';
@@ -101,7 +102,7 @@ export function valuePage(t: string, legal: string, sector: Sector): PreviewPage
   };
 }
 
-export function companyPage(t: string, legal: string, sector: Sector, drafts: { value?: boolean; ask?: PeopleAsk } = {}): PreviewPage {
+export function companyPage(t: string, legal: string, sector: Sector, drafts: { value?: boolean; ask?: PeopleAsk; daily?: boolean } = {}): PreviewPage {
   const n = named(legal, t);
   return {
     path: hub(t),
@@ -114,6 +115,8 @@ export function companyPage(t: string, legal: string, sector: Sector, drafts: { 
     sections: [
       { id: 'card', items: [{ c: PtCompanyHeader, inputs: { ticker: t } }] },
       { id: 'answer', items: [{ c: PtAnswer, inputs: { topic: 'forecast', ticker: t } }] },
+      // pages.ts places it only while the daily cards' switch is on (Admin › Schede)
+      ...(drafts.daily ? [{ id: 'daily', title: 'What changed', isNew: true, note: 'pt-daily, the card of the day: on the page only while the switch is on', items: [{ c: PtDaily, inputs: { ticker: t } }] }] : []),
       { id: 'targets', title: 'Analyst price targets and predictions', items: [{ c: PtPriceTarget, inputs: { ticker: t } }] },
       ...(drafts.value ? [{ id: 'value', isNew: true, note: 'pt-value in its compact form: the full one is its own page, /stocks/<t>/value/', items: [{ c: PtValue, inputs: { ticker: t, compact: true } }] }] : []),
       { id: 'snapshot', title: 'Snapshot', items: [metric(t, METRIC_GROUPS.snapshot)] },
@@ -310,6 +313,8 @@ export const stories = [
     data: NVDA_VALUE, inputs: { page: companyPage('NVDA', 'NVIDIA Corporation', 'Technology', NVDA_DRAFTS) } }),
   story(PtPreviewCompany, { name: 'NVDA: pt-value\'s own page, /stocks/nvda/value/ (made-up pt-value, www data for the rest)', live: true, group: GROUP,
     data: NVDA_VALUE, inputs: { page: valuePage('NVDA', 'NVIDIA Corporation', 'Technology') } }),
+  story(PtPreviewCompany, { name: 'NVDA with the card of the day under the answer (www data, a made-up card)', live: true, group: GROUP,
+    data: { 'daily@1': demo<Daily>('daily@1', { ticker: 'NVDA' }) }, inputs: { page: companyPage('NVDA', 'NVIDIA Corporation', 'Technology', { daily: true }) } }),
   story(PtPreviewCompany, { name: 'META: today\'s page with the common name only (www data)', live: true, group: GROUP,
     inputs: { page: companyPage('META', 'Meta Platforms, Inc.', 'Communication Services') } }),
   story(PtPreviewCompany, { name: 'NVDA on the demo data (the check)', inputs: { page: companyPage('NVDA', 'NVIDIA Corporation', 'Technology', NVDA_DRAFTS) }, group: GROUP }),
