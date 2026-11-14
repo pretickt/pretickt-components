@@ -211,7 +211,7 @@ email, no account.
   (`turnstile.ts`, the page model's `turnstile` site key) loads Cloudflare's script from its own address only when the email field is
   first touched; the widget is invisible unless Cloudflare asks for a tap, a failed save asks for a fresh token (each is good once),
   the Worker verifies it before writing anything. The made-up backends have no check; the stories use Cloudflare's public test keys.
-- **The main bundle is full** (about 242 KB of 243,500 bytes on 2026-11-05; Romeo raised the budget from 240 KB for pt-company-header, the design of the baskets to 243,500, pt-answer's `start` to 243,600, pt-daily to 243,900, pt-screen's `link` to 244,000): a registry component costs it about 1 KB, so the alerts' parts
+- **The main bundle is full** (about 242 KB of 243,500 bytes on 2026-11-05; Romeo raised the budget from 240 KB for pt-company-header, the design of the baskets to 243,500, pt-answer's `start` to 243,600, pt-daily to 243,900, pt-screen's `link` to 244,000, pt-stats to 244,600 — Romeo's 2026-11-14 OK reaches 247,000): a registry component costs it about 1 KB, so the alerts' parts
   are not placeable components, and what they add to the main bundle stays a few bytes. Two traps: a `document:` host listener puts
   Angular's resolver in main (add such a listener by hand), and every symbol a chunk imports from main lengthens main's export list.
 
@@ -258,7 +258,7 @@ bars they read. Fields named `*Pct` are in percent (2.5 = +2.5%), not fractions:
   data renders, missing data shows `pt-na`), `press(f, el, label)` for interactions, `column(el, n)` for tables.
 - `npm test` = Vitest for the plain TypeScript (typologies, indicators, checks, scripts) + `ng test` for the components.
 - `npm run build`: the lint and the metadata of every component, inputs read by the TypeScript checker, the generated registry
-  (`src/site/registry.generated.ts` — never edit it), `ng build`, budgets (main bundle ≤ 244.0 KB, a component's own chunk ≤ 32 KB).
+  (`src/site/registry.generated.ts` — never edit it), `ng build`, budgets (main bundle ≤ 244.6 KB, a component's own chunk ≤ 32 KB).
 - `npm run check` (after the build): for props sampled from the inputs' types, demo data renders with safe markup, missing data
   renders `pt-na`, unknown catalogue entries are tolerated; concurrent page renders are whole; each page **hydrates keeping every
   element of the server HTML** (development build: Angular validates every node; production build: as shipped) without one data
@@ -324,7 +324,7 @@ earnings with `start` (that date's week), earnings-day with `start` (that day's 
 earnings|dividend; `view: 'week'` + `start` = five sessions for the home page; `view: 'day'` + `start` = that week with the day marked and the day's rows first, every one; "+N more" opens the whole day) · `pt-why-today`
 (answer-first sentence + market/sector/stock bars + news spike) · `pt-screen` (ranked table with list-specific column and sparklines;
 `list` or `peersOf`, optional `sector`; grows by 20 up to every company) · `pt-financials` (quarterly revenue/FCF bars + margins table) · `pt-news` (headlines with AI sentiment dots,
-nofollow links; `ticker`, or `sector` for its 10 largest companies' stories) · `pt-daily` (a company's card of the day: what changed since the session before in a sentence and a short body worded by an AI model, the platform's dated facts it rests on under it, a changed one with what it was; an older card says `Latest:` with its date; without a card the day's facts alone) · `pt-insiders` (buy/sell totals + Form 4 table) · `pt-movers` (beta's "Ongoing moves" tornado for the home: this
+nofollow links; `ticker`, or `sector` for its 10 largest companies' stories) · `pt-daily` (a company's card of the day: what changed since the session before in a sentence and a short body worded by an AI model, the platform's dated facts it rests on under it, a changed one with what it was; an older card says `Latest:` with its date; without a card the day's facts alone) · `pt-stats` (the history page: a stock's last five years in four rows — tiles of how much it moves, its years against the S&P 500 as bars and ticks with the values as text, its falls and rises beyond its own threshold coloured on the price with twin cards, a square per closed month for it and SPY; every figure in the text too; on phones only the main swing labels) · `pt-insiders` (buy/sell totals + Form 4 table) · `pt-movers` (beta's "Ongoing moves" tornado for the home: this
 week's losers left, gainers right, the largest — or with the toggle the biggest moves — in the middle; week / 30 / 90 days in three
 shades with a legend, ⚠ when the industry moves too, the market chip; each bar links its company with its numbers as tooltip rows;
 while a session newer than the data runs, a thin dark line per company for today's delayed move, read once when the page opens, with its time and delay in the legend;

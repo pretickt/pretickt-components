@@ -885,6 +885,50 @@
   .pt-key::before { content: ''; @apply mr-1 inline-block h-2 w-2 rounded-sm; }
   .pt-key-rev::before { @apply bg-primary; }
   .pt-key-fcf::before { @apply bg-pos; }
+  /* pt-stats: a stock's last five years in four rows (tiles, year bars with the S&P 500's tick, falls and rises, a square a month) */
+  .pt-stats { @apply grid gap-6; }
+  .pt-stats-row { @apply grid min-w-0 gap-2.5; }
+  .pt-stats-row + .pt-stats-row { @apply border-t border-border pt-5; }
+  .pt-stats-row h3 { @apply m-0 text-base font-semibold; }
+  .pt-stats-row > p { @apply m-0; }
+  .pt-stats-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr)); gap: .6rem; }
+  .pt-stats-tile { @apply grid content-start gap-0.5 rounded-control border border-border bg-surface-raised px-3 py-2.5 text-sm; }
+  .pt-stats-k { @apply font-mono text-xl font-semibold tabular-nums; }
+  .pt-stats-ybar { @apply fill-primary; }
+  .pt-stats-ybar-part { fill: color-mix(in oklab, var(--color-primary) 45%, var(--color-surface-raised)); }
+  .pt-stats-ytick { @apply stroke-ink; stroke-width: 2; stroke-linecap: round; }
+  .pt-stats-hit { fill: transparent; cursor: pointer; }
+  .pt-stats-years { @apply grid gap-1 text-center text-xs; }
+  .pt-stats-years > div { @apply grid min-w-0 gap-0.5; }
+  .pt-stats-years b { @apply font-mono text-sm tabular-nums; }
+  .pt-stats-key-tick::before { @apply bg-ink; height: 2px; width: .9rem; vertical-align: .2rem; }
+  .pt-stats-key-fall::before { @apply bg-neg; height: 3px; width: .9rem; vertical-align: .2rem; }
+  .pt-stats-key-rise::before { @apply bg-pos; height: 3px; width: .9rem; vertical-align: .2rem; }
+  .pt-stats-path { fill: none; stroke: var(--color-ink-soft); stroke-width: 1.2; }
+  .pt-stats-fall { fill: none; @apply stroke-neg; stroke-width: 2; stroke-linejoin: round; }
+  .pt-stats-rise { fill: none; @apply stroke-pos; stroke-width: 2; stroke-linejoin: round; }
+  .pt-stats-hitline { fill: none; stroke: transparent; stroke-width: 12; pointer-events: stroke; cursor: pointer; }
+  .pt-stats-pivot { fill: var(--color-surface-raised); @apply stroke-ink; stroke-width: 1.5; }
+  .pt-stats-now { @apply fill-primary; stroke: var(--color-surface-raised); stroke-width: 2; }
+  .pt-stats-lab { @apply fill-ink font-mono text-3xs font-semibold; }
+  @media (width < 40rem) { .pt-stats-lab-minor { display: none; } }
+  .pt-stats-twin { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+  @media (width < 30rem) { .pt-stats-twin { grid-template-columns: minmax(0, 1fr); } }
+  .pt-stats-twin > div { @apply grid content-start gap-1.5 rounded-control border border-border bg-surface-raised px-3 py-2.5; }
+  .pt-stats-twin h4 { @apply m-0 flex items-center gap-2 text-sm font-semibold; }
+  .pt-stats-twin h4::before { content: ''; @apply inline-block rounded-sm bg-neg; width: .9rem; height: 3px; }
+  .pt-stats-rises h4::before { @apply bg-pos; }
+  .pt-stats-twin dl { @apply m-0 grid gap-x-3 gap-y-1 text-sm; grid-template-columns: auto minmax(0, 1fr); }
+  .pt-stats-twin dt { @apply text-ink-soft; }
+  .pt-stats-twin dd { @apply m-0 text-right font-mono tabular-nums; }
+  .pt-stats-twin dd small { @apply block font-sans text-xs text-ink-soft; }
+  .pt-stats-urow { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr) 3.2rem; gap: .6rem; align-items: center; @apply text-sm; }
+  .pt-stats-units { display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); gap: 2px; }
+  .pt-stats-units i { aspect-ratio: 1; border-radius: 2px; background: var(--color-surface); box-shadow: inset 0 0 0 1px var(--color-border); cursor: pointer; }
+  .pt-stats-units i.pt-stats-up { @apply bg-primary; box-shadow: none; }
+  .pt-stats-urow-ref .pt-stats-units i.pt-stats-up { background: color-mix(in oklab, var(--color-primary) 45%, var(--color-surface-raised)); }
+  .pt-stats-v { @apply text-right font-mono tabular-nums; }
+  @media (width < 30rem) { .pt-stats-urow { grid-template-columns: minmax(0, 1fr) 3.2rem; } .pt-stats-units { grid-column: 1 / -1; grid-row: 2; } }
 
   /* ongoing moves (pt-movers): beta's tornado — per company the 90 days (widest, lightest), the 30 days and this week (narrow, solid),
      each in the tone of its own move; the legend repeats the three shades; phones see the middle half of the chart at double size */

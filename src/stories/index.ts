@@ -16,6 +16,7 @@ import { stories as outlook } from '../../components/drafts/outlook.stories';
 import { stories as alertEvent } from './alert-event.stories';
 import { stories as pages } from './pages.stories';
 import { stories as financials } from '../../components/pt-financials.stories';
+import { stories as stats } from '../../components/pt-stats.stories';
 import { stories as insiders } from '../../components/pt-insiders.stories';
 import { stories as logoMap } from '../../components/pt-logo-map.stories';
 import { stories as metric } from '../../components/pt-metric.stories';
@@ -29,6 +30,6 @@ import { stories as whyToday } from '../../components/pt-why-today.stories';
 import type { StoryConfiguration } from './story';
 
 export const STORIES: StoryConfiguration[] = [
-  ...companyHeader, ...basket, ...companyCard, ...answer, ...daily, ...quality, ...whyToday, ...priceTarget, ...priceEvents, ...metric, ...financials, ...insiders, ...news,
+  ...companyHeader, ...basket, ...companyCard, ...answer, ...daily, ...quality, ...whyToday, ...priceTarget, ...priceEvents, ...metric, ...financials, ...stats, ...insiders, ...news,
   ...screen, ...calendar, ...movers, ...logoMap, ...feed, ...value, ...alertEditor, ...alertManage, ...portfolio, ...peopleAsk, ...outlook, ...alertEvent, ...drafts, ...pages,
 ];

@@ -19,6 +19,7 @@ import { PtPriceEvents } from '../../components/pt-price-events';
 import { PtPriceTarget } from '../../components/pt-price-target';
 import { PtQuality } from '../../components/pt-quality';
 import { PtScreen } from '../../components/pt-screen';
+import { PtStats } from '../../components/pt-stats';
 import { PtValue } from '../../components/pt-value';
 import { PtWhyToday } from '../../components/pt-why-today';
 
@@ -41,6 +42,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
   'pt-price-target': { version: '2.7.0', sample: {} },
   'pt-quality': { version: '0.3.1', sample: { ticker: 'NVDA' } },
   'pt-screen': { version: '2.6.0', sample: {} },
+  'pt-stats': { version: '1.0.0', sample: { ticker: 'NVDA' } },
   'pt-value': { version: '1.1.1', sample: { ticker: 'NVDA' } },
   'pt-why-today': { version: '2.3.0', sample: { ticker: 'NVDA' } },
 };
@@ -51,7 +53,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
  */
 @Component({
   selector: 'div[ptSlot]',
-  imports: [PtAnswer, PtBasket, PtCalendar, PtCompanyCard, PtCompanyHeader, PtDaily, PtFeed, PtFinancials, PtInsiders, PtLogoMap, PtMetric, PtMovers, PtNews, PtPriceEvents, PtPriceTarget, PtQuality, PtScreen, PtValue, PtWhyToday],
+  imports: [PtAnswer, PtBasket, PtCalendar, PtCompanyCard, PtCompanyHeader, PtDaily, PtFeed, PtFinancials, PtInsiders, PtLogoMap, PtMetric, PtMovers, PtNews, PtPriceEvents, PtPriceTarget, PtQuality, PtScreen, PtStats, PtValue, PtWhyToday],
   providers: [Pt, { provide: PT_SLOT, useFactory: () => { const injector = inject(Injector); return () => injector.get(PtSlot).id(); } }],
   host: { class: 'pt-island', '[attr.data-island]': 'id()', '[class.pt-island-error]': 'pt.failed()' },
   template: `
@@ -73,6 +75,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
       @case ('pt-price-target') { @defer (hydrate on viewport) {<pt-price-target [ticker]="$any(p()).ticker ?? null" [basket]="$any(p()).basket ?? false" [sector]="$any(p()).sector ?? null" />} }
       @case ('pt-quality') { @defer (hydrate on viewport) {<pt-quality [ticker]="$any(p()).ticker" />} }
       @case ('pt-screen') { @defer (hydrate on viewport) {<pt-screen [list]="$any(p()).list" [peersOf]="$any(p()).peersOf" [limit]="$any(p()).limit ?? 25" [sector]="$any(p()).sector" [link]="$any(p()).link ?? 'hub'" />} }
+      @case ('pt-stats') { @defer (hydrate on viewport) {<pt-stats [ticker]="$any(p()).ticker" />} }
       @case ('pt-value') { @defer (hydrate on viewport) {<pt-value [ticker]="$any(p()).ticker" [compact]="$any(p()).compact ?? false" />} }
       @case ('pt-why-today') { @defer (hydrate on viewport) {<pt-why-today [ticker]="$any(p()).ticker" [window]="$any(p()).window ?? '1d'" />} }
     }
