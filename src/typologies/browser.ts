@@ -12,6 +12,7 @@ export type * from './alerts';
 export type * from './common';
 export type * from './company';
 export type * from './daily';
+export type * from './stats';
 export type * from './events';
 export type * from './feed';
 export type * from './fundamentals';

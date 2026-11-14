@@ -4,6 +4,7 @@ import { AnalystsParams, AnalystsPayload } from './analysts';
 import { AlertEventParams, AlertEventPayload, AlertUniverseParams, AlertUniversePayload } from './alerts';
 import { AttentionParams, AttentionPayload } from './attention';
 import { DailyParams, DailyPayload } from './daily';
+import { StatsParams, StatsPayload } from './stats';
 import { BasketParams, BasketPayload } from './basket';
 import { CompanyParams, CompanyPayload } from './company';
 import { EventsParams, EventsPayload } from './events';
@@ -53,6 +54,7 @@ export const TYPOLOGY_SCHEMAS = /* @__PURE__ */ withIds({
   'alert-event@1': { params: AlertEventParams, payload: AlertEventPayload },
   'sector@1': { params: SectorParams, payload: SectorBasketPayload },
   'daily@1': { params: DailyParams, payload: DailyPayload },
+  'stats@1': { params: StatsParams, payload: StatsPayload },
 });
 export type TypologyKey = keyof typeof TYPOLOGY_SCHEMAS;
 
