@@ -1,6 +1,6 @@
-import { date, money, pct, plainName } from '../src/ds/format';
+import { date, mention, money, pct, plainName, tip, type Said } from '../src/ds/format';
 import { analystsDemo, demoFor, priceSeriesDemo, type Basket, type SectorBasket } from '../src/typologies';
-import { buildConsensusHistory, buildPtChart, consensusText, LEVEL_GAP, PtPriceTarget } from './pt-price-target';
+import { buildConsensusHistory, buildPtChart, buildTrend, consensusText, LEVEL_GAP, PtPriceTarget, trendLegs, trendText } from './pt-price-target';
 import { basics, render, settle, withData } from './_spec';
 
 const analysts = analystsDemo({ ticker: 'NVDA', window: '1y' });
@@ -136,6 +136,83 @@ describe('buildConsensusHistory (beta\'s stacked monthly ratings, half as tall, 
     const x = buildPtChart(pts, [tg({})], '2026-01-05', 120)!.x;
     expect(buildConsensusHistory([h('2025-09-01', 10, 20)], x)).toBeNull();
     expect(buildConsensusHistory([h('2025-09-01', 0, 0), h('2025-10-01', 0, 0)], x)).toBeNull();
+  });
+});
+
+describe('the average target week by week (the trend under the chart): its legs, its turn, its sentence', () => {
+  const wk = (t: string, mean: number | null, n = 10) => ({ t, mean, n });
+  /** A revision: `prev` → `target` (prev null: a firm's first). */
+  const rv = (date: string, firm: string, prev: number | null, target: number) => ({ date, firm, target, priceWhenPosted: null, prev });
+  const many = (k: number, date: string, up: boolean) => Array.from({ length: k }, (_, i) => rv(date, `F${up ? 'u' : 'd'}${i}`, 100, up ? 110 : 90));
+  const said = (s: Said | null) => s && s.map((p) => (typeof p === 'string' ? p : `${plainName(p.name ?? p.ticker)} ${p.ticker}`)).join('');
+  const nvda = mention('NVDA', 'NVIDIA Corporation', null), nke = mention('NKE', 'NIKE, Inc.', null);
+  const x = (w: { t: string }[]) => buildPtChart([{ t: w[0]!.t, o: 1, h: 1, l: 1, c: 1, v: 1 }, { t: w.at(-1)!.t, o: 1, h: 1, l: 1, c: 1, v: 1 }], [tg({ date: w[0]!.t })], w.at(-1)!.t, 1)!.x;
+  const peak = [wk('2026-08-14', 300), wk('2026-08-21', 320), wk('2026-08-28', 332), wk('2026-09-04', 325), wk('2026-11-13', 310)];
+  const low = [wk('2026-04-10', 400), wk('2026-04-17', 380), wk('2026-04-24', 366), wk('2026-05-01', 400), wk('2026-11-13', 461)];
+  const fall = [wk('2025-11-14', 84.1), wk('2026-02-13', 70), wk('2026-05-15', 60), wk('2026-08-14', 50), wk('2026-11-13', 39.3)];
+
+  it('legs between turns: a high or low counts once the average has moved 3% away from it', () => {
+    expect(trendLegs([100, 104, 110, 106, 100, 98])).toEqual([{ i0: 0, i1: 2, dir: 'up' }, { i0: 2, i1: 5, dir: 'down' }]);
+    expect(trendLegs([100, 102, 101, 102.5])).toEqual([{ i0: 0, i1: 3, dir: 'up' }]);
+    expect(trendLegs([null, null, 100, 90])).toEqual([{ i0: 2, i1: 3, dir: 'down' }]);
+    expect(trendLegs([100, 110, null, 100])).toEqual([{ i0: 0, i1: 1, dir: 'up' }, { i0: 1, i1: 3, dir: 'down' }]);
+    expect(trendLegs([100])).toEqual([]);
+    expect(trendLegs([null, null])).toEqual([]);
+  });
+  it('a peak and a low are marked with their price and week; one leg has no turn; the end names the average target', () => {
+    const p = buildTrend(peak, [], x(peak))!;
+    expect(p.turn).toMatchObject({ peak: true, label: '$332 peak · Aug 28' });
+    expect(p.end).toMatchObject({ dir: 'down', label: '$310 average target' });
+    expect(p.legs.map((l) => l.dir)).toEqual(['up', 'down']);
+    expect([p.w, p.h]).toEqual([800, 120]);
+    expect(buildTrend(low, [], x(low))!.turn).toMatchObject({ peak: false, label: '$366 low · Apr 24' });
+    const f = buildTrend(fall, [], x(fall))!;
+    expect(f.turn).toBeNull();
+    expect(f.end.label).toBe('$39.30 average target');
+  });
+  it('sits on the chart\'s time axis: a leg starts where the consensus strip would put its week, and the zoom moves it', () => {
+    const ax = x(peak), sx = (t: string) => 6 + ((Math.floor(Date.parse(`${t}T00:00:00Z`) / 864e5) - ax.min) / (ax.max - ax.min)) * (800 - 6 - 46);
+    const p = buildTrend(peak, [], ax)!;
+    expect(Number(p.legs[1]!.path.match(/^M([\d.]+)/)![1])).toBeCloseTo(sx('2026-08-28'), 0);
+    expect(buildTrend(peak, [], { min: ax.min + 20, max: ax.max })!.legs[0]!.path).not.toBe(p.legs[0]!.path);
+  });
+  it('fewer than two weeks with an average: no line', () => {
+    expect(buildTrend([wk('2026-11-06', null, 2), wk('2026-11-13', 310)], [], x(peak))).toBeNull();
+    expect(buildTrend([], [], x(peak))).toBeNull();
+  });
+  it("a week's tip: its average, its firms, and who raised or cut that week (newest first, six at most, one row a firm)", () => {
+    const w = [wk('2026-10-23', 320, 32), wk('2026-10-30', 326, 33), wk('2026-11-06', null, 2)];
+    const ts = [rv('2026-10-26', 'UBS', 400, 380), rv('2026-10-29', 'Mizuho', 300, 350), rv('2026-10-27', 'New', null, 500), rv('2026-10-23', 'Old', 100, 90)];
+    const c = buildTrend(w, ts, x(w))!;
+    expect(c.weeks[1]!.tip).toBe(tip({ 'Week to Oct 30, 2026': 'average $326', Firms: 33, '▲ Mizuho': '$300 → $350', '▼ UBS': '$400 → $380' }));
+    expect(c.weeks[2]!.tip).toBeNull();
+    const busy = Array.from({ length: 8 }, (_, i) => rv(`2026-10-2${4 + (i % 6)}`, `B${i}`, 100, 120));
+    const twice = [rv('2026-10-26', 'Same', 100, 120), rv('2026-10-28', 'Same', 120, 90)];
+    expect(JSON.parse(buildTrend(w, busy, x(w))!.weeks[1]!.tip!)).toMatchObject({ '…': '2 more' });
+    expect(JSON.parse(buildTrend(w, twice, x(w))!.weeks[1]!.tip!)).toEqual({ 'Week to Oct 30, 2026': 'average $326', Firms: 33, '▼ Same': '$120 → $90.00' });
+  });
+  it('says what analysts did since the turn, in a sentence for search engines', () => {
+    expect(said(trendText(nvda, peak, [...many(8, '2026-09-10', false), ...many(3, '2026-10-01', true), ...many(4, '2026-08-20', true)]))).toBe(
+      'The average price target for Nvidia NVDA peaked at $332 in the week to Aug 28, 2026 and has fallen 7% since, to $310: 8 cuts and 3 raises since then.');
+    expect(said(trendText(nvda, low, [...many(29, '2026-06-01', true), ...many(4, '2026-07-01', false)]))).toBe(
+      'The average price target for Nvidia NVDA bottomed at $366 in the week to Apr 24, 2026 and has risen 26% since, to $461: 29 raises and 4 cuts since then.');
+    expect(said(trendText(nke, fall, [...many(60, '2026-03-01', false), ...many(2, '2026-04-01', true)]))).toBe(
+      `The average price target for Nike NKE fell from $84.10 to $39.30 in 12 months (${pct(39.3 / 84.1 - 1, 0)}): 60 cuts and 2 raises.`);
+  });
+  it('the counts: the larger first, cuts first on a tie, singular, a zero left out, none at all no clause; a change under 0.5% is «is at … now»', () => {
+    const at = (ts: ReturnType<typeof rv>[]) => said(trendText(nvda, peak, ts))!.replace(/^.*to \$310/, '');
+    expect(at([...many(2, '2026-09-10', false), ...many(2, '2026-09-11', true)])).toBe(': 2 cuts and 2 raises since then.');
+    expect(at([...many(1, '2026-09-10', false), ...many(1, '2026-09-11', true)])).toBe(': 1 cut and 1 raise since then.');
+    expect(at(many(2, '2026-09-10', false))).toBe(': 2 cuts since then.');
+    expect(at([rv('2026-09-10', 'New', null, 300)])).toBe('.');
+    const flat = [wk('2026-08-14', 320), wk('2026-08-28', 332), wk('2026-09-04', 322), wk('2026-11-13', 331)];
+    expect(said(trendText(nvda, flat, many(1, '2026-09-10', false)))).toBe(
+      'The average price target for Nvidia NVDA peaked at $332 in the week to Aug 28, 2026 and is at $331 now: 1 cut since then.');
+    expect(trendText(nvda, [wk('2026-11-13', 310)], [])).toBeNull();
+    // a line that starts later (too few firms before): no «in 12 months», its raises and cuts since its first week
+    const late = [wk('2026-05-15', null, 2), wk('2026-05-22', 60), wk('2026-08-14', 50), wk('2026-11-13', 39.3)];
+    expect(said(trendText(nke, late, [...many(3, '2026-05-01', false), ...many(5, '2026-06-01', false)]))).toBe(
+      `The average price target for Nike NKE fell from $60.00 to $39.30 since the week to May 22, 2026 (${pct(39.3 / 60 - 1, 0)}): 5 cuts.`);
   });
 });
 

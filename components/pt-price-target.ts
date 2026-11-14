@@ -13,7 +13,7 @@
 import { Component, computed, inject, input, linkedSignal, signal } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
 import { applyXViewport, applyYViewport, closeAt, FULL_VIEWPORT, isoDay, linePath, monthTicks, padTime, PtChart, PtLogo, PtTimeAxis, type Viewport } from '@pretickt/components/ds';
-import { date, money, month, pct, plainName, svgId, tip, usd } from '@pretickt/components/format';
+import { date, dayMonth, money, month, pct, plainName, say, svgId, tip, usd, type Mention, type Said } from '@pretickt/components/format';
 import { cmp, type Analysts, type PriceBar, type Sector } from '@pretickt/components/typologies';
 
 type Target = Analysts['targets'][number];
@@ -226,6 +226,128 @@ export function consensusText(history: Analysts['history']): string | null {
   const said = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts[0]!;
   const before = rows.find((r) => r.period === `${y - 1}-${String(m).padStart(2, '0')}-01`), b = before ? counts(before) : null;
   return `${k.total} analyst${k.total === 1 ? '' : 's'} in ${MONTH_NAMES[m - 1]} ${y}: ${said}.` + (b && b.total > 0 ? ` A year earlier, ${share(b)}% rated it a buy or strong buy.` : '');
+}
+
+// The average target week by week (Romeo, 2026-11-14: «se il price target è salito sempre e negli ultimi mesi mostra una discesa…», variant A):
+// a third strip on the chart's time axis, between the chart and the consensus, as wide; its line in legs between turns.
+const TH = 120, TT = 26, TB = 10;
+/** A high or low is a turn once the average has moved this far from it. */
+const TURN = 0.03;
+const MAX_TIP_ROWS = 6;
+type Weekly = NonNullable<Analysts['weekly']>;
+export interface PtTrendLeg { i0: number; i1: number; dir: 'up' | 'down' | 'flat' }
+export interface PtTrendChart {
+  w: number; h: number;
+  /** oldest first, one path a leg */ legs: { dir: PtTrendLeg['dir']; path: string }[];
+  /** the price axis' lines, about three */ grid: { y: number; label: string }[];
+  /** the last turn ("$332 peak · Aug 28"); null with one leg */ turn: { x: number; y: number; peak: boolean; label: string; tip: string } | null;
+  end: { x: number; y: number; dir: PtTrendLeg['dir']; label: string; tip: string };
+  /** a hover strip a week, its tip null when the week has no average */ weeks: { t: string; x0: number; w: number; tip: string | null }[];
+  label: string;
+}
+
+/**
+ * The legs of the weekly averages between their turns (indices into `means`; a week without one is skipped): a zigzag that counts a
+ * high or a low once the average has moved `threshold` away from it. Fewer than two averages: none.
+ */
+export function trendLegs(means: readonly (number | null)[], threshold = TURN): PtTrendLeg[] {
+  const idx = means.flatMap((v, i) => (v == null ? [] : [i]));
+  if (idx.length < 2) return [];
+  const v = (i: number) => means[i]!;
+  const piv = [idx[0]!];
+  let dir: 'up' | 'down' | null = null, ext = idx[0]!;
+  for (const i of idx.slice(1)) {
+    if (dir === null) {
+      if (v(i) >= v(piv[0]!) * (1 + threshold)) { dir = 'up'; ext = i; } else if (v(i) <= v(piv[0]!) * (1 - threshold)) { dir = 'down'; ext = i; }
+    } else if (dir === 'up') {
+      if (v(i) > v(ext)) ext = i; else if (v(i) <= v(ext) * (1 - threshold)) { piv.push(ext); dir = 'down'; ext = i; }
+    } else if (v(i) < v(ext)) ext = i; else if (v(i) >= v(ext) * (1 + threshold)) { piv.push(ext); dir = 'up'; ext = i; }
+  }
+  piv.push(idx.at(-1)!);
+  return piv.slice(1).map((i1, k) => {
+    const i0 = piv[k]!, r = v(i1) / v(i0);
+    return { i0, i1, dir: r > 1.001 ? 'up' : r < 0.999 ? 'down' : 'flat' };
+  });
+}
+
+/** A round step for about `n` lines over `span`: 1, 2 or 5 × 10ⁿ. */
+function niceStep(raw: number): number {
+  const p = 10 ** Math.floor(Math.log10(raw)), k = raw / p;
+  return (k < 1.5 ? 1 : k < 3.5 ? 2 : k < 7.5 ? 5 : 10) * p;
+}
+const minusWeek = (iso: string) => new Date(Date.parse(`${iso}T00:00:00Z`) - 7 * 86_400_000).toISOString().slice(0, 10);
+
+/** Each week's tip: its average and firms, then who raised or cut in it (after the week before), newest first, one row a firm. */
+function weekTips(weekly: Weekly, targets: Analysts['targets']): (string | null)[] {
+  return weekly.map((w, i) => {
+    if (w.mean == null) return null;
+    const from = i ? weekly[i - 1]!.t : minusWeek(w.t), byFirm = new Map<string, Analysts['targets'][number]>();
+    for (const t of targets) {
+      if (!(t.date > from && t.date <= w.t && t.prev != null && t.target !== t.prev)) continue;
+      const had = byFirm.get(t.firm);
+      if (!had || had.date <= t.date) byFirm.set(t.firm, t);
+    }
+    const rows = [...byFirm.values()].sort((a, b) => cmp(b.date, a.date) || cmp(a.firm, b.firm));
+    const o: Record<string, string | number> = { [`Week to ${date(w.t)}`]: `average ${axisPrice(w.mean)}`, Firms: w.n };
+    for (const t of rows.slice(0, MAX_TIP_ROWS)) o[`${t.target > t.prev! ? '▲' : '▼'} ${t.firm}`] = `${axisPrice(t.prev!)} → ${axisPrice(t.target)}`;
+    if (rows.length > MAX_TIP_ROWS) o['…'] = `${rows.length - MAX_TIP_ROWS} more`;
+    return tip(o);
+  });
+}
+
+/**
+ * The average target week by week as a line on the target chart's time axis (`x`, the viewport applied), green where it rises and red
+ * where it falls, its last turn marked; null with fewer than two weeks with an average.
+ */
+export function buildTrend(weekly: Weekly, targets: Analysts['targets'], x: { min: number; max: number }): PtTrendChart | null {
+  const legs = trendLegs(weekly.map((w) => w.mean));
+  if (!legs.length) return null;
+  const ms = weekly.flatMap((w) => (w.mean == null ? [] : [w.mean]));
+  const lo = Math.min(...ms), hi = Math.max(...ms), span = Math.max(hi - lo, hi * 0.04), a = lo - span * 0.12, b = hi + span * 0.12;
+  const sx = (t: string) => f(ML + ((isoDay(t) - x.min) / (x.max - x.min || 1)) * (W - ML - MR));
+  const sy = (v: number) => f(TT + (1 - (v - a) / (b - a)) * (TH - TT - TB));
+  const pts = weekly.map((w) => (w.mean == null ? null : `${sx(w.t)} ${sy(w.mean)}`));
+  const step = niceStep((b - a) / 3), grid: PtTrendChart['grid'] = [];
+  for (let k = Math.ceil(a / step); k * step <= b; k++) grid.push({ y: sy(k * step), label: axisPrice(k * step) });
+  const tips = weekTips(weekly, targets), xs = weekly.map((w) => sx(w.t));
+  const half = (i: number, j: number) => (xs[j] !== undefined ? Math.abs(xs[j]! - xs[i]!) / 2 : 4);
+  const weeks = weekly.map((w, i) => {
+    const x0 = xs[i]! - (i ? half(i, i - 1) : half(i, i + 1)), x1 = xs[i]! + (i < xs.length - 1 ? half(i, i + 1) : half(i, i - 1));
+    return { t: w.t, x0: f(x0), w: f(x1 - x0), tip: tips[i]! };
+  });
+  const last = legs.at(-1)!, endW = weekly[last.i1]!;
+  const tw = legs.length > 1 ? weekly[last.i0]! : null, peak = legs.length > 1 && legs.at(-2)!.dir === 'up';
+  return {
+    w: W, h: TH, grid, weeks,
+    legs: legs.map((l) => ({ dir: l.dir, path: pts.slice(l.i0, l.i1 + 1).filter((p) => p != null).map((p, k) => `${k ? 'L' : 'M'}${p}`).join(' ') })),
+    turn: tw ? { x: sx(tw.t), y: sy(tw.mean!), peak, label: `${axisPrice(tw.mean!)} ${peak ? 'peak' : 'low'} · ${dayMonth(tw.t)}`, tip: tips[last.i0]! } : null,
+    end: { x: sx(endW.t), y: sy(endW.mean!), dir: last.dir, label: `${axisPrice(endW.mean!)} average target`, tip: tips[last.i1]! },
+    label: `Average analyst price target, week by week, ${month(weekly[legs[0]!.i0]!.t.slice(0, 7))} to ${month(endW.t.slice(0, 7))}`,
+  };
+}
+
+/**
+ * What the analysts did since the average target's last turn, in a sentence for search engines (no forecast: what they did, never what
+ * the price will do): the turn, the change since, and the raises and cuts since it — the larger count first; with no turn, the year's
+ * change and its raises and cuts. Null with fewer than two weeks with an average.
+ */
+export function trendText(who: Mention, weekly: Weekly, targets: Analysts['targets']): Said | null {
+  const legs = trendLegs(weekly.map((w) => w.mean));
+  if (!legs.length) return null;
+  const first = weekly[legs[0]!.i0]!, last = weekly[legs.at(-1)!.i1]!;
+  const counted = (since: string | null) => {
+    let up = 0, down = 0;
+    for (const t of targets) if (t.prev != null && (since == null || t.date > since)) { if (t.target > t.prev) up++; else if (t.target < t.prev) down++; }
+    const parts = ([[down, 'cut'], [up, 'raise']] as const).filter(([k]) => k > 0).sort((p, q) => q[0] - p[0]);
+    return parts.map(([k, w]) => `${k} ${w}${k === 1 ? '' : 's'}`).join(' and ');
+  };
+  if (legs.length > 1) {
+    const tw = weekly[legs.at(-1)!.i0]!, peak = legs.at(-2)!.dir === 'up', ch = last.mean! / tw.mean! - 1, c = counted(tw.t);
+    const since = Math.abs(ch) < 0.005 ? `is at ${axisPrice(last.mean!)} now` : `has ${ch < 0 ? 'fallen' : 'risen'} ${Math.round(Math.abs(ch) * 100)}% since, to ${axisPrice(last.mean!)}`;
+    return say`The average price target for ${who} ${peak ? 'peaked' : 'bottomed'} at ${axisPrice(tw.mean!)} in the week to ${date(tw.t)} and ${since}${c ? `: ${c} since then` : ''}.`;
+  }
+  const year = isoDay(last.t) - isoDay(first.t) >= 350, ch = last.mean! / first.mean! - 1, c = counted(year ? null : first.t);
+  return say`The average price target for ${who} ${ch < 0 ? 'fell' : 'rose'} from ${axisPrice(first.mean!)} to ${axisPrice(last.mean!)} ${year ? 'in 12 months' : `since the week to ${date(first.t)}`} (${pct(ch, 0)})${c ? `: ${c}` : ''}.`;
 }
 
 @Component({
