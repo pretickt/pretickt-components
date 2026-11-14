@@ -52,6 +52,11 @@ const MARKET_LISTS: [string, ScreenList, string, string][] = [
   ['insider-buying', 'insider_buying', 'Insider buying', 'Stocks insiders are buying'],
   ['most-active', 'most_active', 'Most active', 'Most active stocks today'],
 ];
+/** pages.ts LIST_LINK: the company page a list's rows link to, when it is not the company's main page (internal links, 2026-11-14). */
+const LIST_LINK: Partial<Record<ScreenList, string>> = { biggest_losers: 'why-moving', biggest_gainers: 'why-moving', most_active: 'why-moving',
+  unusual_volume: 'why-moving', '52w_low': 'why-moving', '52w_high': 'why-moving', upgrades_downgrades: 'price-target', insider_buying: 'insiders',
+  undervalued: 'value', low_pe: 'value', piotroski: 'financials' };
+const listInputs = (list: ScreenList, more: Record<string, unknown>) => ({ list, ...more, ...(LIST_LINK[list] ? { link: LIST_LINK[list] } : {}) });
 /** pages.ts LIST_NAV, with the two new pages. */
 const LIST_NAV = [
   { href: '/earnings-calendar/', label: 'Earnings calendar' }, { href: '/dividend-calendar/', label: 'Dividend calendar' },
@@ -103,7 +108,9 @@ export function valuePage(t: string, legal: string, sector: Sector): PreviewPage
 }
 
 export function companyPage(t: string, legal: string, sector: Sector, drafts: { value?: boolean; ask?: PeopleAsk; daily?: boolean } = {}): PreviewPage {
-  const n = named(legal, t);
+  const n = named(legal, t), plain = plainName(legal);
+  // pages.ts: the sections with a page of their own link to it, in words that say where (internal links, 2026-11-14)
+  const to = (s: string, label: string) => ({ href: `${hub(t)}${s}/`, label });
   return {
     path: hub(t),
     title: fitTitle(`${n} stock: forecast, prediction, price target`, `${n} stock forecast and price target`, `${n} stock forecast`, `${t} stock: forecast, prediction, price target`),
@@ -117,15 +124,15 @@ export function companyPage(t: string, legal: string, sector: Sector, drafts: { 
       { id: 'answer', items: [{ c: PtAnswer, inputs: { topic: 'forecast', ticker: t } }] },
       // pages.ts places it only while the daily cards' switch is on (Admin › Schede)
       ...(drafts.daily ? [{ id: 'daily', title: 'What changed', isNew: true, note: 'pt-daily, the card of the day: on the page only while the switch is on', items: [{ c: PtDaily, inputs: { ticker: t } }] }] : []),
-      { id: 'targets', title: 'Analyst price targets and predictions', items: [{ c: PtPriceTarget, inputs: { ticker: t } }] },
+      { id: 'targets', title: 'Analyst price targets and predictions', more: to('price-target', `${plain} price targets`), items: [{ c: PtPriceTarget, inputs: { ticker: t } }] },
       ...(drafts.value ? [{ id: 'value', isNew: true, note: 'pt-value in its compact form: the full one is its own page, /stocks/<t>/value/', items: [{ c: PtValue, inputs: { ticker: t, compact: true } }] }] : []),
       { id: 'snapshot', title: 'Snapshot', items: [metric(t, METRIC_GROUPS.snapshot)] },
-      { id: 'why', title: 'Why it moved', items: [{ c: PtWhyToday, inputs: { ticker: t, window: '1d' } }] },
+      { id: 'why', title: 'Why it moved', more: to('why-moving', `Why ${plain} moved`), items: [{ c: PtWhyToday, inputs: { ticker: t, window: '1d' } }] },
       { id: 'price', title: 'Price and events', items: [{ c: PtPriceEvents, inputs: { ticker: t, range: '1y' } }] },
       { id: 'technicals', title: 'Technicals', items: [metric(t, METRIC_GROUPS.technicals)] },
-      { id: 'financials', title: 'Revenue and free cash flow', items: [{ c: PtFinancials, inputs: { ticker: t, periods: 8 } }] },
-      { id: 'peers', title: 'Peers', items: [{ c: PtScreen, inputs: { peersOf: t, limit: 8 } }] },
-      { id: 'news', title: 'Latest news', items: [{ c: PtNews, inputs: { ticker: t, limit: 5 } }] },
+      { id: 'financials', title: 'Revenue and free cash flow', more: to('financials', `${plain} financials`), items: [{ c: PtFinancials, inputs: { ticker: t, periods: 8 } }] },
+      { id: 'peers', title: 'Peers', more: to('peers', `${plain} vs peers`), items: [{ c: PtScreen, inputs: { peersOf: t, limit: 8 } }] },
+      { id: 'news', title: 'Latest news', more: to('news', `All ${plain} news`), items: [{ c: PtNews, inputs: { ticker: t, limit: 5 } }] },
       ...(drafts.ask ? [{ id: 'people-ask', title: `What people ask about ${plainName(legal)}`, isNew: true,
         note: 'pt-people-ask, made-up questions until the pulse feeds it', items: [{ c: PtPeopleAsk, inputs: { data: drafts.ask } }] }] : []),
     ],
@@ -149,7 +156,7 @@ export function homePage(): PreviewPage {
       { id: 'earnings', title: 'Earnings', more: { href: '/earnings-calendar/', label: 'Full calendar' }, items: [week('earnings')] },
       { id: 'dividends', title: 'Ex-dividend dates', more: { href: '/dividend-calendar/', label: 'Full calendar' }, items: [week('dividend')] },
       ...MARKET_LISTS.map(([slug, list, , h1]): PreviewSection => ({ id: slug, title: h1, more: { href: `/markets/${slug}/`, label: 'See all' },
-        items: [{ c: PtScreen, inputs: { list, limit: 5 } }] })),
+        items: [{ c: PtScreen, inputs: listInputs(list, { limit: 5 }) }] })),
       { id: 'all-stocks', title: UNIVERSE, more: { href: '/stocks/', label: 'All stocks' }, items: [] },
       // Romeo, 2026-11-01: "mettiamo alla fine della home la heat map del mercato delle mega caps"
       { id: 'mega-caps', title: 'Mega-cap stocks heat map', more: { href: '/market-map/', label: 'All the heat maps' }, isNew: true,
@@ -174,7 +181,7 @@ export function sectorPage(s: Sector): PreviewPage {
     sections: [
       { id: 'answer', items: [{ c: PtAnswer, inputs: { topic: 'list', list: 'largest', sector: s } }] },
       { id: 'map', title: `${s} stocks heat map`, isNew: true, items: [{ c: PtLogoMap, inputs: { sector: s } }] },
-      ...MARKET_LISTS.map(([slug, list, , h1]): PreviewSection => ({ id: slug, title: h1, items: [{ c: PtScreen, inputs: { list, sector: s, limit: 5 } }] })),
+      ...MARKET_LISTS.map(([slug, list, , h1]): PreviewSection => ({ id: slug, title: h1, items: [{ c: PtScreen, inputs: listInputs(list, { sector: s, limit: 5 }) }] })),
       { id: 'all', title: `All ${s} stocks`, items: [{ c: PtScreen, inputs: { list: 'largest', sector: s, limit: 20 } }] },
     ],
   };
@@ -198,7 +205,7 @@ export function sectorBasketPage(s: Sector, companies: number): PreviewPage {
       basket('value', `Is ${s} a good buy?`, 'questions'),
       { id: 'price', title: 'Price and events', isNew: true, items: [{ c: PtPriceEvents, inputs: { sector: s } }] },
       { id: 'news', title: 'News of the 10 largest companies', isNew: true, items: [{ c: PtNews, inputs: { sector: s, limit: 10 } }] },
-      ...MARKET_LISTS.slice(0, 7).map(([slug, list, , h1]): PreviewSection => ({ id: slug, title: h1, items: [{ c: PtScreen, inputs: { list, sector: s, limit: 5 } }] })),
+      ...MARKET_LISTS.slice(0, 7).map(([slug, list, , h1]): PreviewSection => ({ id: slug, title: h1, items: [{ c: PtScreen, inputs: listInputs(list, { sector: s, limit: 5 }) }] })),
       basket('all', `All ${s} stocks`, 'holdings'), basket('questions', `Questions about ${s} stocks`, 'faq'),
     ],
   };

@@ -28,7 +28,7 @@ describe('pt-screen', () => {
       expect([a.getAttribute('href')!.split('/').at(-2), a.querySelector('.pt-sr')!.textContent]).toEqual([link, sr]);
     }
     // the default and the peers table: the company's page, no card attribute, nothing for screen readers
-    for (const inputs of [{ list: 'biggest_losers', limit: 10 }, { peersOf: 'NVDA', limit: 5 }]) {
+    for (const inputs of [{ list: 'biggest_losers', limit: 10 }, { peersOf: 'NVDA', limit: 5 }, { list: 'biggest_losers', limit: 10, link: undefined }]) {
       const a = (await render(PtScreen, inputs)).el.querySelector('.pt-scr-co')!;
       expect([/^\/stocks\/[a-z.]+\/$/.test(a.getAttribute('href')!), a.hasAttribute('data-card'), a.querySelector('.pt-sr')]).toEqual([true, false, null]);
     }

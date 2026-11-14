@@ -13,7 +13,8 @@ describe('readInputs (the TypeScript checker on the component file)', () => {
       { name: 'window', required: false, type: "Window", literals: ['1d', '5d', '1m'], default: '1d' },
     ] });
     const screen = readInputs(program, file('pt-screen')).inputs;
-    expect(screen.map((i) => [i.name, i.required, i.default])).toEqual([['list', false, undefined], ['peersOf', false, undefined], ['limit', false, 25], ['sector', false, undefined]]);
+    expect(screen.map((i) => [i.name, i.required, i.default])).toEqual([['list', false, undefined], ['peersOf', false, undefined], ['limit', false, 25], ['sector', false, undefined], ['link', false, 'hub']]);
+    expect(screen[4]!.literals).toEqual(['hub', 'why-moving', 'price-target', 'insiders', 'value', 'financials']);
     expect(screen[0]!.literals).toContain('largest');
     expect(screen[3]!.literals).toContain('Financial Services');
     expect(readInputs(program, file('pt-company-card')).inputs.find((i) => i.name === 'extra')).toMatchObject({ required: false, default: null });

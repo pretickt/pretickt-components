@@ -26,7 +26,7 @@ import { PtWhyToday } from '../../components/pt-why-today';
 export const REGISTRY: Record<string, { version: string; sample: Record<string, unknown> }> = {
   'pt-answer': { version: '1.9.0', sample: {} },
   'pt-basket': { version: '1.2.0', sample: {} },
-  'pt-calendar': { version: '3.2.1', sample: { month: '2026-09' } },
+  'pt-calendar': { version: '3.3.0', sample: { month: '2026-09' } },
   'pt-company-card': { version: '1.2.2', sample: { ticker: 'NVDA' } },
   'pt-company-header': { version: '1.2.0', sample: {} },
   'pt-daily': { version: '1.0.0', sample: { ticker: 'NVDA' } },
@@ -40,7 +40,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
   'pt-price-events': { version: '2.4.0', sample: {} },
   'pt-price-target': { version: '2.6.0', sample: {} },
   'pt-quality': { version: '0.3.1', sample: { ticker: 'NVDA' } },
-  'pt-screen': { version: '2.5.0', sample: {} },
+  'pt-screen': { version: '2.6.0', sample: {} },
   'pt-value': { version: '1.1.1', sample: { ticker: 'NVDA' } },
   'pt-why-today': { version: '2.3.0', sample: { ticker: 'NVDA' } },
 };
@@ -72,7 +72,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
       @case ('pt-price-events') { @defer (hydrate on viewport) {<pt-price-events [ticker]="$any(p()).ticker ?? null" [sector]="$any(p()).sector ?? null" [range]="$any(p()).range ?? '1y'" [fund]="$any(p()).fund ?? false" />} }
       @case ('pt-price-target') { @defer (hydrate on viewport) {<pt-price-target [ticker]="$any(p()).ticker ?? null" [basket]="$any(p()).basket ?? false" [sector]="$any(p()).sector ?? null" />} }
       @case ('pt-quality') { @defer (hydrate on viewport) {<pt-quality [ticker]="$any(p()).ticker" />} }
-      @case ('pt-screen') { @defer (hydrate on viewport) {<pt-screen [list]="$any(p()).list" [peersOf]="$any(p()).peersOf" [limit]="$any(p()).limit ?? 25" [sector]="$any(p()).sector" />} }
+      @case ('pt-screen') { @defer (hydrate on viewport) {<pt-screen [list]="$any(p()).list" [peersOf]="$any(p()).peersOf" [limit]="$any(p()).limit ?? 25" [sector]="$any(p()).sector" [link]="$any(p()).link ?? 'hub'" />} }
       @case ('pt-value') { @defer (hydrate on viewport) {<pt-value [ticker]="$any(p()).ticker" [compact]="$any(p()).compact ?? false" />} }
       @case ('pt-why-today') { @defer (hydrate on viewport) {<pt-why-today [ticker]="$any(p()).ticker" [window]="$any(p()).window ?? '1d'" />} }
     }

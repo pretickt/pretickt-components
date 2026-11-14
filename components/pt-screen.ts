@@ -119,7 +119,8 @@ export class PtScreen {
     company: (x) => x.r.ticker, close: (x) => x.r.close, chg: (x) => x.r.chg1d, pe: (x) => (x.r.pe == null || x.r.pe <= 0 ? null : x.r.pe),
     cap: (x) => x.r.marketCap, x0: (x) => this.extra()[0]?.value(x.r) ?? null, x1: (x) => this.extra()[1]?.value(x.r) ?? null,
   });
-  protected readonly page = computed(() => { const l = this.link(); return l === 'hub' ? null : { slug: l, sr: LINK_SR[l] }; });
+  /** null: the company's page (the default, and a value it does not know). */
+  protected readonly page = computed(() => { const l = this.link(); return l && l !== 'hub' && LINK_SR[l] ? { slug: l, sr: LINK_SR[l] } : null; });
   protected rowHref(ticker: string) { const p = this.page(); return p ? href(`/stocks/${ticker.toLowerCase()}/${p.slug}/`) : stockHref(ticker); }
   protected readonly plainName = plainName;
   protected readonly money = money;
