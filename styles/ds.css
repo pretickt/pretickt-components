@@ -911,7 +911,8 @@
   .pt-stats-pivot { fill: var(--color-surface-raised); @apply stroke-ink; stroke-width: 1.5; }
   .pt-stats-now { @apply fill-primary; stroke: var(--color-surface-raised); stroke-width: 2; }
   .pt-stats-lab { @apply fill-ink font-mono text-3xs font-semibold; }
-  @media (width < 40rem) { .pt-stats-lab-minor { display: none; } }
+  /* a phone draws the 600-unit chart at ~360 px: its text grows in chart units so it stays about 10 px on screen */
+  @media (width < 40rem) { .pt-stats-lab-minor { display: none; } .pt-stats-swing .pt-axis, .pt-stats-swing .pt-stats-lab { font-size: 17px; } }
   .pt-stats-twin { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
   @media (width < 30rem) { .pt-stats-twin { grid-template-columns: minmax(0, 1fr); } }
   .pt-stats-twin > div { @apply grid content-start gap-1.5 rounded-control border border-border bg-surface-raised px-3 py-2.5; }

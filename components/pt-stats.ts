@@ -10,7 +10,7 @@ import { Pt } from '@pretickt/components/context';
 import { date, money, pct, plainName, tip } from '@pretickt/components/format';
 import type { Stats, StatsSwing } from '@pretickt/components/typologies';
 
-const YW = 600, YH = 150, SW = 600, SH = 230, SM = { l: 4, r: 46, t: 20, b: 22 };
+const YW = 600, YH = 150, SW = 600, SH = 248, SM = { l: 4, r: 46, t: 22, b: 44 };
 
 /** "Nov 2021" from an ISO date. */
 export const monthYear = (iso: string) => date(iso).replace(/ \d+,/, '');
@@ -57,7 +57,7 @@ export function swingChart(s: Pick<Stats, 'path' | 'swings' | 'deepestFall' | 'l
     all: line(pts[0]!.t, pts.at(-1)!.t),
     swings: s.swings.map((w) => {
       const up = w.kind === 'rise', lx = Math.max(SM.l + 18, Math.min(SW - SM.r - 18, x(w.to)));
-      return { ...w, d: line(w.from, w.to), cx: x(w.to).toFixed(1), cy: y(w.toClose).toFixed(1), lx: lx.toFixed(1), ly: (up ? y(w.toClose) - 8 : y(w.toClose) + 15).toFixed(1),
+      return { ...w, d: line(w.from, w.to), cx: x(w.to).toFixed(1), cy: y(w.toClose).toFixed(1), lx: lx.toFixed(1), ly: (up ? Math.max(14, y(w.toClose) - 8) : Math.min(SH - SM.b + 16, y(w.toClose) + 15)).toFixed(1),
         main: main.has(w), tip: tip({ [up ? 'A rise' : 'A fall']: pct(w.size), From: `${money(w.fromClose)} (${monthYear(w.from)})`, To: `${money(w.toClose)} (${monthYear(w.to)})${w.open ? ', so far' : ''}`,
           Took: span(w.sessions), ...(up ? {} : { Back: w.back ? monthYear(w.back) : 'not yet' }) }) };
     }),
@@ -116,9 +116,9 @@ export function swingChart(s: Pick<Stats, 'path' | 'swings' | 'deepestFall' | 'l
           <p>{{ countLine() }} Today {{ name() }} is {{ fromHigh() }} its 5-year high close of {{ money(s.high.close) }} ({{ date(s.high.date) }}) and
             {{ fromLow() }} its 52-week low close of {{ money(s.low52.close) }} ({{ date(s.low52.date) }}).</p>
           @if (chart(); as c) {
-            <svg class="pt-chart-svg" [attr.viewBox]="'0 0 ' + SW + ' ' + SH" role="img" [attr.aria-label]="name() + ' over ' + window() + ', with each fall and rise of ' + th() + ' or more'">
+            <svg class="pt-chart-svg pt-stats-swing" [attr.viewBox]="'0 0 ' + SW + ' ' + SH" role="img" [attr.aria-label]="name() + ' over ' + window() + ', with each fall and rise of ' + th() + ' or more'">
               @for (l of c.levels; track l.label) {<line class="pt-grid" x1="0" [attr.x2]="c.gx2" [attr.y1]="l.y" [attr.y2]="l.y" /><text class="pt-axis" [attr.x]="c.lx" [attr.y]="l.y" dy="3">{{ l.label }}</text>}
-              @for (y of c.years; track y.label) {<text class="pt-axis" [attr.x]="y.x" [attr.y]="SH - 6" text-anchor="middle">{{ y.label }}</text>}
+              @for (y of c.years; track y.label) {<text class="pt-axis" [attr.x]="y.x" [attr.y]="SH - 3" text-anchor="middle">{{ y.label }}</text>}
               <path class="pt-stats-path" [attr.d]="c.all" />
               @for (w of c.swings; track w.from) {
                 <path [class]="w.kind === 'fall' ? 'pt-stats-fall' : 'pt-stats-rise'" [attr.d]="w.d" />
