@@ -2,7 +2,8 @@
 import { PT_FOLLOW, PT_FOLLOW_ON, type FollowState } from '../context';
 import { PtFollow } from '../context/follow';
 import { followDemo, type FollowFile } from '../typologies';
-import { PT_FOLLOW_FILE, PtFollowing } from '../site/alerts/following';
+import { PT_FOLLOW_FILE, PT_FOLLOW_SEARCH, PtFollowing } from '../site/alerts/following';
+import { PT_FOLLOW_EMAIL, type FollowBackend } from '../site/alerts/follow-backend';
 import { PtFollowPanel } from '../site/alerts/follow-panel';
 import { story } from './story';
 
@@ -19,3 +20,14 @@ export const stories = [
   story(PtFollowing, { name: '/alerts/: three followed', group: GROUP, providers: [...follows({ follows: ['AAPL', 'MSFT', 'INTC'], seen: {} }), { provide: PT_FOLLOW_FILE, useValue: async () => FILE }] }),
   story(PtFollowing, { name: '/alerts/: nothing followed', group: GROUP, providers: [...follows({ follows: [], seen: {} }), { provide: PT_FOLLOW_FILE, useValue: async () => FILE }] }),
 ];
+/** A made-up server (the stories never call the Worker): every op answers the same state. */
+const SERVER: FollowBackend = { signup: async () => 'ok', manage: async () => ({ email: 'r•••@example.com', status: 'active', weekly: false, digest: false, rules: [],
+  follows: ['AAPL', 'MSFT', 'INTC'], cadence: 'day', manage: 'm.n' }) };
+const mail = [{ provide: PT_FOLLOW_EMAIL, useValue: { backend: SERVER, check: null } }, { provide: PT_FOLLOW_SEARCH, useValue: '' }];
+stories.push(
+  story(PtFollowPanel, { name: 'Panel: the email row (email alerts on)', group: GROUP, inputs: { ticker: 'AAPL', name: 'Apple', alerts: followDemo('AAPL') }, providers: [...follows({ follows: [], seen: {} }), ...mail] }),
+  story(PtFollowPanel, { name: 'Panel: linked to an email', group: GROUP, inputs: { ticker: 'AAPL', name: 'Apple', alerts: followDemo('AAPL') },
+    providers: [...follows({ follows: ['AAPL'], seen: {}, link: { token: 'm.n', email: 'r•••@example.com', cadence: 'week' } }), ...mail] }),
+  story(PtFollowing, { name: '/alerts/: linked to an email', group: GROUP, providers: [...follows({ follows: ['AAPL', 'MSFT', 'INTC'], seen: {},
+    link: { token: 'm.n', email: 'r•••@example.com', cadence: 'day' } }), { provide: PT_FOLLOW_FILE, useValue: async () => FILE }, ...mail] }),
+);
