@@ -882,6 +882,29 @@
   .pt-daily-half { @apply m-0 text-sm font-semibold uppercase tracking-wide text-ink-soft; }
   .pt-daily-line { @apply m-0 mt-1 text-base leading-snug text-ink; }
   .pt-daily-body b { @apply font-semibold text-ink; }
+  /* the picture of a half: under the text on a phone, beside it from sm up; 100 × 40 in its own units, neutral but for the move's own part */
+  .pt-daily-row { @apply flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4; }
+  .pt-daily-text { @apply min-w-0 flex-1; }
+  .pt-daily-visual { @apply block h-10 w-25 shrink-0 overflow-visible sm:mt-1.5; }
+  .pt-dv-line, .pt-dv-slow { fill: none; stroke: var(--color-ink-soft); stroke-width: 1.2; stroke-linejoin: round; stroke-linecap: round; }
+  .pt-dv-slow { stroke-opacity: .45; }
+  .pt-dv-level, .pt-dv-guide { stroke: var(--color-border); stroke-width: 1; }
+  .pt-dv-level { stroke: var(--color-ink); stroke-opacity: .55; }
+  .pt-dv-dash { stroke-dasharray: 3 2; }
+  .pt-dv-mark { stroke: var(--color-ink); stroke-opacity: .35; stroke-width: 1; }
+  .pt-dv-dot { fill: var(--color-ink); }
+  .pt-dv-was { fill: var(--color-surface); stroke: var(--color-ink-soft); stroke-width: 1; }
+  .pt-dv-label { fill: var(--color-ink-soft); font-size: 7px; font-family: var(--font-mono, monospace); }
+  .pt-dv-track, .pt-dv-cal { fill: var(--color-surface-raised); stroke: var(--color-border); stroke-width: 1; }
+  .pt-dv-cal-top { fill: var(--color-ink-soft); }
+  .pt-dv-market { fill: var(--color-ink-soft); fill-opacity: .35; }
+  .pt-dv-sector { fill: var(--color-ink-soft); fill-opacity: .6; }
+  .pt-dv-pos { fill: var(--color-pos); }
+  .pt-dv-neg { fill: var(--color-neg); }
+  .pt-dv-flat { fill: var(--color-ink-soft); }
+  .pt-dv-buy { fill: var(--color-ink); fill-opacity: .75; }
+  .pt-dv-hold { fill: var(--color-ink-soft); fill-opacity: .45; }
+  .pt-dv-sell { fill: var(--color-ink-soft); fill-opacity: .2; }
 
   /* financials */
   .pt-fin-chart { @apply my-2; }

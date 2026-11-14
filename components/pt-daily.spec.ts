@@ -1,4 +1,5 @@
-import { AI_NOTE_BOTH, PtDaily, segments, WATCH_TITLE } from './pt-daily';
+import { AI_NOTE_BOTH, picture, PtDaily, segments, tipOf, WATCH_TITLE, type Pic } from './pt-daily';
+import type { DailyVisual } from '@pretickt/components/typologies';
 import { describe, expect, it } from 'vitest';
 import { basics, render, withData } from './_spec';
 
@@ -136,6 +137,104 @@ describe('pt-daily', () => {
       const r = await show({ watch: null });
       expect(r.el.querySelector('.pt-daily-half')).toBeNull();
       expect(r.el.querySelector('.pt-daily-watch')).toBeNull();
+    });
+  });
+
+  describe('1.1: the pictures, drawn from the platform\'s numbers (spec 2026-11-14 what-to-watch, "Visuals")', () => {
+    const of = (p: Pic | null, k: string, c?: string) => (p?.shapes ?? []).filter((x) => x.k === k && (c === undefined || x.c === c)) as any[];
+    const ys = (d: string) => [...d.matchAll(/[ML]([\d.]+),([\d.]+)/g)].map((m) => Number(m[2]));
+    const noNaN = (p: Pic | null) => expect(JSON.stringify(p)).not.toMatch(/NaN|Infinity|null,|:null/);
+    const closes = Array.from({ length: 11 }, (_, i) => 100 + i);   // 100 … 110
+    it('a level beside the closes: the scale holds both, and the level is as far as its percentage', () => {
+      const p = picture({ v: 'level', close: 110, level: 99.22, distPct: -9.8, closes })!;
+      const line = ys(of(p, 'path')[0].d), dash = of(p, 'dash')[0], dot = of(p, 'dot')[0];
+      const top = Math.min(...line, dash.y1), bottom = Math.max(...line, dash.y1);
+      expect(top).toBeGreaterThanOrEqual(0); expect(bottom).toBeLessThanOrEqual(40);
+      // one linear scale: (level → close) over (lowest close → highest close) is the same in numbers and on screen
+      const lowY = Math.max(...line), highY = Math.min(...line);
+      expect((dash.y1 - dot.y) / (lowY - highY)).toBeCloseTo((110 - 99.22) / (110 - 100), 1);
+      expect(of(p, 'text').map((t) => t.t)).toContain('$99.22');
+      noNaN(p);
+    });
+    it('the 200-day average and a crossed level are drawn the same way', () => {
+      expect(of(picture({ v: 'ma200', close: 101, ma200: 100, closes })!, 'dash')).toHaveLength(1);
+      expect(of(picture({ v: 'crossed', level: 105, close: 104, closes })!, 'dash')).toHaveLength(1);
+    });
+    it('the 52-week range: the dot sits at its share of the bar', () => {
+      const p = picture({ v: 'range', lo: 80, hi: 120, close: 110 })!;
+      const bar = of(p, 'rect', 'track')[0], dot = of(p, 'dot')[0];
+      expect((dot.x - bar.x) / bar.w).toBeCloseTo(0.75, 2);
+    });
+    it('RSI: always 0 to 100, the 30 and 70 lines, gaps break the trail', () => {
+      const p = picture({ v: 'rsi', values: [40, null, 35, 28, 25] })!;
+      const [g30, g70] = of(p, 'dash');
+      expect(g30.y1).toBeCloseTo(40 - 2 - 0.3 * 36, 1); expect(g70.y1).toBeCloseTo(40 - 2 - 0.7 * 36, 1);
+      expect(of(p, 'path')[0].d.match(/M/g)).toHaveLength(2);
+      expect(of(p, 'dot')[0].y).toBeCloseTo(40 - 2 - 0.25 * 36, 1);
+      noNaN(p);
+    });
+    it('the two averages share one scale; a cross is marked where it happened', () => {
+      const p = picture({ v: 'ma', fast: [10, 10.5, 11, 11.5], slow: [11, 11, 11, 11], crossAgo: 1 })!;
+      const [f, sl] = of(p, 'path');
+      expect(Math.min(...ys(f.d))).toBeLessThan(Math.min(...ys(sl.d)));   // the fast one ends higher
+      expect(of(p, 'rule')).toHaveLength(1);
+      expect(of(p, 'rule')[0].x1).toBeCloseTo(66, 0);   // the third of four points: 2 + 2 × 96 / 3
+      expect(of(picture({ v: 'ma', fast: [10, 11], slow: [11, 11], crossAgo: 0 })!, 'rule')).toHaveLength(1);
+      expect(of(picture({ v: 'ma', fast: [10, 11], slow: [11, 12], crossAgo: null })!, 'rule')).toHaveLength(0);
+    });
+    it('a date: the sessions to it, one in the singular', () => {
+      expect(of(picture({ v: 'date', date: '2026-11-19', sessions: 3 }), 'text').map((t) => t.t)).toContain('in 3 sessions');
+      expect(of(picture({ v: 'date', date: '2026-11-19', sessions: 1 }), 'text').map((t) => t.t)).toContain('in 1 session');
+    });
+    it('the move\'s split: widths as the parts\' sizes, the sum labelled as the move', () => {
+      const p = picture({ v: 'split', ret: -0.043, market: -0.004, sector: -0.008, specific: -0.031 })!;
+      const [m, sec, own] = of(p, 'rect');
+      expect(sec.w / m.w).toBeCloseTo(2, 1); expect(own.w / m.w).toBeCloseTo(7.75, 1);
+      expect(own.c).toBe('neg');
+      expect(of(p, 'text').map((t) => t.t)).toContain('-4.3%');
+    });
+    it('a target before and after on one scale; the ratings as two bars on one scale', () => {
+      const t = picture({ v: 'target', before: 208.1, after: 212.4 })!;
+      const [a, b] = of(t, 'dot');
+      expect(b.x).toBeGreaterThan(a.x);
+      expect(of(t, 'text').map((x) => x.t)).toEqual(['$208.10', '$212.40']);
+      const r = picture({ v: 'ratings', before: { buy: 30, hold: 6, sell: 0 }, after: { buy: 31, hold: 5, sell: 0 } })!;
+      const buys = of(r, 'rect', 'buy');
+      expect(buys[1].w / buys[0].w).toBeCloseTo(31 / 30, 2);
+    });
+    it('an event: its day marked on the closes, no mark when the day is not in them', () => {
+      const pts = [{ t: '2026-11-11', c: 100 }, { t: '2026-11-12', c: 95 }, { t: '2026-11-13', c: 96 }];
+      const p = picture({ v: 'event', date: '2026-11-12', closes: pts })!;
+      expect(of(p, 'rule')).toHaveLength(1);
+      expect(of(p, 'rule')[0].x1).toBeCloseTo(50, 0);
+      expect(of(picture({ v: 'event', date: '2026-11-20', closes: pts })!, 'rule')).toHaveLength(0);
+    });
+    it('numbers that cannot be drawn honestly give no picture, and none gives NaN', () => {
+      expect(picture({ v: 'level', close: 100, level: 98, distPct: -2, closes: [100] })).toBeNull();
+      expect(picture({ v: 'range', lo: 100, hi: 100, close: 100 })).toBeNull();
+      expect(picture({ v: 'split', ret: 0, market: 0, sector: 0, specific: 0 })).toBeNull();
+      expect(picture({ v: 'rsi', values: [null, null] })).toBeNull();
+      expect(picture({ v: 'level', close: Number.NaN, level: 98, distPct: -2, closes: [99, 100] })).toBeNull();
+      expect(picture({ v: 'ratings', before: { buy: 0, hold: 0, sell: 0 }, after: { buy: 0, hold: 0, sell: 0 } })).toBeNull();
+      expect(picture({ v: 'event', date: '2026-11-12', closes: [{ t: '2026-11-12', c: 1 }] })).toBeNull();
+      for (const v of [
+        { v: 'level', close: 100, level: 100, distPct: 0, closes: [100, 100, 100] },
+        { v: 'ma200', close: 100, ma200: 100, closes: [100, 100] },
+        { v: 'target', before: 200, after: 200 },
+        { v: 'ma', fast: [5, 5], slow: [5, 5], crossAgo: 0 },
+      ] as DailyVisual[]) { const p = picture(v); expect(p, v.v).not.toBeNull(); noNaN(p); }
+    });
+    it('a picture is aria-hidden, sits beside its text, and tips its fact\'s sentence', async () => {
+      const SUP = { kind: 'level-below', date: AS_OF, text: 'Support as of Nov 12: $146.88, 2.1% below the last close; it held 6 times.', chip: { label: 'Support', value: '2.1% below' } };
+      const r = await show({ card: card({ visual: { v: 'split', ret: -0.043, market: -0.004, sector: -0.008, specific: -0.031 } }),
+        watch: { kind: 'fact', fact: SUP, visual: { v: 'level', close: 150, level: 146.88, distPct: -2.1, closes: [149, 152, 150] } } });
+      const svgs = r.el.querySelectorAll('svg.pt-daily-visual');
+      expect(svgs).toHaveLength(2);
+      for (const s of svgs) expect(s.getAttribute('aria-hidden')).toBe('true');
+      expect(svgs[0]!.getAttribute('data-tip')).toBe(MOVE.text);
+      expect(svgs[1]!.getAttribute('data-tip')).toBe(SUP.text);
+      expect(svgs[0]!.closest('.pt-daily-row')).not.toBeNull();
+      expect(tipOf({ v: 'rsi', values: [25] }, [MOVE])).toBeUndefined();
     });
   });
 });
