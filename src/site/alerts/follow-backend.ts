@@ -10,6 +10,8 @@ export interface FollowBackend {
 /** What the panel and /alerts/ need for the email; absent where the email alerts are off (no email row). */
 export interface FollowEmail { backend: FollowBackend; check: HumanCheck | null }
 export const PT_FOLLOW_EMAIL = new InjectionToken<FollowEmail>('PT_FOLLOW_EMAIL');
+/** The floating window of the followed companies (part 3): provided only where the browser can open one. */
+export const PT_FOLLOW_FLOAT = new InjectionToken<{ open(): Promise<void> }>('PT_FOLLOW_FLOAT');
 
 /** The Worker's `/v1/alerts/follow` and `/v1/alerts/manage` (platform site/src/alerts.ts), from the site's own origin. */
 export function followBackend(api = '', get: (u: string, init?: RequestInit) => Promise<Response> = (u, init) => fetch(u, init)): FollowBackend {

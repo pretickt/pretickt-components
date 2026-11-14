@@ -232,6 +232,15 @@ returns the page as it is; the lists' "Email me when a stock joins this list" bu
 - **The page's parts** (one chunk, `follow-start.ts`, loaded only with `follow`): the panel (`follow-panel.ts`: `PtFollowRows` + the Follow
   switch, seen on open) placed with `panelPosition`; /alerts/'s `[data-pt-following]` gets `PtFollowing` (the night file, no logos, hovers
   stopped). `picGeometry` (`src/alerts/pic.ts`) draws the small pictures. Stories: `src/stories/follow.stories.ts`.
+- **The email (part 2):** where the page has the email alerts (`alerts` + `turnstile`), `startFollow` provides `PT_FOLLOW_EMAIL`
+  (`follow-backend.ts`: `/v1/alerts/follow`, `/v1/alerts/manage`): the panel's «Get the alerts of the companies you follow by email» (the
+  address with every follow, after Turnstile), and a linked browser (`FollowState.link`: manage token, masked address, cadence) tells the
+  server each toggle (`listenChanges`). /alerts/ adopts an email's link (`?t=`, `?do=confirm&t=`): the server's follows first, the
+  browser's others after, sent back once; Daily/Weekly; «Stop the emails». The follow store loads on first use (`follow-lazy.ts`): its
+  first read is a promise. `picSvg` draws the digest's pictures (the VM turns them into PNG).
+- **The floating window (part 3):** `pip.ts` — Document Picture-in-Picture with plain DOM (`openFloating`), `liveChips` (below/near
+  support, above/near resistance, a 5% move) from the night file's `levels` and today's intraday file; `PT_FOLLOW_FLOAT` only where
+  `canFloat` (Chrome, Edge desktop): «Floating window» in the panel and on /alerts/.
 
 ## Search engines and AI answers (SEO, AI search)
 Google shows an AI Overview on most questions about a stock, and the chat assistants (ChatGPT, Claude, Gemini, Perplexity) answer

@@ -35,7 +35,9 @@ export type FollowAlert = z.infer<typeof FollowAlert>;
 /** `/data/alerts-v1.json`: every company's recent alerts, one file for every reader (nobody's list of follows reaches the server). */
 export const FollowFile = z.object({
   v: z.literal(1), asOf: IsoDate,
-  companies: z.record(Ticker, z.object({ name: z.string(), alerts: z.array(FollowAlert) })),
+  companies: z.record(Ticker, z.object({ name: z.string(), alerts: z.array(FollowAlert),
+    /** the nearest support and resistance of the last night (the floating window lights them as the day's prices reach them) */
+    levels: z.optional(z.object({ s: z.optional(z.number()), r: z.optional(z.number()) })) })),
 });
 export type FollowFile = z.infer<typeof FollowFile>;
 

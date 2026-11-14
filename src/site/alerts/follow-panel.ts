@@ -3,7 +3,7 @@ import { PtFollow } from '@pretickt/components/follow';
 import { dayMonth } from '@pretickt/components/format';
 import type { FollowAlert } from '@pretickt/components/typologies';
 import { picGeometry } from '../../alerts/pic';
-import { PT_FOLLOW_EMAIL } from './follow-backend';
+import { PT_FOLLOW_EMAIL, PT_FOLLOW_FLOAT } from './follow-backend';
 
 const EMAIL = /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/;
 const SAID = { invalid: 'Check the address.', captcha: 'The check did not pass. Try again.', limit: 'Too many tries. Try again later.', network: 'No connection. Try again.' } as const;
@@ -71,7 +71,8 @@ export class PtFollowRows {
         }
       </div>
     }
-    <p class="pt-follow-foot pt-meta">Followed companies stay in this browser. <a href="/alerts/">All your alerts</a></p>`,
+    <p class="pt-follow-foot pt-meta">Followed companies stay in this browser. <a href="/alerts/">All your alerts</a></p>
+    @if (float) {<button type="button" class="pt-abtn pt-follow-float" (click)="float.open()">Floating window</button>}`,
 })
 export class PtFollowPanel {
   protected readonly follow = inject(PtFollow);
@@ -81,6 +82,8 @@ export class PtFollowPanel {
   protected readonly followed = this.follow.following(() => this.ticker());
   /** The email alerts' side (none where they are off): the address, the human check's token, what came back. */
   protected readonly email = inject(PT_FOLLOW_EMAIL, { optional: true });
+  /** The floating window (part 3), where the browser can open one. */
+  protected readonly float = inject(PT_FOLLOW_FLOAT, { optional: true });
   protected readonly address = signal('');
   protected readonly busy = signal(false);
   protected readonly sent = signal(false);

@@ -3,7 +3,7 @@ import { PtFollow } from '@pretickt/components/follow';
 import { plainName } from '@pretickt/components/format';
 import type { FollowFile } from '@pretickt/components/typologies';
 import type { ManageState } from '../../alerts/token';
-import { PT_FOLLOW_EMAIL } from './follow-backend';
+import { PT_FOLLOW_EMAIL, PT_FOLLOW_FLOAT } from './follow-backend';
 import { PtFollowRows } from './follow-panel';
 import { landingOf } from './landing';
 
@@ -37,6 +37,7 @@ export async function fetchFollowFile(get: (u: string) => Promise<Response> = (u
         <button type="button" class="pt-abtn" [attr.aria-pressed]="l.cadence === 'week'" (click)="cadence('week')">Weekly</button> ·
         <button type="button" class="pt-abtn" (click)="stop()">Stop the emails</button></p>
     }
+    @if (float && follow.follows().length) {<p><button type="button" class="pt-abtn pt-follow-float" (click)="float.open()">Open a floating window</button></p>}
     @if (!follow.ready() || file() === undefined) {<p class="pt-following-none">Reading what this browser follows…</p>}
     @else {
       @if (!follow.follows().length) {<p class="pt-following-none">Tap the bell on a company to follow it here.</p>}
@@ -70,6 +71,7 @@ export class PtFollowing {
 
   /** The email (part 2), where the email alerts are on. */
   protected readonly email = inject(PT_FOLLOW_EMAIL, { optional: true });
+  protected readonly float = inject(PT_FOLLOW_FLOAT, { optional: true });
   private readonly search = inject(PT_FOLLOW_SEARCH, { optional: true }) ?? globalThis.location?.search ?? '';
 
   constructor() {

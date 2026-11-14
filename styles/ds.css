@@ -522,6 +522,17 @@
   .pt-following-id a { @apply font-semibold; }
   .pt-following-x { @apply ml-auto rounded-md px-2 text-lg leading-none text-ink-soft hover:bg-surface hover:text-ink; }
   .pt-following-none { @apply text-ink-soft; }
+  /* the floating window (src/site/alerts/pip.ts, part 3): its own document, plain DOM */
+  .pt-pip { @apply m-0 bg-surface p-3 font-sans text-sm text-ink; }
+  .pt-pip-head { @apply mb-2 mt-0; }
+  .pt-pip-row { @apply mb-2 rounded-control border border-border bg-surface-raised px-2.5 py-2; }
+  .pt-pip-top { @apply flex items-baseline gap-2; }
+  .pt-pip-name { @apply font-semibold; }
+  .pt-pip-px { @apply ml-auto font-mono; }
+  .pt-pip-chips { @apply mt-1 flex flex-wrap gap-1; }
+  .pt-pip-new { animation: pt-pip-flash 1s ease-in-out 3; }
+  @keyframes pt-pip-flash { 50% { opacity: .35; } }
+  @media (prefers-reduced-motion: reduce) { .pt-pip-new { animation: none; outline: 2px solid currentColor; } }
   .pt-following-mail { @apply mb-4 flex flex-wrap items-center gap-1.5 text-sm; }
   .pt-following-mail button[aria-pressed='true'] { @apply text-primary; }
   .pt-share-menu { @apply fixed z-50 w-80 max-w-[calc(100vw-2rem)] rounded-control border border-border bg-surface-raised p-3 text-sm shadow-lg; }

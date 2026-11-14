@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { PT_FOLLOW, PT_FOLLOW_ON, type FollowState, type FollowStore } from '@pretickt/components/context';
 import { PtFollow } from '@pretickt/components/follow';
 import type { FollowAlert } from '@pretickt/components/typologies';
-import { PT_FOLLOW_EMAIL, type FollowBackend } from './follow-backend';
+import { PT_FOLLOW_EMAIL, PT_FOLLOW_FLOAT, type FollowBackend } from './follow-backend';
 import { PtFollowPanel } from './follow-panel';
 
 const alert = (kind: string, session: string, o: Partial<FollowAlert> = {}): FollowAlert =>
@@ -80,5 +80,14 @@ describe('the bell\'s panel (follow, 2026-11-14)', () => {
     const backend: FollowBackend = { signup: async () => 'ok', manage: async () => null };
     const { el } = mount([], { follows: ['NVDA'], seen: {}, link: { token: 'a.b', email: 'r•••@example.com', cadence: 'week' } }, backend);
     expect(el.querySelector('.pt-follow-mail')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('Emails to r•••@example.com · weekly · Manage');
+  });
+  it('the floating window: a button only where the browser can open one', () => {
+    expect(mount([]).el.querySelector('.pt-follow-float')).toBeNull();
+    TestBed.resetTestingModule();
+    let opened = 0;
+    TestBed.configureTestingModule({ providers: [{ provide: PT_FOLLOW_FLOAT, useValue: { open: async () => { opened++; } } }] });
+    const { el } = mount([], { follows: ['NVDA'], seen: {} });
+    el.querySelector<HTMLButtonElement>('.pt-follow-float')!.click();
+    expect(opened).toBe(1);
   });
 });

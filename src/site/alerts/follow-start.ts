@@ -2,10 +2,13 @@ import { type ApplicationRef, type ComponentRef, createComponent, createEnvironm
 import { PtFollow, type FollowPress } from '@pretickt/components/follow';
 import { panelPosition } from '../cards';
 import type { PageModel } from '../model';
-import { followBackend, PT_FOLLOW_EMAIL, type FollowBackend } from './follow-backend';
+import { BARS_EVERY_MS } from '@pretickt/components/context';
+import { liveSource } from '../live';
+import { followBackend, PT_FOLLOW_EMAIL, PT_FOLLOW_FLOAT, type FollowBackend } from './follow-backend';
+import { canFloat, openFloating } from './pip';
 import { PtFollowPanel } from './follow-panel';
 import { turnstileCheck } from './turnstile';
-import { PtFollowing } from './following';
+import { fetchFollowFile, PtFollowing } from './following';
 
 const WIDTH = 320;
 
@@ -18,10 +21,16 @@ export function startFollow(doc: Document, appRef: ApplicationRef, root: Environ
   // the email (part 2): where the email alerts are on (their API and human check), the panel offers it and a linked browser tells the
   // server each change; elsewhere following stays in the browser
   const backend = given ?? (page.alerts ? followBackend(page.api) : null);
-  const env = backend && (page.turnstile || given)
-    ? createEnvironmentInjector([{ provide: PT_FOLLOW_EMAIL, useValue: { backend, check: page.turnstile ? turnstileCheck(page.turnstile) : null } }], root)
-    : root;
-  const follow = env.get(PtFollow), win = doc.defaultView;
+  const follow = root.get(PtFollow), win = doc.defaultView;
+  const providers = [
+    ...(backend && (page.turnstile || given) ? [{ provide: PT_FOLLOW_EMAIL, useValue: { backend, check: page.turnstile ? turnstileCheck(page.turnstile) : null } }] : []),
+    // the floating window (part 3): the followed companies with today's delayed prices, where the browser can open one
+    ...(win && canFloat(win) ? [{ provide: PT_FOLLOW_FLOAT, useValue: { open: async () => {
+      const file = await fetchFollowFile().catch(() => null);
+      await openFloating(win, { follows: follow.follows(), file, load: async () => (await liveSource(page.live)?.load()) ?? null, everyMs: BARS_EVERY_MS }).catch(() => undefined);
+    } } }] : []),
+  ];
+  const env = providers.length ? createEnvironmentInjector(providers, root) : root;
   if (backend) follow.listenChanges((c) => {
     const l = follow.link();
     if (l) backend.manage(l.token, { op: 'follow', ticker: c.ticker, on: c.on }).then((st) => { if (st === null) follow.setLink(null); }, () => { /* the next visit to /alerts/ sends the whole list */ });
