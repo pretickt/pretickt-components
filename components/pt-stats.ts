@@ -78,15 +78,15 @@ export function swingChart(s: Pick<Stats, 'path' | 'swings' | 'deepestFall' | 'l
           <div class="pt-stats-tiles">
             <div class="pt-stats-tile"><span class="pt-stats-k">±{{ pct(s.typicalDay).replace('+', '') }}</span><span>on a typical day</span>
               @if (s.spy) {<span class="pt-meta">S&amp;P 500 ±{{ pct(s.spy.typicalDay).replace('+', '') }}</span>}</div>
-            <div class="pt-stats-tile"><span class="pt-stats-k">{{ round(s.bigDaysPerYear) }}</span><span>days a year it moved more than 5%</span>
+            <div class="pt-stats-tile"><span class="pt-stats-k">{{ fewer(s.bigDaysPerYear) }}</span><span>days a year it moved more than 5%</span>
               @if (s.spy) {<span class="pt-meta">S&amp;P 500 {{ fewer(s.spy.bigDaysPerYear) }}</span>}</div>
             <div class="pt-stats-tile">
               @if (s.beta !== null) {<span class="pt-stats-k">{{ s.beta.toFixed(1) }}×</span><span>the market's daily moves (beta)</span>
-                <span class="pt-meta">When the S&amp;P 500 moved 1%, {{ name() }} moved {{ s.beta.toFixed(1) }}%, over two years</span>}
+                <span class="pt-meta">When the S&amp;P 500 moved 1%, {{ name() }} moved {{ s.beta.toFixed(1) }}% on average, over two years</span>}
               @else {<span class="pt-stats-k">—</span><span>the market's daily moves (beta)</span><span class="pt-meta">Not computed: under two years of prices beside the S&amp;P 500</span>}
             </div>
             <div class="pt-stats-tile"><span class="pt-stats-k">±{{ pct(s.month80, 0).replace('+', '') }}</span><span>in a typical month</span>
-              <span class="pt-meta">8 months in 10 moved less than this, {{ window() }}</span></div>
+              <span class="pt-meta">Half the spread of its middle 80% of one-month moves, {{ window() }}</span></div>
           </div>
         </div>
 
@@ -113,10 +113,10 @@ export function swingChart(s: Pick<Stats, 'path' | 'swings' | 'deepestFall' | 'l
 
         <div class="pt-stats-row">
           <h3>Falls and rises of {{ th() }} or more</h3>
-          <p>{{ countLine() }} Today {{ name() }} is {{ fromHigh() }} its 5-year high close of {{ money(s.high.close) }} ({{ date(s.high.date) }}) and
+          <p>{{ countLine() }} Today {{ name() }} is {{ fromHigh() }} {{ highLabel() }} {{ money(s.high.close) }} ({{ date(s.high.date) }}) and
             {{ fromLow() }} its 52-week low close of {{ money(s.low52.close) }} ({{ date(s.low52.date) }}).</p>
           @if (chart(); as c) {
-            <svg class="pt-chart-svg pt-stats-swing" [attr.viewBox]="'0 0 ' + SW + ' ' + SH" role="img" [attr.aria-label]="name() + ' over ' + window() + ', with each fall and rise of ' + th() + ' or more'">
+            <svg class="pt-chart-svg pt-stats-swing" [attr.viewBox]="'0 0 ' + SW + ' ' + SH" role="img" [attr.aria-label]="name() + ' ' + window() + ', with each fall and rise of ' + th() + ' or more'">
               @for (l of c.levels; track l.label) {<line class="pt-grid" x1="0" [attr.x2]="c.gx2" [attr.y1]="l.y" [attr.y2]="l.y" /><text class="pt-axis" [attr.x]="c.lx" [attr.y]="l.y" dy="3">{{ l.label }}</text>}
               @for (y of c.years; track y.label) {<text class="pt-axis" [attr.x]="y.x" [attr.y]="SH - 3" text-anchor="middle">{{ y.label }}</text>}
               <path class="pt-stats-path" [attr.d]="c.all" />
@@ -145,7 +145,7 @@ export function swingChart(s: Pick<Stats, 'path' | 'swings' | 'deepestFall' | 'l
               </div>
             }
           </div>
-          <p class="pt-meta">@if (s.spy) {For scale, the S&amp;P 500's deepest fall in the same years: {{ pct(s.spy.deepestFall.size) }}. }A fall or a rise counts once the price turns back by {{ th() }}: 1.5 times {{ name() }}'s typical month, rounded to 5%.</p>
+          <p class="pt-meta">@if (s.spy) {For scale, the S&amp;P 500's deepest fall in the same years: {{ pct(s.spy.deepestFall.size) }}. }A fall or a rise counts once the price turns back by {{ th() }}: 1.5 times {{ name() }}'s typical month, rounded to 5%, never under 10%.</p>
         </div>
 
         <div class="pt-stats-row">
@@ -183,6 +183,8 @@ export class PtStats {
   /** The window in words: "in the last five years", or "since Jun 1, 2023" for a shorter history. */
   protected readonly window = computed(() => { const s = this.stats.value(); return !s || s.fullWindow ? 'in the last five years' : `since ${date(s.since)}`; });
   protected readonly Window = computed(() => { const w = this.window(); return w[0]!.toUpperCase() + w.slice(1); });
+  /** "its 5-year high close of", or for a shorter history "its highest close since <date>,". */
+  protected readonly highLabel = computed(() => { const s = this.stats.value(); return !s || s.fullWindow ? 'its 5-year high close of' : `its highest close since ${date(s.since)},`; });
   protected readonly th = computed(() => `${Math.round((this.stats.value()?.threshold ?? 0) * 100)}%`);
   protected readonly years = computed(() => yearBars(this.stats.value() ?? { years: [], spy: null }));
   protected readonly chart = computed(() => { const s = this.stats.value(); return s ? swingChart(s) : null; });
@@ -229,7 +231,6 @@ export class PtStats {
   }
   protected monthTip(m: { month: string; change: number }) { return tip({ [monthYear(`${m.month}-01`)]: pct(m.change) }); }
   protected tone(v: number) { return v > 0 ? 'pt-t-pos' : v < 0 ? 'pt-t-neg' : 'pt-t-flat'; }
-  protected readonly round = Math.round;
   protected readonly fewer = fewer;
   protected readonly share = share;
   protected readonly pct = pct;

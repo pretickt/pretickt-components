@@ -57,10 +57,23 @@ describe('pt-stats', () => {
     expect(words).toContain('No rise of 30% or more');
   });
 
-  it('a shorter history says since when, not "the last five years"', async () => {
-    const { words } = await view(base({ fullWindow: false, since: '2023-06-01' }));
+  it('a shorter history says since when, not "the last five years", and its highest close since then', async () => {
+    const { words, el } = await view(base({ fullWindow: false, since: '2023-06-01' }));
     expect(words).not.toContain('last five years');
+    expect(words).not.toContain('5-year high');
     expect(words).toContain('Since Jun 1, 2023');
+    expect(words).toContain('its highest close since Jun 1, 2023');
+    expect(el.querySelector('.pt-stats-swing')!.getAttribute('aria-label')).toBe('Nvidia since Jun 1, 2023, with each fall and rise of 30% or more');
+  });
+
+  it('copy that holds as a fact: beta on average, a calm stock\'s big days "fewer than 1", the typical month without a made-up frequency', async () => {
+    const { words, el } = await view(base({ bigDaysPerYear: 0.4 }));
+    expect(words).toContain('Nvidia moved 2.2% on average');
+    expect(el.querySelectorAll('.pt-stats-tile')[1]!.querySelector('.pt-stats-k')!.textContent!.trim()).toBe('fewer than 1');
+    expect(words).not.toContain('8 months in 10');
+    expect(words).toContain('Half the spread of its middle 80% of one-month moves');
+    expect(el.querySelector('.pt-stats-swing')!.getAttribute('aria-label')).toBe('Nvidia in the last five years, with each fall and rise of 30% or more');
+    expect(words).toContain('never under 10%');
   });
 
   it('how often it goes up: a square a month for the stock and SPY, the count in a sentence, no forecast', async () => {
