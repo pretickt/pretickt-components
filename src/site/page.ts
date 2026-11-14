@@ -60,7 +60,7 @@ export class PtPage {
       // a page with alerts: its bells, and an email link's landing (one small chunk; the editor and the rest load when needed)
       if (this.model.alerts) void import('./alerts/start').then((m) => m.startAlerts(doc, appRef, env, this.model));
       // the bells (FOLLOW_ENABLED): a press opens its company's panel (a chunk of its own)
-      if (this.model.follow) void import('./alerts/follow-start').then((m) => m.startFollow(doc, appRef, env));
+      if (this.model.follow) void import('./alerts/follow-start').then((m) => m.startFollow(doc, appRef, env, this.model));
       // the portfolio page (/portfolio/): the page in its placeholder, from a chunk of its own
       const pf = doc.querySelector('[data-pt-pf]');
       if (pf) void import('./portfolio/start').then((m) => m.mount(pf, appRef, env, this.model));

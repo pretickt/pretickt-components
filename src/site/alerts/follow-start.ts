@@ -1,7 +1,10 @@
-import { type ApplicationRef, type ComponentRef, createComponent, type EnvironmentInjector } from '@angular/core';
+import { type ApplicationRef, type ComponentRef, createComponent, createEnvironmentInjector, type EnvironmentInjector } from '@angular/core';
 import { PtFollow, type FollowPress } from '@pretickt/components/follow';
 import { panelPosition } from '../cards';
+import type { PageModel } from '../model';
+import { followBackend, PT_FOLLOW_EMAIL, type FollowBackend } from './follow-backend';
 import { PtFollowPanel } from './follow-panel';
+import { turnstileCheck } from './turnstile';
 import { PtFollowing } from './following';
 
 const WIDTH = 320;
@@ -11,8 +14,18 @@ const WIDTH = 320;
  * its own at the end of the body. Escape, a click outside it or the same bell again closes it, and the focus goes back to the bell. Loaded
  * only on such pages (src/site/page.ts), so none of it weighs on the main bundle.
  */
-export function startFollow(doc: Document, appRef: ApplicationRef, env: EnvironmentInjector): void {
+export function startFollow(doc: Document, appRef: ApplicationRef, root: EnvironmentInjector, page: PageModel, given?: FollowBackend): void {
+  // the email (part 2): where the email alerts are on (their API and human check), the panel offers it and a linked browser tells the
+  // server each change; elsewhere following stays in the browser
+  const backend = given ?? (page.alerts ? followBackend(page.api) : null);
+  const env = backend && (page.turnstile || given)
+    ? createEnvironmentInjector([{ provide: PT_FOLLOW_EMAIL, useValue: { backend, check: page.turnstile ? turnstileCheck(page.turnstile) : null } }], root)
+    : root;
   const follow = env.get(PtFollow), win = doc.defaultView;
+  if (backend) follow.listenChanges((c) => {
+    const l = follow.link();
+    if (l) backend.manage(l.token, { op: 'follow', ticker: c.ticker, on: c.on }).then((st) => { if (st === null) follow.setLink(null); }, () => { /* the next visit to /alerts/ sends the whole list */ });
+  });
   let open: { ref: ComponentRef<PtFollowPanel>; host: HTMLElement; ticker: string; back: HTMLElement | null } | null = null;
 
   const close = (focusBack: boolean) => {

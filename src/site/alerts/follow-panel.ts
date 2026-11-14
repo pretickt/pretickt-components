@@ -1,8 +1,12 @@
-import { afterNextRender, Component, computed, inject, input } from '@angular/core';
+import { afterNextRender, Component, computed, DestroyRef, ElementRef, inject, input, signal, viewChild } from '@angular/core';
 import { PtFollow } from '@pretickt/components/follow';
 import { dayMonth } from '@pretickt/components/format';
 import type { FollowAlert } from '@pretickt/components/typologies';
 import { picGeometry } from '../../alerts/pic';
+import { PT_FOLLOW_EMAIL } from './follow-backend';
+
+const EMAIL = /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/;
+const SAID = { invalid: 'Check the address.', captcha: 'The check did not pass. Try again.', limit: 'Too many tries. Try again later.', network: 'No connection. Try again.' } as const;
 
 const PIC_W = 96, PIC_H = 28;
 
@@ -52,6 +56,21 @@ export class PtFollowRows {
       <button type="button" class="pt-abtn pt-follow-switch" [attr.aria-pressed]="followed()" (click)="follow.toggle(ticker())">{{ followed() ? 'Following' : 'Follow' }}</button>
     </div>
     <pt-follow-rows [alerts]="alerts()" />
+    @if (email) {
+      <div class="pt-follow-mail">
+        @if (follow.link(); as l) {<p class="pt-meta">Emails to {{ l.email }} · {{ l.cadence === 'week' ? 'weekly' : 'daily' }} · <a href="/alerts/">Manage</a></p>}
+        @else if (sent()) {<p>Check your inbox: the link in our email turns the alerts on.</p>}
+        @else {
+          <label class="pt-follow-mail-q" for="pt-follow-email">Get the alerts of the companies you follow by email</label>
+          <div class="pt-follow-mail-row">
+            <input id="pt-follow-email" type="email" autocomplete="email" placeholder="you@example.com" [value]="address()" (input)="typed($event)" (focus)="check()" />
+            <button type="button" class="pt-abtn" [disabled]="busy()" (click)="send()">Send</button>
+          </div>
+          <div #human></div>
+          @if (said(); as s) {<p class="pt-follow-mail-said">{{ s }}</p>}
+        }
+      </div>
+    }
     <p class="pt-follow-foot pt-meta">Followed companies stay in this browser. <a href="/alerts/">All your alerts</a></p>`,
 })
 export class PtFollowPanel {
@@ -60,6 +79,39 @@ export class PtFollowPanel {
   readonly name = input.required<string>();
   readonly alerts = input<readonly FollowAlert[]>([]);
   protected readonly followed = this.follow.following(() => this.ticker());
+  /** The email alerts' side (none where they are off): the address, the human check's token, what came back. */
+  protected readonly email = inject(PT_FOLLOW_EMAIL, { optional: true });
+  protected readonly address = signal('');
+  protected readonly busy = signal(false);
+  protected readonly sent = signal(false);
+  protected readonly said = signal<string | null>(null);
+  private readonly human = viewChild<ElementRef<HTMLElement>>('human');
+  private token: string | null = null;
+  private mounted: { reset(): void; remove(): void } | null = null;
+  private readonly gone = inject(DestroyRef).onDestroy(() => this.mounted?.remove());
+
+  protected typed(e: Event): void { this.address.set((e.target as HTMLInputElement).value.trim()); this.said.set(null); }
+
+  /** The human check loads when the reader first touches the address (as the editor's). */
+  protected check(): void {
+    const el = this.human()?.nativeElement;
+    if (!this.email?.check || this.mounted || !el) return;
+    this.mounted = this.email.check.mount(el, (st) => { this.token = st.token; });
+  }
+
+  /** The address with every company this browser follows (this one included): the email's link confirms them. */
+  protected async send(): Promise<void> {
+    const e = this.email, a = this.address();
+    if (!e || this.busy()) return;
+    if (!EMAIL.test(a)) { this.said.set(SAID.invalid); return; }
+    if (e.check && !this.token) { this.check(); this.said.set('One moment: checking you are not a robot…'); return; }
+    if (!this.followed()) this.follow.toggle(this.ticker());
+    this.busy.set(true);
+    const r = await e.backend.signup(a, [...new Set([...this.follow.follows(), this.ticker()])], this.token);
+    this.busy.set(false);
+    if (r === 'ok') this.sent.set(true);
+    else { this.said.set(SAID[r]); this.token = null; this.mounted?.reset(); }
+  }
 
   constructor() {
     // seen once the reader has the panel in front of them (after PtFollow has read the store)

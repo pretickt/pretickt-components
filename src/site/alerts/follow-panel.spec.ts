@@ -2,16 +2,18 @@ import { TestBed } from '@angular/core/testing';
 import { PT_FOLLOW, PT_FOLLOW_ON, type FollowState, type FollowStore } from '@pretickt/components/context';
 import { PtFollow } from '@pretickt/components/follow';
 import type { FollowAlert } from '@pretickt/components/typologies';
+import { PT_FOLLOW_EMAIL, type FollowBackend } from './follow-backend';
 import { PtFollowPanel } from './follow-panel';
 
 const alert = (kind: string, session: string, o: Partial<FollowAlert> = {}): FollowAlert =>
   ({ kind, session, tone: 'flat', label: 'Support', value: '2.1% below', line: 'Closed 2.1% above its $182.40 support', pic: { c: [190, 186, 184], lv: [182.4] }, ...o });
 
-function mount(alerts: FollowAlert[], init: FollowState = { follows: [], seen: {} }) {
+function mount(alerts: FollowAlert[], init: FollowState = { follows: [], seen: {} }, email?: FollowBackend) {
   let data = init;
   const writes: FollowState[] = [];
   const store: FollowStore = { read: () => data, write: (s) => { writes.push(s); data = s; } };
-  TestBed.configureTestingModule({ providers: [{ provide: PT_FOLLOW, useValue: store }, { provide: PT_FOLLOW_ON, useValue: true }] });
+  TestBed.configureTestingModule({ providers: [{ provide: PT_FOLLOW, useValue: store }, { provide: PT_FOLLOW_ON, useValue: true },
+    ...(email ? [{ provide: PT_FOLLOW_EMAIL, useValue: { backend: email, check: null } }] : [])] });
   const f = TestBed.createComponent(PtFollowPanel);
   f.componentRef.setInput('ticker', 'NVDA');
   f.componentRef.setInput('name', 'Nvidia');
@@ -54,5 +56,29 @@ describe('the bell\'s panel (follow, 2026-11-14)', () => {
     expect(el.querySelector('.pt-follow-empty')!.textContent).toBe('No alerts in the last 5 sessions.');
     expect(el.querySelector('.pt-follow-switch')).not.toBeNull();
     expect(writes).toEqual([]);
+  });
+  it('without the email alerts there is no email row; with them, the address goes with the follows (this company included) and the reader is told to confirm', async () => {
+    expect(mount([]).el.querySelector('.pt-follow-mail')).toBeNull();
+    TestBed.resetTestingModule();
+    const sent: [string, string[]][] = [];
+    const backend: FollowBackend = { signup: async (e, f) => { sent.push([e, f]); return 'ok'; }, manage: async () => null };
+    const { f, el } = mount([], { follows: ['AAPL'], seen: {} }, backend);
+    const input = el.querySelector<HTMLInputElement>('.pt-follow-mail input[type="email"]')!;
+    const send = el.querySelector<HTMLButtonElement>('.pt-follow-mail button')!;
+    input.value = 'not an email'; input.dispatchEvent(new Event('input'));
+    send.click();
+    await Promise.resolve();
+    expect(sent).toEqual([]);
+    input.value = 'r@example.com'; input.dispatchEvent(new Event('input'));
+    send.click();
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    f.detectChanges();
+    expect(sent).toEqual([['r@example.com', ['AAPL', 'NVDA']]]);
+    expect(el.querySelector('.pt-follow-mail')!.textContent).toContain('Check your inbox');
+  });
+  it('a browser linked to an email says so, with how often', () => {
+    const backend: FollowBackend = { signup: async () => 'ok', manage: async () => null };
+    const { el } = mount([], { follows: ['NVDA'], seen: {}, link: { token: 'a.b', email: 'r•••@example.com', cadence: 'week' } }, backend);
+    expect(el.querySelector('.pt-follow-mail')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('Emails to r•••@example.com · weekly · Manage');
   });
 });
