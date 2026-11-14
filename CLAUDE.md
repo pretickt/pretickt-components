@@ -210,7 +210,7 @@ email, no account.
   (`turnstile.ts`, the page model's `turnstile` site key) loads Cloudflare's script from its own address only when the email field is
   first touched; the widget is invisible unless Cloudflare asks for a tap, a failed save asks for a fresh token (each is good once),
   the Worker verifies it before writing anything. The made-up backends have no check; the stories use Cloudflare's public test keys.
-- **The main bundle is full** (about 242 KB of 243,500 bytes on 2026-11-05; Romeo raised the budget from 240 KB for pt-company-header, the design of the baskets to 243,500, pt-answer's `start` to 243,600, pt-daily to 243,900): a registry component costs it about 1 KB, so the alerts' parts
+- **The main bundle is full** (about 242 KB of 243,500 bytes on 2026-11-05; Romeo raised the budget from 240 KB for pt-company-header, the design of the baskets to 243,500, pt-answer's `start` to 243,600, pt-daily to 243,900, pt-screen's `link` to 244,000): a registry component costs it about 1 KB, so the alerts' parts
   are not placeable components, and what they add to the main bundle stays a few bytes. Two traps: a `document:` host listener puts
   Angular's resolver in main (add such a listener by hand), and every symbol a chunk imports from main lengthens main's export list.
 
@@ -257,7 +257,7 @@ bars they read. Fields named `*Pct` are in percent (2.5 = +2.5%), not fractions:
   data renders, missing data shows `pt-na`), `press(f, el, label)` for interactions, `column(el, n)` for tables.
 - `npm test` = Vitest for the plain TypeScript (typologies, indicators, checks, scripts) + `ng test` for the components.
 - `npm run build`: the lint and the metadata of every component, inputs read by the TypeScript checker, the generated registry
-  (`src/site/registry.generated.ts` — never edit it), `ng build`, budgets (main bundle ≤ 243.9 KB, a component's own chunk ≤ 32 KB).
+  (`src/site/registry.generated.ts` — never edit it), `ng build`, budgets (main bundle ≤ 244.0 KB, a component's own chunk ≤ 32 KB).
 - `npm run check` (after the build): for props sampled from the inputs' types, demo data renders with safe markup, missing data
   renders `pt-na`, unknown catalogue entries are tolerated; concurrent page renders are whole; each page **hydrates keeping every
   element of the server HTML** (development build: Angular validates every node; production build: as shipped) without one data

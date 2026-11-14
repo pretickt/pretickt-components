@@ -104,7 +104,8 @@
   .pt-section { @apply mt-8 scroll-mt-24; }
   /* a preview section (the home): its title and the link to the full page on one line */
   .pt-section-head { @apply flex items-baseline justify-between gap-3; }
-  .pt-section-more { @apply shrink-0 text-xs font-semibold text-primary no-underline hover:underline; }
+  /* a long link (the hub's «Mid-America Apartment Communities price targets →») wraps on its side, never past a phone's edge */
+  .pt-section-more { @apply min-w-0 text-right text-xs font-semibold text-primary no-underline hover:underline; }
   .pt-section-title { @apply mb-3 text-sm font-semibold uppercase tracking-wide text-ink-soft; }
   /* a strip: the placements side by side, scrolling sideways; on a phone the next one shows at the edge */
   .pt-strip-row { display: flex; gap: .75rem; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; padding-bottom: .5rem; }
