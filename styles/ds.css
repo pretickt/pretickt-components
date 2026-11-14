@@ -504,8 +504,11 @@
     filter: drop-shadow(0 0 0.5px color-mix(in oklab, var(--color-ink) 75%, transparent)) drop-shadow(0 0px 1.5px color-mix(in oklab, var(--color-ink) 28%, transparent)); }
   .pt-logo-initials { @apply inline-flex items-center justify-center bg-primary/10 text-[0.6rem] font-semibold leading-none text-primary; }
   .pt-co { @apply inline-flex min-w-0 items-center gap-1.5 text-ink no-underline hover:text-primary; }
-  /* a company named in a sentence (PtMention): its logo, its name, its ticker, kept on one line; its card opens on hover */
-  .pt-mention { @apply whitespace-nowrap text-inherit no-underline hover:text-primary; }
+  /* a company named in a sentence (PtMention): its logo, its name, its ticker, kept together as one box that moves to the next line
+     whole; its card opens on hover. Only a mention wider than the line itself breaks, between its name's words («Mid-America Apartment
+     Communities MAA» in the why-it-moved lead pushed 5 hubs sideways at 360 px, 2026-11-14) — every mention that fits lays out as before */
+  .pt-mention { @apply inline-block max-w-full whitespace-nowrap text-inherit no-underline hover:text-primary; }
+  .pt-mention-n { @apply whitespace-normal; }
   .pt-mention .pt-logo { @apply mr-1 h-[1.15em] w-[1.15em] align-[-0.22em]; }
   .pt-mention-t { @apply font-semibold text-primary; }
   .pt-co-t { @apply font-mono font-semibold; }
