@@ -11,6 +11,8 @@ const MIN_FIRMS = 3;
 const WEEKS = 52;
 const yearBefore = (d: string) => new Date(Date.parse(`${d}T00:00:00Z`) - 365 * 86_400_000).toISOString().slice(0, 10);
 const byDate = (a: PostedTarget, b: PostedTarget) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.firm < b.firm ? -1 : a.firm > b.firm ? 1 : 0);
+/** Rows in date then firm order: as given when they already are (the resolver's query orders them), else a sorted copy. */
+const inOrder = <T extends PostedTarget>(rows: readonly T[]): readonly T[] => (rows.every((r, i) => !i || byDate(rows[i - 1]!, r) <= 0) ? rows : [...rows].sort(byDate));
 
 /** Every 5th session back from the last one, oldest first, 52 at most: the weeks of the target charts. */
 export function weeksOf(sessions: readonly string[], n = WEEKS): string[] {
@@ -24,21 +26,28 @@ export function weeksOf(sessions: readonly string[], n = WEEKS): string[] {
  * target, or one after its last had expired, is neither a raise nor a cut. Rows in date then firm order, the same order out.
  */
 export function withPrev<T extends PostedTarget>(rows: readonly T[]): (T & { prev: number | null })[] {
-  const last = new Map<string, PostedTarget>();
-  return [...rows].sort(byDate).map((r) => {
-    const before = last.get(r.firm);
-    last.set(r.firm, r);
-    return { ...r, prev: before && before.date > yearBefore(r.date) ? before.target : null };
+  const last = new Map<string, { day: number; target: number }>();
+  return inOrder(rows).map((r) => {
+    const before = last.get(r.firm), day = Date.parse(`${r.date}T00:00:00Z`) / 86_400_000;
+    last.set(r.firm, { day, target: r.target });
+    return { ...r, prev: before && day - before.day < 365 ? before.target : null };
   });
 }
 
-/** Each week: its firms' latest targets in the 365 days up to it, averaged (to the cent), and how many firms; null under 3 firms. */
+/**
+ * Each week: its firms' latest targets in the 365 days up to it, averaged (to the cent), and how many firms; null under 3 firms. One pass
+ * over the targets for weeks oldest first (the resolver also runs in the Worker on a cache miss: weeks × firms, not weeks × targets).
+ */
 export function targetWeeks(rows: readonly PostedTarget[], weeks: readonly string[]): AverageWeek[] {
-  const sorted = [...rows].sort(byDate);
+  const sorted = inOrder(rows), latest = new Map<string, PostedTarget>();
+  let k = 0, prev = '';
   return weeks.map((t) => {
-    const from = yearBefore(t), latest = new Map<string, number>();
-    for (const r of sorted) if (r.date > from && r.date <= t) latest.set(r.firm, r.target);
-    const n = latest.size;
-    return { t, mean: n >= MIN_FIRMS ? Math.round(([...latest.values()].reduce((s, v) => s + v, 0) / n) * 100) / 100 : null, n };
+    if (t < prev) { latest.clear(); k = 0; } // weeks out of order: start over
+    prev = t;
+    for (; k < sorted.length && sorted[k]!.date <= t; k++) latest.set(sorted[k]!.firm, sorted[k]!);
+    const from = yearBefore(t);
+    let n = 0, sum = 0;
+    for (const r of latest.values()) if (r.date > from) { n++; sum += r.target; }
+    return { t, mean: n >= MIN_FIRMS ? Math.round((sum / n) * 100) / 100 : null, n };
   });
 }

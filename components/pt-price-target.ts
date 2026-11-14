@@ -246,7 +246,7 @@ export interface PtTrendChart {
   w: number; h: number;
   /** oldest first, one path a leg */ legs: { dir: PtTrendLeg['dir']; path: string }[];
   /** the price axis' lines, about three */ grid: { y: number; label: string }[];
-  /** the last turn ("$332 peak · Aug 28", its baseline at labelY); null with one leg */ turn: { x: number; y: number; peak: boolean; label: string; labelY: number; tip: string } | null;
+  /** the last turn ("$332 peak · Aug 28", its baseline at labelY); null with one leg */ turn: { x: number; y: number; peak: boolean; label: string; labelY: number; anchor: 'start' | 'middle' | 'end'; tip: string } | null;
   end: { x: number; y: number; dir: PtTrendLeg['dir']; label: string; tip: string };
   /** a hover strip a week, its tip null when the week has no average */ weeks: { t: string; x0: number; w: number; tip: string | null }[];
   label: string;
@@ -276,6 +276,9 @@ export function trendLegs(means: readonly (number | null)[], threshold = TURN): 
   });
 }
 
+/** Half a turn's label, about (chart units): nearer an edge of the plot than this, it is anchored inside it, never cut in half. */
+const HALF_LABEL = 52;
+const edgeAnchor = (x: number): 'start' | 'middle' | 'end' => (x < ML + HALF_LABEL ? 'start' : x > W - MR - HALF_LABEL ? 'end' : 'middle');
 /** A round step for about `n` lines over `span`: 1, 2 or 5 × 10ⁿ. */
 function niceStep(raw: number): number {
   const p = 10 ** Math.floor(Math.log10(raw)), k = raw / p;
@@ -309,7 +312,9 @@ export function buildTrend(weekly: Weekly, targets: Analysts['targets'], x: { mi
   const legs = trendLegs(weekly.map((w) => w.mean));
   if (!legs.length) return null;
   const ms = weekly.flatMap((w) => (w.mean == null ? [] : [w.mean]));
-  const lo = Math.min(...ms), hi = Math.max(...ms), span = Math.max(hi - lo, hi * 0.04), a = lo - span * 0.12, b = hi + span * 0.12;
+  // at least 4% of the average from bottom to top, around the line's middle: a 1% move looks like one (review, 2026-11-14)
+  const top = Math.max(...ms), bottom = Math.min(...ms), mid = (top + bottom) / 2, rangeHalf = Math.max(top - bottom, top * 0.04) / 2;
+  const span = 2 * rangeHalf, a = mid - rangeHalf - span * 0.12, b = mid + rangeHalf + span * 0.12;
   const turned = legs.length > 1, peak = turned && legs.at(-2)!.dir === 'up';
   const TT = turned && peak ? MARGIN_LABEL : MARGIN, TB = turned && !peak ? MARGIN_LABEL : MARGIN;
   const sx = (t: string) => f(ML + ((isoDay(t) - x.min) / (x.max - x.min || 1)) * (W - ML - MR));
@@ -329,7 +334,7 @@ export function buildTrend(weekly: Weekly, targets: Analysts['targets'], x: { mi
     w: W, h: TH, grid, weeks,
     legs: legs.map((l) => ({ dir: l.dir, path: pts.slice(l.i0, l.i1 + 1).filter((p) => p != null).map((p, k) => `${k ? 'L' : 'M'}${p}`).join(' ') })),
     turn: tw ? { x: sx(tw.t), y: sy(tw.mean!), peak, label: `${axisPrice(tw.mean!)} ${peak ? 'peak' : 'low'} · ${dayMonth(tw.t)}`,
-      labelY: f(sy(tw.mean!) + (peak ? -ABOVE : UNDER)), tip: tips[last.i0]! } : null,
+      labelY: f(sy(tw.mean!) + (peak ? -ABOVE : UNDER)), anchor: edgeAnchor(sx(tw.t)), tip: tips[last.i0]! } : null,
     end: { x: sx(endW.t), y: sy(endW.mean!), dir: last.dir, label: `${axisPrice(endW.mean!)} average target`, tip: tips[last.i1]! },
     label: `Average analyst price target, week by week, ${month(weekly[legs[0]!.i0]!.t.slice(0, 7))} to ${month(endW.t.slice(0, 7))}`,
   };
@@ -355,8 +360,12 @@ export function trendText(who: Mention, weekly: Weekly, targets: Analysts['targe
     const since = Math.abs(ch) < 0.005 ? `is at ${axisPrice(last.mean!)} now` : `has ${ch < 0 ? 'fallen' : 'risen'} ${Math.round(Math.abs(ch) * 100)}% since, to ${axisPrice(last.mean!)}`;
     return say`The average price target for ${who} ${peak ? 'peaked' : 'bottomed'} at ${axisPrice(tw.mean!)} in the week to ${date(tw.t)} and ${since}${c ? `: ${c} since then` : ''}.`;
   }
-  const year = isoDay(last.t) - isoDay(first.t) >= 350, ch = last.mean! / first.mean! - 1, c = counted(year ? null : first.t);
-  return say`The average price target for ${who} ${ch < 0 ? 'fell' : 'rose'} from ${axisPrice(first.mean!)} to ${axisPrice(last.mean!)} ${year ? 'in 12 months' : `since the week to ${date(first.t)}`} (${pct(ch, 0)})${c ? `: ${c}` : ''}.`;
+  const year = isoDay(last.t) - isoDay(first.t) >= 350, ch = last.mean! / first.mean! - 1, c = counted(year ? null : first.t), tail = c ? `: ${c}` : '';
+  // an average that did not move is not «rose» (review, 2026-11-14: «rose from $50.00 to $50.00 (0%)» on a new listing)
+  if (Math.abs(ch) < 0.005) return say`The average price target for ${who} has held at about ${axisPrice(last.mean!)} ${year ? 'over the last 12 months' : `since the week to ${date(first.t)}`}${tail}.`;
+  const moved = year ? `${ch < 0 ? 'fell' : 'rose'} from ${axisPrice(first.mean!)} to ${axisPrice(last.mean!)} in 12 months`
+    : `${ch < 0 ? 'has fallen' : 'has risen'} from ${axisPrice(first.mean!)} to ${axisPrice(last.mean!)} since the week to ${date(first.t)}`;
+  return say`The average price target for ${who} ${moved} (${pct(ch, 0)})${tail}.`;
 }
 
 @Component({
@@ -443,10 +452,10 @@ export function trendText(who: Mention, weekly: Weekly, targets: Analysts['targe
                 @for (w of k.weeks; track w.t) {@if (w.tip) {<rect class="pt-trend-hit" [attr.x]="w.x0" y="0" [attr.width]="w.w" [attr.height]="k.h" [attr.data-tip]="w.tip" />}}
                 @if (k.turn; as t) {
                   <circle [attr.class]="'pt-trend-dot pt-trend-turn pt-trend-dot-' + (t.peak ? 'up' : 'down')" [attr.cx]="t.x" [attr.cy]="t.y" r="5" tabindex="0" [attr.aria-label]="t.label" [attr.data-tip]="t.tip" />
-                  <text class="pt-trend-t" [attr.x]="t.x" [attr.y]="t.labelY" text-anchor="middle">{{ t.label }}</text>
+                  <text class="pt-trend-t" [attr.x]="t.x" [attr.y]="t.labelY" [attr.text-anchor]="t.anchor" pointer-events="none">{{ t.label }}</text>
                 }
                 <circle [attr.class]="'pt-trend-dot pt-trend-end pt-trend-dot-' + k.end.dir" [attr.cx]="k.end.x" [attr.cy]="k.end.y" r="4.5" tabindex="0" [attr.aria-label]="k.end.label" [attr.data-tip]="k.end.tip" />
-                <text class="pt-trend-t" [attr.x]="f(k.end.x + 9)" [attr.y]="f(k.end.y + 4)">{{ k.end.label }}</text>
+                <text class="pt-trend-t" [attr.x]="f(k.end.x + 9)" [attr.y]="f(k.end.y + 4)" pointer-events="none">{{ k.end.label }}</text>
               </g>
             </svg>
             @if (trendSay(); as s) {<p class="pt-lede pt-trend-say"><pt-say [parts]="s" /></p>}

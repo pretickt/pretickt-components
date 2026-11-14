@@ -183,6 +183,19 @@ describe('the average target week by week (the trend under the chart): its legs,
     expect(l.turn!.labelY).toBeGreaterThan(l.turn!.y);
     expect(l.turn!.labelY + 3).toBeLessThanOrEqual(l.h);
   });
+  it('a move of 1% looks like one: the price scale spans at least 4% of the average (review, 2026-11-14: half the strip for 300 → 303)', () => {
+    const w = [wk('2025-11-14', 300), wk('2026-05-15', 301.5), wk('2026-11-13', 303)];
+    const ys = buildTrend(w, [], x(w))!.legs.flatMap((l) => [...l.path.matchAll(/[ML][\d.]+ ([\d.]+)/g)].map((m) => Number(m[1])));
+    expect((Math.max(...ys) - Math.min(...ys)) / (120 - 8 - 8)).toBeLessThan(0.25);
+  });
+  it("a turn's label near an edge of the plot is anchored inside it, never cut in half (review, 2026-11-14)", () => {
+    const early = [wk('2025-11-14', 300), wk('2025-11-21', 290), ...Array.from({ length: 40 }, (_, i) => wk(new Date(Date.parse('2025-11-28') + i * 7 * 864e5).toISOString().slice(0, 10), 292 + i * 2))];
+    const c = buildTrend(early, [], x(early))!;
+    expect(c.turn!.x).toBeLessThan(60);
+    expect(c.turn!.anchor).toBe('start');
+    const day = (d: string) => Math.floor(Date.parse(`${d}T00:00:00Z`) / 864e5);
+    expect(buildTrend(peak, [], { min: day('2025-11-14'), max: day('2027-11-14') })!.turn!.anchor).toBe('middle'); // a page's two years: Aug 28 mid-plot
+  });
   it('fewer than two weeks with an average: no line', () => {
     expect(buildTrend([wk('2026-11-06', null, 2), wk('2026-11-13', 310)], [], x(peak))).toBeNull();
     expect(buildTrend([], [], x(peak))).toBeNull();
@@ -219,7 +232,13 @@ describe('the average target week by week (the trend under the chart): its legs,
     // a line that starts later (too few firms before): no «in 12 months», its raises and cuts since its first week
     const late = [wk('2026-05-15', null, 2), wk('2026-05-22', 60), wk('2026-08-14', 50), wk('2026-11-13', 39.3)];
     expect(said(trendText(nke, late, [...many(3, '2026-05-01', false), ...many(5, '2026-06-01', false)]))).toBe(
-      `The average price target for Nike NKE fell from $60.00 to $39.30 since the week to May 22, 2026 (${pct(39.3 / 60 - 1, 0)}): 5 cuts.`);
+      `The average price target for Nike NKE has fallen from $60.00 to $39.30 since the week to May 22, 2026 (${pct(39.3 / 60 - 1, 0)}): 5 cuts.`);
+    // an average that did not move is not «rose» (review, 2026-11-14: «rose from $50.00 to $50.00 (0%)» on a new listing)
+    expect(said(trendText(nvda, [wk('2026-11-06', 50), wk('2026-11-13', 50)], []))).toBe(
+      'The average price target for Nvidia NVDA has held at about $50.00 since the week to Nov 6, 2026.');
+    const still = [wk('2025-11-14', 300), wk('2026-05-15', 302), wk('2026-11-13', 301)];
+    expect(said(trendText(nvda, still, many(1, '2026-03-01', true)))).toBe(
+      'The average price target for Nvidia NVDA has held at about $301 over the last 12 months: 1 raise.');
   });
 });
 
@@ -251,6 +270,12 @@ describe('pt-price-target', () => {
     expect(end.getAttribute('tabindex')).toBe('0');
     expect(end.getAttribute('data-tip')).toBe(k.end.tip);
     expect(svg.textContent).toContain(k.end.label);
+  });
+  it("the strip's labels let the pointer through to the weeks' tips (review, 2026-11-14)", async () => {
+    const { el } = await view();
+    const labels = [...el.querySelectorAll('svg.pt-trend text.pt-trend-t')];
+    expect(labels.length).toBeGreaterThan(0);
+    expect(labels.every((t) => t.getAttribute('pointer-events') === 'none')).toBe(true);
   });
   it("its sentence names the company as people search it, through the company's mention, and says what trendText says", async () => {
     const { el } = await view();
