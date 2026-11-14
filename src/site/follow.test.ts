@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FOLLOW_LIMIT, seenUpTo, toggled, unseenCount, type FollowState } from '../context/follow-state';
+import { FOLLOW_LIMIT, replaced, seenUpTo, toggled, unseenCount, type FollowState } from '../context/follow-state';
 import type { FollowAlert } from '../typologies';
 import { FOLLOW_KEY, localFollows } from './follow';
 
@@ -46,5 +46,18 @@ describe('what this browser follows (localStorage, never sent anywhere)', () => 
     expect(more.follows[0]).toBe('T1');
     expect(more.follows.at(-1)).toBe('NVDA');
     expect(seenUpTo(seenUpTo(none, 'NVDA', '2026-11-13'), 'NVDA', '2026-11-10').seen).toEqual({ NVDA: '2026-11-13' });
+  });
+  it("the email link (part 2) survives a reload; a malformed one is dropped, the follows kept", () => {
+    const s = storage();
+    const link = { token: 'eyJzIjoiMSJ9.c2ln', email: 'r•••@gmail.com', cadence: 'week' as const };
+    localFollows(s).write({ follows: ['NVDA'], seen: {}, link });
+    expect(localFollows(s).read()).toEqual({ follows: ['NVDA'], seen: {}, link });
+    s.setItem(FOLLOW_KEY, JSON.stringify({ v: 1, follows: ['NVDA'], seen: {}, link: { token: 'not a token', email: 'x', cadence: 'day' } }));
+    expect(localFollows(s).read()).toEqual({ follows: ['NVDA'], seen: {} });
+  });
+  it('the follows replaced by a list (the server\'s): valid tickers once each, in its order, at most the limit', () => {
+    const r = replaced({ follows: ['AAPL'], seen: { AAPL: '2026-11-13' } }, ['NVDA', 'AAPL', 'NVDA', 'bad']);
+    expect(r).toEqual({ follows: ['NVDA', 'AAPL'], seen: { AAPL: '2026-11-13' } });
+    expect(replaced(r, Array.from({ length: FOLLOW_LIMIT + 5 }, (_, i) => `T${i}`)).follows).toHaveLength(FOLLOW_LIMIT);
   });
 });

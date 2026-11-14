@@ -79,4 +79,35 @@ describe('PtFollow (the companies this browser follows, and the alerts it has se
     expect(store.read()).toEqual({ follows: ['AAPL', 'NVDA'], seen: { AAPL: '2026-11-13' } });
     expect(b.follows()).toEqual(['AAPL', 'NVDA']);
   });
+  it('a toggle that changes the list is heard once, with on; the link and a replaced list go through the store', () => {
+    const { store, writes } = memory({ follows: [], seen: {} });
+    const { f, follow } = mount([{ provide: PT_FOLLOW, useValue: store }, { provide: PT_FOLLOW_ON, useValue: true }]);
+    f.detectChanges();
+    TestBed.tick();
+    const heard: string[] = [];
+    follow.listenChanges((c) => heard.push(`${c.ticker}:${c.on}`));
+    follow.toggle('NVDA');
+    follow.toggle('NVDA');
+    expect(heard).toEqual(['NVDA:true', 'NVDA:false']);
+    const link = { token: 'a.b', email: 'r•••@gmail.com', cadence: 'day' as const };
+    follow.setLink(link);
+    expect(follow.link()).toEqual(link);
+    follow.replaceFollows(['KO', 'AAPL']);
+    expect(follow.follows()).toEqual(['KO', 'AAPL']);
+    expect(writes.at(-1)).toMatchObject({ follows: ['KO', 'AAPL'], link });
+    follow.setLink(null);
+    expect(follow.link()).toBeNull();
+    expect(heard).toEqual(['NVDA:true', 'NVDA:false']); // replacing is not a reader's toggle
+  });
+  it('a store whose first read is a promise (the site loads it on first use) applies when it arrives', async () => {
+    let data: FollowState = { follows: ['NVDA'], seen: { NVDA: '2026-11-12' } };
+    const store: FollowStore = { read: () => Promise.resolve(data), write: (s) => { data = s; } };
+    const { f, text } = mount([{ provide: PT_FOLLOW, useValue: store }, { provide: PT_FOLLOW_ON, useValue: true }]);
+    f.detectChanges();
+    TestBed.tick();
+    await Promise.resolve();
+    await Promise.resolve();
+    f.detectChanges();
+    expect(text()).toBe('true|true|1');
+  });
 });

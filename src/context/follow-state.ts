@@ -1,7 +1,10 @@
 import type { FollowAlert } from '../typologies';
 
-/** What this browser follows (tickers, in the order followed) and, per ticker, the newest session of its alerts already seen. */
-export interface FollowState { follows: string[]; seen: Record<string, string> }
+/** The email this browser's follows go to (part 2): the manage token the server gave, the address as it shows it, how often. */
+export interface FollowLink { token: string; email: string; cadence: 'day' | 'week' }
+/** What this browser follows (tickers, in the order followed), per ticker the newest session of its alerts already seen, and its email link. */
+export interface FollowState { follows: string[]; seen: Record<string, string>; link?: FollowLink }
+const TICKER = /^[A-Z][A-Z0-9]{0,5}(\.[A-Z])?$/;
 /** At most this many follows (the oldest goes first), and this many seen marks. */
 export const FOLLOW_LIMIT = 200;
 const SEEN_LIMIT = 400;
@@ -27,4 +30,9 @@ export function seenUpTo(s: FollowState, t: string, session: string): FollowStat
   const keys = Object.keys(seen);
   for (const k of keys.slice(0, Math.max(0, keys.length - SEEN_LIMIT))) delete seen[k];
   return { ...s, seen };
+}
+
+/** The follows become this list (the server's): valid tickers, once each, in its order, at most the limit. */
+export function replaced(s: FollowState, tickers: readonly string[]): FollowState {
+  return { ...s, follows: [...new Set(tickers.filter((t) => TICKER.test(t)))].slice(0, FOLLOW_LIMIT) };
 }

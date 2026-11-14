@@ -1,6 +1,6 @@
 import { afterNextRender, computed, inject, Injectable, signal, type Signal } from '@angular/core';
 import type { FollowAlert } from '../typologies';
-import { seenUpTo, toggled, unseenCount, type FollowState } from './follow-state';
+import { replaced, seenUpTo, toggled, unseenCount, type FollowLink, type FollowState } from './follow-state';
 import { PT_FOLLOW, PT_FOLLOW_ON } from './follow-tokens';
 
 /** A bell's press: the company, its alerts and where the bell is, for the page's panel; `at` counts the presses (the same bell twice is two presses). */
@@ -25,16 +25,21 @@ export class PtFollow {
   private readonly pressedSig = signal<FollowPress | null>(null);
   private presses = 0;
   private listener: ((p: FollowPress) => void) | null = null;
+  private changes: ((c: { ticker: string; on: boolean }) => void) | null = null;
   readonly ready = computed(() => this.state() !== null);
   readonly follows = computed<readonly string[]>(() => this.state()?.follows ?? []);
   readonly pressed = this.pressedSig.asReadonly();
+  /** The email this browser's follows go to (part 2), or null. */
+  readonly link = computed<FollowLink | null>(() => this.state()?.link ?? null);
 
   constructor() {
     const store = this.store;
     if (store) afterNextRender(() => {
-      let read: FollowState = { follows: [], seen: {} };
+      const none: FollowState = { follows: [], seen: {} };
+      let read: FollowState | Promise<FollowState> = none;
       try { read = store.read(); } catch { /* a store that fails follows nothing */ }
-      this.state.set(read);
+      if (read instanceof Promise) read.then((s) => this.state.set(s), () => this.state.set(none));
+      else this.state.set(read);
     });
   }
 
@@ -47,7 +52,21 @@ export class PtFollow {
     return computed(() => { const k = t(); return unseenCount(alerts(), k == null ? undefined : this.state()?.seen[k]); });
   }
 
-  toggle(t: string): void { this.change((s) => toggled(s, t)); }
+  toggle(t: string): void {
+    const was = this.state()?.follows.includes(t);
+    this.change((s) => toggled(s, t));
+    const now = this.state()?.follows.includes(t);
+    if (was !== undefined && now !== was) this.changes?.({ ticker: t, on: !!now });
+  }
+
+  /** The page hears each reader's toggle that changed the list (to tell the server, once the follows are linked to an email). */
+  listenChanges(fn: (c: { ticker: string; on: boolean }) => void): void { this.changes = fn; }
+
+  /** The email link the server gave (null: none, after unsubscribing). */
+  setLink(l: FollowLink | null): void { this.change((s) => { const { link: _, ...rest } = s; return l ? { ...rest, link: l } : rest; }); }
+
+  /** The follows become this list (the server's, merged by the page): no change is heard. */
+  replaceFollows(tickers: readonly string[]): void { this.change((s) => replaced(s, tickers)); }
 
   markSeen(t: string, session: string): void { this.change((s) => seenUpTo(s, t, session)); }
 
@@ -65,7 +84,7 @@ export class PtFollow {
     const s = this.state();
     if (!this.store || s === null) return;
     let base = s;
-    try { base = this.store.read(); } catch { /* a store that cannot be read: this page's copy */ }
+    try { const fresh = this.store.read(); if (!(fresh instanceof Promise)) base = fresh; } catch { /* a store that cannot be read: this page's copy */ }
     const next = f(base);
     this.state.set(next);
     if (next === base) return;

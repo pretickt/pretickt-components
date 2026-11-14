@@ -23,9 +23,14 @@ export interface ManageState {
   digest: boolean;
   /** a rule just confirmed, and the companies meeting it right now (they fire only when they meet it again) */
   confirmed?: { id: string; now: string[] };
+  /** the companies followed (follow alerts, part 2), alphabetical; the digest's rhythm; a fresh manage token the browser keeps */
+  follows?: string[];
+  cadence?: 'day' | 'week';
+  manage?: string;
 }
 export type ManageOp = { op: 'list' | 'confirm' | 'unsubscribe' } | { op: 'pause' | 'resume' | 'delete'; id: string }
-  | { op: 'update'; id: string; name: string; rule: Rule } | { op: 'weekly' | 'digest'; on: boolean };
+  | { op: 'update'; id: string; name: string; rule: Rule } | { op: 'weekly' | 'digest'; on: boolean }
+  | { op: 'follow'; ticker: string; on: boolean } | { op: 'follows'; tickers: string[] } | { op: 'cadence'; value: 'day' | 'week' };
 /** What the page's address says: the event an email opened, the token of a confirm or manage link, and what that link is for. */
 export interface AlertsLanding { alert: string | null; token: string | null; action: 'confirm' | 'manage' | 'weekly' | null }
 /** The page's side of the alerts (the site: `/v1/alerts`, the universe, the session's bars). Absent on the server and in the checks. */
