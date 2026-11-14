@@ -53,6 +53,10 @@ describe('PtFollow (the companies this browser follows, and the alerts it has se
     expect(follow.follows()).toEqual(['NVDA']);
     follow.press({ ticker: 'NVDA', name: 'Nvidia', alerts: ALERTS, rect: { left: 1, right: 2, top: 3, bottom: 4 } });
     expect([follow.pressed()?.ticker, follow.pressed()?.at]).toEqual(['NVDA', 1]);
+    const heard: string[] = [];
+    follow.listen((p) => heard.push(`${p.ticker}#${p.at}`));
+    follow.press({ ticker: 'AAPL', name: 'Apple', alerts: [], rect: { left: 1, right: 2, top: 3, bottom: 4 } });
+    expect(heard).toEqual(['AAPL#2']);
   });
   it('without PT_FOLLOW (server, checks) toggle and markSeen do nothing and on is false', () => {
     const { f, text, follow } = mount([]);

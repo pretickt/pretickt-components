@@ -489,6 +489,25 @@
   .pt-follow-bell[aria-pressed='true'] { @apply text-primary; }
   .pt-follow-bell[aria-pressed='true'] svg { fill: currentColor; }
   .pt-follow-n { @apply absolute right-0 top-0 h-3.5 min-w-3.5 rounded-full px-1 text-center text-[10px] leading-3.5 font-semibold text-white; background: var(--color-neg); }
+  /* the bell's panel (src/site/alerts/follow-panel.ts): fixed under the bell, its own scroll when it does not fit */
+  .pt-follow-panel { @apply fixed z-50 w-80 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-control border border-border bg-surface-raised p-3 shadow-lg; }
+  .pt-follow-head { @apply mb-2 flex items-center justify-between gap-2; }
+  .pt-follow-title { @apply m-0 text-sm; }
+  .pt-follow-switch[aria-pressed='true'] { @apply text-primary; }
+  .pt-follow-list { @apply m-0 grid list-none gap-2 p-0; }
+  .pt-follow-row { @apply grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-0.5 text-sm; }
+  .pt-follow-chip { @apply col-span-2 justify-self-start rounded-md px-1.5 py-0.5 text-xs font-medium; background: color-mix(in oklab, var(--color-ink) 7%, transparent); }
+  .pt-follow-pos { color: var(--color-pos); background: color-mix(in oklab, var(--color-pos) 12%, transparent); }
+  .pt-follow-neg { color: var(--color-neg); background: color-mix(in oklab, var(--color-neg) 12%, transparent); }
+  .pt-follow-line { @apply min-w-0 text-ink; }
+  .pt-follow-pic { @apply h-7 w-24 shrink-0; }
+  .pt-follow-l1 { fill: none; stroke: var(--color-ink-soft); stroke-width: 1.25; }
+  .pt-follow-l2 { fill: none; stroke: var(--color-primary); stroke-width: 1; opacity: .7; }
+  .pt-follow-lv { stroke: var(--color-ink-soft); stroke-width: 1; stroke-dasharray: 3 2; opacity: .8; }
+  .pt-follow-band { fill: color-mix(in oklab, var(--color-ink) 6%, transparent); }
+  .pt-follow-dot { fill: var(--color-ink); }
+  .pt-follow-empty { @apply m-0 text-sm text-ink-soft; }
+  .pt-follow-foot { @apply mb-0 mt-3; }
   .pt-share-menu { @apply fixed z-50 w-80 max-w-[calc(100vw-2rem)] rounded-control border border-border bg-surface-raised p-3 text-sm shadow-lg; }
   .pt-share-head { @apply mb-2 flex items-center justify-between gap-2 font-semibold text-ink; }
   .pt-share-x { @apply rounded-md px-1.5 text-base leading-none text-ink-soft hover:bg-surface hover:text-ink; }

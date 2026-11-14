@@ -24,6 +24,7 @@ export class PtFollow {
   private readonly state = signal<FollowState | null>(null);
   private readonly pressedSig = signal<FollowPress | null>(null);
   private presses = 0;
+  private listener: ((p: FollowPress) => void) | null = null;
   readonly ready = computed(() => this.state() !== null);
   readonly follows = computed<readonly string[]>(() => this.state()?.follows ?? []);
   readonly pressed = this.pressedSig.asReadonly();
@@ -50,7 +51,14 @@ export class PtFollow {
 
   markSeen(t: string, session: string): void { this.change((s) => seenUpTo(s, t, session)); }
 
-  press(p: Omit<FollowPress, 'at'>): void { this.pressedSig.set({ ...p, at: ++this.presses }); }
+  press(p: Omit<FollowPress, 'at'>): void {
+    const full = { ...p, at: ++this.presses };
+    this.pressedSig.set(full);
+    this.listener?.(full);
+  }
+
+  /** The page's panel hears each press (a plain callback: an effect would make the main bundle export Angular's effect for its chunk). */
+  listen(fn: (p: FollowPress) => void): void { this.listener = fn; }
 
   private change(f: (s: FollowState) => FollowState): void {
     const s = this.state();

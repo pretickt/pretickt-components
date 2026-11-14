@@ -5,7 +5,8 @@
 // page: 50,000 until 2026-11-09, +4,000 for the paste read by the site's AI
 // main: 244,000 until 2026-11-14, +600 for pt-stats, a new registry component — the history page's statistics; measured 244,583 (Romeo, 2026-11-14: up to 247,000)
 // main: 244,600 until 2026-11-14, +900 for the bell (follow, part 1): PT_FOLLOW/PT_FOLLOW_ON, the page's providers and this browser's follow store; measured 245,340 (Romeo, 2026-11-14: up to 247,000)
-export const BUDGET = { main: 245_500, component: 32_000, page: 54_000 } as const;
+// main: 245,500 until 2026-11-14, +400 for the bell's panel: its import line and the Angular code main keeps for its chunk (one more export); measured 245,828 (Romeo, 2026-11-14: up to 247,000)
+export const BUDGET = { main: 245_900, component: 32_000, page: 54_000 } as const;
 
 export function overBudget(kind: keyof typeof BUDGET, bytes: number): string | null {
   return bytes > BUDGET[kind] ? `${kind} bundle is ${bytes} bytes, over the ${BUDGET[kind]}-byte budget` : null;
