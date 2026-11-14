@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { picGeometry } from './pic';
+import { picGeometry, picSvg } from './pic';
 
 describe("an alert's small picture (the bell's panel, later the email's)", () => {
   it('the line, its second line and the levels share one scale; the dot sits on the marked point', () => {
@@ -19,5 +19,15 @@ describe("an alert's small picture (the bell's panel, later the email's)", () =>
     expect(g.band!.y1).toBeLessThan(g.band!.y2);
     const flat = picGeometry({ c: [5, 5, 5] }, 100, 20);
     expect(flat.line).toBe('M2.0,10.0 L50.0,10.0 L98.0,10.0');
+  });
+  it("an alert's picture as an SVG of its own (the email's PNG): size, line in its tone, dashed levels, the dot, no text", () => {
+    const svg = picSvg({ c: [1, 2, 3], lv: [4], band: [0, 1] }, 280, 80, 'neg', 2);
+    expect(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg" width="560" height="160" viewBox="0 0 280 80"')).toBe(true);
+    expect(svg).toContain('stroke="#d64545"');
+    expect(svg.match(/stroke-dasharray/g)).toHaveLength(1);
+    expect(svg.match(/<circle/g)).toHaveLength(1);
+    expect(svg).toContain('<rect width="280" height="80" fill="#ffffff"/>');
+    expect(svg).not.toContain('<text');
+    expect(picSvg({ c: [1, 2], c2: [2, 1] }, 280, 80, 'flat')).toContain('width="280"');
   });
 });
