@@ -77,6 +77,7 @@ export * from './metric';
 export * from './price-series';
 export * from './events';
 export * from './analysts';
+export * from './target-weeks';
 export * from './fundamentals';
 export * from './basket';
 export * from './basket-words';
