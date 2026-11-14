@@ -6,7 +6,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { demoFor } from '../src/typologies';
+import { demoFor, followDemo } from '../src/typologies';
 import { DEMO_ASOF } from '../src/typologies/common';
 
 const dist = resolve('dist');
@@ -47,9 +47,10 @@ const tmp = mkdtempSync(join(tmpdir(), 'pt-check-'));
 mains.production = pathToFileURL(`${dist}/${index.site.main}`).href;
 let n = 0;
 /** A page's server HTML hydrated with both builds, its problems labelled. */
-const hydrate = (file: string, label: string, liveFile?: string) => {
+const hydrate = (file: string, label: string, liveFile?: string, storage?: Record<string, string>) => {
   for (const [build, main] of Object.entries(mains)) {
-    const out = execFileSync(process.execPath, [resolve('scripts/hydrate-case.mjs'), file, main, ...(liveFile ? [liveFile] : [])], { encoding: 'utf8', env: process.env });
+    const out = execFileSync(process.execPath, [resolve('scripts/hydrate-case.mjs'), file, main, ...(liveFile ? [liveFile] : [])],
+      { encoding: 'utf8', env: { ...process.env, ...(storage ? { CHECK_LOCAL_STORAGE: JSON.stringify(storage) } : {}) } });
     problems.push(...(JSON.parse(out.trim().split('\n').at(-1)!) as { problems: string[] }).problems.map((p) => `${label} (${build}): ${p}`));
   }
 };
@@ -94,6 +95,18 @@ await page('earnings today page', [{ c: 'pt-answer', props: { topic: 'earnings-d
   const file = join(tmp, 'live.html');
   writeFileSync(file, r.html);
   hydrate(file, 'company page with today\'s file', liveFile);
+  n++;
+}
+// the bells (follow, 2026-11-14): this browser has seen all but NVDA's newest alert, so its count (1) is not the server's (all of them);
+// the header and the card hydrate with the same structure, the number changing after the first render
+{
+  const alerts = followDemo('NVDA');
+  const r = await server.renderPage({ buildId: 'check', api: '', follow: true, sections: [{ id: 's', items: [{ c: 'pt-company-header', props: { ticker: 'NVDA' } },
+    { c: 'pt-company-card', props: { ticker: 'NVDA' } }] }] }, { document: server.BARE_DOCUMENT, resolve: demo });
+  if (!r.html.includes('pt-follow-n')) problems.push('company page with bells: no bell count in the server HTML');
+  const file = join(tmp, 'follow.html');
+  writeFileSync(file, r.html);
+  hydrate(file, 'company page with bells', undefined, { 'pt-follow-v1': JSON.stringify({ v: 1, follows: ['NVDA'], seen: { NVDA: alerts[1]!.session } }) });
   n++;
 }
 rmSync(tmp, { recursive: true, force: true });

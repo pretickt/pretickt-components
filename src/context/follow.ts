@@ -60,12 +60,15 @@ export class PtFollow {
   /** The page's panel hears each press (a plain callback: an effect would make the main bundle export Angular's effect for its chunk). */
   listen(fn: (p: FollowPress) => void): void { this.listener = fn; }
 
+  /** A change starts from the store, not from this page's copy: another tab may have followed something since (its follows stay). */
   private change(f: (s: FollowState) => FollowState): void {
     const s = this.state();
     if (!this.store || s === null) return;
-    const next = f(s);
-    if (next === s) return;
+    let base = s;
+    try { base = this.store.read(); } catch { /* a store that cannot be read: this page's copy */ }
+    const next = f(base);
     this.state.set(next);
+    if (next === base) return;
     try { this.store.write(next); } catch { /* not kept: this page still shows it */ }
   }
 }

@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, EnvironmentInjector, inject, Injector } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { FollowAlert } from '../typologies';
 import { PtFollow } from './follow';
@@ -66,5 +66,17 @@ describe('PtFollow (the companies this browser follows, and the alerts it has se
     follow.toggle('NVDA');
     TestBed.tick();
     expect(text()).toBe('false|false|3');
+  });
+  it('a tab left open never erases what another tab followed: each change starts from the store', () => {
+    const { store } = memory({ follows: [], seen: {} });
+    const { f, follow: a } = mount([{ provide: PT_FOLLOW, useValue: store }, { provide: PT_FOLLOW_ON, useValue: true }]);
+    const b = Injector.create({ providers: [{ provide: PtFollow, useClass: PtFollow, deps: [] }], parent: TestBed.inject(EnvironmentInjector) }).get(PtFollow);
+    f.detectChanges();
+    TestBed.tick();
+    a.toggle('AAPL');            // tab A
+    b.toggle('NVDA');            // tab B, opened before A followed AAPL
+    b.markSeen('AAPL', '2026-11-13');
+    expect(store.read()).toEqual({ follows: ['AAPL', 'NVDA'], seen: { AAPL: '2026-11-13' } });
+    expect(b.follows()).toEqual(['AAPL', 'NVDA']);
   });
 });

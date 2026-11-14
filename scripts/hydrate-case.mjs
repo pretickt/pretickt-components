@@ -26,10 +26,14 @@ console.warn = () => {};
 // an error nobody catches (Angular cleaning up after hydration, in a promise) is a problem of the page, not a crash of the check
 process.on('uncaughtException', (e) => console.error(e));
 process.on('unhandledRejection', (e) => console.error(e));
+// what this browser keeps (CHECK_LOCAL_STORAGE: the bells' follows and seen marks), before the page's bundle reads it
+for (const [k, v] of Object.entries(JSON.parse(process.env.CHECK_LOCAL_STORAGE ?? '{}'))) localStorage.setItem(k, v);
 document.open(); document.write(readFileSync(file, 'utf8')); document.close();
 const root = document.querySelector('pt-page');
 const before = [...root.querySelectorAll('*')];
-const text = root.textContent;
+// the text a reader reads, without the bells' counts: the browser counts only what it has not seen, after the first render
+const readable = () => { const c = root.cloneNode(true); c.querySelectorAll('.pt-follow-n').forEach((e) => e.remove()); return c.textContent; };
+const text = readable();
 const problems = [];
 await import(main);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -49,7 +53,13 @@ if (live) {
   });
   if (mixed.length) problems.push(`live: ${mixed.length} element(s) mix the server's classes or styles with today's (${mixed[0].className})`);
   if (!root.textContent.includes('today')) problems.push('live: today\'s file was not shown');
-} else if (root.textContent !== text) problems.push('the text changed while hydrating');
+} else if (readable() !== text) problems.push('the text changed while hydrating');
+// with the bells: the browser's count, once hydrated, is what this browser has not seen
+if (process.env.CHECK_LOCAL_STORAGE) {
+  await wait(100);
+  const counts = [...root.querySelectorAll('.pt-follow-n')].map((e) => (e.hasAttribute('hidden') ? 0 : e.textContent));
+  if (!counts.length || counts.some((c) => c !== '1')) problems.push(`bells: counts ${JSON.stringify(counts)} once hydrated, expected the one unseen alert`);
+}
 const data = requests.filter((u) => u.includes('/v1/t/'));
 if (data.length) problems.push(`${data.length} data request(s) on load (${data[0]})`);
 if (errors.length) problems.push(`console errors: ${errors.join(' | ')}`);
