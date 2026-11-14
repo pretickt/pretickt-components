@@ -1,3 +1,7 @@
+import { TestBed } from '@angular/core/testing';
+import { PT_FOLLOW_ON } from '../src/context';
+import { PtFollow } from '../src/context/follow';
+import { companyDemo } from '../src/typologies';
 import { money, pct } from '../src/ds/format';
 import { bollinger, macd, rsi, smaLast } from '../src/indicators';
 import { demoFor, METRIC_KEYS, metricDemo, priceSeriesDemo, type MetricItem, type SectorBasket } from '../src/typologies';
@@ -576,5 +580,35 @@ describe('pt-company-header: a sector in the session, defended', () => {
   it('the line under the name says its companies; the value is said once, as the price (the scrolled strip repeats the line)', async () => {
     const r = await render(PtCompanyHeader, { sector: 'Technology' }, withData({ 'sector@1': { ...S, companies: 2, series: S.series.map((p) => ({ t: p.t, c: (p.c / base.value) * 1e12 })) } }));
     expect(r.el.querySelector('.pt-card-who .pt-meta')!.textContent!.trim()).toBe('2 companies');
+  });
+});
+
+describe('pt-company-header: the bell (Romeo, 2026-11-14: «una campanella, con badge per gli allarmi recenti»)', () => {
+  const on = { providers: [{ provide: PT_FOLLOW_ON, useValue: true }] };
+  const many = companyDemo({ ticker: 'NVDA' });
+  it('with follow on, the bell is in the name row with the count of recent alerts, and pressing it hands the panel the company and its alerts', async () => {
+    const r = await render(PtCompanyHeader, { ticker: 'NVDA' }, demo(), on);
+    const bell = r.el.querySelector<HTMLButtonElement>('.pt-card-id .pt-follow-bell')!;
+    expect(bell).not.toBeNull();
+    expect(bell.querySelector('.pt-follow-n')!.textContent).toBe('4');
+    expect(bell.getAttribute('aria-pressed')).toBe('false');
+    expect(bell.getAttribute('aria-label')).toBe('Follow Nvidia, 4 new alerts');
+    bell.click();
+    const p = TestBed.inject(PtFollow).pressed();
+    expect([p?.ticker, p?.name, p?.alerts.length]).toEqual(['NVDA', 'Nvidia', 4]);
+  });
+  it('with follow off there is no bell', async () => {
+    expect((await render(PtCompanyHeader, { ticker: 'NVDA' })).el.querySelector('.pt-follow-bell')).toBeNull();
+  });
+  it('ten alerts show 9+, none shows no number, a fund has no bell', async () => {
+    const ten = { ...many, alerts: Array.from({ length: 10 }, () => many.alerts![0]!) };
+    expect((await render(PtCompanyHeader, { ticker: 'NVDA' }, withData({ 'company@1': ten }), on)).el.querySelector('.pt-follow-n')!.textContent).toBe('9+');
+    const none = { ...many, alerts: undefined };
+    const r = await render(PtCompanyHeader, { ticker: 'NVDA' }, withData({ 'company@1': none }), on);
+    expect(r.el.querySelector('.pt-follow-bell')).not.toBeNull();
+    expect(r.el.querySelector('.pt-follow-n')).toBeNull();
+    expect(r.el.querySelector('.pt-follow-bell')!.getAttribute('aria-label')).toBe('Follow Nvidia');
+    const fund = { ...many, kind: 'etf', coverage: 0.9 };
+    expect((await render(PtCompanyHeader, { ticker: 'NVDA' }, withData({ 'company@1': fund }), on)).el.querySelector('.pt-follow-bell')).toBeNull();
   });
 });

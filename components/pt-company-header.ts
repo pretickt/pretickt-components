@@ -1,15 +1,17 @@
 /**
  * How does this company look right now: its price over three months and today (15 minutes late), and how the data divide between the
  * two sides, counted, never weighed and never concluded?
- * @version 1.2.0
+ * @version 1.3.0
  * @evidence design of the fund pages, 2026-11-05: a fund's header says how much of it the basket figures cover
  * @evidence design of the sector pages, 2026-11-07: with `sector`, what its companies are worth over the year and today, the basket's badges only, the fund line
+ * @evidence Romeo, 2026-11-14: «oggi azienda nella tooltip card e nella Company page ha una campanella, con badge per gli allarmi recenti come in un'app mobile per l'icona»
  * @evidence Romeo, 2026-11-05: the company page's header, «si capisce subito quali sono a favore di un rialzo e quali a favore di un ribasso», «senza dare mai consigli»
  * @evidence design: pretickt/docs/superpowers/specs/2026-11-05-company-header-bands-design.md
  */
 import { afterRenderEffect, Component, computed, type ElementRef, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { Pt, PtLive, type LiveBars } from '@pretickt/components/context';
-import { PtBadge, PtLogo } from '@pretickt/components/ds';
+import { PtFollow } from '@pretickt/components/follow';
+import { PtBadge, PtIcon, PtLogo } from '@pretickt/components/ds';
 import { date, dayMonth, level, money, num, pct, plainName, tone, usd, type Badge } from '@pretickt/components/format';
 import { bollinger, macd, rsi, smaLast } from '@pretickt/components/indicators';
 import { METRIC_KEYS, OTHER_BASIS, possessive, sectorFundLine, type MetricItem, type Sector, type SectorBasket } from '@pretickt/components/typologies';
@@ -222,7 +224,7 @@ const slotTime = (i: number) => { const t = 570 + i * 5, m = t % 60, h = Math.fl
 
 @Component({
   selector: 'pt-company-header',
-  imports: [PtBadge, PtLogo],
+  imports: [PtBadge, PtIcon, PtLogo],
   template: `
     @if (ready().settled && !ready().available) {<p class="pt-na">Data not available</p>}
     @else if (ready().settled) {
@@ -237,6 +239,11 @@ const slotTime = (i: number) => { const t = 570 + i * 5, m = t % 60, h = Math.fl
               <div class="pt-card-name">{{ title }}</div>
               <div class="pt-meta">{{ subLine(title) }}</div>
             </div>
+            @if (follow.on && own() && !co.value()?.kind) {
+              <button type="button" class="pt-follow-bell" [attr.aria-pressed]="followed()" [attr.aria-label]="bellLabel(title)" (click)="bell($event, title)">
+                <svg ptIcon="bell"></svg>@if (fresh(); as n) {<span class="pt-follow-n" aria-hidden="true">{{ n > 9 ? '9+' : n }}</span>}
+              </button>
+            }
           </div>
           <div class="pt-hdr-px">
             <div class="pt-hdr-price">
@@ -331,7 +338,22 @@ export class PtCompanyHeader {
   /** full: the company's main page; low: its sub-pages, so the answer below stays high. */
   readonly size = input<'full' | 'low'>('full');
 
-  private readonly own = () => { const t = this.ticker(); return t && !this.sector() ? t : null; };
+  protected readonly own = () => { const t = this.ticker(); return t && !this.sector() ? t : null; };
+
+  /** The bell (Romeo, 2026-11-14): the company's recent alerts, followed in this browser; its press opens the page's panel. */
+  protected readonly follow = inject(PtFollow);
+  protected readonly followed = this.follow.following(() => this.own());
+  protected readonly fresh = this.follow.unseen(() => this.own(), () => this.co.value()?.alerts);
+  protected bellLabel(name: string): string {
+    const n = this.fresh();
+    return `${this.followed() ? 'Following' : 'Follow'} ${name}${n ? `, ${n} new ${n === 1 ? 'alert' : 'alerts'}` : ''}`;
+  }
+  protected bell(e: MouseEvent, name: string): void {
+    const t = this.own();
+    e.preventDefault();
+    e.stopPropagation(); // the page's panel closes on a click outside it: this one opens it
+    if (t) this.follow.press({ ticker: t, name, alerts: this.co.value()?.alerts ?? [], rect: (e.currentTarget as HTMLElement).getBoundingClientRect() });
+  }
   protected readonly co = this.pt.company(() => { const t = this.own(); return t ? { ticker: t } : null; });
   protected readonly metrics = this.pt.metric(() => { const t = this.own(); return t ? { ticker: t, metrics: [...METRIC_KEYS] } : null; });
   protected readonly series = this.pt.priceSeries(() => { const t = this.own(); return t ? { tickers: [t], range: '3m' } : null; });

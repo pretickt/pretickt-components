@@ -1,3 +1,7 @@
+import { TestBed } from '@angular/core/testing';
+import { PT_FOLLOW_ON } from '../src/context';
+import { PtFollow } from '../src/context/follow';
+import { companyDemo } from '../src/typologies';
 import { money, pct, usd } from '../src/ds/format';
 import { metricDemo, METRIC_KEYS, priceSeriesDemo } from '../src/typologies';
 import { CARD_KEYS, PtCompanyCard } from './pt-company-card';
@@ -87,5 +91,35 @@ describe('pt-company-card', () => {
     expect(await at({ q, closed: true })).toContain('today · close Oct 1, 2026, preliminary');
     expect(await at({ q, session: '2026-09-30' })).toContain('last 60 sessions');
     expect(await at({ q: {} })).toContain('last 60 sessions');
+  });
+});
+
+describe('pt-company-card: the bell (Romeo, 2026-11-14: «una campanella, con badge per gli allarmi recenti»)', () => {
+  const on = { providers: [{ provide: PT_FOLLOW_ON, useValue: true }] };
+  const many = companyDemo({ ticker: 'NVDA' });
+  it('with follow on, the bell is in the name row with the count of recent alerts, and pressing it hands the panel the company and its alerts', async () => {
+    const r = await render(PtCompanyCard, { ticker: 'NVDA' }, demo(), on);
+    const bell = r.el.querySelector<HTMLButtonElement>('.pt-card-id .pt-follow-bell')!;
+    expect(bell).not.toBeNull();
+    expect(bell.querySelector('.pt-follow-n')!.textContent).toBe('4');
+    expect(bell.getAttribute('aria-pressed')).toBe('false');
+    expect(bell.getAttribute('aria-label')).toBe('Follow Nvidia, 4 new alerts');
+    bell.click();
+    const p = TestBed.inject(PtFollow).pressed();
+    expect([p?.ticker, p?.name, p?.alerts.length]).toEqual(['NVDA', 'Nvidia', 4]);
+  });
+  it('with follow off there is no bell', async () => {
+    expect((await render(PtCompanyCard, { ticker: 'NVDA' })).el.querySelector('.pt-follow-bell')).toBeNull();
+  });
+  it('ten alerts show 9+, none shows no number, a fund has no bell', async () => {
+    const ten = { ...many, alerts: Array.from({ length: 10 }, () => many.alerts![0]!) };
+    expect((await render(PtCompanyCard, { ticker: 'NVDA' }, withData({ 'company@1': ten }), on)).el.querySelector('.pt-follow-n')!.textContent).toBe('9+');
+    const none = { ...many, alerts: undefined };
+    const r = await render(PtCompanyCard, { ticker: 'NVDA' }, withData({ 'company@1': none }), on);
+    expect(r.el.querySelector('.pt-follow-bell')).not.toBeNull();
+    expect(r.el.querySelector('.pt-follow-n')).toBeNull();
+    expect(r.el.querySelector('.pt-follow-bell')!.getAttribute('aria-label')).toBe('Follow Nvidia');
+    const fund = { ...many, kind: 'etf', coverage: 0.9 };
+    expect((await render(PtCompanyCard, { ticker: 'NVDA' }, withData({ 'company@1': fund }), on)).el.querySelector('.pt-follow-bell')).toBeNull();
   });
 });

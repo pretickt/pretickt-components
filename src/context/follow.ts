@@ -1,20 +1,9 @@
-import { afterNextRender, computed, inject, Injectable, InjectionToken, signal, type Signal } from '@angular/core';
+import { afterNextRender, computed, inject, Injectable, signal, type Signal } from '@angular/core';
 import type { FollowAlert } from '../typologies';
 import { seenUpTo, toggled, unseenCount, type FollowState } from './follow-state';
+import { PT_FOLLOW, PT_FOLLOW_ON } from './follow-tokens';
 
-export type { FollowState } from './follow-state';
-
-/** Where the page keeps what the reader follows (the site: this browser's localStorage). Never on the server, never sent anywhere. */
-export interface FollowStore {
-  read(): FollowState;
-  write(s: FollowState): void;
-}
-/** Provided by the page in the browser while follow is on; absent on the server and in the checks. */
-export const PT_FOLLOW = new InjectionToken<FollowStore>('PT_FOLLOW');
-/** The page has the bells (FOLLOW_ENABLED): provided on the server and in the browser alike, so both draw them. */
-export const PT_FOLLOW_ON = new InjectionToken<boolean>('PT_FOLLOW_ON');
-
-/** A bell's press: the company, its alerts and where the bell is, for the page's panel. */
+/** A bell's press: the company, its alerts and where the bell is, for the page's panel; `at` counts the presses (the same bell twice is two presses). */
 export interface FollowPress {
   ticker: string; name: string; alerts: readonly FollowAlert[];
   rect: { left: number; right: number; top: number; bottom: number };
@@ -34,6 +23,7 @@ export class PtFollow {
   /** null until read, after the first render in the browser */
   private readonly state = signal<FollowState | null>(null);
   private readonly pressedSig = signal<FollowPress | null>(null);
+  private presses = 0;
   readonly ready = computed(() => this.state() !== null);
   readonly follows = computed<readonly string[]>(() => this.state()?.follows ?? []);
   readonly pressed = this.pressedSig.asReadonly();
@@ -60,7 +50,7 @@ export class PtFollow {
 
   markSeen(t: string, session: string): void { this.change((s) => seenUpTo(s, t, session)); }
 
-  press(p: FollowPress): void { this.pressedSig.set(p); }
+  press(p: Omit<FollowPress, 'at'>): void { this.pressedSig.set({ ...p, at: ++this.presses }); }
 
   private change(f: (s: FollowState) => FollowState): void {
     const s = this.state();

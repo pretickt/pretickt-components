@@ -1,12 +1,14 @@
 /**
  * How does this company look at a glance: price over the last 60 sessions (today's, 15 minutes late, while the market is open),
  * 52-week range, analysts, and its key numbers?
- * @version 1.2.2
+ * @version 1.3.0
  * @evidence beta: the company page header and the hover mini-card (CompanyHoverCard), asked back by Romeo on 2026-10-06
+ * @evidence Romeo, 2026-11-14: «oggi azienda nella tooltip card e nella Company page ha una campanella, con badge per gli allarmi recenti come in un'app mobile per l'icona»
  */
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { Pt, PtLive } from '@pretickt/components/context';
-import { PtBadge, PtLogo } from '@pretickt/components/ds';
+import { PtFollow } from '@pretickt/components/follow';
+import { PtBadge, PtIcon, PtLogo } from '@pretickt/components/ds';
 import { date, money, pct, plainName, tone, usd } from '@pretickt/components/format';
 import { METRIC_KEYS, type MetricKey } from '@pretickt/components/typologies';
 
@@ -20,7 +22,7 @@ const SPARK_W = 120, SPARK_H = 32;
 
 @Component({
   selector: 'pt-company-card',
-  imports: [PtBadge, PtLogo],
+  imports: [PtBadge, PtIcon, PtLogo],
   template: `
     @if (ready().settled && !ready().available) {<p class="pt-na">Data not available</p>}
     @else if (ready().settled) {
@@ -32,6 +34,11 @@ const SPARK_W = 120, SPARK_H = 32;
             <div class="pt-card-name">{{ title }}</div>
             <div class="pt-meta">{{ subLine(title) }}</div>
           </div>
+            @if (follow.on && !co.value()?.kind) {
+              <button type="button" class="pt-follow-bell" [attr.aria-pressed]="followed()" [attr.aria-label]="bellLabel(title)" (click)="bell($event, title)">
+                <svg ptIcon="bell"></svg>@if (fresh(); as n) {<span class="pt-follow-n" aria-hidden="true">{{ n > 9 ? '9+' : n }}</span>}
+              </button>
+            }
         </div>
         @if (close() != null) {
           <div class="pt-card-price">
@@ -76,6 +83,21 @@ export class PtCompanyCard {
   readonly size = input<'wide' | 'compact'>('wide');
   /** The link's tooltip rows (hover card): its footer. */
   readonly extra = input<Record<string, unknown> | null>(null);
+
+  /** The bell (Romeo, 2026-11-14): the company's recent alerts, followed in this browser; its press opens the page's panel. */
+  protected readonly follow = inject(PtFollow);
+  protected readonly followed = this.follow.following(() => this.ticker());
+  protected readonly fresh = this.follow.unseen(() => this.ticker(), () => this.co.value()?.alerts);
+  protected bellLabel(name: string): string {
+    const n = this.fresh();
+    return `${this.followed() ? 'Following' : 'Follow'} ${name}${n ? `, ${n} new ${n === 1 ? 'alert' : 'alerts'}` : ''}`;
+  }
+  protected bell(e: MouseEvent, name: string): void {
+    const t = this.ticker();
+    e.preventDefault();
+    e.stopPropagation(); // the page's panel closes on a click outside it: this one opens it
+    if (t) this.follow.press({ ticker: t, name, alerts: this.co.value()?.alerts ?? [], rect: (e.currentTarget as HTMLElement).getBoundingClientRect() });
+  }
 
   protected readonly co = this.pt.company(() => ({ ticker: this.ticker() }));
   protected readonly metrics = this.pt.metric(() => ({ ticker: this.ticker(), metrics: [...METRIC_KEYS] }));

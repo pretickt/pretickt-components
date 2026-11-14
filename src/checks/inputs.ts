@@ -16,6 +16,7 @@ export function componentsCompilerOptions(componentsRoot: string): ts.CompilerOp
       '@pretickt/components/context': src('src/context/index.ts'), '@pretickt/components/ds': src('src/ds/index.ts'),
       '@pretickt/components/format': src('src/ds/format.ts'), '@pretickt/components/typologies': src('src/typologies/browser.ts'),
       '@pretickt/components/indicators': src('src/indicators/index.ts'), '@pretickt/components/api': src('src/api.ts'),
+      '@pretickt/components/follow': src('src/context/follow.ts'),
     },
   };
 }

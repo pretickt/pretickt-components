@@ -1,7 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { FollowAlert } from '../typologies';
-import { PT_FOLLOW, PT_FOLLOW_ON, PtFollow, type FollowState, type FollowStore } from './index';
+import { PtFollow } from './follow';
+import { PT_FOLLOW, PT_FOLLOW_ON, type FollowState, type FollowStore } from './index';
 
 const alert = (session: string): FollowAlert => ({ kind: 'rsi', session, tone: 'flat', label: 'RSI', value: '72', line: 'RSI at 72', pic: null });
 const ALERTS = [alert('2026-11-13'), alert('2026-11-12'), alert('2026-11-10')];
@@ -50,8 +51,8 @@ describe('PtFollow (the companies this browser follows, and the alerts it has se
     expect(text()).toBe('true|true|0');
     expect(writes.at(-1)).toEqual({ follows: ['NVDA'], seen: { NVDA: '2026-11-13' } });
     expect(follow.follows()).toEqual(['NVDA']);
-    follow.press({ ticker: 'NVDA', name: 'Nvidia', alerts: ALERTS, rect: { left: 1, right: 2, top: 3, bottom: 4 }, at: 5 });
-    expect(follow.pressed()?.ticker).toBe('NVDA');
+    follow.press({ ticker: 'NVDA', name: 'Nvidia', alerts: ALERTS, rect: { left: 1, right: 2, top: 3, bottom: 4 } });
+    expect([follow.pressed()?.ticker, follow.pressed()?.at]).toEqual(['NVDA', 1]);
   });
   it('without PT_FOLLOW (server, checks) toggle and markSeen do nothing and on is false', () => {
     const { f, text, follow } = mount([]);

@@ -19,7 +19,8 @@
       "@pretickt/components/typologies": ["./src/typologies/browser.ts"],
       "@pretickt/components/api": ["./src/api.ts"],
       "@pretickt/components/indicators": ["./src/indicators/index.ts"],
-      "@pretickt/components/alerts": ["./src/alerts/index.ts"]
+      "@pretickt/components/alerts": ["./src/alerts/index.ts"],
+      "@pretickt/components/follow": ["./src/context/follow.ts"]
     }
   },
   "include": ["src", "components", "scripts"]

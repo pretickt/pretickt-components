@@ -483,6 +483,12 @@
   .pt-alev-l a { color: var(--color-primary); font-weight: 600; text-decoration: none; white-space: nowrap; }
   .pt-alev-l a:hover { text-decoration: underline; }
   .pt-share-icon { @apply inline-grid size-5 place-items-center rounded-md text-ink-soft hover:bg-surface hover:text-primary; }   /* a part's: the icon alone */
+  /* a company's bell (follow, 2026-11-14): at the end of its name row, a fixed box so the count never moves the row */
+  .pt-follow-bell { @apply relative ml-auto inline-grid size-8 shrink-0 place-items-center rounded-md text-ink-soft hover:bg-surface hover:text-primary; }
+  .pt-follow-bell svg { @apply size-4; }
+  .pt-follow-bell[aria-pressed='true'] { @apply text-primary; }
+  .pt-follow-bell[aria-pressed='true'] svg { fill: currentColor; }
+  .pt-follow-n { @apply absolute right-0 top-0 h-3.5 min-w-3.5 rounded-full px-1 text-center text-[10px] leading-3.5 font-semibold text-white; background: var(--color-neg); }
   .pt-share-menu { @apply fixed z-50 w-80 max-w-[calc(100vw-2rem)] rounded-control border border-border bg-surface-raised p-3 text-sm shadow-lg; }
   .pt-share-head { @apply mb-2 flex items-center justify-between gap-2 font-semibold text-ink; }
   .pt-share-x { @apply rounded-md px-1.5 text-base leading-none text-ink-soft hover:bg-surface hover:text-ink; }

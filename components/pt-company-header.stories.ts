@@ -1,8 +1,8 @@
 /** pt-company-header: the box on a company's main page and, low, on its sub-pages. Fixtures are made up. */
-import { PT_LIVE } from '../src/context';
+import { PT_FOLLOW, PT_FOLLOW_ON, PT_LIVE, type FollowState } from '../src/context';
 import { liveSource } from '../src/site/live';
 import { demo, liveDay, story } from '../src/stories/story';
-import { demoFor, METRIC_KEYS, type MetricItem, type SectorBasket } from '../src/typologies';
+import { companyDemo, demoFor, METRIC_KEYS, type MetricItem, type SectorBasket } from '../src/typologies';
 import { PtCompanyHeader } from './pt-company-header';
 
 /** A made-up sector: its companies' bars rise through the session, the largest not yet traded (it counts flat). */
@@ -63,3 +63,12 @@ export const stories = [
   story(PtCompanyHeader, { name: 'Not available', inputs: { ticker: 'NVDA' }, data: null }),
   ...sectorStories,
 ];
+
+/** The bell (follow, 2026-11-14): made-up alerts; what this browser follows from a store in memory. */
+const follows = (s: FollowState) => [{ provide: PT_FOLLOW_ON, useValue: true }, { provide: PT_FOLLOW, useValue: { read: () => s, write: () => undefined } }];
+const nvda = companyDemo({ ticker: 'NVDA' });
+stories.push(
+  story(PtCompanyHeader, { name: 'Bell: 4 new alerts', inputs: { ticker: 'NVDA' }, providers: follows({ follows: [], seen: {} }) }),
+  story(PtCompanyHeader, { name: 'Bell: following, 1 new alert', inputs: { ticker: 'NVDA' }, providers: follows({ follows: ['NVDA'], seen: { NVDA: nvda.alerts![1]!.session } }) }),
+  story(PtCompanyHeader, { name: 'Bell: 9+', inputs: { ticker: 'NVDA' }, data: { 'company@1': { ...nvda, alerts: Array.from({ length: 12 }, () => nvda.alerts![0]!) } }, providers: follows({ follows: [], seen: {} }) }),
+);
