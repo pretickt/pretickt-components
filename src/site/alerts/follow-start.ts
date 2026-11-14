@@ -2,6 +2,7 @@ import { type ApplicationRef, type ComponentRef, createComponent, type Environme
 import { PtFollow, type FollowPress } from '@pretickt/components/follow';
 import { panelPosition } from '../cards';
 import { PtFollowPanel } from './follow-panel';
+import { PtFollowing } from './following';
 
 const WIDTH = 320;
 
@@ -48,6 +49,13 @@ export function startFollow(doc: Document, appRef: ApplicationRef, env: Environm
   };
 
   follow.listen(show);
+  // /alerts/: the companies this browser follows, in the page's place for them
+  const list = doc.querySelector('[data-pt-following]');
+  if (list) {
+    const el = doc.createElement('pt-following');
+    list.replaceChildren(el);
+    appRef.attachView(createComponent(PtFollowing, { environmentInjector: env, hostElement: el }).hostView);
+  }
   doc.addEventListener('keydown', (e) => { if (e.key === 'Escape' && open) close(true); });
   doc.addEventListener('click', (e) => { if (open && !open.host.contains(e.target as Node)) close(false); });
 }

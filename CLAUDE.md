@@ -215,6 +215,24 @@ email, no account.
   are not placeable components, and what they add to the main bundle stays a few bytes. Two traps: a `document:` host listener puts
   Angular's resolver in main (add such a listener by hand), and every symbol a chunk imports from main lengthens main's export list.
 
+### The bell: following a company (`@pretickt/components/follow`, `src/site/alerts/follow*.ts`, spec 2026-11-14-follow-alerts-design.md)
+Romeo, 2026-11-14: «non serve definire un allarme, oggi azienda nella tooltip card e nella Company page ha una campanella, con badge per gli
+allarmi recenti come in un'app mobile per l'icona». With the page model's `follow` (FOLLOW_ENABLED) the per-placement bells go (`withAlerts`
+returns the page as it is; the lists' "Email me when a stock joins this list" buttons are the generator's and stay):
+- **The data:** `company@1.alerts` — the company's alerts of its last 5 sessions, newest first, at most 12 (`FollowAlert`: kind, session,
+  tone, badge label and figure, one line, a small picture `FollowPic`; kinds in `FOLLOW_KINDS`, most important first; open, like the feed's).
+  The nightly writes them (platform `core/src/follow`, table follow_alerts). `/data/alerts-v1.json` (`FollowFile`) holds every company's for
+  /alerts/: one file for every reader.
+- **`PtFollow`** (its own entry: in the context barrel it sat in every page's main bundle): what this browser follows and has seen, from
+  `PT_FOLLOW` (localStorage `pt-follow-v1`, the page's, browser only), read after the first render like `PtPicks`; `PT_FOLLOW_ON` (context
+  entry, server and browser alike) draws the bells. `following(t)`, `unseen(t, alerts)` (every recent alert before the first render, so the
+  server HTML carries the count), `toggle`, `markSeen`, `press` → the page's panel through `listen`.
+- **The bell** in pt-company-card and pt-company-header (1.3.0): `.pt-follow-bell` at the end of the name row, `.pt-follow-n` the unseen
+  count (9+). Not on funds or sectors yet (part 4).
+- **The page's parts** (one chunk, `follow-start.ts`, loaded only with `follow`): the panel (`follow-panel.ts`: `PtFollowRows` + the Follow
+  switch, seen on open) placed with `panelPosition`; /alerts/'s `[data-pt-following]` gets `PtFollowing` (the night file, no logos, hovers
+  stopped). `picGeometry` (`src/alerts/pic.ts`) draws the small pictures. Stories: `src/stories/follow.stories.ts`.
+
 ## Search engines and AI answers (SEO, AI search)
 Google shows an AI Overview on most questions about a stock, and the chat assistants (ChatGPT, Claude, Gemini, Perplexity) answer
 them too, quoting the sites that write the exact number with its date. What a component prints is that text:

@@ -508,6 +508,13 @@
   .pt-follow-dot { fill: var(--color-ink); }
   .pt-follow-empty { @apply m-0 text-sm text-ink-soft; }
   .pt-follow-foot { @apply mb-0 mt-3; }
+  /* /alerts/ (src/site/alerts/following.ts): one block per followed company */
+  .pt-following { @apply m-0 grid list-none gap-4 p-0; }
+  .pt-following-co { @apply rounded-control border border-border bg-surface-raised p-3; }
+  .pt-following-id { @apply mb-2 flex items-center gap-2; }
+  .pt-following-id a { @apply font-semibold; }
+  .pt-following-x { @apply ml-auto rounded-md px-2 text-lg leading-none text-ink-soft hover:bg-surface hover:text-ink; }
+  .pt-following-none { @apply text-ink-soft; }
   .pt-share-menu { @apply fixed z-50 w-80 max-w-[calc(100vw-2rem)] rounded-control border border-border bg-surface-raised p-3 text-sm shadow-lg; }
   .pt-share-head { @apply mb-2 flex items-center justify-between gap-2 font-semibold text-ink; }
   .pt-share-x { @apply rounded-md px-1.5 text-base leading-none text-ink-soft hover:bg-surface hover:text-ink; }

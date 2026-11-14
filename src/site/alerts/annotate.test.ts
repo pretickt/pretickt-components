@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { PageModel } from '../model';
 import { withAlerts } from './annotate';
 
-const model = (alerts?: true): PageModel => ({ buildId: 'b', api: '', ...(alerts ? { alerts } : {}), sections: [{ id: 'why', items: [
+const model = (alerts?: true, follow?: true): PageModel => ({ buildId: 'b', api: '', ...(alerts ? { alerts } : {}), ...(follow ? { follow } : {}), sections: [{ id: 'why', items: [
   { c: 'pt-why-today', props: { ticker: 'NVDA' } }, { c: 'pt-calendar', props: { kind: 'dividend' } }, { c: 'pt-x', props: {}, off: true }] }] });
 
 describe('withAlerts (renderPage, on the server)', () => {
@@ -16,5 +16,10 @@ describe('withAlerts (renderPage, on the server)', () => {
   it('a page without alerts is left as it is', () => {
     const m = model();
     expect(withAlerts(m)).toBe(m);
+  });
+  it("with follow on no placement gets a bell (the companies' bells replace them); the lists' buttons are the generator's, untouched", () => {
+    const m = model(true, true);
+    expect(withAlerts(m)).toBe(m);
+    expect(m.sections[0]!.items.every((it) => it.alert === undefined)).toBe(true);
   });
 });
