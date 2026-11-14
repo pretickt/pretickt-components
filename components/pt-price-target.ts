@@ -1,6 +1,6 @@
 /**
  * Where do analysts think this stock is going, and how spread out are they? On a fund's or a sector's page: where its holdings' analysts put it, week by week.
- * @version 2.7.0
+ * @version 2.7.1
  * @evidence Romeo, 2026-11-07: «for the price target, both in ETFs and sectors, I would like a chart similar to the one in companies, with dots and the lines to see recents and visually» (2.5: `basket`, `sector`)
  * @evidence Romeo, 2026-11-07, on a basket dot's panel: «do not show weighted target, but the surrounding companies with logos» (2.6: the week, then its largest companies)
  * @evidence DataForSEO: "{ticker} price target" ~103k searches/month, "{ticker} stock forecast" ~151k (launch/data, public-site spec §4)
@@ -286,8 +286,11 @@ function niceStep(raw: number): number {
 }
 const minusWeek = (iso: string) => new Date(Date.parse(`${iso}T00:00:00Z`) - 7 * 86_400_000).toISOString().slice(0, 10);
 
-/** Each week's tip: its average and firms, then who raised or cut in it (after the week before), newest first, one row a firm. */
-function weekTips(weekly: Weekly, targets: Analysts['targets']): (string | null)[] {
+/**
+ * Each week's tip: its average and firms, then who raised or cut in it (after the week before), newest first, one row a firm. From the data
+ * only: the page works them out once, the zoom moves the strips (review, 2026-11-14).
+ */
+export function weekTips(weekly: Weekly, targets: Analysts['targets']): (string | null)[] {
   return weekly.map((w, i) => {
     if (w.mean == null) return null;
     const from = i ? weekly[i - 1]!.t : minusWeek(w.t), byFirm = new Map<string, Analysts['targets'][number]>();
@@ -305,10 +308,21 @@ function weekTips(weekly: Weekly, targets: Analysts['targets']): (string | null)
 }
 
 /**
+ * The weeks the strip draws: the payload's, today's with the summary's own average (the payload rounds each week to the cent, and $309.495
+ * shown as «$310 average target» beside the price axis' AVERAGE $309 would not agree: review, 2026-11-14). Null without weeks.
+ */
+export function trendWeeks(a: Analysts): Weekly | null {
+  const w = a.weekly;
+  if (!w?.length) return null;
+  const last = w.at(-1)!;
+  return last.t === a.asOf && last.mean != null && a.summary ? [...w.slice(0, -1), { ...last, mean: a.summary.mean }] : w;
+}
+
+/**
  * The average target week by week as a line on the target chart's time axis (`x`, the viewport applied), green where it rises and red
  * where it falls, its last turn marked; null with fewer than two weeks with an average.
  */
-export function buildTrend(weekly: Weekly, targets: Analysts['targets'], x: { min: number; max: number }): PtTrendChart | null {
+export function buildTrend(weekly: Weekly, targets: Analysts['targets'], x: { min: number; max: number }, tips = weekTips(weekly, targets)): PtTrendChart | null {
   const legs = trendLegs(weekly.map((w) => w.mean));
   if (!legs.length) return null;
   const ms = weekly.flatMap((w) => (w.mean == null ? [] : [w.mean]));
@@ -322,7 +336,7 @@ export function buildTrend(weekly: Weekly, targets: Analysts['targets'], x: { mi
   const pts = weekly.map((w) => (w.mean == null ? null : `${sx(w.t)} ${sy(w.mean)}`));
   const step = niceStep((b - a) / 3), grid: PtTrendChart['grid'] = [];
   for (let k = Math.ceil(a / step); k * step <= b; k++) grid.push({ y: sy(k * step), label: axisPrice(k * step) });
-  const tips = weekTips(weekly, targets), xs = weekly.map((w) => sx(w.t));
+  const xs = weekly.map((w) => sx(w.t));
   const half = (i: number, j: number) => (xs[j] !== undefined ? Math.abs(xs[j]! - xs[i]!) / 2 : 4);
   const weeks = weekly.map((w, i) => {
     const x0 = xs[i]! - (i ? half(i, i - 1) : half(i, i + 1)), x1 = xs[i]! + (i < xs.length - 1 ? half(i, i + 1) : half(i, i - 1));
@@ -565,14 +579,17 @@ export class PtPriceTarget {
   /** The page's company (the card at the top of every company page asks for it too: the same call), named in the trend's sentence. */
   private readonly company = this.pt.company(() => { const t = this.own(); return t ? { ticker: t } : null; });
   /** The average target week by week under the chart, on its time axis (zoom and pan included); a company's only, from a payload with weeks. */
+  private readonly weeks = computed(() => { const a = this.data(); return this.mode() === 'company' && a ? trendWeeks(a) : null; });
+  /** The weeks' tips, from the data alone: the zoom and the pan redraw the strip, not these. */
+  private readonly tips = computed(() => { const w = this.weeks(), a = this.data(); return w && a ? weekTips(w, a.targets) : null; });
   protected readonly trend = computed(() => {
-    const a = this.data(), ch = this.c();
-    return this.mode() === 'company' && a?.weekly && ch ? buildTrend(a.weekly, a.targets, ch.x) : null;
+    const a = this.data(), w = this.weeks(), tips = this.tips(), ch = this.c();
+    return a && w && tips && ch ? buildTrend(w, a.targets, ch.x, tips) : null;
   });
   /** What the analysts did since the last turn, in a sentence; none while the company's name is on its way. */
   protected readonly trendSay = computed(() => {
-    const a = this.data(), t = this.own(), co = this.company.value();
-    return a?.weekly && t && co !== undefined ? trendText(mention(t, co?.name ?? null, co?.logo ?? null), a.weekly, a.targets) : null;
+    const a = this.data(), w = this.weeks(), t = this.own(), co = this.company.value();
+    return a && w && t && co !== undefined ? trendText(mention(t, co?.name ?? null, co?.logo ?? null), w, a.targets) : null;
   });
   private readonly accuracy = computed(() => new Map((this.data()?.accuracy ?? []).filter((x) => x.total > 0).map((x) => [x.firm, x])));
   protected readonly groups = computed(() => {

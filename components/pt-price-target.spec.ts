@@ -1,6 +1,6 @@
-import { date, mention, money, pct, plainName, tip, type Said } from '../src/ds/format';
+import { date, mention, money, pct, plainName, saidText, tip, type Said } from '../src/ds/format';
 import { analystsDemo, demoFor, priceSeriesDemo, type Basket, type SectorBasket } from '../src/typologies';
-import { buildConsensusHistory, buildPtChart, buildTrend, consensusText, LEVEL_GAP, PtPriceTarget, trendLegs, trendText } from './pt-price-target';
+import { buildConsensusHistory, buildPtChart, buildTrend, consensusText, LEVEL_GAP, PtPriceTarget, trendLegs, trendText, trendWeeks, weekTips } from './pt-price-target';
 import { basics, render, settle, withData } from './_spec';
 
 const analysts = analystsDemo({ ticker: 'NVDA', window: '1y' });
@@ -196,6 +196,19 @@ describe('the average target week by week (the trend under the chart): its legs,
     const day = (d: string) => Math.floor(Date.parse(`${d}T00:00:00Z`) / 864e5);
     expect(buildTrend(peak, [], { min: day('2025-11-14'), max: day('2027-11-14') })!.turn!.anchor).toBe('middle'); // a page's two years: Aug 28 mid-plot
   });
+  it("today's week shows the summary's average to the dollar, as the price axis does (review, 2026-11-14: «$310 average target» beside AVERAGE $309)", () => {
+    const a = { ...analysts, asOf: '2026-11-13', summary: { ...analysts.summary!, mean: 309.495 }, weekly: [wk('2026-11-06', 305), wk('2026-11-13', 309.5)] };
+    const w = trendWeeks(a)!;
+    expect(w.at(-1)!.mean).toBe(309.495);
+    expect(buildTrend(w, [], x(w))!.end.label).toBe('$309 average target');
+    expect(trendWeeks({ ...a, asOf: '2026-11-16' })!.at(-1)!.mean).toBe(309.5); // a last week that is not today keeps its own
+    expect(trendWeeks({ ...a, weekly: undefined })).toBeNull();
+  });
+  it('the week tips are worked out once from the data; the zoom only moves the strips (review, 2026-11-14)', () => {
+    const tips = peak.map((_, i) => `tip ${i}`);
+    expect(buildTrend(peak, [], x(peak), tips)!.weeks.map((w) => w.tip)).toEqual(tips);
+    expect(buildTrend(peak, [], x(peak))!.weeks.map((w) => w.tip)).toEqual(weekTips(peak, []));
+  });
   it('fewer than two weeks with an average: no line', () => {
     expect(buildTrend([wk('2026-11-06', null, 2), wk('2026-11-13', 310)], [], x(peak))).toBeNull();
     expect(buildTrend([], [], x(peak))).toBeNull();
@@ -281,7 +294,8 @@ describe('pt-price-target', () => {
     const { el } = await view();
     const say = el.querySelector('.pt-trend-say')!;
     expect(say.querySelector('a.pt-mention')!.textContent).toContain('NVDA');
-    expect(say.textContent!.replace(/\s+/g, ' ').trim()).toMatch(/^The average price target for .+ NVDA (peaked|bottomed|rose|fell) /);
+    const co = demoFor({ t: 'company@1', params: { ticker: 'NVDA' } }) as { name: string; logo: string | null };
+    expect(say.textContent!.replace(/\s+/g, ' ').trim()).toBe(saidText(trendText(mention('NVDA', co.name, co.logo), trendWeeks(analysts)!, analysts.targets)!));
   });
   it('a payload of before the weeks (no weekly): no line, no sentence, the rest as it was', async () => {
     const { weekly: _, ...old } = analysts;
