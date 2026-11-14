@@ -8,6 +8,7 @@ const none: Screen = { asOf: '2026-09-30', rows: [] };
 export const stories = [
   story(PtScreen, { name: 'Biggest losers (demo)', inputs: { list: 'biggest_losers' } }),
   story(PtScreen, { name: 'Biggest gainers (demo)', inputs: { list: 'biggest_gainers' } }),
+  story(PtScreen, { name: 'Biggest gainers, each row to why it moved (demo)', inputs: { list: 'biggest_gainers', link: 'why-moving' } }),
   story(PtScreen, { name: '52-week lows (demo)', inputs: { list: '52w_low' } }),
   story(PtScreen, { name: 'Undervalued (demo)', inputs: { list: 'undervalued' } }),
   story(PtScreen, { name: 'Insider buying (demo)', inputs: { list: 'insider_buying' } }),

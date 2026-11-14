@@ -1,7 +1,7 @@
 /**
  * Which companies are on this list today (biggest movers, 52-week extremes, undervalued, insider buying, upgrades and downgrades,
  * golden and death crosses, low P/E, Piotroski 8–9, unusual volume, peers)?
- * @version 2.5.0
+ * @version 2.6.0
  * @evidence DataForSEO: "biggest stock losers today", "52 week low stocks", "undervalued stocks" (launch/data/08c-serp-undervalued-stocks.json)
  * @evidence stockanalysis.com / finviz market-mover tables; beta: peers table on the company page
  * @evidence DataForSEO round 16 (2026-11-02): "upgrades and downgrades" 3,600/month (KD 9), "golden cross stocks" 1,000 (KD 12), "death cross
@@ -10,7 +10,7 @@
 import { Component, computed, inject, input, linkedSignal } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
 import { MORE_STEP, PtLogo, PtMore, PtSortTh, useSort } from '@pretickt/components/ds';
-import { date, money, num, pct, plainName, stockHref, tone, usd } from '@pretickt/components/format';
+import { date, href, money, num, pct, plainName, stockHref, tone, usd } from '@pretickt/components/format';
 import { SCREEN_MAX, type ScreenList, type ScreenRow, type Sector } from '@pretickt/components/typologies';
 
 type Cell = { text: string; tone?: string };
@@ -26,6 +26,8 @@ const COLS = {
   peVsSector: { label: 'P/E vs sector', cell: (r: ScreenRow) => signed(r.peVsSector ?? null), value: (r: ScreenRow) => r.peVsSector ?? null },
   fscore: { label: 'F-score', cell: (r: ScreenRow): Cell => ({ text: r.fscore == null ? '—' : `${r.fscore}/9` }), value: (r: ScreenRow) => r.fscore ?? null },
 };
+/** What a row's link to one of the company's pages says to a screen reader, after the company. */
+const LINK_SR = { 'why-moving': ': why it moved', 'price-target': ': price targets', insiders: ': insider trades', value: ': is it a good buy', financials: ': financials' } as const;
 const EXTRA: Record<ScreenList | 'peers', (keyof typeof COLS)[]> = {
   biggest_losers: ['offHigh'], biggest_gainers: ['offHigh'], '52w_low': ['offHigh'], '52w_high': ['offHigh'],
   undervalued: ['ptUpside'], insider_buying: ['insiderNet'], most_active: ['volumeRatio'], largest: ['offHigh'], peers: ['offHigh', 'ptUpside'],
@@ -65,7 +67,7 @@ type Row = { r: ScreenRow; rank: number; chg: Cell; extra: Cell[]; spark: Return
             @for (x of sort.sorted(); track x.r.ticker) {
               <tr [class]="x.r.self ? 'pt-scr-row pt-scr-self' : 'pt-scr-row'">
                 <td class="pt-scr-rank">{{ x.rank }}</td>
-                <td><a class="pt-scr-co" [href]="stockHref(x.r.ticker)"><pt-logo [ticker]="x.r.ticker" [src]="x.r.logo" /> <strong>{{ x.r.ticker }}</strong>@let nm = plainName(x.r.name); @if (nm !== x.r.ticker) { <span>{{ nm }}</span>}</a></td>
+                <td><a class="pt-scr-co" [href]="rowHref(x.r.ticker)" [attr.data-card]="page() ? x.r.ticker : null"><pt-logo [ticker]="x.r.ticker" [src]="x.r.logo" /> <strong>{{ x.r.ticker }}</strong>@let nm = plainName(x.r.name); @if (nm !== x.r.ticker) { <span>{{ nm }}</span>}@if (page(); as pg) {<span class="pt-sr">{{ pg.sr }}</span>}</a></td>
                 <td class="pt-num">{{ money(x.r.close) }}</td>
                 <td class="pt-num"><span [class]="x.chg.tone">{{ x.chg.text }}</span></td>
                 @for (c of x.extra; track $index) {<td class="pt-num">@if (c.tone) {<span [class]="c.tone">{{ c.text }}</span>} @else {<ng-container>{{ c.text }}</ng-container>}</td>}
@@ -88,6 +90,12 @@ export class PtScreen {
   readonly limit = input(25);
   /** A list may keep to one sector (the sector pages). */
   readonly sector = input<Sector>();
+  /**
+   * Where a row's company link goes: the company's page, or the one of its pages that answers the list (gainers → why it moved).
+   * Search engines crawl a page by the links it gets from pages they visit often (internal links, 2026-11-14); the card still opens
+   * on it (`data-card`) and screen readers hear where it goes.
+   */
+  readonly link = input<'hub' | 'why-moving' | 'price-target' | 'insiders' | 'value' | 'financials'>('hub');
 
   private readonly kind = computed<ScreenList | 'peers'>(() => (this.peersOf() ? 'peers' : this.list() ?? 'biggest_losers'));
   /** "Show 20 more" asks the list again with 20 more rows; the shown rows stay until the answer comes. */
@@ -111,7 +119,8 @@ export class PtScreen {
     company: (x) => x.r.ticker, close: (x) => x.r.close, chg: (x) => x.r.chg1d, pe: (x) => (x.r.pe == null || x.r.pe <= 0 ? null : x.r.pe),
     cap: (x) => x.r.marketCap, x0: (x) => this.extra()[0]?.value(x.r) ?? null, x1: (x) => this.extra()[1]?.value(x.r) ?? null,
   });
-  protected readonly stockHref = stockHref;
+  protected readonly page = computed(() => { const l = this.link(); return l === 'hub' ? null : { slug: l, sr: LINK_SR[l] }; });
+  protected rowHref(ticker: string) { const p = this.page(); return p ? href(`/stocks/${ticker.toLowerCase()}/${p.slug}/`) : stockHref(ticker); }
   protected readonly plainName = plainName;
   protected readonly money = money;
   protected readonly num = num;

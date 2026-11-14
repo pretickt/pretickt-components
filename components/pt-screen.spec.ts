@@ -13,6 +13,26 @@ describe('pt-screen', () => {
     expect(out).toContain('href="/stocks/brk.b/"');
     expect(out.match(/<polyline/g)).toHaveLength(data.rows.length);
   });
+  it('links each row to the page the list asks for, its card still opening on the ticker (internal links, 2026-11-14)', async () => {
+    const data = screenDemo({ scope: { list: 'biggest_losers' }, limit: 10 });
+    const linked = await render(PtScreen, { list: 'biggest_losers', limit: 10, link: 'why-moving' }, withData({ 'screen@1': data }));
+    const cos = [...linked.el.querySelectorAll('.pt-scr-co')];
+    expect(cos).toHaveLength(data.rows.length);
+    for (const a of cos) {
+      const t = a.querySelector('strong')!.textContent!;
+      expect([a.getAttribute('href'), a.getAttribute('data-card'), a.querySelector('.pt-sr')?.textContent]).toEqual([`/stocks/${t.toLowerCase()}/why-moving/`, t, ': why it moved']);
+    }
+    expect(linked.html()).toContain('href="/stocks/brk.b/why-moving/" data-card="BRK.B"');
+    for (const [link, sr] of [['price-target', ': price targets'], ['insiders', ': insider trades'], ['value', ': is it a good buy'], ['financials', ': financials']]) {
+      const a = (await render(PtScreen, { list: 'biggest_losers', limit: 10, link }, withData({ 'screen@1': data }))).el.querySelector('.pt-scr-co')!;
+      expect([a.getAttribute('href')!.split('/').at(-2), a.querySelector('.pt-sr')!.textContent]).toEqual([link, sr]);
+    }
+    // the default and the peers table: the company's page, no card attribute, nothing for screen readers
+    for (const inputs of [{ list: 'biggest_losers', limit: 10 }, { peersOf: 'NVDA', limit: 5 }]) {
+      const a = (await render(PtScreen, inputs)).el.querySelector('.pt-scr-co')!;
+      expect([/^\/stocks\/[a-z.]+\/$/.test(a.getAttribute('href')!), a.hasAttribute('data-card'), a.querySelector('.pt-sr')]).toEqual([true, false, null]);
+    }
+  });
   it('names each company as people search it, its ticker beside it', async () => {
     const data = screenDemo({ scope: { list: 'biggest_losers' }, limit: 3 });
     data.rows[0] = { ...data.rows[0]!, ticker: 'NVDA', name: 'NVIDIA Corporation' };
