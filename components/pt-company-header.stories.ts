@@ -1,5 +1,6 @@
 /** pt-company-header: the box on a company's main page and, low, on its sub-pages. Fixtures are made up. */
 import { PT_FOLLOW, PT_FOLLOW_ON, PT_LIVE, type FollowState } from '../src/context';
+import { PtFollow } from '../src/context/follow';
 import { liveSource } from '../src/site/live';
 import { demo, liveDay, story } from '../src/stories/story';
 import { companyDemo, demoFor, METRIC_KEYS, type MetricItem, type SectorBasket } from '../src/typologies';
@@ -65,7 +66,8 @@ export const stories = [
 ];
 
 /** The bell (follow, 2026-11-14): made-up alerts; what this browser follows from a store in memory. */
-const follows = (s: FollowState) => [{ provide: PT_FOLLOW_ON, useValue: true }, { provide: PT_FOLLOW, useValue: { read: () => s, write: () => undefined } }];
+// PtFollow too: a story's own instance, which sees the story's store (the root one does not)
+const follows = (s: FollowState) => [{ provide: PT_FOLLOW_ON, useValue: true }, { provide: PT_FOLLOW, useValue: { read: () => s, write: () => undefined } }, PtFollow];
 const nvda = companyDemo({ ticker: 'NVDA' });
 stories.push(
   story(PtCompanyHeader, { name: 'Bell: 4 new alerts', inputs: { ticker: 'NVDA' }, providers: follows({ follows: [], seen: {} }) }),

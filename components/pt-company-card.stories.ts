@@ -1,5 +1,6 @@
 /** pt-company-card: the wide page header and the compact hover card, www's real companies, the market open, and what is missing. */
 import { PT_FOLLOW, PT_FOLLOW_ON, type FollowState } from '../src/context';
+import { PtFollow } from '../src/context/follow';
 import { companyDemo } from '../src/typologies';
 import { liveDay, story } from '../src/stories/story';
 import { PtCompanyCard } from './pt-company-card';
@@ -18,7 +19,8 @@ export const stories = [
 ];
 
 /** The bell (follow, 2026-11-14): made-up alerts; what this browser follows from a store in memory. */
-const follows = (s: FollowState) => [{ provide: PT_FOLLOW_ON, useValue: true }, { provide: PT_FOLLOW, useValue: { read: () => s, write: () => undefined } }];
+// PtFollow too: a story's own instance, which sees the story's store (the root one does not)
+const follows = (s: FollowState) => [{ provide: PT_FOLLOW_ON, useValue: true }, { provide: PT_FOLLOW, useValue: { read: () => s, write: () => undefined } }, PtFollow];
 const nvda = companyDemo({ ticker: 'NVDA' });
 stories.push(
   story(PtCompanyCard, { name: 'Bell: 4 new alerts', inputs: { ticker: 'NVDA', size: 'compact' }, providers: follows({ follows: [], seen: {} }) }),

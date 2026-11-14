@@ -48,7 +48,7 @@ export class PtFollowRows {
   imports: [PtFollowRows],
   template: `
     <div class="pt-follow-head">
-      <p class="pt-follow-title"><b>Alerts for {{ name() }}</b> <span class="pt-meta">· last 5 sessions</span></p>
+      <p class="pt-follow-title"><b>Alerts for {{ name() }}</b><span class="pt-meta">{{ ' · last 5 sessions' }}</span></p>
       <button type="button" class="pt-abtn pt-follow-switch" [attr.aria-pressed]="followed()" (click)="follow.toggle(ticker())">{{ followed() ? 'Following' : 'Follow' }}</button>
     </div>
     <pt-follow-rows [alerts]="alerts()" />

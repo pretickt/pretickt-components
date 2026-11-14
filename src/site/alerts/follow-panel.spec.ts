@@ -25,7 +25,7 @@ function mount(alerts: FollowAlert[], init: FollowState = { follows: [], seen: {
 describe('the bell\'s panel (follow, 2026-11-14)', () => {
   it('lists each alert with its badge, line and day; its switch follows the company; opening it marks the alerts seen', () => {
     const { f, el, writes, follow } = mount([alert('near-support', '2026-11-13'), alert('results', '2026-11-12', { tone: 'pos', label: 'Beat', value: 'EPS $1.05', line: 'EPS 4% above the estimate' })]);
-    expect(el.querySelector('.pt-follow-title')!.textContent).toContain('Alerts for Nvidia');
+    expect(el.querySelector('.pt-follow-title')!.textContent).toBe('Alerts for Nvidia · last 5 sessions');
     const rows = [...el.querySelectorAll('.pt-follow-row')];
     expect(rows).toHaveLength(2);
     expect(rows[0]!.querySelector('.pt-follow-chip')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('Support 2.1% below');
