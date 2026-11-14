@@ -176,6 +176,13 @@ describe('the average target week by week (the trend under the chart): its legs,
     expect(Number(p.legs[1]!.path.match(/^M([\d.]+)/)![1])).toBeCloseTo(sx('2026-08-28'), 0);
     expect(buildTrend(peak, [], { min: ax.min + 20, max: ax.max })!.legs[0]!.path).not.toBe(p.legs[0]!.path);
   });
+  it("the turn's label stays inside the strip: above a peak, under a low, with room for its text (stories, 2026-11-14: a low's label 1 unit past the bottom)", () => {
+    const p = buildTrend(peak, [], x(peak))!, l = buildTrend(low, [], x(low))!;
+    expect(p.turn!.labelY).toBeLessThan(p.turn!.y);
+    expect(p.turn!.labelY - 9).toBeGreaterThanOrEqual(0);
+    expect(l.turn!.labelY).toBeGreaterThan(l.turn!.y);
+    expect(l.turn!.labelY + 3).toBeLessThanOrEqual(l.h);
+  });
   it('fewer than two weeks with an average: no line', () => {
     expect(buildTrend([wk('2026-11-06', null, 2), wk('2026-11-13', 310)], [], x(peak))).toBeNull();
     expect(buildTrend([], [], x(peak))).toBeNull();
@@ -219,14 +226,52 @@ describe('the average target week by week (the trend under the chart): its legs,
 describe('pt-price-target', () => {
   basics(PtPriceTarget, p);
 
-  it('reads top to bottom: the targets in a sentence, the legend, the target chart, the consensus by month, its counts and its sentence', async () => {
+  it('reads top to bottom: the targets in a sentence, the legend, the target chart, the average target week by week and its sentence, the consensus by month, its counts and its sentence', async () => {
     const { el } = await view();
     const ledes = [...el.querySelectorAll('figure .pt-lede')];
     expect(ledes[0]!.textContent).toContain(`${analysts.summary!.n} firms with a target in the last 12 months · last close ${money(analysts.price!)}`);
     expect(ledes.at(-1)!.textContent).toBe(consensusText(analysts.history));                                     // the text search engines read
-    const order = [ledes[0]!, el.querySelector('.pt-legend')!, el.querySelector('svg.pt-chart-svg')!, el.querySelector('svg.pt-cons')!, el.querySelector('.pt-cons-keys')!, ledes.at(-1)!];
+    const order = [ledes[0]!, el.querySelector('.pt-legend')!, el.querySelector('svg.pt-chart-svg')!, el.querySelector('.pt-trend-legend')!, el.querySelector('svg.pt-trend')!,
+      el.querySelector('.pt-trend-say')!, el.querySelector('svg.pt-cons')!, el.querySelector('.pt-cons-keys')!, ledes.at(-1)!];
     for (let i = 1; i < order.length; i++) expect(order[i - 1]!.compareDocumentPosition(order[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(el.querySelector('.pt-tg')).toBeNull();                                                            // no upright summary
+  });
+  it('under the chart, the average target week by week: a leg a path in its tone, a hover strip a week, the turn and the end dots reachable by keyboard', async () => {
+    const { el } = await view();
+    const c = buildPtChart(series[0]!.points, analysts.targets, analysts.asOf, analysts.price!)!;
+    const k = buildTrend(analysts.weekly!, analysts.targets, c.x)!;
+    const svg = el.querySelector('svg.pt-trend')!;
+    expect(svg.getAttribute('viewBox')).toBe('0 0 800 120');
+    expect(svg.getAttribute('aria-label')).toBe(k.label);
+    expect([...svg.querySelectorAll('path.pt-trend-leg')].map((p) => p.getAttribute('class'))).toEqual(k.legs.map((l) => `pt-trend-leg pt-trend-${l.dir}`));
+    expect(svg.querySelectorAll('rect.pt-trend-hit[data-tip]')).toHaveLength(analysts.weekly!.filter((w) => w.mean != null).length);
+    expect(svg.querySelectorAll('rect.pt-trend-hit[tabindex]')).toHaveLength(0);
+    expect(svg.querySelectorAll('circle.pt-trend-turn')).toHaveLength(k.turn ? 1 : 0);
+    const end = svg.querySelector('circle.pt-trend-end')!;
+    expect(end.getAttribute('tabindex')).toBe('0');
+    expect(end.getAttribute('data-tip')).toBe(k.end.tip);
+    expect(svg.textContent).toContain(k.end.label);
+  });
+  it("its sentence names the company as people search it, through the company's mention, and says what trendText says", async () => {
+    const { el } = await view();
+    const say = el.querySelector('.pt-trend-say')!;
+    expect(say.querySelector('a.pt-mention')!.textContent).toContain('NVDA');
+    expect(say.textContent!.replace(/\s+/g, ' ').trim()).toMatch(/^The average price target for .+ NVDA (peaked|bottomed|rose|fell) /);
+  });
+  it('a payload of before the weeks (no weekly): no line, no sentence, the rest as it was', async () => {
+    const { weekly: _, ...old } = analysts;
+    const { el } = await view(old);
+    expect(el.querySelector('svg.pt-trend')).toBeNull();
+    expect(el.querySelector('.pt-trend-say')).toBeNull();
+    expect(el.querySelector('.pt-trend-legend')).toBeNull();
+    expect(el.querySelector('svg.pt-cons')).not.toBeNull();
+  });
+  it("the line follows the chart's zoom, as the consensus strip does", async () => {
+    const r = await view();
+    const before = r.el.querySelector('path.pt-trend-leg')!.getAttribute('d');
+    (r.f.componentInstance as unknown as { view: { set(v: unknown): void } }).view.set({ start: 0.5, end: 1, yScale: 1, yShift: 0 });
+    await settle(r.f);
+    expect(r.el.querySelector('path.pt-trend-leg')!.getAttribute('d')).not.toBe(before);
   });
   it('draws one dot, orbit and member panel per target cluster and one segment (+ hit path + gradient) per start→end pair', async () => {
     const c = buildPtChart(series[0]!.points, analysts.targets, analysts.asOf, analysts.price!)!;
@@ -317,6 +362,10 @@ describe('pt-price-target on a basket: its holdings\' targets, week by week', ()
   basics(PtPriceTarget, { ticker: 'SMH', basket: true });
   basics(PtPriceTarget, { sector: 'Technology' });
 
+  it('a fund and a sector draw no weekly average line of their own (their dots already are the weeks)', async () => {
+    expect((await fund()).el.querySelector('svg.pt-trend')).toBeNull();
+    expect((await render(PtPriceTarget, { sector: 'Technology' }, withData({ 'sector@1': tech }))).el.querySelector('svg.pt-trend')).toBeNull();
+  });
   it("a fund: a segment from each week's price to its 12-month horizon, dots, its levels the last close and today's target; the lede says weighted", async () => {
     const r = await fund();
     expect(r.text()).toContain("Analysts' targets on its holdings, weighted as it holds them today, week by week over the last 12 months");

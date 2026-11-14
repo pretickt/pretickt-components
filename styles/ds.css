@@ -745,6 +745,15 @@
   .pt-cons-base { @apply stroke-border; stroke-width: 1; }
   .pt-cons-hit { fill: transparent; } .pt-cons-hit:hover { @apply fill-ink/5; }
   .pt-cons-keys { @apply mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-soft; }
+  /* the average target week by week, between the chart and the consensus, on their time axis (pt-price-target 2.7) */
+  .pt-trend { @apply mt-1 block h-auto w-full; }
+  .pt-trend-leg { fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+  .pt-trend-up { @apply stroke-pos; } .pt-trend-down { @apply stroke-neg; } .pt-trend-flat { @apply stroke-ink-soft; }
+  .pt-trend-dot { @apply stroke-surface-raised outline-none; stroke-width: 2; }
+  .pt-trend-dot:focus-visible { @apply stroke-ink; }
+  .pt-trend-dot-up { @apply fill-pos; } .pt-trend-dot-down { @apply fill-neg; } .pt-trend-dot-flat { @apply fill-ink-soft; }
+  .pt-trend-t { @apply fill-ink text-3xs font-semibold; }
+  .pt-trend-hit { fill: transparent; cursor: crosshair; } .pt-trend-hit:hover { @apply fill-ink/5; }
   .pt-cons-k::before { content: ''; @apply mr-1 inline-block h-2 w-2 rounded-sm align-[-1px]; }
   .pt-cons-k-sb::before { @apply bg-pos; } .pt-cons-k-b::before { @apply bg-pos/60; } .pt-cons-k-h::before { @apply bg-ink-soft/40; }
   .pt-cons-k-s::before { @apply bg-neg/60; } .pt-cons-k-ss::before { @apply bg-neg; }

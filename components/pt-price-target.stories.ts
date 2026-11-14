@@ -2,7 +2,7 @@
  * pt-price-target as a company page shows it: the demo, www's real targets (NKE, CHTR, SKYD, NVDA) and the cases its axis and its
  * coverage have to survive. The fixtures are made up; they reproduce the shapes the live pages showed.
  */
-import { demoFor, type Analysts, type Basket, type PriceSeries, type SectorBasket } from '../src/typologies';
+import { addDays, demoFor, median, sessionsBack, targetWeeks, weeksOf, withPrev, type Analysts, type Basket, type PriceSeries, type SectorBasket } from '../src/typologies';
 import { demo, story } from '../src/stories/story';
 import { PtPriceTarget } from './pt-price-target';
 
@@ -48,6 +48,41 @@ const superseded: Analysts = {
 };
 const nvda = demo<Analysts>('analysts@1', { ticker: 'NVDA', window: '1y' });
 
+/**
+ * The average target week by week (2.7, Romeo 2026-11-14): ten made-up firms revising every two months or so over two years, around a
+ * level that follows `level(x)` (x: 0 two years ago → 1 today); prices about 10% under it. `late`: most firms start in the last 200 days.
+ */
+function trending(ticker: string, level: (x: number) => number, o: { late?: boolean } = {}): { a: Analysts; s: PriceSeries } {
+  const asOf = '2026-10-23', rows: { date: string; firm: string; target: number; priceWhenPosted: number }[] = [];
+  const r2 = (v: number) => Math.round(v * 100) / 100;
+  for (let k = 0; k < 10; k++) {
+    const first = o.late && k > 1 ? 200 - k * 9 : 730 - k * 6;
+    for (let d = first; d >= 0; d -= 52 + k * 4) {
+      const lv = level((730 - d) / 730);
+      rows.push({ date: addDays(asOf, -d), firm: `Firm ${String.fromCharCode(65 + k)}`, target: r2(lv * (1 + ((k % 5) - 2) * 0.05)), priceWhenPosted: r2(lv * 0.9) });
+    }
+  }
+  rows.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.firm < b.firm ? -1 : 1));
+  const year = addDays(asOf, -365), latest = new Map<string, number>();
+  for (const t of rows) if (t.date > year) latest.set(t.firm, t.target);
+  const vals = [...latest.values()].sort((a, b) => a - b);
+  const s = series(ticker, '2025-10-27', 250, (i) => level(0.5 + (i / 249) * 0.5) * 0.9);
+  return {
+    s, a: {
+      asOf, price: s[0]!.points.at(-1)!.c,
+      summary: { low: vals[0]!, mean: r2(vals.reduce((a, b) => a + b, 0) / vals.length), median: median(vals), high: vals.at(-1)!, n: vals.length },
+      consensus: { strongBuy: 8, buy: 14, hold: 6, sell: 1, strongSell: 0, period: '2026-10-01' },
+      history: months(11, (i) => [8, 14 - (i % 3), 6, 1, 0]),
+      targets: withPrev(rows).filter((t) => t.date > year), accuracy: [], weekly: targetWeeks(rows, weeksOf(sessionsBack(asOf, 256))),
+    },
+  };
+}
+const rising = trending('RISE', (x) => 200 + 120 * x);
+const peaked = trending('PEAK', (x) => (x < 0.8 ? 220 + 140 * x : 332 - (x - 0.8) * 160));
+const bottomed = trending('BOTM', (x) => (x < 0.72 ? 450 - 115 * x : 367 + (x - 0.72) * 340));
+const late = trending('LATE', (x) => 90 - 40 * x, { late: true });
+const { weekly: _older, ...older } = nvda;
+
 export const stories = [
   story(PtPriceTarget, { name: 'Demo (NVDA)', inputs: { ticker: 'NVDA' } }),
   story(PtPriceTarget, { name: 'www: NVDA', inputs: { ticker: 'NVDA' }, live: true }),
@@ -57,6 +92,12 @@ export const stories = [
   story(PtPriceTarget, { name: 'Crowded at the bottom: only the labels short of room move up', inputs: { ticker: 'CHTR' },
     data: { 'analysts@1': crowded, 'price-series@1': slide } }),
   story(PtPriceTarget, { name: 'A superseded target above HIGH', inputs: { ticker: 'NKE' }, data: { 'analysts@1': superseded, 'price-series@1': fade } }),
+  // the average target week by week under the chart (2.7, made up): its legs, its turn, the sentence with the raises and cuts since
+  story(PtPriceTarget, { name: 'Trend: rose all year', inputs: { ticker: 'RISE' }, data: { 'analysts@1': rising.a, 'price-series@1': rising.s } }),
+  story(PtPriceTarget, { name: 'Trend: peaked, now falling', inputs: { ticker: 'PEAK' }, data: { 'analysts@1': peaked.a, 'price-series@1': peaked.s } }),
+  story(PtPriceTarget, { name: 'Trend: bottomed, now rising', inputs: { ticker: 'BOTM' }, data: { 'analysts@1': bottomed.a, 'price-series@1': bottomed.s } }),
+  story(PtPriceTarget, { name: 'Trend: too few firms at the start', inputs: { ticker: 'LATE' }, data: { 'analysts@1': late.a, 'price-series@1': late.s } }),
+  story(PtPriceTarget, { name: 'Trend: a payload of before the weeks (no line)', inputs: { ticker: 'NVDA' }, data: { 'analysts@1': older } }),
   story(PtPriceTarget, { name: 'Without prices: stats and the one-line consensus', inputs: { ticker: 'NVDA' }, data: { 'price-series@1': null } }),
   story(PtPriceTarget, { name: 'No targets in 12 months', inputs: { ticker: 'NVDA' },
     data: { 'analysts@1': { ...nvda, summary: null, targets: [], consensus: null, history: [] } } }),

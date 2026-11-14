@@ -1,6 +1,6 @@
 /**
  * Where do analysts think this stock is going, and how spread out are they? On a fund's or a sector's page: where its holdings' analysts put it, week by week.
- * @version 2.6.0
+ * @version 2.7.0
  * @evidence Romeo, 2026-11-07: «for the price target, both in ETFs and sectors, I would like a chart similar to the one in companies, with dots and the lines to see recents and visually» (2.5: `basket`, `sector`)
  * @evidence Romeo, 2026-11-07, on a basket dot's panel: «do not show weighted target, but the surrounding companies with logos» (2.6: the week, then its largest companies)
  * @evidence DataForSEO: "{ticker} price target" ~103k searches/month, "{ticker} stock forecast" ~151k (launch/data, public-site spec §4)
@@ -9,11 +9,14 @@
  * @evidence Romeo, 2026-10-26: "sotto al ptarget deve essere un piccolo grafico con stessi valori dell'asse x price target, ma con rendering come in beta … nella sezione consensus, ma meno alta, diciamo la metà circa" (beta: consensus-history)
  * @evidence Romeo, 2026-10-26: the upright summary of 2.3 goes ("questo va tolto") — high, average, low and today are on the price axis now —
  *   and the legend sits above the chart, so the consensus follows the chart it shares an axis with
+ * @evidence Romeo, 2026-11-14: «sotto il price target, metti un grafico per visualizzare il price target trend» — «l'idea è che se il price target è
+ *   salito sempre e negli ultimi mesi mostra una discesa, forse il trend di prezzo sta cambiando?» — «Vai con A» (2.7: the average target week by
+ *   week under the chart, its last turn, the raises and cuts since in a sentence; what analysts did, never a forecast)
  */
 import { Component, computed, inject, input, linkedSignal, signal } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
-import { applyXViewport, applyYViewport, closeAt, FULL_VIEWPORT, isoDay, linePath, monthTicks, padTime, PtChart, PtLogo, PtTimeAxis, type Viewport } from '@pretickt/components/ds';
-import { date, dayMonth, money, month, pct, plainName, say, svgId, tip, usd, type Mention, type Said } from '@pretickt/components/format';
+import { applyXViewport, applyYViewport, closeAt, FULL_VIEWPORT, isoDay, linePath, monthTicks, padTime, PtChart, PtLogo, PtSay, PtTimeAxis, type Viewport } from '@pretickt/components/ds';
+import { date, dayMonth, mention, money, month, pct, plainName, say, svgId, tip, usd, type Mention, type Said } from '@pretickt/components/format';
 import { cmp, type Analysts, type PriceBar, type Sector } from '@pretickt/components/typologies';
 
 type Target = Analysts['targets'][number];
@@ -230,7 +233,10 @@ export function consensusText(history: Analysts['history']): string | null {
 
 // The average target week by week (Romeo, 2026-11-14: «se il price target è salito sempre e negli ultimi mesi mostra una discesa…», variant A):
 // a third strip on the chart's time axis, between the chart and the consensus, as wide; its line in legs between turns.
-const TH = 120, TT = 26, TB = 10;
+/** The strip's height; its plot leaves room above a peak's label or under a low's (MARGIN_LABEL), else a little (MARGIN). */
+const TH = 120, MARGIN = 8, MARGIN_LABEL = 26;
+/** A turn's label sits this far above a peak (its baseline) or under a low. */
+const ABOVE = 10, UNDER = 17;
 /** A high or low is a turn once the average has moved this far from it. */
 const TURN = 0.03;
 const MAX_TIP_ROWS = 6;
@@ -240,7 +246,7 @@ export interface PtTrendChart {
   w: number; h: number;
   /** oldest first, one path a leg */ legs: { dir: PtTrendLeg['dir']; path: string }[];
   /** the price axis' lines, about three */ grid: { y: number; label: string }[];
-  /** the last turn ("$332 peak · Aug 28"); null with one leg */ turn: { x: number; y: number; peak: boolean; label: string; tip: string } | null;
+  /** the last turn ("$332 peak · Aug 28", its baseline at labelY); null with one leg */ turn: { x: number; y: number; peak: boolean; label: string; labelY: number; tip: string } | null;
   end: { x: number; y: number; dir: PtTrendLeg['dir']; label: string; tip: string };
   /** a hover strip a week, its tip null when the week has no average */ weeks: { t: string; x0: number; w: number; tip: string | null }[];
   label: string;
@@ -304,6 +310,8 @@ export function buildTrend(weekly: Weekly, targets: Analysts['targets'], x: { mi
   if (!legs.length) return null;
   const ms = weekly.flatMap((w) => (w.mean == null ? [] : [w.mean]));
   const lo = Math.min(...ms), hi = Math.max(...ms), span = Math.max(hi - lo, hi * 0.04), a = lo - span * 0.12, b = hi + span * 0.12;
+  const turned = legs.length > 1, peak = turned && legs.at(-2)!.dir === 'up';
+  const TT = turned && peak ? MARGIN_LABEL : MARGIN, TB = turned && !peak ? MARGIN_LABEL : MARGIN;
   const sx = (t: string) => f(ML + ((isoDay(t) - x.min) / (x.max - x.min || 1)) * (W - ML - MR));
   const sy = (v: number) => f(TT + (1 - (v - a) / (b - a)) * (TH - TT - TB));
   const pts = weekly.map((w) => (w.mean == null ? null : `${sx(w.t)} ${sy(w.mean)}`));
@@ -316,11 +324,12 @@ export function buildTrend(weekly: Weekly, targets: Analysts['targets'], x: { mi
     return { t: w.t, x0: f(x0), w: f(x1 - x0), tip: tips[i]! };
   });
   const last = legs.at(-1)!, endW = weekly[last.i1]!;
-  const tw = legs.length > 1 ? weekly[last.i0]! : null, peak = legs.length > 1 && legs.at(-2)!.dir === 'up';
+  const tw = turned ? weekly[last.i0]! : null;
   return {
     w: W, h: TH, grid, weeks,
     legs: legs.map((l) => ({ dir: l.dir, path: pts.slice(l.i0, l.i1 + 1).filter((p) => p != null).map((p, k) => `${k ? 'L' : 'M'}${p}`).join(' ') })),
-    turn: tw ? { x: sx(tw.t), y: sy(tw.mean!), peak, label: `${axisPrice(tw.mean!)} ${peak ? 'peak' : 'low'} · ${dayMonth(tw.t)}`, tip: tips[last.i0]! } : null,
+    turn: tw ? { x: sx(tw.t), y: sy(tw.mean!), peak, label: `${axisPrice(tw.mean!)} ${peak ? 'peak' : 'low'} · ${dayMonth(tw.t)}`,
+      labelY: f(sy(tw.mean!) + (peak ? -ABOVE : UNDER)), tip: tips[last.i0]! } : null,
     end: { x: sx(endW.t), y: sy(endW.mean!), dir: last.dir, label: `${axisPrice(endW.mean!)} average target`, tip: tips[last.i1]! },
     label: `Average analyst price target, week by week, ${month(weekly[legs[0]!.i0]!.t.slice(0, 7))} to ${month(endW.t.slice(0, 7))}`,
   };
@@ -352,7 +361,7 @@ export function trendText(who: Mention, weekly: Weekly, targets: Analysts['targe
 
 @Component({
   selector: 'pt-price-target',
-  imports: [PtChart, PtLogo, PtTimeAxis],
+  imports: [PtChart, PtLogo, PtSay, PtTimeAxis],
   template: `
     @let a = data();
     @if (hidden()) {<p class="pt-na">No weekly target for this {{ mode() === 'sector' ? 'sector' : 'fund' }}</p>}
@@ -422,6 +431,26 @@ export function trendText(who: Mention, weekly: Weekly, targets: Analysts['targe
               }
             </ng-container>
           </div>
+          @if (trend(); as k) {
+            <p class="pt-legend pt-trend-legend"><span>Average target, week by week</span><span class="pt-lg-up">— rising</span><span class="pt-lg-down">— falling</span><span class="pt-lg-hint">hover a week to see who raised or cut</span></p>
+            <svg class="pt-trend" [attr.viewBox]="'0 0 ' + k.w + ' ' + k.h" role="img" [attr.aria-label]="k.label">
+              <defs><clipPath [attr.id]="id() + 'tc'"><rect x="0" y="0" [attr.width]="k.w - MR" [attr.height]="k.h" /></clipPath></defs>
+              @for (g of k.grid; track g.y) {
+                <line class="pt-grid" x1="0" [attr.x2]="k.w - MR" [attr.y1]="g.y" [attr.y2]="g.y" /><text class="pt-axis" [attr.x]="k.w - 4" [attr.y]="f(g.y + 3)" text-anchor="end">{{ g.label }}</text>
+              }
+              <g [attr.clip-path]="'url(#' + id() + 'tc)'">
+                @for (l of k.legs; track $index) {<path [attr.class]="'pt-trend-leg pt-trend-' + l.dir" [attr.d]="l.path" />}
+                @for (w of k.weeks; track w.t) {@if (w.tip) {<rect class="pt-trend-hit" [attr.x]="w.x0" y="0" [attr.width]="w.w" [attr.height]="k.h" [attr.data-tip]="w.tip" />}}
+                @if (k.turn; as t) {
+                  <circle [attr.class]="'pt-trend-dot pt-trend-turn pt-trend-dot-' + (t.peak ? 'up' : 'down')" [attr.cx]="t.x" [attr.cy]="t.y" r="5" tabindex="0" [attr.aria-label]="t.label" [attr.data-tip]="t.tip" />
+                  <text class="pt-trend-t" [attr.x]="t.x" [attr.y]="t.labelY" text-anchor="middle">{{ t.label }}</text>
+                }
+                <circle [attr.class]="'pt-trend-dot pt-trend-end pt-trend-dot-' + k.end.dir" [attr.cx]="k.end.x" [attr.cy]="k.end.y" r="4.5" tabindex="0" [attr.aria-label]="k.end.label" [attr.data-tip]="k.end.tip" />
+                <text class="pt-trend-t" [attr.x]="f(k.end.x + 9)" [attr.y]="f(k.end.y + 4)">{{ k.end.label }}</text>
+              </g>
+            </svg>
+            @if (trendSay(); as s) {<p class="pt-lede pt-trend-say"><pt-say [parts]="s" /></p>}
+          }
           @if (cons(); as k) {
             <svg class="pt-cons" [attr.viewBox]="'0 0 ' + k.w + ' ' + k.h" role="img" [attr.aria-label]="k.label">
               <defs><clipPath [attr.id]="id() + 'cc'"><rect x="0" y="0" [attr.width]="k.w - MR" [attr.height]="k.h" /></clipPath></defs>
@@ -523,6 +552,18 @@ export class PtPriceTarget {
   protected readonly cons = computed(() => {
     const a = this.data(), ch = this.c();
     return a && ch ? buildConsensusHistory(a.history, ch.x) : null;
+  });
+  /** The page's company (the card at the top of every company page asks for it too: the same call), named in the trend's sentence. */
+  private readonly company = this.pt.company(() => { const t = this.own(); return t ? { ticker: t } : null; });
+  /** The average target week by week under the chart, on its time axis (zoom and pan included); a company's only, from a payload with weeks. */
+  protected readonly trend = computed(() => {
+    const a = this.data(), ch = this.c();
+    return this.mode() === 'company' && a?.weekly && ch ? buildTrend(a.weekly, a.targets, ch.x) : null;
+  });
+  /** What the analysts did since the last turn, in a sentence; none while the company's name is on its way. */
+  protected readonly trendSay = computed(() => {
+    const a = this.data(), t = this.own(), co = this.company.value();
+    return a?.weekly && t && co !== undefined ? trendText(mention(t, co?.name ?? null, co?.logo ?? null), a.weekly, a.targets) : null;
   });
   private readonly accuracy = computed(() => new Map((this.data()?.accuracy ?? []).filter((x) => x.total > 0).map((x) => [x.firm, x])));
   protected readonly groups = computed(() => {
