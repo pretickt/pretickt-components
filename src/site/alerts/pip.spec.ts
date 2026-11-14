@@ -39,4 +39,14 @@ describe('the floating window (part 3: Document Picture-in-Picture)', () => {
     expect(chips[1]!.classList.contains('pt-pip-new')).toBe(true);
     f.stop();
   });
+  it("the window opens at once (the click's permission is short); the night file comes after", async () => {
+    const order: string[] = [];
+    const pipDoc = document.implementation.createHTMLDocument('pip');
+    const pipWin = { document: pipDoc, addEventListener: () => {}, close: () => {} } as unknown as Window;
+    const win = { documentPictureInPicture: { requestWindow: async () => { order.push('window'); return pipWin; } }, location: { origin: 'https://x' } } as unknown as Window;
+    const f = await openFloating(win, { follows: ['NVDA'], file: async () => { order.push('file'); return FILE; }, load: async () => null, everyMs: 0 });
+    expect(order).toEqual(['window', 'file']);
+    expect(pipDoc.querySelector('.pt-pip-name')!.textContent).toBe('Nvidia');
+    f.stop();
+  });
 });

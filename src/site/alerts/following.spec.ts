@@ -66,10 +66,31 @@ describe('/alerts/: what this browser follows (follow, 2026-11-14)', () => {
     expect(follow.link()).toEqual({ token: 'm.n', email: 'r•••@example.com', cadence: 'day' });
     expect(ops).toEqual([['a.b', { op: 'list' }], ['m.n', { op: 'follows', tickers: ['NVDA', 'KO'] }]]);
   });
-  it('a confirmation link confirms first', async () => {
+  it('a confirmation link confirms nothing until the reader presses (a link scanner opening it confirms nothing); pressed, it confirms and links this browser', async () => {
     const ops: unknown[] = [];
-    await mount({ follows: ['NVDA'], seen: {} }, async () => FILE, { backend: server(ops), search: '?do=confirm&t=a.b' });
-    expect(ops).toEqual([['a.b', { op: 'confirm' }]]);
+    const { f, el, follow } = await mount({ follows: ['NVDA'], seen: {} }, async () => FILE, { backend: server(ops), search: '?do=confirm&t=a.b' });
+    expect(ops).toEqual([]);
+    expect(follow.link()).toBeNull();
+    const confirm = el.querySelector<HTMLButtonElement>('.pt-following-confirm')!;
+    expect(confirm.textContent!.trim()).toBe('Confirm and get these companies by email');
+    confirm.click();
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    f.detectChanges();
+    expect(ops[0]).toEqual(['a.b', { op: 'confirm' }]);
+    expect(follow.link()?.token).toBe('m.n');
+  });
+  it("a browser already linked: the server's list wins (an unfollow made on another device stays); a change that did not reach the server goes back first", async () => {
+    const ops: unknown[] = [];
+    const link = { token: 'a.b', email: 'r•••@example.com', cadence: 'day' as const };
+    const { follow } = await mount({ follows: ['NVDA', 'KO'], seen: {}, link }, async () => FILE, { backend: server(ops) });
+    expect(follow.follows()).toEqual(['NVDA']);
+    expect(ops).toEqual([['a.b', { op: 'list' }]]);
+    TestBed.resetTestingModule();
+    const ops2: unknown[] = [];
+    const { follow: f2 } = await mount({ follows: ['NVDA', 'KO'], seen: {}, link: { ...link, dirty: true } }, async () => FILE, { backend: server(ops2) });
+    expect(ops2).toEqual([['a.b', { op: 'list' }], ['m.n', { op: 'follows', tickers: ['NVDA', 'KO'] }]]);
+    expect(f2.follows()).toEqual(['NVDA', 'KO']);
+    expect(f2.link()?.dirty).toBeUndefined();
   });
   it('with a link: how often, switched; the emails stopped forget the link (the follows stay in the browser)', async () => {
     const ops: unknown[] = [];

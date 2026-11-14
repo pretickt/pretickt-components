@@ -59,7 +59,7 @@ export class PtFollowRows {
     @if (email) {
       <div class="pt-follow-mail">
         @if (follow.link(); as l) {<p class="pt-meta">Emails to {{ l.email }} · {{ l.cadence === 'week' ? 'weekly' : 'daily' }} · <a href="/alerts/">Manage</a></p>}
-        @else if (sent()) {<p>Check your inbox: the link in our email turns the alerts on.</p>}
+        @else if (sent()) {<p>Check your inbox, and open the link on this browser to send its follows too.</p>}
         @else {
           <label class="pt-follow-mail-q" for="pt-follow-email">Get the alerts of the companies you follow by email</label>
           <div class="pt-follow-mail-row">
@@ -71,7 +71,7 @@ export class PtFollowRows {
         }
       </div>
     }
-    <p class="pt-follow-foot pt-meta">Followed companies stay in this browser. <a href="/alerts/">All your alerts</a></p>
+    <p class="pt-follow-foot pt-meta">@if (follow.link(); as l) {Your follows also go to {{ l.email }}.} @else {Followed companies stay in this browser.} <a href="/alerts/">All your alerts</a></p>
     @if (float) {<button type="button" class="pt-abtn pt-follow-float" (click)="float.open()">Floating window</button>}`,
 })
 export class PtFollowPanel {

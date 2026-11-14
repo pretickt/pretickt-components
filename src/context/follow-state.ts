@@ -1,7 +1,7 @@
 import type { FollowAlert } from '../typologies';
 
 /** The email this browser's follows go to (part 2): the manage token the server gave, the address as it shows it, how often. */
-export interface FollowLink { token: string; email: string; cadence: 'day' | 'week' }
+export interface FollowLink { token: string; email: string; cadence: 'day' | 'week'; /** a change that did not reach the server: /alerts/ sends the whole list */ dirty?: true }
 /** What this browser follows (tickers, in the order followed), per ticker the newest session of its alerts already seen, and its email link. */
 export interface FollowState { follows: string[]; seen: Record<string, string>; link?: FollowLink }
 const TICKER = /^[A-Z][A-Z0-9]{0,5}(\.[A-Z])?$/;

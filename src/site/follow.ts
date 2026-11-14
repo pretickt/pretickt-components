@@ -9,7 +9,7 @@ const TOKEN = /^[A-Za-z0-9_-]{1,1500}\.[A-Za-z0-9_-]{1,100}$/;
 const linkOf = (v: unknown): FollowLink | undefined => {
   const l = v && typeof v === 'object' ? (v as Record<string, unknown>) : null;
   return l && typeof l['token'] === 'string' && TOKEN.test(l['token']) && typeof l['email'] === 'string' && l['email'].length <= 254 &&
-    (l['cadence'] === 'day' || l['cadence'] === 'week') ? { token: l['token'], email: l['email'], cadence: l['cadence'] } : undefined;
+    (l['cadence'] === 'day' || l['cadence'] === 'week') ? { token: l['token'], email: l['email'], cadence: l['cadence'], ...(l['dirty'] === true ? { dirty: true as const } : {}) } : undefined;
 };
 
 /** This browser's localStorage, or null where reading it throws (blocked storage, sandboxed frames). */

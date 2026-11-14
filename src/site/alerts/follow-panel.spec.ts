@@ -74,12 +74,13 @@ describe('the bell\'s panel (follow, 2026-11-14)', () => {
     for (let i = 0; i < 5; i++) await Promise.resolve();
     f.detectChanges();
     expect(sent).toEqual([['r@example.com', ['AAPL', 'NVDA']]]);
-    expect(el.querySelector('.pt-follow-mail')!.textContent).toContain('Check your inbox');
+    expect(el.querySelector('.pt-follow-mail')!.textContent).toContain('Check your inbox, and open the link on this browser to send its follows too.');
   });
   it('a browser linked to an email says so, with how often', () => {
     const backend: FollowBackend = { signup: async () => 'ok', manage: async () => null };
     const { el } = mount([], { follows: ['NVDA'], seen: {}, link: { token: 'a.b', email: 'r•••@example.com', cadence: 'week' } }, backend);
     expect(el.querySelector('.pt-follow-mail')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('Emails to r•••@example.com · weekly · Manage');
+    expect(el.querySelector('.pt-follow-foot')!.textContent).toContain('Your follows also go to r•••@example.com.');
   });
   it('the floating window: a button only where the browser can open one', () => {
     expect(mount([]).el.querySelector('.pt-follow-float')).toBeNull();

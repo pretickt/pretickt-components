@@ -31,6 +31,7 @@ export async function fetchFollowFile(get: (u: string) => Promise<Response> = (u
   // the site's hover cards listen on the document and ask the API for the ticker they show: here a hover stays inside (as on /portfolio/)
   host: { '(pointerover)': '$event.stopPropagation()', '(pointerout)': '$event.stopPropagation()' },
   template: `
+    @if (email && confirmable()) {<p><button type="button" class="pt-abtn pt-following-confirm" (click)="confirm()">Confirm and get these companies by email</button></p>}
     @if (email && follow.link(); as l) {
       <p class="pt-following-mail">Emails to {{ l.email }} ·
         <button type="button" class="pt-abtn" [attr.aria-pressed]="l.cadence === 'day'" (click)="cadence('day')">Daily</button>
@@ -80,24 +81,46 @@ export class PtFollowing {
     afterNextRender(() => { void this.sync(); });
   }
 
+  /** A confirmation link waits for the reader's press (a link scanner opening the page confirms nothing). */
+  protected readonly confirmable = signal(false);
+
   private async sync(): Promise<void> {
     const e = this.email;
     if (!e) return;
     await this.whenReady();
-    const landing = landingOf(this.search), token = landing.token ?? this.follow.link()?.token;
+    const landing = landingOf(this.search);
+    if (landing.token && landing.action === 'confirm') { this.confirmable.set(true); return; }
+    const token = landing.token ?? this.follow.link()?.token;
     if (!token) return;
-    const st = await e.backend.manage(token, { op: landing.token && landing.action === 'confirm' ? 'confirm' : 'list' }).catch(() => undefined);
+    const st = await e.backend.manage(token, { op: 'list' }).catch(() => undefined);
     if (st === null) { this.follow.setLink(null); return; }
-    if (st) await this.adopt(st);
+    if (st) await this.adopt(st, !landing.token);
   }
 
-  /** The server's state: its link kept, its follows first and this browser's others after them, sent back when they differ. */
-  private async adopt(st: ManageState): Promise<void> {
+  protected async confirm(): Promise<void> {
+    const t = landingOf(this.search).token;
+    if (!t || !this.email) return;
+    this.confirmable.set(false);
+    const st = await this.email.backend.manage(t, { op: 'confirm' }).catch(() => undefined);
+    if (st === null) this.follow.setLink(null);
+    else if (st) await this.adopt(st, false);
+    else this.confirmable.set(true);
+  }
+
+  /**
+   * The server's state. A link this browser did not hold yet (`own` false): the server's follows first and this browser's others after them,
+   * sent back once. A link it holds: the server's list wins (an unfollow made elsewhere stays), unless a change of this browser's did not
+   * reach the server (`dirty`): then this browser's list goes back.
+   */
+  private async adopt(st: ManageState, own: boolean): Promise<void> {
     if (!st.manage || st.status === 'unsubscribed') { this.follow.setLink(null); return; }
+    const was = this.follow.link(), server = st.follows ?? [], mine = this.follow.follows();
+    const held = own && !!was && was.email === st.email;
+    const list = !held ? [...server, ...mine.filter((t) => !server.includes(t))] : was!.dirty ? [...mine] : server;
     this.follow.setLink({ token: st.manage, email: st.email, cadence: st.cadence ?? 'day' });
-    const server = st.follows ?? [], union = [...server, ...this.follow.follows().filter((t) => !server.includes(t))];
-    this.follow.replaceFollows(union);
-    if (union.length !== server.length && this.email) await this.email.backend.manage(st.manage, { op: 'follows', tickers: union }).catch(() => undefined);
+    this.follow.replaceFollows(list);
+    const same = list.length === server.length && list.every((t) => server.includes(t));
+    if (!same && this.email) await this.email.backend.manage(st.manage, { op: 'follows', tickers: list }).catch(() => undefined);
   }
 
   private whenReady(): Promise<void> {

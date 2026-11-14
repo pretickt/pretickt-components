@@ -86,4 +86,12 @@ describe("the bell's panel on the page (follow-start)", () => {
     await flush();
     expect(follow.link()).toBeNull();
   });
+  it('a change that does not reach the server marks the link: /alerts/ sends the whole list next time', async () => {
+    const backend: FollowBackend = { signup: async () => 'ok', manage: async () => { throw new Error('offline'); } };
+    const { follow } = setup('', { init: { follows: [], seen: {}, link: { token: 'a.b', email: 'r•••@example.com', cadence: 'day' } }, backend });
+    await flush();
+    follow.toggle('NVDA');
+    await flush();
+    expect(follow.link()?.dirty).toBe(true);
+  });
 });

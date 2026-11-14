@@ -32,9 +32,11 @@ export function liveChips(q: Pick<LiveQuote, 'p' | 'pc'> | null, levels: { s?: n
  * Opens the window and keeps it current: `load` reads today's intraday file (whole), every `everyMs` while it is open (0: never by itself).
  * `refresh` reads it again now; `stop` ends the polling (the window closing does too).
  */
-export async function openFloating(win: Window, o: { follows: readonly string[]; file: FollowFile | null; load: () => Promise<LiveDay | null>; everyMs: number }):
+export async function openFloating(win: Window, o: { follows: readonly string[]; file: FollowFile | null | (() => Promise<FollowFile | null>); load: () => Promise<LiveDay | null>; everyMs: number }):
   Promise<{ refresh(): Promise<void>; stop(): void }> {
+  // the window first: the click's permission to open it lasts a moment; the night file comes after
   const pip = await (win as unknown as { documentPictureInPicture: PipApi }).documentPictureInPicture.requestWindow({ width: 340, height: 480 });
+  const file = typeof o.file === 'function' ? await o.file().catch(() => null) : o.file;
   const doc = pip.document;
   const css = doc.createElement('link');
   css.rel = 'stylesheet';
@@ -52,8 +54,8 @@ export async function openFloating(win: Window, o: { follows: readonly string[];
   const draw = (day: LiveDay | null) => {
     head.textContent = day ? `Following · ${day.closed ? 'closed' : day.time} · prices 15 min delayed` : 'Following · last close';
     list.replaceChildren(...o.follows.map((t) => {
-      const c = o.file?.companies[t], q = day?.q[t] ?? null;
-      const night: Chip[] = (c?.alerts ?? []).filter((a) => a.session === o.file?.asOf).map((a) => ({ label: `${a.label}${a.value ? ` ${a.value}` : ''}`, tone: a.tone === 'na' ? 'flat' : a.tone }));
+      const c = file?.companies[t], q = day?.q[t] ?? null;
+      const night: Chip[] = (c?.alerts ?? []).filter((a) => a.session === file?.asOf).map((a) => ({ label: `${a.label}${a.value ? ` ${a.value}` : ''}`, tone: a.tone === 'na' ? 'flat' : a.tone }));
       const chips = [...night, ...liveChips(q, c?.levels)], before = shown.get(t);
       shown.set(t, new Set(chips.map((x) => x.label)));
       const row = el('div', 'pt-pip-row');
