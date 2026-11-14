@@ -1,9 +1,9 @@
 /** pt-stats: the demo, a short history without beta, a calm stock with no swing, www's TSLA, KO and NVDA, not available. */
-import { statsDemo, type Stats } from '@pretickt/components/typologies';
-import { story } from '../src/stories/story';
+import type { Stats } from '@pretickt/components/typologies';
+import { demo as demoOf, story } from '../src/stories/story';
 import { PtStats } from './pt-stats';
 
-const demo = statsDemo({ ticker: 'NVDA' });
+const demo = demoOf<Stats>('stats@1', { ticker: 'NVDA' });
 const short: Stats = { ...demo, fullWindow: false, since: '2024-03-01', sessions: 680, beta: null, years: demo.years.slice(-3), months: demo.months.slice(-31),
   path: demo.path.filter((p) => p.t >= '2024-03-01'), swings: demo.swings.filter((w) => w.from >= '2024-03-01').map((w, i) => ({ ...w, first: i === 0 })) };
 const calm: Stats = { ...demo, threshold: 0.1, swings: [], last: null };

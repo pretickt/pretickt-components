@@ -11,13 +11,14 @@ import { AE_AMD } from '../alerts/event-mock';
 import { PtAlertManage } from '../site/alerts/manage';
 import { fakeAlerts } from './fake-alerts';
 import { named, plainName } from '@pretickt/components/format';
-import { METRIC_GROUPS, type Daily, type MetricKey, type ScreenList, type Sector } from '@pretickt/components/typologies';
+import { METRIC_GROUPS, type Daily, type MetricKey, type Stats, type ScreenList, type Sector } from '@pretickt/components/typologies';
 import { HOT } from '../../components/drafts/mock';
 import { PA_NVDA_HUB } from '../../components/drafts/people-ask-mock';
 import { PtHot } from '../../components/drafts/pt-hot';
 import { PtPeopleAsk, type PeopleAsk } from '../../components/drafts/pt-people-ask';
 import { PtValue } from '../../components/pt-value';
 import { PtAnswer } from '../../components/pt-answer';
+import { PtStats } from '../../components/pt-stats';
 import { PtDaily } from '../../components/pt-daily';
 import { PtBasket } from '../../components/pt-basket';
 import { PtCalendar } from '../../components/pt-calendar';
@@ -67,7 +68,7 @@ const LIST_NAV = [
 const sectorPath = (s: Sector) => `/sectors/${s.toLowerCase().replace(/\s+/g, '-')}/`;
 const hub = (t: string) => `/stocks/${t.toLowerCase()}/`;
 const metric = (ticker: string, metrics: readonly MetricKey[]) => ({ c: PtMetric, inputs: { ticker, metrics } });
-const SUBPAGES = [['value', 'Value'], ['why-moving', 'Why it moved'], ['price-target', 'Price target'], ['earnings', 'Earnings'], ['peers', 'Peers'],
+const SUBPAGES = [['value', 'Value'], ['why-moving', 'Why it moved'], ['price-target', 'Price target'], ['history', 'History'], ['earnings', 'Earnings'], ['peers', 'Peers'],
   ['financials', 'Financials'], ['news', 'News'], ['insiders', 'Insiders']] as const;
 
 /** The NYSE week the home looks forward to: the first weekday from today (the generator's nextSession of the last close). */
@@ -90,6 +91,25 @@ const prose = (title: string, body: string) => `<section class="pt-section pt-pr
  * pt-value's own page (the platform's pages.ts, subpage 'value'): the searched question in the title and the h1 (with the ticker; the
  * component asks it with the common name), the company card, the whole component; its questions as FAQPage data (the generator's faqLd).
  */
+/** pages.ts's history page (price range part 1): its answer, then pt-stats; only for a stock with a year of prices. */
+export function historyPage(t: string, legal: string, sector: Sector): PreviewPage {
+  const n = named(legal, t), short = plainName(legal), label = short === t ? t : `${short} (${t})`;
+  return {
+    path: `${hub(t)}history/`,
+    title: fitTitle(`${label} stock price history, returns and statistics`, `${label} stock price history and statistics`, `${label} stock price history`, `${t} stock price history`),
+    description: `${short} stock price history: how much it moves, its returns by year, its falls and rises and how often it closed higher, over the last five years. As of {date}.`,
+    h1: `${short} stock price history and statistics`,
+    lede: `${legal} · end-of-day data as of {date}`,
+    crumbs: [HOME, { label: sector, href: sectorPath(sector) }, { label: n, href: hub(t) }, { label: 'History' }],
+    nav: [{ href: hub(t), label: 'Overview' }, ...SUBPAGES.map(([s, label]) => ({ href: `${hub(t)}${s}/`, label }))],
+    sections: [
+      { id: 'card', items: [{ c: PtCompanyHeader, inputs: { ticker: t, size: 'low' } }] },
+      { id: 'answer', isNew: true, note: 'pt-answer, topic history', items: [{ c: PtAnswer, inputs: { topic: 'history', ticker: t } }] },
+      { id: 'stats', isNew: true, note: 'pt-stats, the stock\'s last five years', items: [{ c: PtStats, inputs: { ticker: t } }] },
+    ],
+  };
+}
+
 export function valuePage(t: string, legal: string, sector: Sector): PreviewPage {
   const name = plainName(legal), n = named(legal, t);
   return {
@@ -128,7 +148,7 @@ export function companyPage(t: string, legal: string, sector: Sector, drafts: { 
       ...(drafts.value ? [{ id: 'value', isNew: true, note: 'pt-value in its compact form: the full one is its own page, /stocks/<t>/value/', items: [{ c: PtValue, inputs: { ticker: t, compact: true } }] }] : []),
       { id: 'snapshot', title: 'Snapshot', items: [metric(t, METRIC_GROUPS.snapshot)] },
       { id: 'why', title: 'Why it moved', more: to('why-moving', `Why ${plain} moved`), items: [{ c: PtWhyToday, inputs: { ticker: t, window: '1d' } }] },
-      { id: 'price', title: 'Price and events', items: [{ c: PtPriceEvents, inputs: { ticker: t, range: '1y' } }] },
+      { id: 'price', title: 'Price and events', more: to('history', `${plain} price history`), items: [{ c: PtPriceEvents, inputs: { ticker: t, range: '1y' } }] },
       { id: 'technicals', title: 'Technicals', items: [metric(t, METRIC_GROUPS.technicals)] },
       { id: 'financials', title: 'Revenue and free cash flow', more: to('financials', `${plain} financials`), items: [{ c: PtFinancials, inputs: { ticker: t, periods: 8 } }] },
       { id: 'peers', title: 'Peers', more: to('peers', `${plain} vs peers`), items: [{ c: PtScreen, inputs: { peersOf: t, limit: 8 } }] },
@@ -322,6 +342,8 @@ export const stories = [
     data: NVDA_VALUE, inputs: { page: valuePage('NVDA', 'NVIDIA Corporation', 'Technology') } }),
   story(PtPreviewCompany, { name: 'NVDA with the card of the day under the answer (www data, a made-up card)', live: true, group: GROUP,
     data: { 'daily@1': demo<Daily>('daily@1', { ticker: 'NVDA' }) }, inputs: { page: companyPage('NVDA', 'NVIDIA Corporation', 'Technology', { daily: true }) } }),
+  story(PtPreviewCompany, { name: 'TSLA: its history page, /stocks/tsla/history/ (demo statistics, www data for the rest)', live: true, group: GROUP,
+    data: { 'stats@1': demo<Stats>('stats@1', { ticker: 'TSLA' }) }, inputs: { page: historyPage('TSLA', 'Tesla, Inc.', 'Consumer Cyclical') } }),
   story(PtPreviewCompany, { name: 'META: today\'s page with the common name only (www data)', live: true, group: GROUP,
     inputs: { page: companyPage('META', 'Meta Platforms, Inc.', 'Communication Services') } }),
   story(PtPreviewCompany, { name: 'NVDA on the demo data (the check)', inputs: { page: companyPage('NVDA', 'NVIDIA Corporation', 'Technology', NVDA_DRAFTS) }, group: GROUP }),
