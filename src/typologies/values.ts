@@ -94,3 +94,11 @@ export const BASKET_MOVERS = 5;
 export const BASKET_MOVER_MIN = 0.00005;
 /** The holdings in the server's HTML; `Show all` opens the rest. */
 export const BASKET_SHOWN = 25;
+
+/** The kinds the nightly writes, most important first: a company's alerts are shown in this order. Open: a newer kind is a row like the others. */
+export const FOLLOW_KINDS = ['level-broken', 'results', 'big-move', 'drawdown', 'analysts', 'near-support', 'near-resistance', 'ma-cross', 'ma-200',
+  'near-52w', 'rally-typical', 'rsi', 'news', 'insider', 'earnings-soon', 'dates'] as const;
+export type FollowKind = (typeof FOLLOW_KINDS)[number];
+/** The sessions a bell counts back, and at most this many alerts a company carries. */
+export const FOLLOW_RECENT = 5;
+export const FOLLOW_MAX = 12;

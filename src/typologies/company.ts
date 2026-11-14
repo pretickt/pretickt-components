@@ -1,5 +1,6 @@
 import * as z from 'zod/mini';
 import { DEMO_COMPANIES, demoName, Ticker } from './common';
+import { FollowAlert, followDemo } from './follow';
 
 /** The profile of one listed company: what the company card shows that no other typology gives. */
 export const CompanyParams = z.object({ ticker: Ticker });
@@ -9,6 +10,8 @@ export const CompanyPayload = z.object({
   logo: z.nullable(z.string()),
   /** A fund with a page at /etfs/<ticker>/, and the share of it its basket figures can rest on. */
   kind: z.optional(z.literal('etf')), coverage: z.optional(z.number()),
+  /** Its alerts of the last 5 sessions, newest first, at most 12 (the bell's count and panel); absent when it has none. */
+  alerts: z.optional(z.array(FollowAlert)),
 });
 export type CompanyParams = z.output<typeof CompanyParams>;
 export type CompanyProfile = z.infer<typeof CompanyPayload>;
@@ -17,5 +20,6 @@ export const companySamples: z.input<typeof CompanyParams>[] = [{ ticker: 'NVDA'
 
 export function companyDemo(p: CompanyParams): CompanyProfile {
   const known = DEMO_COMPANIES.find(([t]) => t === p.ticker);
-  return { ticker: p.ticker, name: known?.[1] ?? demoName(p.ticker), sector: 'Technology', industry: 'Semiconductors', logo: null };
+  const alerts = followDemo(p.ticker);
+  return { ticker: p.ticker, name: known?.[1] ?? demoName(p.ticker), sector: 'Technology', industry: 'Semiconductors', logo: null, ...(alerts.length ? { alerts } : {}) };
 }

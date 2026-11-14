@@ -8,7 +8,10 @@ describe('company@1', () => {
     expect(CompanyParams.safeParse({ ticker: 'NVDA' }).success).toBe(true);
     expect(CompanyParams.safeParse({ ticker: '^GSPC' }).success).toBe(false);
     const d = companyDemo({ ticker: 'NVDA' });
-    expect(d).toEqual({ ticker: 'NVDA', name: 'NVIDIA Corporation', sector: 'Technology', industry: 'Semiconductors', logo: null });
+    const { alerts, ...profile } = d;
+    expect(profile).toEqual({ ticker: 'NVDA', name: 'NVIDIA Corporation', sector: 'Technology', industry: 'Semiconductors', logo: null });
+    expect(alerts?.map((a) => a.kind)).toEqual(['ma-200', 'near-52w', 'rally-typical', 'rsi']); // the bell's recent alerts (follow.ts)
+    expect(companyDemo({ ticker: 'INTC' }).alerts).toBeUndefined(); // a company with none carries no field
     expect(CompanyPayload.safeParse(d).success).toBe(true);
     expect(companyDemo({ ticker: 'ZZZ' }).name).toBe('ZZZ Demo Corp.');
   });

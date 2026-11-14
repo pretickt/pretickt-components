@@ -87,6 +87,7 @@ export * from './basket-math';
 export * from './portfolio';
 export * from './sector';
 export * from './company';
+export * from './follow';
 export * from './insider';
 export * from './attention';
 export * from './daily';

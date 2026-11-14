@@ -15,6 +15,7 @@ export type * from './daily';
 export type * from './stats';
 export type * from './events';
 export type * from './feed';
+export type * from './follow';
 export type * from './fundamentals';
 export type * from './insider';
 export type * from './metric';
