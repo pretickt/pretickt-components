@@ -55,6 +55,12 @@ describe('daily@1 grows by optional fields (spec 2026-11-14 what-to-watch, step 
     for (const visual of pics) expect(DailyPayload.safeParse({ ...d0, card: { ...d0.card!, visual } }).success, visual.v).toBe(true);
     expect(DailyPayload.safeParse({ ...d0, card: { ...d0.card!, visual: { v: 'pie', parts: [] } } }).success).toBe(false);
   });
+  it('the platform names the fact it drew (visualAt), on the card and the half', () => {
+    expect(DailyPayload.safeParse({ ...d0, card: { ...d0.card!, visualAt: 0 } }).success).toBe(true);
+    expect(DailyPayload.safeParse({ ...d0, card: { ...d0.card!, visualAt: -1 } }).success).toBe(false);
+    expect(DailyPayload.safeParse({ ...d0, watch: { ...dailyWatchDemo('NVDA'), visualAt: 0 } }).success).toBe(true);
+    expect(d0.card!.visualAt).toBe(0);
+  });
   it('the three kinds of half parse; watch absent, null and present are all valid', () => {
     const w = dailyWatchDemo('NVDA');
     expect(w.kind).toBe('half');

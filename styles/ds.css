@@ -902,6 +902,9 @@
   .pt-dv-pos { fill: var(--color-pos); }
   .pt-dv-neg { fill: var(--color-neg); }
   .pt-dv-flat { fill: var(--color-ink-soft); }
+  .pt-dv-total { fill: var(--color-ink); fill-opacity: .8; }
+  .pt-dv-zero { stroke: var(--color-ink); stroke-opacity: .4; stroke-width: .8; }
+  .pt-dv-sum { fill: var(--color-ink); font-size: 7px; font-weight: 600; font-family: var(--font-mono, monospace); }
   .pt-dv-buy { fill: var(--color-ink); fill-opacity: .75; }
   .pt-dv-hold { fill: var(--color-ink-soft); fill-opacity: .45; }
   .pt-dv-sell { fill: var(--color-ink-soft); fill-opacity: .2; }

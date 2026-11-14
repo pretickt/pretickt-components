@@ -14,7 +14,7 @@ const WEEK = { kind: 'week', date: S, text: 'Last 5 sessions to Sep 30: EXCH -6.
 const NEWS = { kind: 'news-day', date: S, text: 'Example Chips had 155 news stories on Sep 30, against 40 on a usual day. Top story: “The Chief Executive Is Out at Example Chips.”' };
 const CUT = { kind: 'downgrade', date: S, text: 'Demo Bank downgraded Example Chips to Neutral from Buy on Sep 30, 2026.' };
 // a picture belongs to the facts it was drawn from: a story that changes the facts draws only what it says
-const card = (o: Partial<NonNullable<Daily['card']>>, of: Daily = base): Daily => ({ ...of, card: { ...base.card!, visual: o.facts ? undefined : base.card!.visual, ...o } });
+const card = (o: Partial<NonNullable<Daily['card']>>, of: Daily = base): Daily => ({ ...of, card: { ...base.card!, visual: o.facts ? undefined : base.card!.visual, visualAt: o.facts ? undefined : base.card!.visualAt, ...o } });
 const LONG_MESSAGE = 'Example Chips fell 4.3% on Sep 30 as Demo Bank, Other Bank and 3 more firms downgraded it.';   // 90 characters
 const LONG_BODY = 'Four firms moved their ratings to Neutral in the session and the mean price target fell from $208.10 to $198.40. '
   + 'The stock has now lost 6.0% over the five sessions to Sep 30, most of that on its own rather than with the market or the tech sector. '
@@ -56,7 +56,7 @@ export const stories = [
   story(PtDaily, { name: 'A main company\'s quiet day', inputs: { ticker: 'MSFT' }, data: { 'daily@1': { ...base, ticker: 'MSFT', name: 'Microsoft Corporation', card: { ...base.card!,
     message: 'Microsoft rose 0.4% on Sep 30, the only change for the stock', body: 'The gain comes in a weak stretch for the shares.',
     facts: [day('Last close (Sep 30): MSFT +0.4% = market (SPY) -0.4% + Technology sector -0.8% + MSFT on its own +1.6%.')],
-    visual: { v: 'split', ret: 0.004, market: -0.004, sector: -0.008, specific: 0.016 } } } } }),
+    visual: { v: 'split', ret: 0.004, market: -0.004, sector: -0.008, specific: 0.016 }, visualAt: 0 } } } }),
   story(PtDaily, { name: 'A quoted headline in the message', inputs: { ticker: 'NVDA' }, data: { 'daily@1': card({
     message: 'Headlines on Sep 30 read “The Chief Executive Is Out at Example Chips”', body: 'It was the top story among 155 that day, and Demo Bank downgraded the stock in the same session.',
     facts: [NEWS, CUT, MOVE] }, ex) } }),
@@ -67,19 +67,19 @@ export const stories = [
   story(PtDaily, { name: 'Not available', inputs: { ticker: 'NVDA' }, data: null }),
   // 1.1
   story(PtDaily, { name: '1.1 · the card with its chips, its bold and the move\'s split', inputs: { ticker: 'NVDA' }, data: { 'daily@1': card({ body: 'Four firms moved to Neutral and **the mean target fell**; the stock lost 4.3% in the session, most of it on its own.',
-    facts: [{ ...CUT, chip: { label: 'Downgrade' } }, { ...MOVE, chip: { label: 'Sep 30', value: '-4.3%' } }], visual: { v: 'split', ret: -0.043, market: -0.004, sector: -0.008, specific: -0.031 } }, ex) } }),
+    facts: [{ ...CUT, chip: { label: 'Downgrade' } }, { ...MOVE, chip: { label: 'Sep 30', value: '-4.3%' } }], visual: { v: 'split', ret: -0.043, market: -0.004, sector: -0.008, specific: -0.031 }, visualAt: 1 }, ex) } }),
   story(PtDaily, { name: '1.1 · a changed target drawn before and after', inputs: { ticker: 'NVDA' }, data: { 'daily@1': card({ visual: { v: 'target', before: 208.1, after: 212.4 } }, ex) } }),
   story(PtDaily, { name: '1.1 · the ratings before and after', inputs: { ticker: 'NVDA' }, data: { 'daily@1': card({ message: 'Example Chips gained a buy rating on Sep 30', body: 'One firm moved from hold to buy.',
     facts: [fact('consensus', 'Ratings as of Sep 30: 31 buy, 5 hold, 0 sell; on Sep 29: 30 buy, 6 hold, 0 sell.', 'Ratings', '31 buy · 5 hold · 0 sell')],
-    visual: { v: 'ratings', before: { buy: 30, hold: 6, sell: 0 }, after: { buy: 31, hold: 5, sell: 0 } } }, ex) } }),
+    visual: { v: 'ratings', before: { buy: 30, hold: 6, sell: 0 }, after: { buy: 31, hold: 5, sell: 0 } }, visualAt: 0 }, ex) } }),
   story(PtDaily, { name: '1.1 · an event\'s day on the closes', inputs: { ticker: 'NVDA' }, data: { 'daily@1': card({ message: 'Demo Bank downgraded Example Chips on Sep 30', body: 'The stock fell in the session.',
-    facts: [{ ...CUT, chip: { label: 'Downgrade' } }], visual: { v: 'event', date: S, closes: closes(20, 196, -0.3).map((c, i) => ({ t: `2026-09-${String(i + 3).padStart(2, '0')}`, c })).slice(0, 19).concat([{ t: S, c: 188.2 }]) } }, ex) } }),
+    facts: [{ ...CUT, chip: { label: 'Downgrade' } }], visual: { v: 'event', date: S, closes: closes(20, 196, -0.3).map((c, i) => ({ t: `2026-09-${String(i + 3).padStart(2, '0')}`, c })).slice(0, 19).concat([{ t: S, c: 188.2 }]) }, visualAt: 0 }, ex) } }),
   ...PICS.map(([what, visual, f]) => story(PtDaily, { name: `1.1 · What to watch: the platform's sentence, ${what}`, inputs: { ticker: 'NVDA' }, data: { 'daily@1': watch({ kind: 'fact', fact: f, visual }) } })),
   story(PtDaily, { name: '1.1 · What to watch: a half worded by the model, with bold, chips and its picture', inputs: { ticker: 'NVDA' }, data: { 'daily@1': watch(dailyWatchDemo(T)) } }),
   story(PtDaily, { name: '1.1 · What to watch: nothing close', inputs: { ticker: 'NVDA' }, data: { 'daily@1': watch({ kind: 'nothing', text: 'Nothing close as of Sep 30: no level within 5%, no date in the next 10 sessions, RSI between 36 and 64.' }) } }),
   story(PtDaily, { name: '1.1 · What to watch: nothing stored tonight (no half shown)', inputs: { ticker: 'NVDA' }, data: { 'daily@1': watch(null) } }),
   story(PtDaily, { name: '1.1 · the longest card with the longest half: four facts each, two bold phrases', inputs: { ticker: 'NVDA' }, data: { 'daily@1': { ...card({ message: LONG_MESSAGE, body: LONG_BODY,
     facts: [{ ...CUT, chip: { label: 'Downgrade' } }, { ...base.card!.facts[0]!, chip: { label: 'Mean target', value: '$212.40' } }, { ...WEEK, chip: { label: '5 sessions', value: '-6.0%' } }, { ...MOVE, chip: { label: 'Sep 30', value: '-4.3%' } }],
-    visual: { v: 'split', ret: -0.043, market: -0.004, sector: -0.008, specific: -0.031 } }, ex), watch: LONG_HALF } } }),
+    visual: { v: 'split', ret: -0.043, market: -0.004, sector: -0.008, specific: -0.031 }, visualAt: 3 }, ex), watch: LONG_HALF } } }),
   story(PtDaily, { name: '1.1 · a card stored before chips and pictures, with a half', inputs: { ticker: 'NVDA' }, data: { 'daily@1': { ...card({ facts: [MOVE] }, ex), watch: { kind: 'fact', fact: SUP } } } }),
 ];

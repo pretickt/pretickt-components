@@ -189,7 +189,7 @@ describe('pt-daily', () => {
     it('the move\'s split: widths as the parts\' sizes, the sum labelled as the move', () => {
       const p = picture({ v: 'split', ret: -0.043, market: -0.004, sector: -0.008, specific: -0.031 })!;
       const [m, sec, own] = of(p, 'rect');
-      expect(sec.w / m.w).toBeCloseTo(2, 1); expect(own.w / m.w).toBeCloseTo(7.75, 1);
+      expect(sec.w / m.w).toBeCloseTo(2, 1); expect(own.w / m.w).toBeCloseTo(7.75, 0);   // widths rounded to 0.1 of a 64-unit plot
       expect(own.c).toBe('neg');
       expect(of(p, 'text').map((t) => t.t)).toContain('-4.3%');
     });
@@ -226,15 +226,52 @@ describe('pt-daily', () => {
     });
     it('a picture is aria-hidden, sits beside its text, and tips its fact\'s sentence', async () => {
       const SUP = { kind: 'level-below', date: AS_OF, text: 'Support as of Nov 12: $146.88, 2.1% below the last close; it held 6 times.', chip: { label: 'Support', value: '2.1% below' } };
-      const r = await show({ card: card({ visual: { v: 'split', ret: -0.043, market: -0.004, sector: -0.008, specific: -0.031 } }),
+      const r = await show({ card: card({ visual: { v: 'split', ret: -0.043, market: -0.004, sector: -0.008, specific: -0.031 }, visualAt: 1 }),
         watch: { kind: 'fact', fact: SUP, visual: { v: 'level', close: 150, level: 146.88, distPct: -2.1, closes: [149, 152, 150] } } });
       const svgs = r.el.querySelectorAll('svg.pt-daily-visual');
       expect(svgs).toHaveLength(2);
       for (const s of svgs) expect(s.getAttribute('aria-hidden')).toBe('true');
-      expect(svgs[0]!.getAttribute('data-tip')).toBe(MOVE.text);
-      expect(svgs[1]!.getAttribute('data-tip')).toBe(SUP.text);
+      expect(JSON.parse(svgs[0]!.getAttribute('data-tip')!)).toEqual({ Fact: MOVE.text });   // MOVE has no chip
+      expect(JSON.parse(svgs[1]!.getAttribute('data-tip')!)).toEqual({ Support: SUP.text });
       expect(svgs[0]!.closest('.pt-daily-row')).not.toBeNull();
-      expect(tipOf({ v: 'rsi', values: [25] }, [MOVE])).toBeUndefined();
+      expect(tipOf([MOVE], undefined)).toBeUndefined();
+      expect(tipOf([MOVE], 3)).toBeUndefined();
     });
+  });
+});
+
+describe('pt-daily 1.1: the final review\'s fixes', () => {
+  const of = (p: Pic | null, k: string, c?: string) => (p?.shapes ?? []).filter((x) => x.k === k && (c === undefined || x.c === c)) as any[];
+  const AS = '2026-11-12';
+  const MOVE = { kind: 'day', date: AS, text: 'Last close (Nov 12): NVDA -4.3% = market (SPY) -0.4% + Technology sector -0.8% + NVDA on its own -3.1%.', chip: { label: 'Nov 12', value: '-4.3%' } };
+  const TGT = { kind: 'targets', date: AS, text: 'Price targets published on Nov 12: Demo Bank $200.00.', chip: { label: 'New targets', value: '$200.00' } };
+  const show = (o: object) => render(PtDaily, { ticker: 'NVDA' }, withData({ 'daily@1': { asOf: AS, ticker: 'NVDA', name: 'NVIDIA Corporation', facts: [], ...o } }));
+  it('a picture\'s tooltip is the site\'s: JSON of its fact\'s label and sentence', async () => {
+    const r = await show({ card: { session: AS, writtenAt: 'x', message: 'm', body: 'b', facts: [MOVE], visual: { v: 'split', ret: -0.043, market: -0.004, sector: -0.008, specific: -0.031 }, visualAt: 0 } });
+    expect(JSON.parse(r.el.querySelector('svg.pt-daily-visual')!.getAttribute('data-tip')!)).toEqual({ 'Nov 12': MOVE.text });
+  });
+  it('the platform names the fact it drew: an event drawn from the new targets tips the targets, not the move', async () => {
+    const r = await show({ card: { session: AS, writtenAt: 'x', message: 'm', body: 'b', facts: [MOVE, TGT], visual: { v: 'event', date: AS, closes: [{ t: '2026-11-11', c: 1 }, { t: AS, c: 2 }] }, visualAt: 1 } });
+    expect(JSON.parse(r.el.querySelector('svg.pt-daily-visual')!.getAttribute('data-tip')!)).toEqual({ 'New targets': TGT.text });
+  });
+  it('a target\'s change is drawn at its size: 1% sits close, 20% spreads', () => {
+    const gap = (before: number, after: number) => { const [a, b] = of(picture({ v: 'target', before, after }), 'dot'); return Math.abs(b.x - a.x) / 96; };
+    expect(gap(208.1, 210.2)).toBeLessThan(0.12);
+    expect(gap(200, 240)).toBeGreaterThan(0.6);
+    expect(gap(240, 200)).toBeGreaterThan(0.6);
+  });
+  it('the move\'s split is a waterfall from zero: each part starts where the last ended, the total ends at the move, each labelled', () => {
+    // PG's day: +1.1% = market -0.4% + sector +1.7% + its own -0.2%
+    const p = picture({ v: 'split', ret: 0.011, market: -0.004, sector: 0.017, specific: -0.002 })!;
+    const [m, s, own, total] = of(p, 'rect');
+    const zero = of(p, 'rule', 'zero')[0].x1;
+    expect(m.x + m.w).toBeCloseTo(zero, 0);                  // the market fell: its bar ends at zero
+    expect(s.x).toBeCloseTo(m.x, 0);                         // the sector starts where the market ended
+    expect(own.x).toBeCloseTo(s.x + s.w - own.w, 0);         // its own part falls back from the sector's end
+    expect(total.x).toBeCloseTo(zero, 0);
+    expect(total.x + total.w).toBeCloseTo(own.x, 0);         // the total ends where the own part ended: the move
+    expect(own.c).toBe('neg');
+    expect(total.c).toBe('total');
+    expect(of(p, 'text').map((t) => t.t)).toEqual(['-0.4%', '+1.7%', '-0.2%', '+1.1%']);
   });
 });

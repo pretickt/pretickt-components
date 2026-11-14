@@ -7,7 +7,7 @@
  */
 import { Component, computed, inject, input } from '@angular/core';
 import { Pt } from '@pretickt/components/context';
-import { date, money, named, pct } from '@pretickt/components/format';
+import { date, money, named, pct, tip } from '@pretickt/components/format';
 import type { DailyFact, DailyVisual } from '@pretickt/components/typologies';
 
 /** The half's heading (spec 2026-11-14 what-to-watch, Open #3: the name is Romeo's; one constant until he picks it). */
@@ -107,20 +107,27 @@ export function picture(v: DailyVisual): Pic | null {
       ] };
     }
     case 'split': {
+      // a waterfall from zero, one row a part — the market, the sector, the stock's own — each starting where the last ended, then the move itself
+      // from zero: mixed signs read as they are, and the bars sum to the move; each row labelled on the right
       const parts = [['market', v.market], ['sector', v.sector], ['own', v.specific]] as const;
-      const sum = parts.reduce((a, [, p]) => a + Math.abs(p), 0);
-      if (!ok(v.ret, v.market, v.sector, v.specific) || sum < 1e-9) return null;
-      let at = X0;
-      const shapes: Shape[] = parts.map(([c, p]) => {
-        const w = r1(((X1 - X0) * Math.abs(p)) / sum), rect: Shape = { k: 'rect', c: c === 'own' ? (p > 0 ? 'pos' : p < 0 ? 'neg' : 'flat') : c, x: r1(at), y: 16, w, h: 8 };
-        at += w; return rect;
+      if (!ok(v.ret, v.market, v.sector, v.specific) || parts.every(([, p]) => Math.abs(p) < 1e-9)) return null;
+      const steps = [0, v.market, v.market + v.sector, v.market + v.sector + v.specific];
+      const lo = Math.min(...steps, v.ret), hi = Math.max(...steps, v.ret), span = hi - lo || 1;
+      const PW = 64, x = (u: number) => r1(X0 + ((u - lo) / span) * PW), zero = x(0);
+      const shapes: Shape[] = parts.map(([c, p], i) => {
+        const a = x(steps[i]!), b = x(steps[i + 1]!);
+        return { k: 'rect', c: c === 'own' ? (p > 0 ? 'pos' : p < 0 ? 'neg' : 'flat') : c, x: Math.min(a, b), y: 2 + i * 9, w: r1(Math.max(Math.abs(b - a), 0.6)), h: 6 };
       });
-      shapes.push({ k: 'text', c: 'label', x: X0, y: 11, t: pct(v.ret), a: 'start' });
+      shapes.push({ k: 'rect', c: 'total', x: Math.min(zero, x(v.ret)), y: 29, w: r1(Math.max(Math.abs(x(v.ret) - zero), 0.6)), h: 7 });
+      shapes.push({ k: 'rule', c: 'zero', x1: zero, y1: 0, x2: zero, y2: 40 });
+      [v.market, v.sector, v.specific, v.ret].forEach((p, i) => shapes.push({ k: 'text', c: i === 3 ? 'sum' : 'label', x: X1, y: 7.5 + i * 9, t: pct(p), a: 'end' }));
       return { shapes };
     }
     case 'target': {
-      if (!ok(v.before, v.after)) return null;
-      const x = scale([v.before, v.after], [X0 + 10, X1 - 10]), a = x(v.before), b = x(v.after);
+      if (!ok(v.before, v.after) || v.before <= 0 || v.after <= 0) return null;
+      // a window of at least ±5% around the two marks, so a 1% change is drawn small and a 20% one wide (never stretched edge to edge)
+      const mid = (v.before + v.after) / 2, h = Math.max((Math.abs(v.after - v.before) / mid) * 0.6, 0.05);
+      const x = (u: number) => r1(X0 + ((u - mid * (1 - h)) / (mid * 2 * h)) * (X1 - X0)), a = x(v.before), b = x(v.after);
       return { shapes: [
         { k: 'rule', c: 'guide', x1: X0, y1: 18, x2: X1, y2: 18 },
         { k: 'dot', c: 'was', x: a, y: 18 },
@@ -149,17 +156,14 @@ export function picture(v: DailyVisual): Pic | null {
   }
 }
 
-/** The kinds of fact each picture draws: the picture's tip is the first such fact's sentence (the platform drew the first cited fact it could). */
-const DRAWS: Record<DailyVisual['v'], (kind: string) => boolean> = {
-  level: (k) => k === 'level-above' || k === 'level-below', ma200: (k) => k === 'ma-200', crossed: (k) => k === 'level-crossed',
-  range: (k) => k === 'range-52w', rsi: (k) => k === 'rsi', ma: (k) => k === 'ma-gap', date: (k) => k === 'date',
-  split: (k) => k === 'day' || k === 'week', target: (k) => k === 'analysts', ratings: (k) => k === 'consensus',
-  event: (k) => !['day', 'week', 'analysts', 'consensus', 'targets', 'next-earnings'].includes(k),
+/** The picture's tooltip, in the site's form (JSON of label → value): the sentence of the fact the platform drew it from (`visualAt`), labelled by its chip. */
+export const tipOf = (facts: readonly DailyFact[], at: number | undefined): string | undefined => {
+  const f = at == null ? undefined : facts[at];
+  return f ? tip({ [f.chip?.label ?? 'Fact']: f.text }) : undefined;
 };
-export const tipOf = (v: DailyVisual, facts: readonly DailyFact[]): string | undefined => facts.find((f) => DRAWS[v.v](f.kind))?.text;
-const drawn = (v: DailyVisual | undefined, facts: readonly DailyFact[]): (Pic & { tip: string | undefined }) | null => {
+const drawn = (v: DailyVisual | undefined, facts: readonly DailyFact[], at: number | undefined): (Pic & { tip: string | undefined }) | null => {
   const p = v ? picture(v) : null;
-  return p && v ? { ...p, tip: tipOf(v, facts) } : null;
+  return p ? { ...p, tip: tipOf(facts, at) } : null;
 };
 
 @Component({
@@ -266,10 +270,10 @@ export class PtDaily {
   protected readonly date = date;
   protected readonly named = named;
   protected readonly segments = segments;
-  protected readonly cardPic = computed(() => { const c = this.daily.value()?.card; return c ? drawn(c.visual, c.facts) : null; });
+  protected readonly cardPic = computed(() => { const c = this.daily.value()?.card; return c ? drawn(c.visual, c.facts, c.visualAt) : null; });
   protected readonly watchPic = computed(() => {
     const w = this.daily.value()?.watch;
-    return w?.kind === 'half' ? drawn(w.visual, w.facts) : w?.kind === 'fact' ? drawn(w.visual, [w.fact]) : null;
+    return w?.kind === 'half' ? drawn(w.visual, w.facts, w.visualAt) : w?.kind === 'fact' ? drawn(w.visual, [w.fact], 0) : null;
   });
   protected readonly withChips = withChips;
   protected readonly title = WATCH_TITLE;

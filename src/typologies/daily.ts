@@ -40,15 +40,17 @@ export const DailyVisual = z.discriminatedUnion('v', [
  * will happen. `half`: worded by the model on the night it was written for, every figure in a fact it cites; `fact`: no half tonight, the
  * platform's own sentence of the nearest fact; `nothing`: the night read the company and nothing is near (the line names the thresholds).
  */
+/** `visualAt`: the index, among the facts, of the one the picture was drawn from (its tooltip); the platform picks it, the component never guesses. */
+const VisualAt = z.optional(z.int().check(z.minimum(0)));
 export const DailyWatch = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('half'), session: IsoDate, writtenAt: z.string(), message: z.string(), body: z.string(), facts: z.array(DailyFact), visual: z.optional(DailyVisual) }),
+  z.object({ kind: z.literal('half'), session: IsoDate, writtenAt: z.string(), message: z.string(), body: z.string(), facts: z.array(DailyFact), visual: z.optional(DailyVisual), visualAt: VisualAt }),
   z.object({ kind: z.literal('fact'), fact: DailyFact, visual: z.optional(DailyVisual) }),
   z.object({ kind: z.literal('nothing'), text: z.string() }),
 ]);
 /** `watch` (since pt-daily 1.1): absent while the half's switch is off; null when the night stored nothing to watch for the company (it claims nothing). */
 export const DailyPayload = z.object({
   asOf: IsoDate, ticker: Ticker, name: z.string(),
-  card: z.nullable(z.object({ session: IsoDate, writtenAt: z.string(), message: z.string(), body: z.string(), facts: z.array(DailyFact), visual: z.optional(DailyVisual) })),
+  card: z.nullable(z.object({ session: IsoDate, writtenAt: z.string(), message: z.string(), body: z.string(), facts: z.array(DailyFact), visual: z.optional(DailyVisual), visualAt: VisualAt })),
   facts: z.array(DailyFact),
   watch: z.optional(z.nullable(DailyWatch)),
 });
@@ -74,7 +76,7 @@ export function dailyDemo(p: DailyParams): Daily {
         { kind: 'day', date: DEMO_ASOF, text: `Last close (Sep 30): ${t} +1.7% = market (SPY) +0.2% + Technology sector +0.3% + ${t} on its own +1.2%.`,
           chip: { label: 'Sep 30', value: '+1.7%' } },
       ],
-      visual: { v: 'target', before: 208.1, after: 212.4 } },
+      visual: { v: 'target', before: 208.1, after: 212.4 }, visualAt: 0 },
     facts: [] };
 }
 
@@ -88,5 +90,5 @@ export function dailyWatchDemo(t: string): DailyWatch {
       { kind: 'level-below', date: DEMO_ASOF, text: 'Support as of Sep 30: $184.25, 2.1% below the last close; it held 4 times.', chip: { label: 'Support', value: '2.1% below' } },
       { kind: 'rsi', date: DEMO_ASOF, text: 'RSI (14 days) as of Sep 30: 31, a point above the 30 line read as oversold.', chip: { label: 'RSI', value: '31' } },
     ],
-    visual: { v: 'level', close: 188.2, level: 184.25, distPct: -2.1, closes: [...closes, 188.2] } };
+    visual: { v: 'level', close: 188.2, level: 184.25, distPct: -2.1, closes: [...closes, 188.2] }, visualAt: 0 };
 }
