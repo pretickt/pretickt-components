@@ -882,10 +882,10 @@
   .pt-daily-half { @apply m-0 text-sm font-semibold uppercase tracking-wide text-ink-soft; }
   .pt-daily-line { @apply m-0 mt-1 text-base leading-snug text-ink; }
   .pt-daily-body b { @apply font-semibold text-ink; }
-  /* the picture of a half: under the text on a phone, beside it from sm up; 100 × 40 in its own units, neutral but for the move's own part */
+  /* the picture of a half: under the text on a phone, beside it from sm up; drawn in 100 × 40 units, shown at 140 × 56 px so its labels read (about 10 px); neutral but for the move's own part */
   .pt-daily-row { @apply flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4; }
   .pt-daily-text { @apply min-w-0 flex-1; }
-  .pt-daily-visual { @apply block h-10 w-25 shrink-0 overflow-visible sm:mt-1.5; }
+  .pt-daily-visual { @apply block h-14 w-35 shrink-0 overflow-visible sm:mt-1.5; }
   .pt-dv-line, .pt-dv-slow { fill: none; stroke: var(--color-ink-soft); stroke-width: 1.2; stroke-linejoin: round; stroke-linecap: round; }
   .pt-dv-slow { stroke-opacity: .45; }
   .pt-dv-level, .pt-dv-guide { stroke: var(--color-border); stroke-width: 1; }
