@@ -318,7 +318,7 @@ pt-chart: clustered target dots, gradient segments from the price when posted, t
 the average target week by week in legs, its last turn and a sentence with the raises and cuts since (what analysts did, never a forecast); the consensus by month
 below, hover panel of the analysts, zoom & pan; with `basket` and a fund's ticker, or with `sector`, the basket's target week by week on its line, the panel naming the week's
 largest companies with their logos and upside then) · `pt-answer` (the page's question answered first, in a sentence or two, from the data the page already asks for; `topic` forecast |
-price-target | peers | financials | insiders | earnings-date | dividend | stock-split | basket with `ticker`, sector with `sector`, list with `list` and optional `sector`, earnings | dividends with `month`,
+price-target | peers | financials | insiders | earnings-date | dividend | stock-split | history | basket with `ticker`, sector with `sector`, list with `list` and optional `sector`, earnings | dividends with `month`,
 earnings with `start` (that date's week), earnings-day with `start` (that day's reports by their time)) ·
 `pt-calendar` (month grid + macro dates + full list, previous/next month; `kind`
 earnings|dividend; `view: 'week'` + `start` = five sessions for the home page; `view: 'day'` + `start` = that week with the day marked and the day's rows first, every one; "+N more" opens the whole day) · `pt-why-today`

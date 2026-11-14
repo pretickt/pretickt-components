@@ -3,7 +3,8 @@
  * price target, its peers, its latest quarter, its insiders, its next earnings date; who leads a market list; a calendar month, week or day at a glance.
  * Company topics name the company as people search it, with its ticker ("Nvidia NVDA"): the sentence an answer engine quotes stands on its own.
  * Each company a sentence names is a link with its logo (PtSay, PtMention): on the site its card opens on hover, the page's own company too.
- * @version 1.9.0
+ * @version 1.10.0
+ * @evidence DataForSEO round 18 (2026-11-14): "nvidia stock price history" 2,900/month, "will nvidia stock go up" 1,900, "<company> all time high": `history`, the history page's answer
  * @evidence design of the fund pages, 2026-11-05: `topic: 'basket'`, the page's first sentence about a fund
  * @evidence design of the sector pages, 2026-11-07: `topic: 'sector'`, the sector's companies, what they are worth and what the targets on them average
  * @evidence DataForSEO round 14 (2026-10-31): "earnings today" 27,100/month, "earnings this week" 18,100, "earnings calendar this week" 8,100,
@@ -25,7 +26,7 @@ import { INSIDER_WINDOW_DAYS, type EventItem, type ScreenList, type ScreenRow, t
 
 export { plainName } from '@pretickt/components/format';
 
-type Topic = 'forecast' | 'price-target' | 'peers' | 'financials' | 'insiders' | 'earnings-date' | 'dividend' | 'stock-split' | 'list' | 'earnings' | 'earnings-day' | 'dividends' | 'technicals' | 'basket' | 'sector';
+type Topic = 'forecast' | 'price-target' | 'peers' | 'financials' | 'insiders' | 'earnings-date' | 'dividend' | 'stock-split' | 'list' | 'earnings' | 'earnings-day' | 'dividends' | 'technicals' | 'basket' | 'sector' | 'history';
 type Named = { ticker: string; name: string; logo?: string | null };
 
 /** A company the answer names: a link with its logo ("Apple AAPL"), its card on hover. */
@@ -140,9 +141,11 @@ export class PtAnswer {
   private readonly of = (...topics: Topic[]) => (topics.includes(this.topic()) ? this.ticker() ?? null : null);
   /** The company's name for the company topics: the card at the top of every company page asks for it too (the same call). */
   protected readonly company = this.pt.company(() => {
-    const t = this.of('forecast', 'price-target', 'peers', 'financials', 'insiders', 'technicals', 'earnings-date', 'dividend', 'stock-split');
+    const t = this.of('forecast', 'price-target', 'peers', 'financials', 'insiders', 'technicals', 'earnings-date', 'dividend', 'stock-split', 'history');
     return t ? { ticker: t } : null;
   });
+  // the history page's statistics (pt-stats asks the same)
+  protected readonly stats = this.pt.stats(() => { const t = this.of('history'); return t ? { ticker: t } : null; });
   protected readonly basket = this.pt.basket(() => { const t = this.of('basket'); return t ? { ticker: t } : null; });
   protected readonly sectorBasket = this.pt.sector(() => { const s = this.sector(); return this.topic() === 'sector' && s ? { sector: s } : null; });
   protected readonly analysts = this.pt.analysts(() => { const t = this.of('forecast', 'price-target'); return t ? { ticker: t, window: '1y' } : null; });
@@ -194,6 +197,7 @@ export class PtAnswer {
       case 'technicals': return this.technicalsAnswer();
       case 'basket': return this.basketAnswer();
       case 'sector': return this.sectorAnswer();
+      case 'history': return this.historyAnswer();
       default: return this.calendarAnswer();
     }
   });
@@ -202,6 +206,23 @@ export class PtAnswer {
   private named(t: string): Mention | undefined {
     const c = this.company.value();
     return c === undefined ? undefined : mention(t, c?.name ?? null, c?.logo ?? null);
+  }
+
+  /** A stock's last five years in three facts: how often it closed a month higher, where it stands against its high, its deepest fall. */
+  private historyAnswer(): Said | null {
+    const s = this.stats.value(), t = this.ticker();
+    if (!t) return null;
+    if (s === undefined) return PENDING;
+    if (s === null) return null;
+    const n = this.named(t);
+    if (n === undefined) return PENDING;
+    const win = s.fullWindow ? 'in the last five years' : `since ${date(s.since)}`, up = s.months.filter((m) => m.change > 0).length;
+    const last = s.path.at(-1)?.c ?? s.high.close, off = last / s.high.close - 1;
+    const high = s.fullWindow ? `its 5-year high close of ${money(s.high.close)} (${date(s.high.date)})` : `its highest close since then, ${money(s.high.close)} (${date(s.high.date)})`;
+    const where = Math.abs(off) < 0.0005 ? `It is at ${high}.` : `It is ${level(-off)} below ${high}.`;
+    const my = (iso: string) => date(iso).replace(/ \d+,/, ''), f = s.deepestFall;
+    const fall = f.size < 0 ? ` Its deepest fall from a high was ${pct(f.size)} (${my(f.from)} → ${my(f.to)}), ${f.back ? `made back by ${my(f.back)}` : 'not made back yet'}.` : '';
+    return say`${n} closed a month higher ${up} times out of ${s.months.length} ${win}. ${where}${fall}`;
   }
 
   /** What a fund holds and what the targets on its covered share say: facts, never a yes or a no; under 80% no figure at all. */

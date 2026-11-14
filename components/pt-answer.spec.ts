@@ -1,4 +1,4 @@
-import { demoFor, type Analysts, type Basket, type Events, type Fundamentals, type Insider, type MetricItem, type Screen, type ScreenRow, type SectorBasket } from '../src/typologies';
+import { demoFor, statsDemo, type Stats, type Analysts, type Basket, type Events, type Fundamentals, type Insider, type MetricItem, type Screen, type ScreenRow, type SectorBasket } from '../src/typologies';
 import { plainName, PtAnswer } from './pt-answer';
 import { PtCalendar } from './pt-calendar';
 import { basics, render, withData } from './_spec';
@@ -23,6 +23,7 @@ describe('pt-answer', () => {
   basics(PtAnswer, { topic: 'earnings-day', start: '2026-10-22' });
   basics(PtAnswer, { topic: 'earnings-date', ticker: 'NVDA' });
   basics(PtAnswer, { topic: 'dividend', ticker: 'NVDA' });
+  basics(PtAnswer, { topic: 'history', ticker: 'NVDA' });
   basics(PtAnswer, { topic: 'stock-split', ticker: 'NVDA' });
 
   it('names companies as people search them', () => {
@@ -246,6 +247,21 @@ describe('pt-answer', () => {
     // its first one, still to come
     expect(await text({ topic: 'dividend', ticker: 'AAPL' }, answers([d('2026-11-12', 0.1, null)]))).toBe(
       'Apple AAPL has declared a dividend. The next is $0.10 a share: ex-dividend on Thursday, Nov 12, 2026; shares bought before the ex-dividend date receive it.');
+  });
+  it('a company\'s history (`history`): how often it closed a month higher, where it stands against its high, its deepest fall and whether it was made back', async () => {
+    const company = { ticker: 'NVDA', name: 'NVIDIA Corporation', sector: 'Technology', industry: 'Semiconductors', logo: null };
+    const months = Array.from({ length: 59 }, (_, i) => ({ month: `20${22 + Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, '0')}`, change: i < 28 ? 0.01 : -0.01 }));
+    const base: Stats = { ...statsDemo({ ticker: 'NVDA' }), months, high: { close: 490.12, date: '2025-12-16', allTime: false },
+      path: [{ t: '2021-11-05', c: 407.36 }, { t: '2026-11-12', c: 397.45 }], deepestFall: { size: -0.73463, from: '2021-11-05', to: '2023-01-03', back: '2024-12-11' } };
+    const say = (st: Stats) => text({ topic: 'history', ticker: 'NVDA' }, { 'stats@1': st, 'company@1': company });
+    expect(await say(base)).toBe('Nvidia NVDA closed a month higher 28 times out of 59 in the last five years. It is 18.9% below its 5-year high close of $490.12 (Dec 16, 2025). ' +
+      'Its deepest fall from a high was -73.5% (Nov 2021 → Jan 2023), made back by Dec 2024.');
+    expect(await say({ ...base, fullWindow: false, since: '2023-06-01' })).toBe('Nvidia NVDA closed a month higher 28 times out of 59 since Jun 1, 2023. It is 18.9% below its highest close since then, $490.12 (Dec 16, 2025). ' +
+      'Its deepest fall from a high was -73.5% (Nov 2021 → Jan 2023), made back by Dec 2024.');
+    expect(await say({ ...base, path: [{ t: '2026-11-12', c: 490.12 }], deepestFall: { ...base.deepestFall, back: null } })).toBe(
+      'Nvidia NVDA closed a month higher 28 times out of 59 in the last five years. It is at its 5-year high close of $490.12 (Dec 16, 2025). ' +
+      'Its deepest fall from a high was -73.5% (Nov 2021 → Jan 2023), not made back yet.');
+    expect(await text({ topic: 'history', ticker: 'NVDA' }, { 'stats@1': null, 'company@1': company })).toBe('');
   });
   it('a company\'s stock splits (`stock-split`): the last one in words, the next if announced, every one on record and what one share became', async () => {
     const company = { ticker: 'NVDA', name: 'NVIDIA Corporation', sector: 'Technology', industry: 'Semiconductors', logo: null };

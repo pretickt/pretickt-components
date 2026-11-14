@@ -26,6 +26,9 @@ export const stories = [
   story(PtAnswer, { name: 'Dividend (demo)', inputs: { topic: 'dividend', ticker: 'KO' } }),
   story(PtAnswer, { name: 'Stock splits (demo)', inputs: { topic: 'stock-split', ticker: 'NVDA' } }),
   story(PtAnswer, { name: 'No split on record', inputs: { topic: 'stock-split', ticker: 'NVDA' }, data: { 'events@1': { asOf: '2026-10-16', items: [] } } }),
+  // a company's history page (/stocks/<t>/history/)
+  story(PtAnswer, { name: 'History (demo)', inputs: { topic: 'history', ticker: 'NVDA' } }),
+  story(PtAnswer, { name: 'www: TSLA history', inputs: { topic: 'history', ticker: 'TSLA' }, live: true }),
   story(PtAnswer, { name: 'Earnings on a day with none', inputs: { topic: 'earnings-day', start: '2026-10-24' }, data: { 'events@1': { asOf: '2026-10-16', items: [] } } }),
   story(PtAnswer, { name: 'www: forecast, NVDA', inputs: { topic: 'forecast', ticker: 'NVDA' }, live: true }),
   story(PtAnswer, { name: 'www: technicals, NVDA', inputs: { topic: 'technicals', ticker: 'NVDA' }, live: true }),

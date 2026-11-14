@@ -64,7 +64,7 @@ for (const c of index.components) for (const props of c.samples.slice(0, 2)) awa
 // neighbours: pt-answer on each topic with the company, list or month it needs (sentences that name companies), the calendar pages
 // (the answer and the calendar on one call)
 const month = DEMO_ASOF.slice(0, 7);
-for (const topic of ['forecast', 'price-target', 'peers', 'financials', 'insiders', 'earnings-date', 'dividend', 'stock-split'])
+for (const topic of ['forecast', 'price-target', 'peers', 'financials', 'insiders', 'earnings-date', 'dividend', 'stock-split', 'history'])
   await page(`pt-answer ${topic} of NVDA`, [{ c: 'pt-answer', props: { topic, ticker: 'NVDA' } }]);
 await page('pt-answer list', [{ c: 'pt-answer', props: { topic: 'list', list: 'biggest_losers' } }, { c: 'pt-screen', props: { list: 'biggest_losers' } }]);
 const basket = (p: Record<string, unknown>, sections: string[]) => sections.map((section) => ({ c: 'pt-basket', props: { ...p, section } }));
