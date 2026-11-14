@@ -36,7 +36,7 @@ const SPARK_W = 120, SPARK_H = 32;
           </div>
             @if (follow.on && !co.value()?.kind) {
               <button type="button" class="pt-follow-bell" [attr.aria-pressed]="followed()" [attr.aria-label]="bellLabel(title)" (click)="bell($event, title)">
-                <svg ptIcon="bell"></svg>@if (fresh(); as n) {<span class="pt-follow-n" aria-hidden="true">{{ n > 9 ? '9+' : n }}</span>}
+                <svg ptIcon="bell"></svg><span class="pt-follow-n" aria-hidden="true" [hidden]="!fresh()">{{ fresh() > 9 ? '9+' : fresh() }}</span>
               </button>
             }
         </div>

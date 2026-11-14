@@ -117,7 +117,8 @@ describe('pt-company-card: the bell (Romeo, 2026-11-14: «una campanella, con ba
     const none = { ...many, alerts: undefined };
     const r = await render(PtCompanyCard, { ticker: 'NVDA' }, withData({ 'company@1': none }), on);
     expect(r.el.querySelector('.pt-follow-bell')).not.toBeNull();
-    expect(r.el.querySelector('.pt-follow-n')).toBeNull();
+    // the dot is always there, hidden at zero: the browser's count may differ from the server's at hydration without changing the structure
+    expect(r.el.querySelector('.pt-follow-n')!.hasAttribute('hidden')).toBe(true);
     expect(r.el.querySelector('.pt-follow-bell')!.getAttribute('aria-label')).toBe('Follow Nvidia');
     const fund = { ...many, kind: 'etf', coverage: 0.9 };
     expect((await render(PtCompanyCard, { ticker: 'NVDA' }, withData({ 'company@1': fund }), on)).el.querySelector('.pt-follow-bell')).toBeNull();
