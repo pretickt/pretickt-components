@@ -15,7 +15,7 @@
  * week (Romeo, 2026-11-11, on the earnings-today page: "le aziende di oggi per prime, non la settimana per dimensione").
  * The grid marks the reader's day, the session after the latest close: the data is the last close's and the page is read the day after
  * (Romeo, 2026-11-11: "perché evidenzia il 10 novembre se oggi è 11?"); on a day view, the day.
- * @version 3.2.1
+ * @version 3.3.0
  * @evidence DataForSEO: "earnings calendar" ~153k searches/month, SERP without AI overview (reports/Funzioni pretickt da tenere e aggiungere.md)
  * @evidence DataForSEO: "dividend calendar" in launch/data/08c-serp-dividend-calendar.json
  * @evidence DataForSEO round 14 (2026-10-31, launch/data/14-summary.json): beyond the date, "who is expected to beat earnings this week?" (AI 574), "is it better to buy before or after earnings?" (357), "fed rate decision" 40,500, "important earnings this week" 590
@@ -187,7 +187,16 @@ export interface Row {
   label: string | null; title: string; ticker: string | null; logo: string | null; showTicker: boolean; unconfirmed: boolean;
   cue: string; cueTone: Tone | 'est'; when: string; hint: string; bars: ReturnType<typeof miniBars>;
   said: Said; facts: string; news: Story[];
+  /**
+   * The company's page for what the calendar shows (its earnings, its dividend), linked under the sentence: search engines crawl a page
+   * by the links it gets from pages they visit often, and the calendars change every day (internal links, 2026-11-14). None for a market date.
+   */
+  page: { href: string; label: string } | null;
 }
+
+/** A company's page for an event of its own: `/stocks/<t>/earnings/` or `/stocks/<t>/dividend/`, with words that say where it goes. */
+const pageOf = (ticker: string, name: string, kind: 'earnings' | 'dividend') =>
+  ({ href: href(`/stocks/${ticker.toLowerCase()}/${kind}/`), label: kind === 'earnings' ? `${name} earnings date, estimates and record` : `${name} dividend history` });
 
 function earningsRow(e: Earnings, asOf: string, closed: ReadonlySet<string>): Row {
   const m = e.meta, out = e.date <= asOf, moved = out ? m.move ?? null : null, moves = (m.moves ?? []).slice(-REPORTS);
@@ -223,7 +232,7 @@ function earningsRow(e: Earnings, asOf: string, closed: ReadonlySet<string>): Ro
   }
   return { key: rowKey(e), out, label: null, title: name, ticker: e.ticker, logo: e.logo, showTicker: named(e.name, e.ticker) !== name,
     unconfirmed: !out && m.confirmed === false, cue: moved != null ? pct(moved) : usual ?? '', cueTone: moved != null ? tone(moved) : 'est',
-    when, hint, bars: miniBars(moves), said, facts, news: m.news ?? [] };
+    when, hint, bars: miniBars(moves), said, facts, news: m.news ?? [], page: pageOf(e.ticker, name, 'earnings') };
 }
 
 function macroRow(e: Macro, asOf: string, normal: number | null): Row {
@@ -246,7 +255,7 @@ function macroRow(e: Macro, asOf: string, normal: number | null): Row {
   }
   return { key: rowKey(e), out, label: m.label, title, ticker: null, logo: null, showTicker: false, unconfirmed: false,
     cue: moved != null ? pct(moved) : u == null ? '' : `±${level(u)}`, cueTone: moved != null ? tone(moved) : 'est',
-    when: `${out ? 'Released' : 'Due'} ${dayLabel(e.date)}`, hint, bars: miniBars(m.moves), said: [said], facts: '', news: m.news ?? [] };
+    when: `${out ? 'Released' : 'Due'} ${dayLabel(e.date)}`, hint, bars: miniBars(m.moves), said: [said], facts: '', news: m.news ?? [], page: null };
 }
 
 function dividendRow(e: Dividend, asOf: string): Row {
@@ -255,7 +264,7 @@ function dividendRow(e: Dividend, asOf: string): Row {
   const paid = pay ? `${pay <= asOf ? 'paid' : 'payable'} ${dayMonth(pay)}` : null;
   return { key: rowKey(e), out, label: null, title: name, ticker: e.ticker, logo: e.logo, showTicker: named(e.name, e.ticker) !== name,
     unconfirmed: false, cue: amount(e.meta.amount), cueTone: 'est', when: `Ex-dividend ${dayLabel(e.date)}`, hint: paid ? upper(paid) : '', bars: null,
-    said: say`${who} ${out ? 'went' : 'goes'} ex-dividend ${dayLabel(e.date)}: ${amount(e.meta.amount)} a share${paid ? `, ${paid}` : ''}.`, facts: '', news: [] };
+    said: say`${who} ${out ? 'went' : 'goes'} ex-dividend ${dayLabel(e.date)}: ${amount(e.meta.amount)} a share${paid ? `, ${paid}` : ''}.`, facts: '', news: [], page: pageOf(e.ticker, name, 'dividend') };
 }
 
 /**
@@ -352,6 +361,7 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
                 <div class="pt-cal-row-more">
                 <p class="pt-cal-row-say"><pt-say [parts]="r.said" /></p>
                 @if (r.facts) {<p class="pt-meta">{{ r.facts }}</p>}
+                @if (r.page; as pg) {<p class="pt-cal-row-link"><a class="pt-cal-row-page" [href]="pg.href">{{ pg.label }} →</a></p>}
                 @if (r.news.length) {
                   <ul class="pt-news">
                     @for (s of r.news; track s.url) {
@@ -409,6 +419,7 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
                   <div class="pt-cal-row-more">
                     <p class="pt-cal-row-say"><pt-say [parts]="row.said" /></p>
                     @if (row.facts) {<p class="pt-meta">{{ row.facts }}</p>}
+                    @if (row.page; as pg) {<p class="pt-cal-row-link"><a class="pt-cal-row-page" [href]="pg.href">{{ pg.label }} →</a></p>}
                     @if (row.news.length) {
                       <ul class="pt-news">
                         @for (s of row.news; track s.url) {

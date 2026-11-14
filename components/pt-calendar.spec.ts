@@ -295,6 +295,16 @@ describe('pt-calendar rows: what to expect from each event', () => {
     const a = news[0]!.querySelector('a')!;
     expect([a.getAttribute('href'), a.getAttribute('target'), a.getAttribute('rel')]).toEqual(['https://example.com/2026-10-26', '_blank', 'nofollow noopener noreferrer']);
   });
+  it('a company row links to its earnings (or dividend) page, saying so; a market date to none (internal links, 2026-11-14)', async () => {
+    const page = (row: HTMLElement) => { const a = row.querySelector('.pt-cal-row-more a.pt-cal-row-page'); return a && [a.getAttribute('href'), a.textContent!.trim()]; };
+    const { of } = await rowsOf(OCT27);
+    expect(page(of('MSFT'))).toEqual(['/stocks/msft/earnings/', 'Microsoft earnings date, estimates and record →']);
+    expect(page(of('Fed'))).toBeNull();
+    const ko = { date: '2026-10-15', ticker: 'KO', name: 'The Coca-Cola Company', logo: null, mcap: 3e11, kind: 'dividend' as const, meta: { amount: 0.51, payDate: '2026-10-30' } };
+    const brk = { ...ko, ticker: 'BRK.B', name: 'Berkshire Hathaway Inc.', mcap: 1e12 };
+    const div = await rowsOf({ asOf: '2026-10-02', items: [ko, brk] }, { month: '2026-10', kind: 'dividend' });
+    expect(div.rows.map(page)).toEqual([['/stocks/brk.b/dividend/', 'Berkshire Hathaway dividend history →'], ['/stocks/ko/dividend/', 'Coca-Cola dividend history →']]);
+  });
   it('the sentences of the other cases: an unconfirmed date, a report traded and one not yet, the Fed, a release', async () => {
     const { of } = await rowsOf(OCT27);
     const said = (k: string) => of(k).querySelector('.pt-cal-row-say')!.textContent!.replace(/\s+/g, ' ').trim();
@@ -427,6 +437,7 @@ describe('pt-calendar grid: the hint in the chip, a click opens the event', () =
     expect(pop.querySelector('.pt-cal-row-hint')!.textContent!.trim()).toBe('Beat 7 of 8 · rose after 5 of 8');
     expect(pop.querySelector('.pt-cal-row-say')!.textContent!.replace(/\s+/g, ' ').trim()).toMatch(/^Microsoft MSFT reports Wed, Oct 28 \(confirmed\)/);
     expect(pop.querySelectorAll('.pt-news-item')).toHaveLength(2);
+    expect(pop.querySelector('a.pt-cal-row-page')!.getAttribute('href')).toBe('/stocks/msft/earnings/');
     // the earnings summary card first (its row, with the bars), the company's usual card under it
     const sum = pop.querySelector('.pt-cal-sum')!;
     expect(sum.querySelectorAll('svg.pt-cal-row-bars rect')).toHaveLength(8);

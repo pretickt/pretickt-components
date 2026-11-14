@@ -819,6 +819,8 @@
   .pt-cal-row-bars .pt-t-flat { @apply fill-ink-soft; }
   .pt-cal-row-more { @apply grid gap-2 border-t border-border px-3 py-2.5 text-sm; }
   .pt-cal-row-say { @apply m-0; }
+  .pt-cal-row-link { @apply m-0 text-xs font-semibold; }
+  .pt-cal-row-link a { @apply text-primary no-underline hover:underline; }
   .pt-cal-row-more .pt-news { @apply mt-0; }
   .pt-cal-row-tag { @apply mr-1 rounded bg-surface px-1 align-[0.1em] text-3xs font-semibold uppercase text-ink-soft; }
 
