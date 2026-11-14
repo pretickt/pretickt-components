@@ -876,6 +876,12 @@
   .pt-daily-body { @apply m-0 mt-1 text-sm leading-relaxed text-ink; }
   .pt-daily-facts { @apply m-0 mt-3 list-none space-y-1.5 border-l-2 border-border p-0 pl-3 text-xs leading-relaxed text-ink-soft; }
   .pt-daily-was { @apply block opacity-80; }
+  /* 1.1: the cited facts' chips (neutral, the platform's figures), the "What to watch" half under a rule, its one line when no half was written */
+  .pt-daily-chips { @apply mt-2 gap-1.5; }
+  .pt-daily-watch { @apply mt-5 border-t border-border pt-4; }
+  .pt-daily-half { @apply m-0 text-sm font-semibold uppercase tracking-wide text-ink-soft; }
+  .pt-daily-line { @apply m-0 mt-1 text-base leading-snug text-ink; }
+  .pt-daily-body b { @apply font-semibold text-ink; }
 
   /* financials */
   .pt-fin-chart { @apply my-2; }

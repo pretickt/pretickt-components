@@ -1,4 +1,4 @@
-import { PtDaily } from './pt-daily';
+import { AI_NOTE_BOTH, PtDaily, segments, WATCH_TITLE } from './pt-daily';
 import { describe, expect, it } from 'vitest';
 import { basics, render, withData } from './_spec';
 
@@ -66,5 +66,76 @@ describe('pt-daily', () => {
     const asked: unknown[] = [];
     await render(PtDaily, { ticker: 'MSFT' }, async (t, p) => { asked.push([t, p]); return withData({})(t, p); });
     expect(asked).toEqual([['daily@1', { ticker: 'MSFT' }]]);
+  });
+
+  describe('1.1: chips, bold and the "What to watch" half (Romeo, 2026-11-14: «Sempre la più vicina e usa badge e grassetto per aiutare la lettura»)', () => {
+    const SUP = { kind: 'level-below', date: AS_OF, text: 'Support as of Nov 12: $146.88, 2.1% below the last close; it held 6 times.', chip: { label: 'Support', value: '2.1% below' } };
+    const RSI = { kind: 'rsi', date: AS_OF, text: 'RSI (14 days) as of Nov 12: 25, under the 30 line read as oversold.', chip: { label: 'RSI', value: '25' } };
+    const half = (o: object = {}) => ({ kind: 'half', session: AS_OF, writtenAt: '2026-11-13T01:20:00Z', message: 'Nvidia closed 2.1% above a support it held 6 times',
+      body: 'The support at $146.88 is the nearest level; the stock **turned there 6 times**. RSI stands at 25.', facts: [SUP, RSI], ...o });
+    const chips = (el: Element, sel = '.pt-daily-chips') => [...el.querySelectorAll(`${sel} li`)].map((x) => x.textContent!.replace(/\s+/g, ' ').trim());
+    it('segments: a well-formed bold, an unpaired mark left as it is, two spans', () => {
+      expect(segments('a **b c** d')).toEqual([{ t: 'a ', b: false }, { t: 'b c', b: true }, { t: ' d', b: false }]);
+      expect(segments('a ** b')).toEqual([{ t: 'a ** b', b: false }]);
+      expect(segments('**x** and **y**')).toEqual([{ t: 'x', b: true }, { t: ' and ', b: false }, { t: 'y', b: true }]);
+    });
+    it('the body\'s bold is <b>, and a card\'s text is still never markup', async () => {
+      const r = await show({ card: card({ body: '<i>x</i> **turned there 6 times**' }) });
+      const b = r.el.querySelectorAll('.pt-daily-body b');
+      expect(b).toHaveLength(1);
+      expect(b[0]!.textContent).toBe('turned there 6 times');
+      expect(r.el.querySelector('i')).toBeNull();
+      expect(r.el.querySelector('.pt-daily-body')!.textContent).toBe('<i>x</i> turned there 6 times');
+    });
+    it('chips in a row, lead first, a fact without a chip skipped', async () => {
+      const r = await show({ card: card({ facts: [SUP, MOVE, RSI] }) });
+      expect(chips(r.el)).toEqual(['Support · 2.1% below', 'RSI · 25']);
+    });
+    it('a card stored before chips: no chips row and no picture', async () => {
+      const r = await show();
+      expect(r.el.querySelector('.pt-daily-chips')).toBeNull();
+      expect(r.el.querySelector('.pt-daily-visual')).toBeNull();
+    });
+    it('watch absent: no heading, no "Nothing close", today\'s note', async () => {
+      const r = await show();
+      expect(r.html()).not.toContain(WATCH_TITLE);
+      expect(r.text()).not.toContain('Nothing close');
+      expect(r.el.querySelector('.pt-note')!.textContent!.trim()).toBe('Wording by an AI model from pretickt\'s data; the dated facts under it are the platform\'s own. Not investment advice.');
+    });
+    it('a half under the card, with its heading, bold, chips and the note for both', async () => {
+      const r = await show({ watch: half() });
+      expect(r.el.querySelector('.pt-daily-half')!.textContent!.trim()).toBe('What to watch');
+      const w = r.el.querySelector('.pt-daily-watch')!;
+      expect(w.querySelector('.pt-daily-message')!.textContent).toBe('Nvidia closed 2.1% above a support it held 6 times');
+      expect(w.querySelector('.pt-daily-body b')!.textContent).toBe('turned there 6 times');
+      expect(chips(w)).toEqual(['Support · 2.1% below', 'RSI · 25']);
+      expect(w.querySelectorAll('.pt-daily-facts li')).toHaveLength(2);
+      const notes = r.el.querySelectorAll('.pt-note');
+      expect(notes).toHaveLength(1);
+      expect(notes[0]!.textContent!.trim()).toBe(AI_NOTE_BOTH);
+      expect(AI_NOTE_BOTH).toBe('Wording by an AI model from pretickt\'s data; the levels, dates and dated facts are the platform\'s own. Not investment advice.');
+    });
+    it('the platform\'s sentence when no half was written tonight: no AI note for it', async () => {
+      const r = await show({ watch: { kind: 'fact', fact: SUP } });
+      const w = r.el.querySelector('.pt-daily-watch')!;
+      expect(w.querySelector('.pt-daily-line')!.textContent).toBe(SUP.text);
+      expect(chips(w)).toEqual(['Support · 2.1% below']);
+      expect(w.querySelector('.pt-daily-message')).toBeNull();
+      expect(r.el.querySelector('.pt-note')!.textContent!.trim()).toBe('Wording by an AI model from pretickt\'s data; the dated facts under it are the platform\'s own. Not investment advice.');
+      const bare = await show({ card: null, facts: [MOVE], watch: { kind: 'fact', fact: SUP } });
+      expect(bare.el.querySelector('.pt-note')).toBeNull();
+      expect(bare.text()).not.toContain('AI');
+    });
+    it('nothing close: the line in pt-meta', async () => {
+      const line = 'Nothing close as of Nov 12: no level within 5%, no date in the next 10 sessions, RSI between 36 and 64.';
+      const r = await show({ watch: { kind: 'nothing', text: line } });
+      expect(r.el.querySelector('.pt-daily-watch .pt-meta')!.textContent!.trim()).toBe(line);
+      expect(r.el.querySelector('.pt-daily-half')).not.toBeNull();
+    });
+    it('watch null: no heading', async () => {
+      const r = await show({ watch: null });
+      expect(r.el.querySelector('.pt-daily-half')).toBeNull();
+      expect(r.el.querySelector('.pt-daily-watch')).toBeNull();
+    });
   });
 });
