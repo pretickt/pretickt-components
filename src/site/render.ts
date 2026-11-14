@@ -1,7 +1,7 @@
 import { DOCUMENT, ErrorHandler, inject, mergeApplicationConfig, provideAppInitializer, TransferState, type ApplicationConfig } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { BEFORE_APP_SERIALIZED, provideServerRendering, renderApplication } from '@angular/platform-server';
-import { PT_STORE, PtStore, validateParams } from '@pretickt/components/context';
+import { PT_FOLLOW_ON, PT_STORE, PtStore, validateParams } from '@pretickt/components/context';
 import { checkMarkup } from '../checks/markup';
 import { readFaq, type FaqPair } from './faq';
 import { demoFor, getTypology } from '../typologies';
@@ -49,6 +49,8 @@ export async function renderPage(given: PageModel, o: RenderOptions): Promise<Re
       provideServerRendering(),
       { provide: PT_PAGE, useValue: model },
       { provide: PT_STORE, useValue: store },
+      // the bells are in the server HTML with every recent alert counted; what this browser follows applies after hydration (PtFollow)
+      { provide: PT_FOLLOW_ON, useValue: model.follow === true },
       { provide: ErrorHandler, useValue: { handleError: (e: unknown) => { errors.push(e); } } },
       // the recorded answers travel in the page state (the same object, filled as the calls answer)
       provideAppInitializer(() => { inject(TransferState).set(CALLS_KEY, record); }),

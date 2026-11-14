@@ -15,9 +15,10 @@ export interface PageSection { id: string; title?: string; more?: { href: string
  */
 /**
  * `alerts`: the page draws a bell under each placement and answers it (the platform turns it on with the alerts' API); `turnstile`:
- * with them, the site key of the editor's human check (Cloudflare Turnstile).
+ * with them, the site key of the editor's human check (Cloudflare Turnstile). `follow` (FOLLOW_ENABLED): each company's bell with its recent
+ * alerts, followed in this browser (spec 2026-11-14-follow-alerts-design.md); the bells under the placements go.
  */
-export interface PageModel { buildId: string; api: string; subject?: string; live?: string; alerts?: true; turnstile?: string; sections: PageSection[] }
+export interface PageModel { buildId: string; api: string; subject?: string; live?: string; alerts?: true; turnstile?: string; follow?: true; sections: PageSection[] }
 
 export interface RenderOptions {
   /** The page document with a `<pt-page></pt-page>` root (the generator's layout). */
