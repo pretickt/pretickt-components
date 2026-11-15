@@ -12,6 +12,7 @@ import { PtAlertManage } from '../site/alerts/manage';
 import { fakeAlerts } from './fake-alerts';
 import { named, plainName } from '@pretickt/components/format';
 import { METRIC_GROUPS, type Daily, type MetricKey, type Stats, type ScreenList, type Sector } from '@pretickt/components/typologies';
+import { dailyWatchDemo } from '../typologies';
 import { HOT } from '../../components/drafts/mock';
 import { PA_NVDA_HUB } from '../../components/drafts/people-ask-mock';
 import { PtHot } from '../../components/drafts/pt-hot';
@@ -342,6 +343,8 @@ export const stories = [
     data: NVDA_VALUE, inputs: { page: valuePage('NVDA', 'NVIDIA Corporation', 'Technology') } }),
   story(PtPreviewCompany, { name: 'NVDA with the card of the day under the answer (www data, a made-up card)', live: true, group: GROUP,
     data: { 'daily@1': demo<Daily>('daily@1', { ticker: 'NVDA' }) }, inputs: { page: companyPage('NVDA', 'NVIDIA Corporation', 'Technology', { daily: true }) } }),
+  story(PtPreviewCompany, { name: 'NVDA with the card of the day and its "What to watch" half (www data, a made-up card and half)', live: true, group: GROUP,
+    data: { 'daily@1': { ...demo<Daily>('daily@1', { ticker: 'NVDA' }), watch: dailyWatchDemo('NVDA') } }, inputs: { page: companyPage('NVDA', 'NVIDIA Corporation', 'Technology', { daily: true }) } }),
   story(PtPreviewCompany, { name: 'TSLA: its history page, /stocks/tsla/history/ (demo statistics, www data for the rest)', live: true, group: GROUP,
     data: { 'stats@1': demo<Stats>('stats@1', { ticker: 'TSLA' }) }, inputs: { page: historyPage('TSLA', 'Tesla, Inc.', 'Consumer Cyclical') } }),
   story(PtPreviewCompany, { name: 'META: today\'s page with the common name only (www data)', live: true, group: GROUP,
