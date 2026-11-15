@@ -133,6 +133,44 @@ describe('PtFollow (the companies this browser follows, and the alerts it has se
     expect(data.follows).toEqual(['NVDA', 'AAPL']);
     expect(heard).toEqual(['AAPL:true']);
   });
+  it("many at once (a portfolio's companies): the missing ones join in order, heard once as the whole list; again, nothing; off, they go", () => {
+    const { store } = memory({ follows: ['NVDA'], seen: {} });
+    const { f, follow } = mount([{ provide: PT_FOLLOW, useValue: store }, { provide: PT_FOLLOW_ON, useValue: true }]);
+    f.detectChanges();
+    TestBed.tick();
+    const heard: string[] = [], lists: string[][] = [];
+    follow.listenChanges((c) => heard.push(`${c.ticker}:${c.on}`));
+    follow.listenLists((l) => lists.push([...l]));
+    const all = follow.followingAll(() => ['AAPL', 'NVDA']);
+    expect(all()).toBe(false);
+    follow.setMany(['AAPL', 'NVDA', 'MSFT'], true);
+    expect(follow.follows()).toEqual(['NVDA', 'AAPL', 'MSFT']);
+    expect(all()).toBe(true);
+    follow.setMany(['AAPL', 'MSFT'], true);
+    follow.setMany(['AAPL', 'NVDA'], false);
+    expect(follow.follows()).toEqual(['MSFT']);
+    expect(lists).toEqual([['NVDA', 'AAPL', 'MSFT'], ['MSFT']]);
+    expect(heard).toEqual([]);   // one list, not a request a company
+    expect(follow.followingAll(() => [])()).toBe(false);
+    store.write({ follows: Array.from({ length: 199 }, (_, i) => `T${i}`), seen: {} });
+    follow.setMany(['NEW', 'TWO'], true);
+    expect(follow.follows()).toHaveLength(200);
+    expect(follow.follows()[0]).toBe('T1');
+    expect(follow.follows().slice(-2)).toEqual(['NEW', 'TWO']);
+  });
+  it('many at once before the store arrives waits for it', async () => {
+    let data: FollowState = { follows: ['NVDA'], seen: {} };
+    let arrive!: () => void;
+    const came = new Promise<void>((r) => { arrive = r; });
+    const store: FollowStore = { read: () => came.then(() => data), write: (s) => { data = s; } };
+    const { f, follow } = mount([{ provide: PT_FOLLOW, useValue: store }, { provide: PT_FOLLOW_ON, useValue: true }]);
+    f.detectChanges();
+    TestBed.tick();
+    follow.setMany(['AAPL'], true);
+    arrive();
+    for (let i = 0; i < 4; i++) await Promise.resolve();
+    expect(data.follows).toEqual(['NVDA', 'AAPL']);
+  });
   it('a store whose first read is a promise (the site loads it on first use) applies when it arrives', async () => {
     let data: FollowState = { follows: ['NVDA'], seen: { NVDA: '2026-11-12' } };
     const store: FollowStore = { read: () => Promise.resolve(data), write: (s) => { data = s; } };

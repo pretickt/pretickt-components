@@ -8,16 +8,17 @@ import { PtFollowPanel } from './follow-panel';
 const alert = (kind: string, session: string, o: Partial<FollowAlert> = {}): FollowAlert =>
   ({ kind, session, tone: 'flat', label: 'Support', value: '2.1% below', line: 'Closed 2.1% above its $182.40 support', pic: { c: [190, 186, 184], lv: [182.4] }, ...o });
 
-function mount(alerts: FollowAlert[], init: FollowState = { follows: [], seen: {} }, email?: FollowBackend) {
+function mount(alerts: FollowAlert[], init: FollowState = { follows: [], seen: {} }, email?: FollowBackend, group?: { name: string; tickers: string[] }) {
   let data = init;
   const writes: FollowState[] = [];
   const store: FollowStore = { read: () => data, write: (s) => { writes.push(s); data = s; } };
   TestBed.configureTestingModule({ providers: [{ provide: PT_FOLLOW, useValue: store }, { provide: PT_FOLLOW_ON, useValue: true },
     ...(email ? [{ provide: PT_FOLLOW_EMAIL, useValue: { backend: email, check: null } }] : [])] });
   const f = TestBed.createComponent(PtFollowPanel);
-  f.componentRef.setInput('ticker', 'NVDA');
-  f.componentRef.setInput('name', 'Nvidia');
+  f.componentRef.setInput('ticker', group ? 'group:example' : 'NVDA');
+  f.componentRef.setInput('name', group?.name ?? 'Nvidia');
   f.componentRef.setInput('alerts', alerts);
+  if (group) f.componentRef.setInput('tickers', group.tickers);
   f.detectChanges();
   TestBed.tick();
   f.detectChanges();
@@ -37,12 +38,12 @@ describe('the bell\'s panel (follow, 2026-11-14)', () => {
     expect(rows[0]!.querySelector('svg.pt-follow-pic')).not.toBeNull();
     expect(writes.at(-1)!.seen).toEqual({ NVDA: '2026-11-13' });
     const sw = el.querySelector<HTMLButtonElement>('.pt-follow-switch')!;
-    expect([sw.textContent!.trim(), sw.getAttribute('aria-pressed')]).toEqual(['Follow', 'false']);
+    expect([sw.textContent!.trim(), sw.getAttribute('aria-pressed')]).toEqual(['Get alerts', 'false']);
     sw.click();
     TestBed.tick();
     f.detectChanges();
     expect(follow.following(() => 'NVDA')()).toBe(true);
-    expect([sw.textContent!.trim(), sw.getAttribute('aria-pressed')]).toEqual(['Following', 'true']);
+    expect([sw.textContent!.trim(), sw.getAttribute('aria-pressed')]).toEqual(['Alerts on', 'true']);
     expect(el.querySelector('a[href="/alerts/"]')!.textContent).toContain('All your alerts');
     expect(el.textContent).toContain('Followed companies stay in this browser.');
   });
@@ -75,6 +76,37 @@ describe('the bell\'s panel (follow, 2026-11-14)', () => {
     f.detectChanges();
     expect(sent).toEqual([['r@example.com', ['AAPL', 'NVDA']]]);
     expect(el.querySelector('.pt-follow-mail')!.textContent).toContain('Check your inbox, and open the link on this browser to send its follows too.');
+  });
+  it('the email row comes before the alerts: on a phone it shows without scrolling (Romeo, 2026-11-15: «non capisco dove dovrei abilitare le notifiche»)', () => {
+    const backend: FollowBackend = { signup: async () => 'ok', manage: async () => null };
+    const { el } = mount([alert('near-support', '2026-11-13')], { follows: [], seen: {} }, backend);
+    const mail = el.querySelector('.pt-follow-mail')!, rows = el.querySelector('pt-follow-rows')!;
+    expect(mail.compareDocumentPosition(rows) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+  it("a group (a portfolio's companies): its count in the title, no rows, one switch for all of them, and what goes with an email", async () => {
+    const sent: [string, string[]][] = [];
+    const backend: FollowBackend = { signup: async (e, f) => { sent.push([e, f]); return 'ok'; }, manage: async () => null };
+    const { f, el, follow } = mount([], { follows: ['NVDA'], seen: {} }, backend, { name: 'Mega caps', tickers: ['AAPL', 'MSFT', 'KO'] });
+    expect(el.querySelector('.pt-follow-title')!.textContent).toBe('Alerts for Mega caps · 3 companies');
+    expect(el.querySelector('pt-follow-rows')).toBeNull();
+    expect(el.querySelector('.pt-follow-mail')!.textContent).toContain('Only the symbols go with your email, never amounts or dates.');
+    const sw = el.querySelector<HTMLButtonElement>('.pt-follow-switch')!;
+    expect([sw.textContent!.trim(), sw.getAttribute('aria-pressed')]).toEqual(['Get alerts for all 3', 'false']);
+    sw.click();
+    TestBed.tick();
+    f.detectChanges();
+    expect(follow.follows()).toEqual(['NVDA', 'AAPL', 'MSFT', 'KO']);
+    expect([sw.textContent!.trim(), sw.getAttribute('aria-pressed')]).toEqual(['Alerts on for all 3', 'true']);
+    sw.click();
+    TestBed.tick();
+    f.detectChanges();
+    expect(follow.follows()).toEqual(['NVDA']);
+    const input = el.querySelector<HTMLInputElement>('.pt-follow-mail input[type="email"]')!;
+    input.value = 'r@example.com'; input.dispatchEvent(new Event('input'));
+    el.querySelector<HTMLButtonElement>('.pt-follow-mail button')!.click();
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    expect(follow.follows()).toEqual(['NVDA', 'AAPL', 'MSFT', 'KO']);
+    expect(sent).toEqual([['r@example.com', ['NVDA', 'AAPL', 'MSFT', 'KO']]]);
   });
   it('a browser linked to an email says so, with how often', () => {
     const backend: FollowBackend = { signup: async () => 'ok', manage: async () => null };

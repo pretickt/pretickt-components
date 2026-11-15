@@ -31,12 +31,16 @@ export function startFollow(doc: Document, appRef: ApplicationRef, root: Environ
     } } }] : []),
   ];
   const env = providers.length ? createEnvironmentInjector(providers, root) : root;
-  follow.listenChanges((c) => {
+  // a linked browser tells the server each change; one that does not reach it marks the link (/alerts/ sends the whole list next time)
+  const tell = (op: Parameters<FollowBackend['manage']>[1]) => {
     floating?.redraw();
     const l = backend && follow.link();
-    const dirty = () => { const now = follow.link(); if (now) follow.setLink({ ...now, dirty: true }); };   // /alerts/ sends the whole list next time
-    if (backend && l) backend.manage(l.token, { op: 'follow', ticker: c.ticker, on: c.on }).then((st) => { if (st === null) follow.setLink(null); }, dirty);
-  });
+    const dirty = () => { const now = follow.link(); if (now) follow.setLink({ ...now, dirty: true }); };
+    if (backend && l) backend.manage(l.token, op).then((st) => { if (st === null) follow.setLink(null); }, dirty);
+  };
+  follow.listenChanges((c) => tell({ op: 'follow', ticker: c.ticker, on: c.on }));
+  // many at once (a portfolio's companies): the whole list in one request
+  follow.listenLists((list) => tell({ op: 'follows', tickers: [...list] }));
   // a linked browser asks about its link when a panel first opens (once a page): an unsubscribe or a new rhythm chosen elsewhere shows
   let asked = false;
   const ask = () => {
@@ -75,6 +79,7 @@ export function startFollow(doc: Document, appRef: ApplicationRef, root: Environ
     ref.setInput('ticker', p.ticker);
     ref.setInput('name', p.name);
     ref.setInput('alerts', p.alerts);
+    ref.setInput('tickers', p.tickers ?? null);
     appRef.attachView(ref.hostView);
     ref.changeDetectorRef.detectChanges();
     const pos = panelPosition(p.rect, Math.min(WIDTH, (win?.innerWidth ?? WIDTH) - 16), host.offsetHeight, win?.innerWidth ?? WIDTH, win?.innerHeight ?? 600);

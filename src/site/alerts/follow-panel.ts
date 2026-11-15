@@ -51,11 +51,11 @@ export class PtFollowRows {
   selector: 'pt-follow-panel',
   imports: [PtFollowRows],
   template: `
+    @let many = tickers();
     <div class="pt-follow-head">
-      <p class="pt-follow-title"><b>Alerts for {{ name() }}</b><span class="pt-meta">{{ ' · last 5 sessions' }}</span></p>
-      <button type="button" class="pt-abtn pt-follow-switch" [attr.aria-pressed]="followed()" (click)="follow.toggle(ticker())">{{ followed() ? 'Following' : 'Follow' }}</button>
+      <p class="pt-follow-title"><b>Alerts for {{ name() }}</b><span class="pt-meta">{{ many ? ' · ' + many.length + ' companies' : ' · last 5 sessions' }}</span></p>
+      <button type="button" class="pt-abtn pt-follow-switch" [attr.aria-pressed]="followed()" (click)="flip()">{{ (followed() ? 'Alerts on' : 'Get alerts') + (many ? ' for all ' + many.length : '') }}</button>
     </div>
-    <pt-follow-rows [alerts]="alerts()" />
     @if (email) {
       <div class="pt-follow-mail">
         @if (follow.link(); as l) {<p class="pt-meta">Emails to {{ l.email }} · {{ l.cadence === 'week' ? 'weekly' : 'daily' }} · <a href="/alerts/">Manage</a></p>}
@@ -66,11 +66,13 @@ export class PtFollowRows {
             <input id="pt-follow-email" type="email" autocomplete="email" placeholder="you@example.com" [value]="address()" (input)="typed($event)" (focus)="check()" />
             <button type="button" class="pt-abtn" [disabled]="busy()" (click)="send()">Send</button>
           </div>
+          @if (many) {<p class="pt-meta">Only the symbols go with your email, never amounts or dates.</p>}
           <div #human></div>
           @if (said(); as s) {<p class="pt-follow-mail-said">{{ s }}</p>}
         }
       </div>
     }
+    @if (!many) {<pt-follow-rows [alerts]="alerts()" />}
     <p class="pt-follow-foot pt-meta">@if (follow.link(); as l) {Your follows also go to {{ l.email }}.} @else {Followed companies stay in this browser.}{{ ' ' }}<a href="/alerts/">All your alerts</a></p>
     @if (float) {<button type="button" class="pt-abtn pt-follow-float" (click)="float.open()">Floating window</button>}`,
 })
@@ -79,7 +81,17 @@ export class PtFollowPanel {
   readonly ticker = input.required<string>();
   readonly name = input.required<string>();
   readonly alerts = input<readonly FollowAlert[]>([]);
-  protected readonly followed = this.follow.following(() => this.ticker());
+  /** A group (a portfolio's companies, from /portfolio/): one switch follows them all; no rows of its own. */
+  readonly tickers = input<readonly string[] | null>(null);
+  private readonly one = this.follow.following(() => this.ticker());
+  private readonly all = this.follow.followingAll(() => this.tickers() ?? []);
+  protected readonly followed = computed(() => (this.tickers() ? this.all() : this.one()));
+
+  protected flip(): void {
+    const many = this.tickers();
+    if (many) this.follow.setMany(many, !this.followed());
+    else this.follow.toggle(this.ticker());
+  }
   /** The email alerts' side (none where they are off): the address, the human check's token, what came back. */
   protected readonly email = inject(PT_FOLLOW_EMAIL, { optional: true });
   /** The floating window (part 3), where the browser can open one. */
@@ -108,9 +120,10 @@ export class PtFollowPanel {
     if (!e || this.busy()) return;
     if (!EMAIL.test(a)) { this.said.set(SAID.invalid); return; }
     if (e.check && !this.token) { this.check(); this.said.set('One moment: checking you are not a robot…'); return; }
-    if (!this.followed()) this.follow.toggle(this.ticker());
+    const many = this.tickers();
+    if (!this.followed()) this.flip();
     this.busy.set(true);
-    const r = await e.backend.signup(a, [...new Set([...this.follow.follows(), this.ticker()])], this.token);
+    const r = await e.backend.signup(a, [...new Set([...this.follow.follows(), ...(many ?? [this.ticker()])])], this.token);
     this.busy.set(false);
     if (r === 'ok') this.sent.set(true);
     else { this.said.set(SAID[r]); this.token = null; this.mounted?.reset(); }

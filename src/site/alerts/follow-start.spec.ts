@@ -125,6 +125,27 @@ describe("the bell's panel on the page (follow-start)", () => {
     await flush();
     expect(panel()!.textContent).toContain('Check your inbox');
   });
+  it("a group's press (a portfolio's companies) opens the same panel for the group", async () => {
+    const { follow, panel } = setup();
+    follow.press({ ticker: 'group:example', name: 'Mega caps', alerts: [], rect, tickers: ['AAPL', 'MSFT'] });
+    await flush();
+    expect(panel()!.getAttribute('aria-label')).toBe('Alerts for Mega caps');
+    expect(panel()!.querySelector('.pt-follow-title')!.textContent).toBe('Alerts for Mega caps · 2 companies');
+  });
+  it('many followed at once on a linked browser: one request with the whole list; one that fails marks the link', async () => {
+    const ops: unknown[] = [];
+    let up = true;
+    const backend: FollowBackend = { signup: async () => 'ok', manage: async (t, op) => { ops.push([t, op]); if (!up) throw new Error('offline'); return {} as never; } };
+    const { follow } = setup('', { init: { follows: ['NVDA'], seen: {}, link: { token: 'a.b', email: 'r•••@example.com', cadence: 'day' } }, backend });
+    await flush();
+    follow.setMany(['AAPL', 'MSFT', 'KO'], true);
+    await flush();
+    expect(ops).toEqual([['a.b', { op: 'follows', tickers: ['NVDA', 'AAPL', 'MSFT', 'KO'] }]]);
+    up = false;
+    follow.setMany(['KO'], false);
+    await flush();
+    expect(follow.link()?.dirty).toBe(true);
+  });
   it('a change that does not reach the server marks the link: /alerts/ sends the whole list next time', async () => {
     const backend: FollowBackend = { signup: async () => 'ok', manage: async () => { throw new Error('offline'); } };
     const { follow } = setup('', { init: { follows: [], seen: {}, link: { token: 'a.b', email: 'r•••@example.com', cadence: 'day' } }, backend });

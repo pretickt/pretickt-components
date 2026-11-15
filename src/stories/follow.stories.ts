@@ -30,6 +30,9 @@ stories.push(
     providers: [...follows({ follows: ['AAPL'], seen: {}, link: { token: 'm.n', email: 'r•••@example.com', cadence: 'week' } }), ...mail] }),
   story(PtFollowing, { name: '/alerts/: linked to an email', group: GROUP, providers: [...follows({ follows: ['AAPL', 'MSFT', 'INTC'], seen: {},
     link: { token: 'm.n', email: 'r•••@example.com', cadence: 'day' } }), { provide: PT_FOLLOW_FILE, useValue: async () => FILE }, ...mail] }),
+  // /portfolio/'s bell (Romeo, 2026-11-15: «non capisco dove dovrei abilitare le notifiche»): one switch for every company shown
+  story(PtFollowPanel, { name: "Panel: a portfolio's companies (Get alerts for all)", group: GROUP,
+    inputs: { ticker: 'group:example', name: 'Mega caps', alerts: [], tickers: ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META'] }, providers: [...follows({ follows: ['NVDA'], seen: {} }), ...mail] }),
   // an email's link opened on a browser that followed other companies: they are offered, not sent
   story(PtFollowing, { name: "/alerts/: an email's link, this browser's others offered", group: GROUP, providers: [...follows({ follows: ['NVDA', 'AAPL'], seen: {} }),
     { provide: PT_FOLLOW_FILE, useValue: async () => ({ ...FILE, companies: { ...FILE.companies, NVDA: { name: 'NVIDIA Corporation', alerts: followDemo('NVDA') } } }) },

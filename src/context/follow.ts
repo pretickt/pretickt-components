@@ -1,6 +1,6 @@
 import { afterNextRender, computed, inject, Injectable, signal, type Signal } from '@angular/core';
 import type { FollowAlert } from '../typologies';
-import { replaced, seenUpTo, toggled, unseenCount, type FollowLink, type FollowState } from './follow-state';
+import { manyFollowed, replaced, seenUpTo, toggled, unseenCount, type FollowLink, type FollowState } from './follow-state';
 import { PT_FOLLOW, PT_FOLLOW_ON } from './follow-tokens';
 
 /** A bell's press: the company, its alerts and where the bell is, for the page's panel; `at` counts the presses (the same bell twice is two presses). */
@@ -8,6 +8,8 @@ export interface FollowPress {
   ticker: string; name: string; alerts: readonly FollowAlert[];
   rect: { left: number; right: number; top: number; bottom: number };
   at: number;
+  /** A group's press (a portfolio's companies, `ticker` its key): the panel follows them all at once. */
+  tickers?: readonly string[];
 }
 
 /**
@@ -26,6 +28,7 @@ export class PtFollow {
   private presses = 0;
   private listener: ((p: FollowPress) => void) | null = null;
   private changes: ((c: { ticker: string; on: boolean }) => void) | null = null;
+  private lists: ((list: readonly string[]) => void) | null = null;
   private readonly later: (() => void)[] = [];
   readonly ready = computed(() => this.state() !== null);
   readonly follows = computed<readonly string[]>(() => this.state()?.follows ?? []);
@@ -81,6 +84,21 @@ export class PtFollow {
 
   /** The page hears each reader's toggle that changed the list (to tell the server, once the follows are linked to an email). */
   listenChanges(fn: (c: { ticker: string; on: boolean }) => void): void { this.changes = fn; }
+
+  /** Every one of these followed (none: false). */
+  followingAll(t: () => readonly string[]): Signal<boolean> {
+    return computed(() => { const k = t(), f = this.state()?.follows ?? []; return k.length > 0 && k.every((x) => f.includes(x)); });
+  }
+
+  /** Many at once (a portfolio's companies): heard once, as the whole list, so the server gets one request and not one a company. */
+  setMany(tickers: readonly string[], on: boolean): void {
+    if (this.waits(() => this.setMany(tickers, on))) return;
+    const r = this.change((s) => manyFollowed(s, tickers, on));
+    if (r && r[0] !== r[1]) this.lists?.(r[1].follows);
+  }
+
+  /** The page hears each change of many at once, as the list it left. */
+  listenLists(fn: (list: readonly string[]) => void): void { this.lists = fn; }
 
   /** The email link the server gave (null: none, after unsubscribing). */
   setLink(l: FollowLink | null): void { if (!this.waits(() => this.setLink(l))) this.change((s) => { const { link: _, ...rest } = s; return l ? { ...rest, link: l } : rest; }); }

@@ -20,6 +20,13 @@ export function toggled(s: FollowState, t: string): FollowState {
   return { ...s, follows };
 }
 
+/** Many at once (a portfolio's companies): on, the missing ones join at the end in order, the oldest going past the limit; off, they go. */
+export function manyFollowed(s: FollowState, tickers: readonly string[], on: boolean): FollowState {
+  const follows = on ? [...s.follows, ...tickers.filter((t, i) => !s.follows.includes(t) && tickers.indexOf(t) === i)].slice(-FOLLOW_LIMIT)
+    : s.follows.filter((t) => !tickers.includes(t));
+  return follows.length === s.follows.length && follows.every((t, i) => t === s.follows[i]) ? s : { ...s, follows };
+}
+
 /** The ticker's alerts seen up to `session` (a later mark is kept); the oldest marks go past the limit. */
 export function seenUpTo(s: FollowState, t: string, session: string): FollowState {
   const was = s.seen[t];
