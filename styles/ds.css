@@ -123,6 +123,8 @@
     .pt-subnav::-webkit-scrollbar, .pt-section-head::-webkit-scrollbar { display: none; }
     .pt-subnav a, .pt-section-head > * { @apply shrink-0 whitespace-nowrap; }
     .pt-subnav a[data-short], .pt-section-more[data-short] { font-size: 0; }
+    /* a link only for a wider screen (a company's Overview: the crumbs lead back) */
+    .pt-subnav .pt-wide-only { display: none; }
     .pt-subnav a[data-short]::after { content: attr(data-short); @apply text-sm; }
     .pt-section-more[data-short]::after { content: attr(data-short) ' →'; @apply text-xs; }
   }
