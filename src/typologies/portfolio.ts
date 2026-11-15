@@ -36,7 +36,9 @@ export const FactsSprite = z.object({ file: z.string().check(z.regex(/^\/logos\/
   tickers: z.array(Ticker), light: z.optional(z.array(Ticker)), white: z.optional(z.array(Ticker)) });
 export const FactsFile = z.object({ v: z.literal(1), asOf: IsoDate, companies: z.record(Ticker, FactsCompany), funds: z.record(Ticker, FactsFund),
   /** Each company's corporate break (CTVA's spin-off): a purchase before it has no return, its closes before it being on another basis. */
-  breaks: z.optional(z.record(Ticker, IsoDate)), sprite: z.optional(FactsSprite) });
+  breaks: z.optional(z.record(Ticker, IsoDate)), sprite: z.optional(FactsSprite),
+  /** The mega caps, the companies worth $200 billion or more, largest first, one line a company (the page's example). */
+  mega: z.optional(z.array(Ticker)) });
 
 const ascending = (d: readonly string[]) => d.every((x, i) => i === 0 || d[i - 1]! < x);
 /** Closes on the dates, one value a date (null before a ticker's first close or before its corporate break). */

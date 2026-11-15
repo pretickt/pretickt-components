@@ -1,6 +1,7 @@
 import { ApplicationRef, EnvironmentInjector } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { PT_STORE, PtStore } from '@pretickt/components/context';
+import { PT_FOLLOW, PT_FOLLOW_ON, PT_STORE, PtStore, type FollowState } from '@pretickt/components/context';
+import { PtFollow, type FollowPress } from '@pretickt/components/follow';
 import { date, money } from '@pretickt/components/format';
 import { DEMO_CLOSES, DEMO_FACTS, DEMO_PORTFOLIOS, demoPortfolio } from '../../stories/fake-portfolio';
 import { PT_PORTFOLIO_FILES, PT_PORTFOLIO_STORAGE } from './files';
@@ -18,9 +19,12 @@ class Mem implements Storage {
   setItem(k: string, v: string) { this.m.set(k, v); }
 }
 
-async function mount(stored: Stored | string | null = null, o: { fail?: string[]; sheet?: string[] } = {}) {
+async function mount(stored: Stored | string | null = null, o: { fail?: string[]; sheet?: string[]; mega?: string[]; follows?: string[] } = {}) {
   const storage = new Mem(), asked: string[] = [], events: string[] = [], logos: string[][] = [];
-  const facts = o.sheet ? { ...DEMO_FACTS, sprite: { file: '/logos/sprite.1a2b3c4d.webp', px: 40, cols: 25, tickers: o.sheet } } : DEMO_FACTS;
+  const sheet = o.sheet ? { ...DEMO_FACTS, sprite: { file: '/logos/sprite.1a2b3c4d.webp', px: 40, cols: 25, tickers: o.sheet } } : DEMO_FACTS;
+  const facts = o.mega ? { ...sheet, mega: o.mega } : sheet;
+  let follow: FollowState = { follows: o.follows ?? [], seen: {} };
+  const followed: unknown[] = o.follows ? [{ provide: PT_FOLLOW_ON, useValue: true }, { provide: PT_FOLLOW, useValue: { read: () => follow, write: (s: FollowState) => { follow = s; } } }] : [];
   // a logo cut out of the sheet, as the browser gives it (here its ticker in base64, so a test can tell whose it is)
   const cut = async (_s: unknown, ts: readonly string[]) => { logos.push([...ts]); return new Map(ts.map((t) => [t, `data:image/png;base64,${btoa(t)}`])); };
   if (stored) storage.setItem(PORTFOLIO_KEY, typeof stored === 'string' ? stored : JSON.stringify(stored));
@@ -31,6 +35,7 @@ async function mount(stored: Stored | string | null = null, o: { fail?: string[]
     { provide: PT_PORTFOLIO_FILES, useValue: { facts: async () => facts, closes: async (k: string) => { asked.push(k); return o.fail?.includes(k) ? null : DEMO_CLOSES.get(k) ?? null; }, logos: cut } },
     { provide: PT_PORTFOLIO_STORAGE, useValue: () => storage },
     { provide: PT_STORE, useValue: new PtStore({ server: false, resolve: async () => null }) },
+    ...followed as never[],
   ] });
   const f = TestBed.createComponent(PtPortfolioPage);
   const settle = async () => { for (let i = 0; i < 6; i++) { f.detectChanges(); TestBed.tick(); await new Promise((r) => setTimeout(r, 1)); } };
@@ -50,6 +55,30 @@ describe('the portfolio page', () => {
     expect(m.events).toEqual(['pt-portfolio@1.0.0|holds-none']);
   });
 
+  it("the example is the mega caps from the nightly's list: the companies on the site, in its order, weighted equally (Romeo, 2026-11-15: «il portafoglio base fallo delle mega caps»)", async () => {
+    const m = await mount(null, { mega: ['NVDA', 'AAPL', 'ZZZZ', 'MSFT'] });
+    expect(m.text()).toContain('An example: the 3 companies worth $200 billion or more, weighted equally. Make your own with New portfolio or New watchlist.');
+    expect(m.text()).not.toContain('Amazon');
+    expect(m.sum()['Covered']).toBe('100%');
+  });
+  it('a bell button on the portfolio shown: one press opens the panel for its companies (the funds out), and the click stays here', async () => {
+    const m = await mount(null, { mega: ['NVDA', 'AAPL', 'MSFT'], follows: [] });
+    const presses: FollowPress[] = [];
+    TestBed.inject(PtFollow).listen((p) => presses.push(p));
+    let outside = 0;
+    const count = () => outside++;
+    document.addEventListener('click', count);
+    const btn = m.el.querySelector<HTMLButtonElement>('.pt-pf-bell')!;
+    expect(btn.textContent!.trim()).toBe('Get alerts for these 3 companies');
+    btn.click();
+    document.removeEventListener('click', count);
+    expect(outside).toBe(0);
+    expect(presses.map(({ ticker, name, alerts, tickers }) => ({ ticker, name, alerts, tickers }))).toEqual([{ ticker: 'group:example', name: 'Mega caps', alerts: [], tickers: ['NVDA', 'AAPL', 'MSFT'] }]);
+    const s = await mount({ v: 1, active: 'demo-shares', list: [DEMO_PORTFOLIOS.shares] }, { follows: ['AAPL', 'NVDA', 'MSFT', 'KO'] });
+    expect(s.el.querySelector('.pt-pf-bell')!.textContent!.trim()).toBe('Alerts on for these 4 companies');
+    expect((await mount({ v: 1, active: 'demo-fund', list: [DEMO_PORTFOLIOS.fund] }, { follows: [] })).el.querySelector('.pt-pf-bell')).toBeNull();
+    expect((await mount(null, { mega: ['NVDA'] })).el.querySelector('.pt-pf-bell')).toBeNull();   // the bells off
+  });
   it("a saved portfolio's summary and sections", async () => {
     const m = await mount({ v: 1, active: 'demo-shares', list: [DEMO_PORTFOLIOS.shares] });
     const b = demoPortfolio('shares');

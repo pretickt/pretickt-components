@@ -3,6 +3,8 @@
  * watchlist, and in a window that keeps nothing; the editable preview of a paste (in shares, mixed amounts, a watchlist).
  */
 import type { Provider } from '@angular/core';
+import { PT_FOLLOW, PT_FOLLOW_ON } from '../context';
+import { PtFollow } from '../context/follow';
 import { PtPortfolioDraft } from '../site/portfolio/draft';
 import { PtPortfolioEditor } from '../site/portfolio/editor';
 import { PT_PORTFOLIO_FILES, PT_PORTFOLIO_STORAGE } from '../site/portfolio/files';
@@ -14,15 +16,18 @@ import { story } from './story';
 const GROUP = 'Portfolio page';
 const TODAY = '2026-10-01';
 /** The page on the made-up files, its storage in memory (a story never touches the reader's own). */
-function page(stored: Stored | null, saving = true): Provider[] {
+function page(stored: Stored | null, saving = true, mega?: string[]): Provider[] {
   const m = new Map<string, string>(stored ? [[PORTFOLIO_KEY, JSON.stringify(stored)]] : []);
   const storage = { get length() { return m.size; }, clear: () => m.clear(), getItem: (k: string) => m.get(k) ?? null, key: (i: number) => [...m.keys()][i] ?? null,
     removeItem: (k: string) => void m.delete(k), setItem: (k: string, v: string) => { if (!saving) throw new Error('private window'); m.set(k, v); } } as Storage;
-  return [{ provide: PT_PORTFOLIO_FILES, useValue: { facts: async () => DEMO_FACTS, closes: async (k: string) => DEMO_CLOSES.get(k) ?? null } }, { provide: PT_PORTFOLIO_STORAGE, useValue: () => storage }];
+  return [{ provide: PT_PORTFOLIO_FILES, useValue: { facts: async () => (mega ? { ...DEMO_FACTS, mega } : DEMO_FACTS), closes: async (k: string) => DEMO_CLOSES.get(k) ?? null } }, { provide: PT_PORTFOLIO_STORAGE, useValue: () => storage }];
 }
 
 export const stories = [
   story(PtPortfolioPage, { name: 'The page · nothing saved: the example', group: GROUP, providers: page(null) }),
+  // Romeo, 2026-11-15: «il portafoglio base fallo delle mega caps e non capisco dove dovrei abilitare le notifiche» (the bells on: its bell under the note)
+  story(PtPortfolioPage, { name: 'The page · nothing saved: the mega caps, and the bell for all of them', group: GROUP,
+    providers: [...page(null, true, ['NVDA', 'AAPL', 'MSFT', 'AMZN', 'META', 'AVGO', 'BRK.B', 'JPM']), { provide: PT_FOLLOW_ON, useValue: true }, { provide: PT_FOLLOW, useValue: { read: () => ({ follows: [], seen: {} }), write: () => undefined } }, PtFollow] }),
   story(PtPortfolioPage, { name: 'The page · a portfolio in shares, with purchase dates and a fund', group: GROUP, providers: page({ v: 1, active: 'demo-shares', list: [DEMO_PORTFOLIOS.shares, DEMO_PORTFOLIOS.watchlist] }) }),
   story(PtPortfolioPage, { name: 'The page · a watchlist', group: GROUP, providers: page({ v: 1, active: 'demo-watch', list: [DEMO_PORTFOLIOS.shares, DEMO_PORTFOLIOS.watchlist] }) }),
   story(PtPortfolioPage, { name: 'The page · a portfolio we cover under 80%', group: GROUP, providers: page({ v: 1, active: 'demo-low', list: [DEMO_PORTFOLIOS.low] }) }),

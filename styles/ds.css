@@ -444,6 +444,11 @@
     .pt-pf-sugg { min-width: 0; width: calc(100vw - 3rem); }
   }
   .pt-pf { display: grid; gap: .9rem; }
+  /* /portfolio/'s bell (2026-11-15): one press opens the panel for every company of the portfolio shown */
+  .pt-abtn.pt-pf-bell { @apply inline-flex items-center gap-1.5 justify-self-start px-2.5 py-1 text-sm; }
+  .pt-abtn.pt-pf-bell svg { @apply size-4; }
+  .pt-abtn.pt-pf-bell[aria-pressed='true'] { @apply text-primary; }
+  .pt-abtn.pt-pf-bell[aria-pressed='true'] svg { fill: currentColor; }
   .pt-pf-sum { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: .6rem; margin: 0; }
   .pt-pf-sum div { display: grid; gap: .15rem; padding: .55rem .7rem; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-surface-raised); }
   .pt-pf-sum dt { font-size: .72rem; color: var(--color-ink-soft); }
@@ -523,8 +528,8 @@
   .pt-follow-dot { fill: var(--color-ink); }
   .pt-follow-empty { @apply m-0 text-sm text-ink-soft; }
   .pt-follow-foot { @apply mb-0 mt-3; }
-  /* the email row (part 2): the address and Send, then what came back */
-  .pt-follow-mail { @apply mt-3 border-t border-border pt-3 text-sm; }
+  /* the email row (part 2): the address and Send, then what came back; under the switch, before the alerts (a phone shows it without scrolling) */
+  .pt-follow-mail { @apply mb-3 border-b border-border pb-3 text-sm; }
   .pt-follow-mail p { @apply m-0; }
   .pt-follow-mail-q { @apply mb-1.5 block font-medium; }
   .pt-follow-mail-row { @apply flex gap-2; }

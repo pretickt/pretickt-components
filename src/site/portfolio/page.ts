@@ -1,6 +1,8 @@
 import { afterNextRender, Component, computed, effect, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { date, dayMonth, href, level, money, num, pct, plainName, stockHref, tone } from '@pretickt/components/format';
 import { Pt } from '@pretickt/components/context';
+import { PtIcon } from '@pretickt/components/ds';
+import { PtFollow } from '@pretickt/components/follow';
 import type { ClosesFile, FactsFile } from '@pretickt/components/typologies';
 import { PtBasket } from '../../../components/pt-basket';
 import { closesNeeded, computePortfolio, yearLine } from './compute';
@@ -16,14 +18,20 @@ import { PtPortfolioLine } from './value-line';
  * app, mounted on /portfolio/ from a chunk of its own; it counts how many portfolios a browser keeps, in words, never a symbol.
  */
 const BEACON = 'pt-portfolio@1.0.0';
-const EXAMPLE: StoredPortfolio = { id: 'example', name: 'Example', kind: 'watchlist', unit: 'equal', rows: ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL'].map((t) => ({ t, n: null, d: null })) };
+const watch = (name: string, tickers: readonly string[]): StoredPortfolio => ({ id: 'example', name, kind: 'watchlist', unit: 'equal', rows: tickers.map((t) => ({ t, n: null, d: null })) });
+const FIVE = watch('Example', ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL']);
+/** The example (Romeo, 2026-11-15: «il portafoglio base fallo delle mega caps»): the nightly's mega caps on the site, else five large companies. */
+export function examplePortfolio(f: FactsFile | null | undefined): StoredPortfolio {
+  const mega = (f?.mega ?? []).filter((t) => f?.companies[t]);
+  return mega.length ? watch('Mega caps', mega) : FIVE;
+}
 /** The reader's own date (a purchase date after it is refused): the local day, not the UTC one an evening in New York is already past. */
 export const localToday = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const holds = (n: number) => (n === 0 ? 'holds-none' : n === 1 ? 'holds-one' : n <= 3 ? 'holds-few' : 'holds-many');
 
 @Component({
   selector: 'pt-portfolio-page',
-  imports: [PtBasket, PtPortfolioEditor, PtPortfolioLine],
+  imports: [PtBasket, PtIcon, PtPortfolioEditor, PtPortfolioLine],
   // pt-basket's context (a placement gets it from its slot): with a payload it asks nothing; the logos' cut-outs, shared with the preview of a paste
   providers: [Pt, PortfolioLogos],
   // the site's hover cards listen on the document and ask the API for the ticker they show: here a hover stays inside, so no request names a holding
@@ -36,7 +44,10 @@ const holds = (n: number) => (n === 0 ? 'holds-none' : n === 1 ? 'holds-one' : n
       <div class="pt-pf">
         <pt-portfolio-editor [stored]="stored()" [facts]="f" [saving]="saving()" [today]="today" (changed)="keep($event)" />
         @if (unread) {<p class="pt-note">What this browser had saved could not be read: it is kept aside, and the page starts empty.</p>}
-        @if (example()) {<p class="pt-note">An example: five large companies, weighted equally. Make your own with New portfolio or New watchlist.</p>}
+        @if (example()) {<p class="pt-note">An example: {{ current() === five ? 'five large companies' : 'the ' + current().rows.length + ' companies worth $200 billion or more' }}, weighted equally. Make your own with New portfolio or New watchlist.</p>}
+        @if (follow.on && group().length; as n) {
+          <button type="button" class="pt-abtn pt-abtn-wide pt-pf-bell" [attr.aria-pressed]="groupOn()" (click)="bell($event)"><svg ptIcon="bell"></svg>{{ (groupOn() ? 'Alerts on for ' : 'Get alerts for ') + (n === 1 ? 'this company' : 'these ' + n + ' companies') }}</button>
+        }
         @if (basket(); as b) {
           <dl class="pt-pf-sum">
             @if (b.value != null) {<div><dt>{{ b.unit === 'usd' ? 'Value you entered' : 'Value at the last close' }}</dt><dd>{{ money(b.value) }}</dd></div>}
@@ -89,8 +100,18 @@ export class PtPortfolioPage {
   private readonly needLine = signal(false);
   private readonly lineBox = viewChild<ElementRef<HTMLElement>>('lineBox');
 
-  protected readonly current = computed(() => { const s = this.stored(); return s.list.find((p) => p.id === s.active) ?? s.list[0] ?? EXAMPLE; });
-  protected readonly example = computed(() => this.current() === EXAMPLE);
+  private readonly sample = computed(() => examplePortfolio(this.facts()));
+  protected readonly current = computed(() => { const s = this.stored(); return s.list.find((p) => p.id === s.active) ?? s.list[0] ?? this.sample(); });
+  protected readonly example = computed(() => this.current() === this.sample());
+
+  /** The bells (FOLLOW_ENABLED): the companies of the portfolio shown that the site follows (a fund has no bell yet), one press for all. */
+  protected readonly follow = inject(PtFollow);
+  protected readonly group = computed(() => { const f = this.facts(); return f ? [...new Set(this.current().rows.map((r) => r.t).filter((t) => f.companies[t]))] : []; });
+  protected readonly groupOn = this.follow.followingAll(() => this.group());
+  protected bell(e: MouseEvent): void {
+    e.stopPropagation(); // the page's panel closes on a click outside it: this one opens it
+    this.follow.press({ ticker: `group:${this.current().id}`, name: this.current().name, alerts: [], rect: (e.currentTarget as HTMLElement).getBoundingClientRect(), tickers: this.group() });
+  }
   protected readonly basket = computed(() => { const f = this.facts(); return f ? computePortfolio(this.current(), f, this.closes(), this.logos.map()) : null; });
   protected readonly line = computed(() => { const f = this.facts(), one = this.closes().get('1y'); return f && one ? yearLine(this.current(), f, one) : null; });
 
@@ -136,6 +157,7 @@ export class PtPortfolioPage {
     }
   }
 
+  protected readonly five = FIVE;
   protected readonly date = date;
   protected readonly dayMonth = dayMonth;
   protected readonly href = href;

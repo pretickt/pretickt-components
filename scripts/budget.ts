@@ -6,7 +6,8 @@
 // main: 244,000 until 2026-11-14, +600 for pt-stats, a new registry component — the history page's statistics; measured 244,583 (Romeo, 2026-11-14: up to 247,000)
 // main: 244,600 until 2026-11-14, +900 for the bell (follow, part 1): PT_FOLLOW/PT_FOLLOW_ON, the page's providers and this browser's follow store; measured 245,340 (Romeo, 2026-11-14: up to 247,000)
 // main: 245,500 until 2026-11-14, +400 for the bell's panel: its import line and the Angular code main keeps for its chunk (one more export); measured 245,828 (Romeo, 2026-11-14: up to 247,000)
-export const BUDGET = { main: 245_900, component: 32_000, page: 54_000 } as const;
+// page: 54,000 until 2026-11-15, +1,500 for /portfolio/'s example of the mega caps and its bell for all the companies shown (Romeo, 2026-11-15: «il portafoglio base fallo delle mega caps e non capisco dove dovrei abilitare le notifiche»); measured 55,152, before 53,850
+export const BUDGET = { main: 245_900, component: 32_000, page: 55_500 } as const;
 
 export function overBudget(kind: keyof typeof BUDGET, bytes: number): string | null {
   return bytes > BUDGET[kind] ? `${kind} bundle is ${bytes} bytes, over the ${BUDGET[kind]}-byte budget` : null;
