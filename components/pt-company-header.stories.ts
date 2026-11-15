@@ -73,4 +73,6 @@ stories.push(
   story(PtCompanyHeader, { name: 'Bell: 4 new alerts', inputs: { ticker: 'NVDA' }, providers: follows({ follows: [], seen: {} }) }),
   story(PtCompanyHeader, { name: 'Bell: following, 1 new alert', inputs: { ticker: 'NVDA' }, providers: follows({ follows: ['NVDA'], seen: { NVDA: nvda.alerts![1]!.session } }) }),
   story(PtCompanyHeader, { name: 'Bell: 9+', inputs: { ticker: 'NVDA' }, data: { 'company@1': { ...nvda, alerts: Array.from({ length: 12 }, () => nvda.alerts![0]!) } }, providers: follows({ follows: [], seen: {} }) }),
+  // the sub-pages' header: the bell in the same top right corner (Romeo, 2026-11-15: «la campanella sempre in alto a destra»)
+  story(PtCompanyHeader, { name: 'Bell, low: 4 new alerts', inputs: { ticker: 'NVDA', size: 'low' }, providers: follows({ follows: [], seen: {} }) }),
 );

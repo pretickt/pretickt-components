@@ -1,7 +1,7 @@
 /**
  * How does this company look right now: its price over three months and today (15 minutes late), and how the data divide between the
  * two sides, counted, never weighed and never concluded?
- * @version 1.3.0
+ * @version 1.3.1
  * @evidence design of the fund pages, 2026-11-05: a fund's header says how much of it the basket figures cover
  * @evidence design of the sector pages, 2026-11-07: with `sector`, what its companies are worth over the year and today, the basket's badges only, the fund line
  * @evidence Romeo, 2026-11-14: «oggi azienda nella tooltip card e nella Company page ha una campanella, con badge per gli allarmi recenti come in un'app mobile per l'icona»
@@ -230,20 +230,15 @@ const slotTime = (i: number) => { const t = 570 + i * 5, m = t % 60, h = Math.fl
     @else if (ready().settled) {
       @let low = size() === 'low';
       @let b = bands();
+      @let title = sec()?.name ?? (co.value()?.name ? plainName(co.value()!.name) : ticker() ?? '');
       <section #root [class]="'pt-card pt-hdr pt-hdr-' + size()">
         <div class="pt-hdr-head">
           <div class="pt-card-id">
             @if (ticker(); as t) {<pt-logo [ticker]="t" [src]="co.value()?.logo ?? null" [size]="low ? 28 : 38" />}
             <div class="pt-card-who">
-              @let title = sec()?.name ?? (co.value()?.name ? plainName(co.value()!.name) : ticker() ?? '');
               <div class="pt-card-name">{{ title }}</div>
               <div class="pt-meta">{{ subLine(title) }}</div>
             </div>
-            @if (follow.on && own() && !co.value()?.kind) {
-              <button type="button" class="pt-follow-bell" [attr.aria-pressed]="followed()" [attr.aria-label]="bellLabel(title)" (click)="bell($event, title)">
-                <svg ptIcon="bell"></svg><span class="pt-follow-n" aria-hidden="true" [hidden]="!fresh()">{{ fresh() > 9 ? '9+' : fresh() }}</span>
-              </button>
-            }
           </div>
           <div class="pt-hdr-px">
             <div class="pt-hdr-price">
@@ -253,6 +248,12 @@ const slotTime = (i: number) => { const t = 570 + i * 5, m = t % 60, h = Math.fl
             <span class="pt-meta">{{ when() }}</span>
             @if (targetText(); as t) {<span [class]="'pt-card-pt pt-tone-' + tone(upside())" hidden>{{ t }}</span>}
           </div>
+          <!-- the bell in the top right corner, at every size and width (Romeo, 2026-11-15: «la campanella sempre in alto a destra») -->
+          @if (follow.on && own() && !co.value()?.kind) {
+            <button type="button" class="pt-follow-bell" [attr.aria-pressed]="followed()" [attr.aria-label]="bellLabel(title)" (click)="bell($event, title)">
+              <svg ptIcon="bell"></svg><span class="pt-follow-n" aria-hidden="true" [hidden]="!fresh()">{{ fresh() > 9 ? '9+' : fresh() }}</span>
+            </button>
+          }
         </div>
         <div class="pt-hdr-body" [class.pt-hdr-solo]="!chart()">
           @if (chart(); as g) {

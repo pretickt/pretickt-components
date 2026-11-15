@@ -586,10 +586,12 @@ describe('pt-company-header: a sector in the session, defended', () => {
 describe('pt-company-header: the bell (Romeo, 2026-11-14: «una campanella, con badge per gli allarmi recenti»)', () => {
   const on = { providers: [{ provide: PT_FOLLOW_ON, useValue: true }] };
   const many = companyDemo({ ticker: 'NVDA' });
-  it('with follow on, the bell is in the name row with the count of recent alerts, and pressing it hands the panel the company and its alerts', async () => {
+  it('with follow on, the bell is in the top right corner (Romeo, 2026-11-15: «la campanella sempre in alto a destra») with the count of recent alerts, and pressing it hands the panel the company and its alerts', async () => {
     const r = await render(PtCompanyHeader, { ticker: 'NVDA' }, demo(), on);
-    const bell = r.el.querySelector<HTMLButtonElement>('.pt-card-id .pt-follow-bell')!;
+    const bell = r.el.querySelector<HTMLButtonElement>('.pt-hdr-head > .pt-follow-bell')!;
     expect(bell).not.toBeNull();
+    expect(bell.parentElement!.lastElementChild).toBe(bell);
+    expect(r.el.querySelector('.pt-card-id .pt-follow-bell')).toBeNull();
     expect(bell.querySelector('.pt-follow-n')!.textContent).toBe('4');
     expect(bell.getAttribute('aria-pressed')).toBe('false');
     expect(bell.getAttribute('aria-label')).toBe('Follow Nvidia, 4 new alerts');

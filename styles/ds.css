@@ -607,6 +607,10 @@
   /* pt-company-header: the price and the bands */
   .pt-hdr { @apply gap-2.5; grid-template-columns: minmax(0, 1fr); } /* a long name is cut, it does not widen the page */
   .pt-hdr-head { @apply flex flex-wrap items-center justify-between gap-x-3 gap-y-1; }
+  /* the bell in the header's top right corner at every width; the row keeps its room so nothing runs under it */
+  .pt-hdr-head:has(> .pt-follow-bell) { @apply relative pr-10; }
+  .pt-hdr-head > .pt-follow-bell { @apply absolute top-0 right-0; }
+  .pt-card-id > .pt-follow-bell { @apply self-start; }
   .pt-hdr-px { @apply grid sm:justify-items-end; }
   .pt-hdr-price { @apply flex items-baseline gap-2; }
   .pt-hdr-chg { @apply font-mono text-sm font-semibold; }
