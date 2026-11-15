@@ -15,7 +15,7 @@
  * week (Romeo, 2026-11-11, on the earnings-today page: "le aziende di oggi per prime, non la settimana per dimensione").
  * The grid marks the reader's day, the session after the latest close: the data is the last close's and the page is read the day after
  * (Romeo, 2026-11-11: "perché evidenzia il 10 novembre se oggi è 11?"); on a day view, the day.
- * @version 3.3.0
+ * @version 3.3.1
  * @evidence DataForSEO: "earnings calendar" ~153k searches/month, SERP without AI overview (reports/Funzioni pretickt da tenere e aggiungere.md)
  * @evidence DataForSEO: "dividend calendar" in launch/data/08c-serp-dividend-calendar.json
  * @evidence DataForSEO round 14 (2026-10-31, launch/data/14-summary.json): beyond the date, "who is expected to beat earnings this week?" (AI 574), "is it better to buy before or after earnings?" (357), "fed rate decision" 40,500, "important earnings this week" 590
@@ -306,8 +306,8 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
           } @else {
             <h2 class="pt-section-title">{{ cal().label }}</h2>
             <div class="pt-cal-nav">
-              <button type="button" [disabled]="!canGo().back" (click)="go(prev())">← {{ prev() }}</button>
-              <button type="button" [disabled]="!canGo().on" (click)="go(next())">{{ next() }} →</button>
+              <button type="button" [disabled]="!canGo().back" (click)="go(prev())">← {{ monthWords(prev()) }}</button>
+              <button type="button" [disabled]="!canGo().on" (click)="go(next())">{{ monthWords(next()) }} →</button>
             </div>
           }
         </div>
@@ -502,6 +502,8 @@ export class PtCalendar {
   });
   protected readonly cells = computed(() => (this.isWeek() ? this.week() : this.cal().weeks.flat()));
   protected readonly prev = computed(() => shiftMonth(this.shownMonth(), -1));
+  /** «September», or «January 2027» in another year than the month shown. */
+  protected readonly monthWords = (m: string) => `${MONTHS[Number(m.slice(5, 7)) - 1]}${m.slice(0, 4) === this.shownMonth().slice(0, 4) ? '' : ` ${m.slice(0, 4)}`}`;
   protected readonly next = computed(() => shiftMonth(this.shownMonth(), 1));
   /** The latest session, which fixes the window the arrows may reach. */
   private readonly asOf = computed(() => this.data()?.asOf ?? '');

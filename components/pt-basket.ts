@@ -1,7 +1,7 @@
 /**
  * What does the whole fund, or the whole sector, say: why it moved and who moved it, what it holds, what analysts say of its companies, how they read on the business.
  * Every figure says how much of the fund or the sector it rests on, and a fund we cover under 80% shows none of them. Facts only, never a yes or a no.
- * @version 1.2.0
+ * @version 1.2.1
  * @evidence Romeo, 2026-11-05: «voglio creare una pagina con price target preso dalle aziende del paniere e mediato, consensus preso dalle aziende e sommato, is good to buy mediato»
  * @evidence DataForSEO round 17 (US, per month, over 87 ETFs): `{etf} holdings` 123k, market-level "why is it down" 265k, `{etf} price target` 3,550, `is {etf} a good investment` (launch/data/17-summary.json)
  * @evidence design: pretickt/docs/superpowers/specs/2026-11-05-etf-basket-pages-design.md

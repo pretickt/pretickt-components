@@ -26,6 +26,11 @@ describe('glide: a row wider than the phone shows once, slowly, that it scrolls 
     await glide(r, { animate });
     expect(legs).toEqual([]);
   });
+  it('nor one that is over by a few pixels: a slide of 12 px shows nothing (the home\'s heat map head, www 2026-11-15)', async () => {
+    const r = row(HEAD, 340, 328), { legs, animate } = recorder();
+    await glide(r, { animate });
+    expect(legs).toEqual([]);
+  });
   it('a section head goes slowly to its end, then back to its start', async () => {
     const r = row(HEAD, 520, 328), { legs, animate } = recorder();
     await glide(r, { animate });

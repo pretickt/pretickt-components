@@ -1,6 +1,6 @@
 /**
  * Are the people running this company buying or selling its stock?
- * @version 2.3.0
+ * @version 2.3.1
  * @evidence "<ticker> insider trading" long tail (marketing/ per-ticker SEO)
  * @evidence beta: insider net flow badge and Form 4 list
  */
@@ -19,7 +19,11 @@ const compact = (v: number | null) => usd(v, { compact: true });
   template: `
     @let ins = insider.value();
     @if (ins === null) {<p class="pt-na">Data not available</p>}
-    @else if (ins && !ins.items.length) {<p class="pt-na">No insider transactions in the last {{ days() }} days.</p>}
+    @else if (ins && !ins.items.length) {
+      <!-- no filing on record at all is another fact than a quiet window (a company whose insiders file no Form 4) -->
+      @if (ins.filed === false) {<p class="pt-na">No SEC Form 4 filing by this company’s officers and directors is on record here, so their trades are not known.</p>}
+      @else {<p class="pt-na">No insider transactions in the last {{ days() }} days.</p>}
+    }
     @else if (ins) {
       <section>
         <p class="pt-lede">{{ summary() }}</p>

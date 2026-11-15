@@ -71,9 +71,9 @@ describe('what company@1 and news@1 gain for a fund', () => {
 describe('a fund in words', () => {
   const up = [{ name: 'NVIDIA Corporation', points: 0.0076 }, { name: 'Micron Technology, Inc.', points: 0.0036 }, { name: 'X', points: 0.001 }];
   it('the move and the two largest behind it, on its side', () => {
-    expect(basketMoved('SMH', -0.0275, [], up)).toBe('SMH fell 2.75%. Nvidia took off 0.76 points, Micron 0.36.');
-    expect(basketMoved('SMH', 0.012, up, [])).toBe('SMH rose 1.20%. Nvidia added 0.76 points, Micron 0.36.');
-    expect(basketMoved('SMH', 0.012, [], up)).toBe('SMH rose 1.20%.');
+    expect(basketMoved('SMH', -0.0275, [], up)).toBe('SMH fell 2.8%. Nvidia took off 0.76 points, Micron 0.36.');
+    expect(basketMoved('SMH', 0.012, up, [])).toBe('SMH rose 1.2%. Nvidia added 0.76 points, Micron 0.36.');
+    expect(basketMoved('SMH', 0.012, [], up)).toBe('SMH rose 1.2%.');
   });
   it('no move of its own: what the holdings did, or nothing', () => {
     expect(basketMoved('SMH', null, up.slice(0, 1), up.slice(1, 2))).toBe('Nvidia added 0.76 points. Micron took off 0.36 points.');
@@ -98,6 +98,6 @@ describe('a company with two share classes', () => {
   });
   it('so the sentence names it once', () => {
     const rows = oneMover([m('GOOGL', 'Alphabet Inc.', 0.03, -0.05), m('GOOG', 'Alphabet Inc.', 0.02, -0.05), m('MU', 'Micron Technology, Inc.', 0.01, -0.05)]);
-    expect(basketMoved('SPY', -0.01, [], rows)).toBe('SPY fell 1.00%. Alphabet took off 0.25 points, Micron 0.05.');
+    expect(basketMoved('SPY', -0.01, [], rows)).toBe('SPY fell 1.0%. Alphabet took off 0.25 points, Micron 0.05.');
   });
 });

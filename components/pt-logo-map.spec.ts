@@ -85,6 +85,9 @@ describe('pt-logo-map', () => {
     const all = await render(PtLogoMap, {});
     expect(Object.keys(all.record)).toEqual(['screen@1|{"limit":100,"scope":{"list":"largest"}}']);
     const tech = await render(PtLogoMap, { sector: 'Technology' });
+    // a map of some of each sector's companies says whose a sector's figure is; a sector's own map has them all, and no such note
+    expect(all.text()).toContain('A sector’s figure is the move of its companies on this map, by market value.');
+    expect(tech.text()).not.toContain('A sector’s figure is');
     expect(Object.keys(tech.record)).toEqual(['screen@1|{"limit":100,"scope":{"list":"largest","sector":"Technology"}}']);
   });
   it('mega caps: the same map of the companies worth $200 billion or more, from the same list (Romeo, 2026-11-01)', async () => {

@@ -9,6 +9,8 @@
 const ROWS = '.pt-subnav, .pt-section-head';
 /** Slowly: px a second on the way there, in MIN to MAX ms (a long row goes quicker, never past 4 s); the way back in BACK ms after a PAUSE. */
 const SPEED = 60, MIN = 1500, MAX = 4000, BACK = 600, PAUSE = 700;
+/** A row over by less than this does not glide: a slide of a few pixels shows nothing. */
+const WORTH = 24;
 /** Room before the current tab, so it does not sit on the edge. */
 const ROOM = 16;
 
@@ -43,7 +45,7 @@ function restOf(row: HTMLElement, over: number): number {
 /** Glides one row, once: to its end slowly, then back to where it rests. */
 export async function glide(row: HTMLElement, o: GlideOptions = {}): Promise<void> {
   const over = row.scrollWidth - row.clientWidth;
-  if (over <= 1) return;
+  if (over < WORTH) return;
   const rest = restOf(row, over);
   const reduced = o.reduced ?? !!row.ownerDocument.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   if (reduced) { row.scrollLeft = rest; return; }

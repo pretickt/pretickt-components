@@ -1,7 +1,7 @@
 /**
  * Why did this stock move today: the whole market, its sector, or something specific to the company? While the market is open, today's
  * move so far (prices 15 minutes late), the news since the last close and the results just reported.
- * @version 2.3.0
+ * @version 2.3.1
  * @evidence DataForSEO: "why is <ticker> stock down today" family (launch/data/08c-serp-why-is-stock-down-today.json, 10a-why-moving-ticker.json)
  * @evidence beta: news spike detector (market-relative story spikes, validated 1.92x abnormal move)
  */
@@ -117,7 +117,8 @@ export class PtWhyToday {
     const m = this.move.value(), p = this.parts(), n = this.self();
     if (!m || !p || !n) return [];
     const v = (x: number, plural = false) => (p.past ? verb(x) : verbNow(x, plural));
-    const ctx = `The market (SPY) ${v(p.marketRet)}` + (p.sectorRet != null && m.sectorName ? `; ${m.sectorName} stocks ${v(p.sectorRet, true)}` : '') + '.';
+    const ctx = `The market (SPY) ${v(p.marketRet)}` + // the average company of the sector (equal weights): a sector's page weighs them by value and has another figure, so this one says what it is
+      (p.sectorRet != null && m.sectorName ? `; the average ${m.sectorName} stock ${v(p.sectorRet)}` : '') + '.';
     const driver = Math.abs(p.ret) < FLAT ? '' : p.driver === 'market' ? 'Most of the move came from the market as a whole.'
       : p.driver === 'sector' ? 'Most of the move came from its sector.' : say`Most of the move is specific to ${n}.`;
     return driver.length ? say`${ctx} ${driver}` : [ctx];
@@ -139,7 +140,9 @@ export class PtWhyToday {
   protected readonly bars = computed(() => {
     const m = this.move.value(), p = this.parts();
     if (!m || !p) return [];
-    const parts = [['Market (SPY)', p.market], [m.sectorName ? `${m.sectorName} sector` : 'Sector', p.sector], [`${m.ticker} specific`, p.specific]] as const;
+    // the sector's part is what it did beside the market (the sentence above gives its whole move): the label says so, or «Technology
+    // stocks fell 1.4%» and «Technology sector -1.0%» read as two figures for one thing (www, 2026-11-15)
+    const parts = [['Market (SPY)', p.market], [`${m.sectorName ?? 'Sector'} vs market`, p.sector], [`${m.ticker} specific`, p.specific]] as const;
     const max = Math.max(...parts.map(([, v]) => Math.abs(v)), 1e-9);
     return parts.map(([label, v]) => ({ label, v, style: { [v < 0 ? 'right' : 'left']: '50%', width: `${Math.round((Math.abs(v) / max) * 50)}%` } }));
   });

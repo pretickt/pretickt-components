@@ -77,7 +77,7 @@ describe('a basket in words, for a sector', () => {
     expect(basketLead('SMH', qs)).toBe("By weight, SMH's holdings are strong on 50% of the questions about the business; weakest on fragility. Each reading rests on at least 98% of the fund.");
   });
   it('basketMoved names the sector as it names a fund', () => {
-    expect(basketMoved('Technology', 0.012, [{ name: 'NVIDIA Corporation', points: 0.004 }], [])).toBe('Technology rose 1.20%. Nvidia added 0.40 points.');
+    expect(basketMoved('Technology', 0.012, [{ name: 'NVIDIA Corporation', points: 0.004 }], [])).toBe('Technology rose 1.2%. Nvidia added 0.40 points.');
   });
 });
 

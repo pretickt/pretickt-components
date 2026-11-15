@@ -1,6 +1,6 @@
 /**
  * Is this company growing, and is the growth turning into cash?
- * @version 2.4.0
+ * @version 2.4.2
  * @evidence "<ticker> revenue / earnings / free cash flow" long tail (marketing/ per-ticker SEO)
  * @evidence beta: growth charts and tables on the company page
  */
@@ -10,7 +10,7 @@ import { MORE_STEP, PtMore, PtSortTh, useSort } from '@pretickt/components/ds';
 import { cash, currencyName, date, level, num, pct, tip } from '@pretickt/components/format';
 
 const W = 600, H = 160, PAD = 14;
-const COLS = [['quarter', 'Quarter'], ['period', 'Period end'], ['revenue', 'Revenue'], ['eps', 'EPS'], ['fcf', 'FCF'], ['gross', 'Gross'],
+const COLS = [['quarter', 'Quarter'], ['period', 'Period end'], ['revenue', 'Revenue'], ['eps', 'GAAP EPS'], ['fcf', 'FCF'], ['gross', 'Gross'],
   ['operating', 'Operating'], ['net', 'Net']] as const;
 
 @Component({
@@ -60,7 +60,7 @@ export class PtFinancials {
   /** The currency the company reports in (absent = dollars) and its reports a year (4, or 2 for half-years). */
   protected readonly cur = computed(() => this.fin.value()?.currency);
   protected readonly per = computed(() => this.fin.value()?.periodsPerYear ?? 4);
-  protected readonly note = computed(() => { const c = this.cur(); return c && c !== 'USD' ? `Figures in ${currencyName(c)} (${c}), as reported.` : ''; });
+  protected readonly note = computed(() => { const c = this.cur(); return c && c !== 'USD' ? `Figures in ${currencyName(c)} (${c}), as reported; an earnings report beside analysts’ estimates is in US dollars.` : ''; });
   protected readonly cols = computed(() => COLS.map(([k, label]) => [k, k === 'quarter' && this.per() === 2 ? 'Half' : label] as const));
   protected readonly amount = (v: number | null) => cash(v, this.cur(), { compact: true });
   // the table lists the newest quarter first; its headers sort it

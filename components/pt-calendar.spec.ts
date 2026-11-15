@@ -96,6 +96,11 @@ describe('pt-calendar', () => {
   it('week view without a start: the first week of its month', async () => {
     expect((await render(PtCalendar, { month: '2026-09', view: 'week' })).el.querySelector('h3.pt-section-title')!.textContent).toBe('Week of Aug 31, 2026');
   });
+  it('the month arrows name the months in words: «← September», «November →», with the year across a year\'s end — never «2026-09» (www, 2026-11-15)', async () => {
+    const at = async (month: string) => navs((await render(PtCalendar, { month }, withData({ 'events@1': { asOf: '2026-10-02', items: [] } }))).el).map((b) => b.textContent!.trim());
+    expect(await at('2026-10')).toEqual(['← September', 'November →']);
+    expect(await at('2026-12')).toEqual(['← November', 'January 2027 →']);
+  });
   it('the arrows stop at the calendar window (a month back, three ahead of the latest session)', async () => {
     const at = async (inputs: Record<string, unknown>) => navs((await render(PtCalendar, inputs, withData({ 'events@1': { asOf: '2026-10-02', items: [] } }))).el).map((b) => b.disabled);
     expect(await at({ month: '2026-09' })).toEqual([true, false]);

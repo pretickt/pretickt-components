@@ -9,6 +9,8 @@ export const InsiderPayload = z.object({
     date: IsoDate, filingDate: z.nullable(IsoDate), name: z.string(), title: z.nullable(z.string()),
     type: z.enum(['buy', 'sell', 'other']), shares: z.number(), price: z.nullable(z.number()), value: z.nullable(z.number()),
   })),
+  /** Whether any Form 4 is on record for the company at all (false: none ever, which is not «no trade in the window»); absent on an older payload. */
+  filed: z.optional(z.boolean()),
 });
 export type InsiderParams = z.output<typeof InsiderParams>;
 export type Insider = z.infer<typeof InsiderPayload>;

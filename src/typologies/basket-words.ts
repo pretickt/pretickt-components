@@ -4,7 +4,7 @@ import { plainName } from '../ds/format';
  * A fund in words, one definition for the page and the fund's questions. In a module of their own, so they stay in pt-basket's chunk: the main bundle is full.
  */
 /**
- * The companies behind a fund's or a sector's move, in words: "SMH fell 2.75%. Nvidia took off 0.76 points, Micron 0.36." `label` is the fund's ticker or
+ * The companies behind a fund's or a sector's move, in words: "SMH fell 2.8%. Nvidia took off 0.76 points, Micron 0.36." `label` is the fund's ticker or
  * the sector's name. One definition for the page and the FAQ.
  */
 export function basketMoved(label: string, ret: number | null, up: readonly { name: string; points: number }[], down: readonly { name: string; points: number }[]): string {
@@ -14,7 +14,8 @@ export function basketMoved(label: string, ret: number | null, up: readonly { na
     return a ? ` ${plainName(a.name)} ${verb} ${pts(a.points)} points${b ? `, ${plainName(b.name)} ${pts(b.points)}` : ''}.` : '';
   };
   if (ret == null) return `${two(up, 'added')}${two(down, 'took off')}`.trim();
-  const size = `${Math.abs(ret * 100).toFixed(2)}%`;
+  // one decimal, as the figure in the header beside it («-3.0%» above «fell 2.99%» read as two moves; www, 2026-11-15); the points keep two
+  const size = `${Math.abs(ret * 100).toFixed(1)}%`;
   return ret >= 0 ? `${label} rose ${size}.${two(up, 'added')}` : `${label} fell ${size}.${two(down, 'took off')}`;
 }
 

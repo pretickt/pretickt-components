@@ -3,7 +3,7 @@
  * price target, its peers, its latest quarter, its insiders, its next earnings date; who leads a market list; a calendar month, week or day at a glance.
  * Company topics name the company as people search it, with its ticker ("Nvidia NVDA"): the sentence an answer engine quotes stands on its own.
  * Each company a sentence names is a link with its logo (PtSay, PtMention): on the site its card opens on hover, the page's own company too.
- * @version 1.10.0
+ * @version 1.10.2
  * @evidence DataForSEO round 18 (2026-11-14): "nvidia stock price history" 2,900/month, "will nvidia stock go up" 1,900, "<company> all time high": `history`, the history page's answer
  * @evidence design of the fund pages, 2026-11-05: `topic: 'basket'`, the page's first sentence about a fund
  * @evidence design of the sector pages, 2026-11-07: `topic: 'sector'`, the sector's companies, what they are worth and what the targets on them average
@@ -280,9 +280,11 @@ export class PtAnswer {
     if (!t) return null;
     if (s === undefined || card === undefined) return PENDING;
     const pts = s?.[0]?.points ?? [];
-    if (pts.length < 50) return null;
+    if (!pts.length) return null;
     const n = this.named(t);
     if (n === undefined) return PENDING;
+    // too few sessions for an average (a company just listed, or one whose history starts at a separation): it says so
+    if (pts.length < 50) return say`${n} closed at ${money(pts.at(-1)!.c)} on ${date(pts.at(-1)!.t)}. Its price history here has ${many(pts.length, 'session')}: too few for its moving averages, which need 50.`;
     const last = pts.at(-1)!, c = last.c, avg = (k: number) => pts.slice(-k).reduce((a, p) => a + p.c, 0) / k;
     const ma50 = avg(50), ma200 = pts.length >= 200 ? avg(200) : null;
     const year = pts.slice(-252), traded = card?.find((m) => m.key === 'range_52w')?.range;
@@ -329,7 +331,7 @@ export class PtAnswer {
     const lead = finite(q.revenue)
       ? say`${n} reported revenue of ${cash(q.revenue, cur, { compact: true })} for the ${span} ended ${date(q.period)} (${q.fiscal})${yoy}.`
       : say`The latest reported ${span} of ${n} ended ${date(q.period)} (${q.fiscal}).`;
-    const parts = [finite(q.eps) ? `diluted EPS of ${cash(q.eps, cur, { digits: 2 })}` : '', finite(q.fcf) ? `free cash flow of ${cash(q.fcf, cur, { compact: true })}` : '',
+    const parts = [finite(q.eps) ? `diluted GAAP EPS of ${cash(q.eps, cur, { digits: 2 })}` : '', finite(q.fcf) ? `free cash flow of ${cash(q.fcf, cur, { compact: true })}` : '',
       finite(q.netMargin) ? `a net margin of ${level(q.netMargin)}` : ''].filter(Boolean);
     return parts.length ? say`${lead} It posted ${and(parts)}.` : lead;
   }
@@ -342,10 +344,13 @@ export class PtAnswer {
     const n = this.named(t);
     if (n === undefined) return PENDING;
     const trades = ins.items.filter((i) => i.type === 'buy' || i.type === 'sell');
+    if (!ins.items.length && ins.filed === false) return say`No SEC Form 4 filing by the officers and directors of ${n} is on record here, so their trades are not known.`;
     if (!trades.length) return say`No open-market purchase or sale of ${n} stock by its officers and directors was reported in the last 12 months.`;
     const side = (type: 'buy' | 'sell', one: string) => {
       const list = trades.filter((i) => i.type === type);
       const value = list.reduce((s, i) => s + (i.value ?? 0), 0);
+      // «no open-market purchases», never «0 open-market purchases» (335 companies on www, 2026-11-15)
+      if (!list.length) return `no ${one}s`;
       return `${many(list.length, one)}${value > 0 ? ` worth ${usd(value, { compact: true })}` : ''}`;
     };
     const last = [...trades].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))[0]!;

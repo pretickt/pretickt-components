@@ -804,6 +804,9 @@
   .pt-mem-week { @apply font-mono text-3xs tabular-nums text-ink-soft; }
   .pt-mem-co { @apply items-center; }
   .pt-lg-hint { @apply text-3xs text-ink-soft/80; }
+  /* how to use a chart, in the words of the device: a phone has no hover, wheel or double-click */
+  .pt-if-touch { display: none; }
+  @media (hover: none) { .pt-if-hover { display: none; } .pt-if-touch { display: inline; } }
   @media (prefers-reduced-motion: no-preference) {
     .pt-sg:hover .pt-seg, .pt-cl:has(.pt-dot:hover) .pt-seg, .pt-cl:has(.pt-dot:focus-visible) .pt-seg { animation: pt-dash-flow 0.45s linear infinite; }
     .pt-cl:hover .pt-orbit, .pt-cl:has(.pt-dot:focus-visible) .pt-orbit { animation: pt-orbit-spin 1.6s linear infinite; }
@@ -902,6 +905,8 @@
   .pt-cal-row-cue { @apply justify-self-end whitespace-nowrap font-mono text-lg; grid-area: cue; }
   .pt-cal-row-est { @apply text-ink; }
   .pt-cal-row-when { @apply truncate text-xs text-ink-soft; grid-area: when; }
+  /* on a phone the whole of it, on two lines if it must: «… · before the open · not con…» hid the one word that matters (www, 2026-11-15) */
+  @media (width < 40rem) { .pt-cal-row-when { @apply overflow-visible whitespace-normal; } }
   .pt-cal-row-hint { @apply text-xs font-medium text-ink; grid-area: hint; }
   .pt-cal-row-bars { @apply justify-self-end; grid-area: bars; }
   .pt-cal-row-bars line { @apply stroke-border; }

@@ -11,7 +11,7 @@
  * `lens` "news": the 40 companies with the most news stories on the session's day (attention@1), each tile as large as its stories
  * and coloured by the day's move; the sentence names the most covered and how that compares with its usual day. "social": the same
  * with the day's posts on Reddit and X.
- * @version 0.6.1
+ * @version 0.6.2
  * @evidence Romeo 2026-10-25: home components "con i loghi delle aziende" for the overview — H3 · The market at a glance, ★ sector map (brainstorming/mappa-componenti.html)
  * @evidence DataForSEO 2026-10-28 (round 13): the "stock market heat map" family ≈33,400 searches a month, keyword difficulty 25–30, AI Overview on 2%, no dominant site (apps, guides, brokers); "largest companies by market cap" 22,200 (launch/RESEARCH.md §9)
  * @evidence Romeo 2026-11-01: "mettiamo alla fine della home la heat map del mercato delle mega caps", and a page of the heat maps
@@ -170,8 +170,13 @@ export function talkSentence(rows: readonly AttentionRow[], asOf: string, lens: 
 /** How to read the map, in the words the AI answers use for a heat map. */
 export const HOW_TO_READ = 'Each tile is a company, sized by its market value and colored by the day’s move, grouped by sector.';
 /** The same for an attention map: sized by its stories or its posts. */
-const howToRead = (lens: Lens) => (isTalk(lens)
-  ? `Each tile is a company, sized by its ${TALK[lens].size} and colored by the day’s move, grouped by sector.` : HOW_TO_READ);
+/**
+ * On a map of some of a sector's companies (the mega caps, the 100 largest) a sector's figure is theirs alone, and differs from the
+ * sector page's, which weighs every company: the note says whose it is (www, 2026-11-15: «Technology -1.6%» on the home, -1.7% on its page).
+ */
+export const PART_OF_SECTOR = ' A sector’s figure is the move of its companies on this map, by market value.';
+const howToRead = (lens: Lens, whole = false) => (isTalk(lens)
+  ? `Each tile is a company, sized by its ${TALK[lens].size} and colored by the day’s move, grouped by sector.` : HOW_TO_READ + (whole ? '' : PART_OF_SECTOR));
 
 const WIDE = { w: 1000, h: 560, n: 100 } as const;
 const NARROW = { w: 400, h: 600, n: 40 } as const;
@@ -214,7 +219,7 @@ const CARD = { w: 360, h: 270, n: 20 } as const;
               @for (k of LEGEND; track k[0]) {<span class="pt-key"><i [class]="'pt-lm-sw pt-lm-' + k[0]"></i>{{ k[1] }}</span>}
               <span class="pt-meta">size = {{ sizeWords() }} · as of {{ date(s.asOf) }}</span>
             </figcaption>
-            <p class="pt-note">{{ howToRead(lens()) }}</p>
+            <p class="pt-note">{{ howToRead(lens(), !!sector()) }}</p>
           }
         </figure>
       }

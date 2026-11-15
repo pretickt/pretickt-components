@@ -59,6 +59,9 @@ describe('pt-answer', () => {
     expect(await text({ topic: 'technicals', ticker: 'NVDA' }, { 'price-series@1': [{ ticker: 'NVDA', points: points.slice(-60) }], 'metric@1': [] })).toBe(
       'Nvidia NVDA closed at $120.00 on Oct 16, 2026, 8.7% above its 50-day moving average of $110.40. It is 0.8% below its high since ' +
       'Jan 2, 2026 of $121.00; its low since then is $99.00.');
+    // too few sessions for an average: the answer says so, never «Data not available» (Corteva after its separation, www 2026-11-15)
+    expect(await text({ topic: 'technicals', ticker: 'NVDA' }, { 'price-series@1': [{ ticker: 'NVDA', points: points.slice(-30) }], 'metric@1': [] })).toBe(
+      'Nvidia NVDA closed at $120.00 on Oct 16, 2026. Its price history here has 30 sessions: too few for its moving averages, which need 50.');
   });
 
   it('the round-16 lists say who leads them with the number they rank by', async () => {
@@ -94,7 +97,7 @@ describe('pt-answer', () => {
     const f: Fundamentals = { asOf: ASOF, periods: [q('2025-07-27', 'Q2 FY26', 30e9), q('2025-10-26', 'Q3 FY26', 35e9), q('2026-01-25', 'Q4 FY26', 39e9),
       q('2026-04-26', 'Q1 FY27', 44e9), q('2026-07-26', 'Q2 FY27', 46.8e9)] };
     expect(await text({ topic: 'financials', ticker: 'NVDA' }, { 'fundamentals@1': f })).toBe(
-      'Nvidia NVDA reported revenue of $46.8B for the quarter ended Jul 26, 2026 (Q2 FY27), up 56.0% from a year earlier. It posted diluted EPS of $1.05, ' +
+      'Nvidia NVDA reported revenue of $46.8B for the quarter ended Jul 26, 2026 (Q2 FY27), up 56.0% from a year earlier. It posted diluted GAAP EPS of $1.05, ' +
       'free cash flow of $13.45B and a net margin of 56.5%.');
   });
   it('financials of a company reporting half-years in euros: its currency, the half-year, growth over two reports', async () => {
@@ -104,7 +107,7 @@ describe('pt-answer', () => {
       h('2026-06-30', 'H1 FY2026', 10.72e9)] };
     const ccep = { ticker: 'CCEP', name: 'Coca-Cola Europacific Partners PLC', sector: 'Consumer Defensive', industry: 'Beverages', logo: null };
     expect(await text({ topic: 'financials', ticker: 'CCEP' }, { 'fundamentals@1': f, 'company@1': ccep })).toBe(
-      'Coca-Cola Europacific Partners CCEP reported revenue of €10.72B for the half-year ended Jun 30, 2026 (H1 FY2026), up 4.4% from a year earlier. It posted diluted EPS of €2.17, ' +
+      'Coca-Cola Europacific Partners CCEP reported revenue of €10.72B for the half-year ended Jun 30, 2026 (H1 FY2026), up 4.4% from a year earlier. It posted diluted GAAP EPS of €2.17, ' +
       'free cash flow of €1.1B and a net margin of 9.0%.');
   });
   it('insiders: purchases and sales over the year, then the latest trade', async () => {
@@ -113,10 +116,13 @@ describe('pt-answer', () => {
     const ins: Insider = { asOf: ASOF, items: [i('2026-10-10', 'Huang Jen Hsun', 'CEO', 'sell', 75000, 180.1), i('2026-09-01', 'Kress Colette', 'CFO', 'other', 500, 0),
       i('2026-06-02', 'Huang Jen Hsun', 'CEO', 'sell', 100000, 140)] };
     expect(await text({ topic: 'insiders', ticker: 'NVDA' }, { 'insider@1': ins })).toBe(
-      'In the last 12 months Nvidia NVDA insiders made 0 open-market purchases and 2 sales worth $27.51M, as reported on SEC Form 4. The latest: ' +
+      'In the last 12 months Nvidia NVDA insiders made no open-market purchases and 2 sales worth $27.51M, as reported on SEC Form 4. The latest: ' +
       'Huang Jen Hsun (CEO) sold 75,000 shares at $180.10 on Oct 10, 2026.');
     expect(await text({ topic: 'insiders', ticker: 'KO' }, { 'insider@1': { asOf: ASOF, items: [] } })).toBe(
       'No open-market purchase or sale of Coca-Cola KO stock by its officers and directors was reported in the last 12 months.');
+    // no Form 4 on record at all is another fact than a quiet year (ASML, Shopify and five more on www, 2026-11-15)
+    expect(await text({ topic: 'insiders', ticker: 'KO' }, { 'insider@1': { asOf: ASOF, items: [], filed: false } })).toBe(
+      'No SEC Form 4 filing by the officers and directors of Coca-Cola KO is on record here, so their trades are not known.');
   });
   it('lists: the top three with the number the list ranks by, in the sector when the page has one; an empty list says so', async () => {
     const losers = screen([row('INTC', 'Intel Corporation', { chg1d: -0.081 }), row('MRNA', 'Moderna, Inc.', { chg1d: -0.06 }), row('F', 'Ford Motor Company', { chg1d: -0.052 })]);

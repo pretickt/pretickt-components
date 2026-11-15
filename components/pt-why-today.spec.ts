@@ -14,8 +14,15 @@ describe('pt-why-today', () => {
     const out = await text(base());
     expect(out).toMatch(/Nvidia NVDA fell 3\.1% on Sep 30, 2026\./);
     expect(out).toContain('The market (SPY) fell 1.2%');
-    expect(out).toContain('Technology stocks fell 2.0%');
+    // the sector page's «Technology −1.7%» weighs companies by value; this is the average company's move, and says so (www, 2026-11-15)
+    expect(out).toContain('the average Technology stock fell 2.0%');
     expect((await html(base())).match(/class="pt-bd-row"/g)).toHaveLength(3);
+  });
+  it('the sector\'s row says it is the sector beside the market: «Technology stocks fell 2.0%» above and «Technology sector -0.8%» below read as two figures for one thing (www, 2026-11-15)', async () => {
+    const out = await text(base());
+    expect(out).toContain('Technology vs market');
+    expect(out).not.toContain('Technology sector');
+    expect(await text(base({ sectorName: null as never }))).toContain('Sector vs market');
   });
   it('names the driver', async () => {
     expect(await text(base({ driver: 'stock' }))).toContain('Most of the move is specific to Nvidia NVDA');
@@ -64,7 +71,7 @@ describe('pt-why-today', () => {
       const r = await live();
       const out = r.html(), said = r.el.textContent!.replace(/\s+/g, ' ');
       expect(said).toContain('Nvidia NVDA is down 6.0% today, as of 11:30 AM ET.');
-      expect(said).toContain('The market (SPY) is up 0.4%; Technology stocks are up 0.2%. Most of the move is specific to Nvidia NVDA.');
+      expect(said).toContain('The market (SPY) is up 0.4%; the average Technology stock is up 0.2%. Most of the move is specific to Nvidia NVDA.');
       expect(said).toContain('Nvidia NVDA reported after the close on Sep 30, 2026: EPS $7.40 vs $6.54 expected (+13.1%); revenue $64.6B vs $63.34B (+2.0%).');
       expect(out).toContain('12 stories since the close on Sep 30, 2026.');
       expect(out).toContain('Nvidia falls &lt;b&gt;');

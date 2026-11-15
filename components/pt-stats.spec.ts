@@ -70,6 +70,13 @@ describe('pt-stats', () => {
     const { words, el } = await view(base({ bigDaysPerYear: 0.4 }));
     expect(words).toContain('Nvidia moved 2.2% on average');
     expect(el.querySelectorAll('.pt-stats-tile')[1]!.querySelector('.pt-stats-k')!.textContent!.trim()).toBe('fewer than 1');
+    // «fewer than 1 day a year», never «1 days» (54 pages on www, 2026-11-15); a beta that rounds to zero has no minus sign (7 pages: «moved -0.0%»)
+    const label = (v: Awaited<ReturnType<typeof view>>) => v.el.querySelectorAll('.pt-stats-tile')[1]!.querySelectorAll('span')[1]!.textContent!.trim();
+    expect(label(await view(base({ bigDaysPerYear: 0.4 })))).toBe('day a year it moved more than 5%');
+    expect(label(await view(base({ bigDaysPerYear: 3.4 })))).toBe('days a year it moved more than 5%');
+    const flat = (await view(base({ beta: -0.04 }))).words;
+    expect(flat).toContain('moved 0.0% on average');
+    expect(flat).not.toContain('-0.0');
     expect(words).not.toContain('8 months in 10');
     expect(words).toContain('Half the spread of its middle 80% of one-month moves');
     expect(el.querySelector('.pt-stats-swing')!.getAttribute('aria-label')).toBe('Nvidia in the last five years, with each fall and rise of 30% or more');

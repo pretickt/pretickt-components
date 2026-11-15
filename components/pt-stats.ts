@@ -1,7 +1,7 @@
 /**
  * What has this stock done? Its last five years in four rows, the same for every stock: how much it moves, its years against the S&P 500,
  * its falls and rises beyond its own threshold side by side, how often it went up. Facts and counts, each with its window; never a forecast.
- * @version 1.0.0
+ * @version 1.0.1
  * @evidence DataForSEO round 18 (US, 2026-11-14): "nvidia stock price history" 2,900 a month, "will nvidia stock go up" 1,900, "nvidia stock performance" 1,900, "<company> all time high" (Apple 850), "<company> beta" (Nvidia 720)
  * @evidence Romeo, 2026-11-14: «più che precisione, parlerei di statistiche»; «affianca stats rally oltre a drawdown»
  */
@@ -20,6 +20,8 @@ const median = (xs: number[]) => { if (!xs.length) return NaN; const s = [...xs]
 export const span = (sessions: number) => (sessions < 42 ? `about ${many(Math.max(1, Math.round(sessions / 5)), 'week')}` : `about ${many(Math.round(sessions / 21), 'month')}`);
 const share = (x: number) => `${Math.round(x * 100)}%`;
 const fewer = (x: number) => (x < 1 ? 'fewer than 1' : String(Math.round(x)));
+/** One decimal, a figure that rounds to zero without its minus sign (a beta of -0.04 is «0.0», never «-0.0»). */
+const one = (x: number) => { const s = x.toFixed(1); return s === '-0.0' ? '0.0' : s; };
 
 /** The year bars: one per calendar year, SPY's change as a tick across it. */
 export function yearBars(s: Pick<Stats, 'years' | 'spy'>) {
@@ -78,11 +80,11 @@ export function swingChart(s: Pick<Stats, 'path' | 'swings' | 'deepestFall' | 'l
           <div class="pt-stats-tiles">
             <div class="pt-stats-tile"><span class="pt-stats-k">±{{ pct(s.typicalDay).replace('+', '') }}</span><span>on a typical day</span>
               @if (s.spy) {<span class="pt-meta">S&amp;P 500 ±{{ pct(s.spy.typicalDay).replace('+', '') }}</span>}</div>
-            <div class="pt-stats-tile"><span class="pt-stats-k">{{ fewer(s.bigDaysPerYear) }}</span><span>days a year it moved more than 5%</span>
+            <div class="pt-stats-tile"><span class="pt-stats-k">{{ fewer(s.bigDaysPerYear) }}</span><span>{{ s.bigDaysPerYear < 1.5 ? 'day' : 'days' }} a year it moved more than 5%</span>
               @if (s.spy) {<span class="pt-meta">S&amp;P 500 {{ fewer(s.spy.bigDaysPerYear) }}</span>}</div>
             <div class="pt-stats-tile">
-              @if (s.beta !== null) {<span class="pt-stats-k">{{ s.beta.toFixed(1) }}×</span><span>the market's daily moves (beta)</span>
-                <span class="pt-meta">When the S&amp;P 500 moved 1%, {{ name() }} moved {{ s.beta.toFixed(1) }}% on average, over two years</span>}
+              @if (s.beta !== null) {<span class="pt-stats-k">{{ one(s.beta) }}×</span><span>the market's daily moves (beta)</span>
+                <span class="pt-meta">When the S&amp;P 500 moved 1%, {{ name() }} moved {{ one(s.beta) }}% on average, over two years</span>}
               @else {<span class="pt-stats-k">—</span><span>the market's daily moves (beta)</span><span class="pt-meta">Not computed: under two years of prices beside the S&amp;P 500</span>}
             </div>
             <div class="pt-stats-tile"><span class="pt-stats-k">±{{ pct(s.month80, 0).replace('+', '') }}</span><span>in a typical month</span>
@@ -232,6 +234,7 @@ export class PtStats {
   protected monthTip(m: { month: string; change: number }) { return tip({ [monthYear(`${m.month}-01`)]: pct(m.change) }); }
   protected tone(v: number) { return v > 0 ? 'pt-t-pos' : v < 0 ? 'pt-t-neg' : 'pt-t-flat'; }
   protected readonly fewer = fewer;
+  protected readonly one = one;
   protected readonly share = share;
   protected readonly pct = pct;
   protected readonly money = money;

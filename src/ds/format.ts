@@ -259,7 +259,8 @@ export function badgeValue(b: Pick<Badge, 'text' | 'value' | 'unit'>): string {
   if (b.text) return b.text;
   if (b.value == null || !Number.isFinite(b.value)) return '—';
   switch (b.unit) {
-    case 'x': return `${num(b.value, 1)}x`;
+    // earnings near zero make a multiple in the thousands that says nothing (CrowdStrike's P/E of 6,456; www, 2026-11-15)
+    case 'x': return b.value >= 1000 ? '>999x' : `${num(b.value, 1)}x`;
     case '%': return pct(b.value);
     case '$': return money(b.value);
     case '$c': return usd(b.value, { compact: true });

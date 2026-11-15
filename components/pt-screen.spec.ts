@@ -13,6 +13,13 @@ describe('pt-screen', () => {
     expect(out).toContain('href="/stocks/brk.b/"');
     expect(out.match(/<polyline/g)).toHaveLength(data.rows.length);
   });
+  it('a space between the ticker and the name: «NBIS Nebius», never «NBISNebius» — one long word that wrapped under its logo on a phone (www, 2026-11-15)', async () => {
+    const data = screenDemo({ scope: { list: 'biggest_losers' }, limit: 10 });
+    const { el } = await render(PtScreen, { list: 'biggest_losers', limit: 10 }, withData({ 'screen@1': data }));
+    const named = [...el.querySelectorAll('.pt-scr-co')].filter((a) => a.querySelector(':scope > span:not(.pt-sr)'));
+    expect(named.length).toBeGreaterThan(0);
+    for (const a of named) expect(a.querySelector('strong')!.nextSibling!.textContent).toBe(' ');
+  });
   it('links each row to the page the list asks for, its card still opening on the ticker (internal links, 2026-11-14)', async () => {
     const data = screenDemo({ scope: { list: 'biggest_losers' }, limit: 10 });
     const linked = await render(PtScreen, { list: 'biggest_losers', limit: 10, link: 'why-moving' }, withData({ 'screen@1': data }));

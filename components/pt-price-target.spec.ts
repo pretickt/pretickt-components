@@ -433,6 +433,9 @@ describe('pt-price-target on a basket: its holdings\' targets, week by week', ()
     for (const [r, b] of [[await fund(), smh], [await render(PtPriceTarget, { sector: 'Technology' }, withData({ 'sector@1': tech })), tech]] as const) {
       expect(r.text()).not.toContain('Weighted target');
       expect(r.el.querySelector('.pt-lg-hint')!.textContent).toContain('hover a dot to see its largest companies that week');
+      // a phone has no hover, wheel or double-click: its own words, shown in their place (styles: `(hover: none)`; www, 2026-11-15)
+      expect(r.el.querySelector('.pt-lg-hint .pt-if-touch')!.textContent).toBe('tap a dot to see its largest companies that week · drag sideways to move through time · double-tap resets');
+      expect(r.el.querySelector('.pt-lg-hint .pt-if-hover')!.textContent).toContain('· wheel or drag to move through time');
       const last = b.targetHistory!.at(-1)!, name = new Map(b.holdings.map((h) => [h.ticker, h.name]));
       const panel = [...r.el.querySelectorAll('.pt-members')].find((p) => p.querySelector('.pt-mem-week')?.textContent?.trim() === `Week of ${date(last.t)}`)!;
       expect(panel).toBeDefined();

@@ -18,7 +18,7 @@ describe('pt-basket', () => {
 
   describe('why it moved', () => {
     it('the sentence names the fund\'s own move and the two largest behind it', async () => {
-      expect((await section('moves')).text()).toContain('SMH fell 2.75%. Nvidia took off 0.76 points, Micron 0.36.');
+      expect((await section('moves')).text()).toContain('SMH fell 2.8%. Nvidia took off 0.76 points, Micron 0.36.');
     });
     it('says the fund\'s own price is the move, and what the gap from its companies is', async () => {
       const t = (await section('moves')).text();
@@ -49,7 +49,7 @@ describe('pt-basket', () => {
     const live = async (d: object) => { const r = await section('moves', SMH, { browser: true, providers: liveDay(d) }); await settle(r.f); await r.f.whenStable(); await settle(r.f); return r; };
     it('in a session newer than the data the points follow the delayed quotes and the label says 15-min delayed', async () => {
       const { text, el } = await live(open);
-      expect(text()).toContain('SMH rose 2.00%. Nvidia added 1.03 points');
+      expect(text()).toContain('SMH rose 2.0%. Nvidia added 1.03 points');
       expect(text()).toContain('11:30 AM ET, 15-min delayed');
       expect(el.querySelectorAll('.pt-bk-side .pt-bk-mv')).toHaveLength(10);
     });
@@ -84,7 +84,7 @@ describe('pt-basket', () => {
     });
     it('a session not newer than the data changes nothing', async () => {
       const { text } = await live({ ...open, session: SMH.asOf });
-      expect(text()).toContain('SMH fell 2.75%');
+      expect(text()).toContain('SMH fell 2.8%');
     });
   });
 
@@ -216,7 +216,7 @@ describe('pt-basket, for a sector', () => {
 
   it('the moves sentence names the sector; the note says its companies\' points add up to its move', async () => {
     const t = (await sec('moves')).text();
-    expect(t).toContain('Technology rose 1.20%. Nvidia added 0.40 points.');
+    expect(t).toContain('Technology rose 1.2%. Nvidia added 0.40 points.');
     expect(t).toMatch(/points add up to the sector's move/);
   });
   const open = { session: '2026-10-01', prev: '2026-09-30', time: '11:30 AM ET', q: { NVDA: { p: 1, pc: 1, r: 0.02, m: 0, s: null, x: null }, AAPL: { p: 1, pc: 1, r: -0.01, m: 0, s: null, x: null } } };
@@ -228,7 +228,7 @@ describe('pt-basket, for a sector', () => {
   it('live on the page: the sentence, five slots a side, 15-min delayed', async () => {
     const r = await sec('moves', TECH, { browser: true, providers: liveDay(open) });
     await settle(r.f); await r.f.whenStable(); await settle(r.f);
-    expect(r.text()).toContain('Technology rose 0.70%. Nvidia added 1.00 points.');
+    expect(r.text()).toContain('Technology rose 0.7%. Nvidia added 1.00 points.');
     expect(r.text()).toContain('11:30 AM ET, 15-min delayed');
     for (const side of r.el.querySelectorAll('.pt-bk-side')) expect(side.querySelectorAll('.pt-bk-mv')).toHaveLength(5);
   });
@@ -355,7 +355,7 @@ describe('pt-basket, on a portfolio computed on the page (Part B)', () => {
     const r = await pfb('moves', b, { browser: true, providers: liveDay({ session: '2026-10-01', prev: '2026-09-30', time: '11:30 AM ET', q }) });
     await settle(r.f); await r.f.whenStable(); await settle(r.f);
     const nvda = b.holdings.find((h) => h.ticker === 'NVDA')!;
-    expect(r.text()).toContain(`Long term rose ${pct(nvda.weight * 0.05, 2).replace('+', '')}.`);
+    expect(r.text()).toContain(`Long term rose ${pct(nvda.weight * 0.05, 1).replace('+', '')}.`);
     expect(r.text()).toContain('15-min delayed');
   });
 });

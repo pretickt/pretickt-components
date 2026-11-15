@@ -1,6 +1,6 @@
 /**
  * Where do analysts think this stock is going, and how spread out are they? On a fund's or a sector's page: where its holdings' analysts put it, week by week.
- * @version 2.7.1
+ * @version 2.7.2
  * @evidence Romeo, 2026-11-07: «for the price target, both in ETFs and sectors, I would like a chart similar to the one in companies, with dots and the lines to see recents and visually» (2.5: `basket`, `sector`)
  * @evidence Romeo, 2026-11-07, on a basket dot's panel: «do not show weighted target, but the surrounding companies with logos» (2.6: the week, then its largest companies)
  * @evidence DataForSEO: "{ticker} price target" ~103k searches/month, "{ticker} stock forecast" ~151k (launch/data, public-site spec §4)
@@ -398,7 +398,8 @@ export function trendText(who: Mention, weekly: Weekly, targets: Analysts['targe
           <div class="pt-legend">
             @if (mode() === 'company') {<span class="pt-lg-price">— actual price</span><span class="pt-lg-up">● bullish target</span><span class="pt-lg-down">● bearish target</span><span class="pt-lg-lvl">┄ last close, high, average and low target</span>}
             @else {<span class="pt-lg-price">— {{ mode() === 'sector' ? 'its companies\\' value' : 'actual price' }}</span><span class="pt-lg-up">● a week's target above it</span><span class="pt-lg-down">● below it</span><span class="pt-lg-lvl">┄ {{ mode() === 'sector' ? 'its value' : 'last close' }} and today's target</span>}
-            <span class="pt-lg-hint">hover a dot to see {{ mode() === 'company' ? 'the analysts behind it' : 'its largest companies that week' }} ·wheel or drag to move through time · drag the price axis on the right to stretch it · double-click resets</span>
+            @let behind = mode() === 'company' ? 'the analysts behind it' : 'its largest companies that week';
+            <span class="pt-lg-hint"><span class="pt-if-hover">hover a dot to see {{ behind }} · wheel or drag to move through time · drag the price axis on the right to stretch it · double-click resets</span><span class="pt-if-touch">tap a dot to see {{ behind }} · drag sideways to move through time · double-tap resets</span></span>
           </div>
           <div ptChart [w]="c.w" [h]="c.h" [plotW]="c.w - MR" [plotH]="c.h - MB" [id]="id()" [label]="'Analyst price targets over time'" [(view)]="view">
             <svg:g ptDefs>
@@ -455,7 +456,7 @@ export function trendText(who: Mention, weekly: Weekly, targets: Analysts['targe
             </ng-container>
           </div>
           @if (trend(); as k) {
-            <p class="pt-legend pt-trend-legend"><span>Average target, week by week</span><span class="pt-lg-up">— rising</span><span class="pt-lg-down">— falling</span><span class="pt-lg-hint">hover a week to see who raised or cut</span></p>
+            <p class="pt-legend pt-trend-legend"><span>Average target, week by week</span><span class="pt-lg-up">— rising</span><span class="pt-lg-down">— falling</span><span class="pt-lg-hint"><span class="pt-if-hover">hover a week to see who raised or cut</span><span class="pt-if-touch">tap a week to see who raised or cut</span></span></p>
             <svg class="pt-trend" [attr.viewBox]="'0 0 ' + k.w + ' ' + k.h" role="img" [attr.aria-label]="k.label">
               <defs><clipPath [attr.id]="id() + 'tc'"><rect x="0" y="0" [attr.width]="k.w - MR" [attr.height]="k.h" /></clipPath></defs>
               @for (g of k.grid; track g.y) {

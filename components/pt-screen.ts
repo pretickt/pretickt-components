@@ -1,7 +1,7 @@
 /**
  * Which companies are on this list today (biggest movers, 52-week extremes, undervalued, insider buying, upgrades and downgrades,
  * golden and death crosses, low P/E, Piotroski 8–9, unusual volume, peers)?
- * @version 2.6.0
+ * @version 2.6.1
  * @evidence DataForSEO: "biggest stock losers today", "52 week low stocks", "undervalued stocks" (launch/data/08c-serp-undervalued-stocks.json)
  * @evidence stockanalysis.com / finviz market-mover tables; beta: peers table on the company page
  * @evidence DataForSEO round 16 (2026-11-02): "upgrades and downgrades" 3,600/month (KD 9), "golden cross stocks" 1,000 (KD 12), "death cross
@@ -67,7 +67,7 @@ type Row = { r: ScreenRow; rank: number; chg: Cell; extra: Cell[]; spark: Return
             @for (x of sort.sorted(); track x.r.ticker) {
               <tr [class]="x.r.self ? 'pt-scr-row pt-scr-self' : 'pt-scr-row'">
                 <td class="pt-scr-rank">{{ x.rank }}</td>
-                <td><a class="pt-scr-co" [href]="rowHref(x.r.ticker)" [attr.data-card]="page() ? x.r.ticker : null"><pt-logo [ticker]="x.r.ticker" [src]="x.r.logo" /> <strong>{{ x.r.ticker }}</strong>@let nm = plainName(x.r.name); @if (nm !== x.r.ticker) { <span>{{ nm }}</span>}@if (page(); as pg) {<span class="pt-sr">{{ pg.sr }}</span>}</a></td>
+                <td><a class="pt-scr-co" [href]="rowHref(x.r.ticker)" [attr.data-card]="page() ? x.r.ticker : null"><pt-logo [ticker]="x.r.ticker" [src]="x.r.logo" /> <strong>{{ x.r.ticker }}</strong>@let nm = plainName(x.r.name); @if (nm !== x.r.ticker) {&ngsp;<span>{{ nm }}</span>}@if (page(); as pg) {<span class="pt-sr">{{ pg.sr }}</span>}</a></td>
                 <td class="pt-num">{{ money(x.r.close) }}</td>
                 <td class="pt-num"><span [class]="x.chg.tone">{{ x.chg.text }}</span></td>
                 @for (c of x.extra; track $index) {<td class="pt-num">@if (c.tone) {<span [class]="c.tone">{{ c.text }}</span>} @else {<ng-container>{{ c.text }}</ng-container>}</td>}
