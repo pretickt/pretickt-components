@@ -1,4 +1,4 @@
-import { InjectionToken } from '@angular/core';
+import { InjectionToken, type WritableSignal } from '@angular/core';
 import type { HumanCheck, ManageOp, ManageState } from '../../alerts/token';
 
 /** The follows' email (follow alerts, part 2): the sign-up with this browser's follows, and the manage link's calls. */
@@ -8,7 +8,7 @@ export interface FollowBackend {
   manage(token: string, op: ManageOp): Promise<ManageState | null>;
 }
 /** What the panel and /alerts/ need for the email; absent where the email alerts are off (no email row). */
-export interface FollowEmail { backend: FollowBackend; check: HumanCheck | null }
+export interface FollowEmail { backend: FollowBackend; check: HumanCheck | null; /** the sign-up went out on this page (every panel says so) */ sent?: WritableSignal<boolean> }
 export const PT_FOLLOW_EMAIL = new InjectionToken<FollowEmail>('PT_FOLLOW_EMAIL');
 /** The floating window of the followed companies (part 3): provided only where the browser can open one. */
 export const PT_FOLLOW_FLOAT = new InjectionToken<{ open(): Promise<void> }>('PT_FOLLOW_FLOAT');

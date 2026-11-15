@@ -36,7 +36,7 @@ export const BARS_EVERY_MS = 120_000;
 const NY = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 
 /** Whether to read the lines again: the tab in front, a weekday between the open and the job's last run (16:16), today's session not closed yet. */
-export function mayRefresh(now: Date, last: LiveBars | null, visible: boolean): boolean {
+export function mayRefresh(now: Date, last: Pick<LiveBars, 'session' | 'closed'> | null, visible: boolean): boolean {
   if (!visible) return false;
   const p = Object.fromEntries(NY.formatToParts(now).map((x) => [x.type, x.value]));
   const min = Number(p['hour']) * 60 + Number(p['minute']);

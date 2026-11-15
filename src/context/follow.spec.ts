@@ -99,6 +99,40 @@ describe('PtFollow (the companies this browser follows, and the alerts it has se
     expect(follow.link()).toBeNull();
     expect(heard).toEqual(['NVDA:true', 'NVDA:false']); // replacing is not a reader's toggle
   });
+  it("a toggle is heard as the store's list changed, not this page's copy: another tab's unfollow, and at 200 the oldest that goes (first)", () => {
+    const { store } = memory({ follows: ['NVDA'], seen: {} });
+    const { f, follow } = mount([{ provide: PT_FOLLOW, useValue: store }, { provide: PT_FOLLOW_ON, useValue: true }]);
+    f.detectChanges();
+    TestBed.tick();
+    const heard: string[] = [];
+    follow.listenChanges((c) => heard.push(`${c.ticker}:${c.on}`));
+    store.write({ follows: [], seen: {} });   // another tab stopped following NVDA
+    follow.toggle('NVDA');                      // this page still showed it followed: the store's list gains it
+    expect(heard).toEqual(['NVDA:true']);
+    expect(follow.follows()).toEqual(['NVDA']);
+    store.write({ follows: Array.from({ length: 200 }, (_, i) => `T${i}`), seen: {} });
+    heard.length = 0;
+    follow.toggle('NEW');
+    expect(heard).toEqual(['T0:false', 'NEW:true']);   // the server makes room before it adds
+  });
+  it('a change made before the store arrives waits for it, and is heard', async () => {
+    let data: FollowState = { follows: ['NVDA'], seen: {} };
+    let arrive!: () => void;
+    const came = new Promise<void>((r) => { arrive = r; });
+    const store: FollowStore = { read: () => came.then(() => data), write: (s) => { data = s; } };
+    const { f, follow } = mount([{ provide: PT_FOLLOW, useValue: store }, { provide: PT_FOLLOW_ON, useValue: true }]);
+    f.detectChanges();
+    TestBed.tick();
+    const heard: string[] = [];
+    follow.listenChanges((c) => heard.push(`${c.ticker}:${c.on}`));
+    follow.toggle('AAPL');
+    expect(heard).toEqual([]);
+    arrive();
+    for (let i = 0; i < 4; i++) await Promise.resolve();
+    expect(follow.follows()).toEqual(['NVDA', 'AAPL']);
+    expect(data.follows).toEqual(['NVDA', 'AAPL']);
+    expect(heard).toEqual(['AAPL:true']);
+  });
   it('a store whose first read is a promise (the site loads it on first use) applies when it arrives', async () => {
     let data: FollowState = { follows: ['NVDA'], seen: { NVDA: '2026-11-12' } };
     const store: FollowStore = { read: () => Promise.resolve(data), write: (s) => { data = s; } };

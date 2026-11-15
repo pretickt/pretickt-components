@@ -86,7 +86,7 @@ export class PtFollowPanel {
   protected readonly float = inject(PT_FOLLOW_FLOAT, { optional: true });
   protected readonly address = signal('');
   protected readonly busy = signal(false);
-  protected readonly sent = signal(false);
+  protected readonly sent = this.email?.sent ?? signal(false);
   protected readonly said = signal<string | null>(null);
   private readonly human = viewChild<ElementRef<HTMLElement>>('human');
   private token: string | null = null;

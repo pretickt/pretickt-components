@@ -1,4 +1,4 @@
-import type { LiveDay, LiveQuote } from '@pretickt/components/context';
+import { mayRefresh, type LiveDay, type LiveQuote } from '@pretickt/components/context';
 import { money, pct, plainName } from '@pretickt/components/format';
 import type { FollowFile } from '@pretickt/components/typologies';
 
@@ -29,11 +29,12 @@ export function liveChips(q: Pick<LiveQuote, 'p' | 'pc'> | null, levels: { s?: n
 }
 
 /**
- * Opens the window and keeps it current: `load` reads today's intraday file (whole), every `everyMs` while it is open (0: never by itself).
- * `refresh` reads it again now; `stop` ends the polling (the window closing does too).
+ * Opens the window and keeps it current: `load` reads today's intraday file (whole), every `everyMs` while it is open (0: never by itself) and
+ * only while it can change (a weekday's session, before it closes: as the page's own lines). `follows` is read at each draw; `redraw` draws
+ * again now (a follow changed on the page), `refresh` reads the file again now; `stop` ends the polling (the window closing does too).
  */
-export async function openFloating(win: Window, o: { follows: readonly string[]; file: FollowFile | null | (() => Promise<FollowFile | null>); load: () => Promise<LiveDay | null>; everyMs: number }):
-  Promise<{ refresh(): Promise<void>; stop(): void }> {
+export async function openFloating(win: Window, o: { follows: readonly string[] | (() => readonly string[]); file: FollowFile | null | (() => Promise<FollowFile | null>); load: () => Promise<LiveDay | null>; everyMs: number }):
+  Promise<{ refresh(): Promise<void>; redraw(): void; stop(): void }> {
   // the window first: the click's permission to open it lasts a moment; the night file comes after
   const pip = await (win as unknown as { documentPictureInPicture: PipApi }).documentPictureInPicture.requestWindow({ width: 340, height: 480 });
   const file = typeof o.file === 'function' ? await o.file().catch(() => null) : o.file;
@@ -53,7 +54,7 @@ export async function openFloating(win: Window, o: { follows: readonly string[];
 
   const draw = (day: LiveDay | null) => {
     head.textContent = day ? `Following · ${day.closed ? 'closed' : day.time} · prices 15 min delayed` : 'Following · last close';
-    list.replaceChildren(...o.follows.map((t) => {
+    list.replaceChildren(...(typeof o.follows === 'function' ? o.follows() : o.follows).map((t) => {
       const c = file?.companies[t], q = day?.q[t] ?? null;
       const night: Chip[] = (c?.alerts ?? []).filter((a) => a.session === file?.asOf).map((a) => ({ label: `${a.label}${a.value ? ` ${a.value}` : ''}`, tone: a.tone === 'na' ? 'flat' : a.tone }));
       const chips = [...night, ...liveChips(q, c?.levels)], before = shown.get(t);
@@ -72,10 +73,11 @@ export async function openFloating(win: Window, o: { follows: readonly string[];
       return row;
     }));
   };
-  const refresh = async () => { draw(await o.load().catch(() => null)); };
+  let last: LiveDay | null = null;
+  const refresh = async () => { last = await o.load().catch(() => null); draw(last); };
   await refresh();
-  const timer = o.everyMs > 0 ? setInterval(() => { void refresh(); }, o.everyMs) : null;
+  const timer = o.everyMs > 0 ? setInterval(() => { if (mayRefresh(new Date(), last, true)) void refresh(); }, o.everyMs) : null;
   const stop = () => { if (timer) clearInterval(timer); };
   pip.addEventListener('pagehide', stop);
-  return { refresh, stop };
+  return { refresh, redraw: () => draw(last), stop };
 }

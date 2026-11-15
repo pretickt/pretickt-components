@@ -26,6 +26,7 @@ export class PtFollow {
   private presses = 0;
   private listener: ((p: FollowPress) => void) | null = null;
   private changes: ((c: { ticker: string; on: boolean }) => void) | null = null;
+  private readonly later: (() => void)[] = [];
   readonly ready = computed(() => this.state() !== null);
   readonly follows = computed<readonly string[]>(() => this.state()?.follows ?? []);
   readonly pressed = this.pressedSig.asReadonly();
@@ -38,9 +39,22 @@ export class PtFollow {
       const none: FollowState = { follows: [], seen: {} };
       let read: FollowState | Promise<FollowState> = none;
       try { read = store.read(); } catch { /* a store that fails follows nothing */ }
-      if (read instanceof Promise) read.then((s) => this.state.set(s), () => this.state.set(none));
-      else this.state.set(read);
+      if (read instanceof Promise) read.then((s) => this.arrive(s), () => this.arrive(none));
+      else this.arrive(read);
     });
+  }
+
+  /** The store's first read: the changes made while it came apply now, in order. */
+  private arrive(s: FollowState): void {
+    this.state.set(s);
+    for (const f of this.later.splice(0)) f();
+  }
+
+  /** Before that first read a change waits for it (a press on a slow page is not lost). */
+  private waits(f: () => void): boolean {
+    if (!this.store || this.state() !== null) return false;
+    this.later.push(f);
+    return true;
   }
 
   following(t: () => string | null): Signal<boolean> {
@@ -52,23 +66,29 @@ export class PtFollow {
     return computed(() => { const k = t(); return unseenCount(alerts(), k == null ? undefined : this.state()?.seen[k]); });
   }
 
+  /**
+   * Heard as the store's list changed (another tab's changes are not this one's to report): a company that went first — at the limit the
+   * oldest makes room, so the server does too — then the one that came.
+   */
   toggle(t: string): void {
-    const was = this.state()?.follows.includes(t);
-    this.change((s) => toggled(s, t));
-    const now = this.state()?.follows.includes(t);
-    if (was !== undefined && now !== was) this.changes?.({ ticker: t, on: !!now });
+    if (this.waits(() => this.toggle(t))) return;
+    const r = this.change((s) => toggled(s, t));
+    if (!r || !this.changes) return;
+    const [a, b] = r;
+    for (const x of a.follows) if (!b.follows.includes(x)) this.changes({ ticker: x, on: false });
+    for (const x of b.follows) if (!a.follows.includes(x)) this.changes({ ticker: x, on: true });
   }
 
   /** The page hears each reader's toggle that changed the list (to tell the server, once the follows are linked to an email). */
   listenChanges(fn: (c: { ticker: string; on: boolean }) => void): void { this.changes = fn; }
 
   /** The email link the server gave (null: none, after unsubscribing). */
-  setLink(l: FollowLink | null): void { this.change((s) => { const { link: _, ...rest } = s; return l ? { ...rest, link: l } : rest; }); }
+  setLink(l: FollowLink | null): void { if (!this.waits(() => this.setLink(l))) this.change((s) => { const { link: _, ...rest } = s; return l ? { ...rest, link: l } : rest; }); }
 
   /** The follows become this list (the server's, merged by the page): no change is heard. */
-  replaceFollows(tickers: readonly string[]): void { this.change((s) => replaced(s, tickers)); }
+  replaceFollows(tickers: readonly string[]): void { if (!this.waits(() => this.replaceFollows(tickers))) this.change((s) => replaced(s, tickers)); }
 
-  markSeen(t: string, session: string): void { this.change((s) => seenUpTo(s, t, session)); }
+  markSeen(t: string, session: string): void { if (!this.waits(() => this.markSeen(t, session))) this.change((s) => seenUpTo(s, t, session)); }
 
   press(p: Omit<FollowPress, 'at'>): void {
     const full = { ...p, at: ++this.presses };
@@ -80,14 +100,15 @@ export class PtFollow {
   listen(fn: (p: FollowPress) => void): void { this.listener = fn; }
 
   /** A change starts from the store, not from this page's copy: another tab may have followed something since (its follows stay). */
-  private change(f: (s: FollowState) => FollowState): void {
+  /** The state before and after (null: no store, or not read yet). */
+  private change(f: (s: FollowState) => FollowState): [FollowState, FollowState] | null {
     const s = this.state();
-    if (!this.store || s === null) return;
+    if (!this.store || s === null) return null;
     let base = s;
     try { const fresh = this.store.read(); if (!(fresh instanceof Promise)) base = fresh; } catch { /* a store that cannot be read: this page's copy */ }
     const next = f(base);
     this.state.set(next);
-    if (next === base) return;
-    try { this.store.write(next); } catch { /* not kept: this page still shows it */ }
+    if (next !== base) try { this.store.write(next); } catch { /* not kept: this page still shows it */ }
+    return [base, next];
   }
 }

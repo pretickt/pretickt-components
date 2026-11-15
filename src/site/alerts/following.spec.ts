@@ -59,12 +59,21 @@ describe('/alerts/: what this browser follows (follow, 2026-11-14)', () => {
   const server = (ops: unknown[], st: Partial<import('../../alerts/token').ManageState> = {}): FollowBackend => ({ signup: async () => 'ok',
     manage: async (t, op) => { ops.push([t, op]); return { email: 'r•••@example.com', status: 'active', weekly: false, digest: false, rules: [],
       follows: ['NVDA'], cadence: 'day', manage: 'm.n', ...st } as never; } });
-  it("arriving from an email's link: the server's follows join this browser's, the link is kept, the union goes back once", async () => {
+  it("arriving from an email's link (perhaps forwarded): the browser takes the email's companies; its others go to those emails only when the reader adds them", async () => {
     const ops: unknown[] = [];
-    const { follow } = await mount({ follows: ['KO'], seen: {} }, async () => FILE, { backend: server(ops), search: '?t=a.b' });
-    expect(follow.follows()).toEqual(['NVDA', 'KO']);
+    const { f, el, follow } = await mount({ follows: ['KO'], seen: {} }, async () => FILE, { backend: server(ops), search: '?t=a.b' });
+    expect(follow.follows()).toEqual(['NVDA']);
     expect(follow.link()).toEqual({ token: 'm.n', email: 'r•••@example.com', cadence: 'day' });
+    expect(ops).toEqual([['a.b', { op: 'list' }]]);
+    const add = el.querySelector<HTMLButtonElement>('.pt-following-add')!;
+    expect(add.parentElement!.textContent).toContain('This browser also followed Coca-Cola.');
+    expect(add.textContent!.trim()).toBe('Add to these emails');
+    add.click();
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    f.detectChanges();
+    expect(follow.follows()).toEqual(['NVDA', 'KO']);
     expect(ops).toEqual([['a.b', { op: 'list' }], ['m.n', { op: 'follows', tickers: ['NVDA', 'KO'] }]]);
+    expect(el.querySelector('.pt-following-add')).toBeNull();
   });
   it('a confirmation link confirms nothing until the reader presses (a link scanner opening it confirms nothing); pressed, it confirms and links this browser', async () => {
     const ops: unknown[] = [];

@@ -86,6 +86,45 @@ describe("the bell's panel on the page (follow-start)", () => {
     await flush();
     expect(follow.link()).toBeNull();
   });
+  it("a linked browser asks the server about its link when a panel first opens: an unsubscribe made elsewhere forgets it; once a page", async () => {
+    const ops: unknown[] = [];
+    const backend: FollowBackend = { signup: async () => 'ok', manage: async (t, op) => { ops.push([t, op]); return { email: 'r•••@example.com', status: 'unsubscribed', weekly: false, digest: false, rules: [], manage: 'c.d' }; } };
+    const { follow, press, panel } = setup('', { init: { follows: ['NVDA'], seen: {}, link: { token: 'a.b', email: 'r•••@example.com', cadence: 'day' } }, backend });
+    await flush();
+    expect(ops).toEqual([]);
+    press();
+    await flush();
+    expect(ops).toEqual([['a.b', { op: 'list' }]]);
+    expect(follow.link()).toBeNull();
+    expect(panel()!.textContent).not.toContain('Emails to');
+    press();
+    press();
+    await flush();
+    expect(ops).toHaveLength(1);
+  });
+  it("a live link takes the server's address and rhythm", async () => {
+    const backend: FollowBackend = { signup: async () => 'ok', manage: async () => ({ email: 'n•••@example.com', status: 'active', weekly: false, digest: false, rules: [], cadence: 'week', manage: 'c.d' }) };
+    const { follow, press } = setup('', { init: { follows: ['NVDA'], seen: {}, link: { token: 'a.b', email: 'r•••@example.com', cadence: 'day' } }, backend });
+    press();
+    await flush();
+    expect(follow.link()).toEqual({ token: 'c.d', email: 'n•••@example.com', cadence: 'week' });
+  });
+  it('«Check your inbox» stays when the panel opens again', async () => {
+    const { press, panel } = setup('', { backend: { signup: async () => 'ok', manage: async () => null } });
+    press();
+    await flush();
+    const input = panel()!.querySelector<HTMLInputElement>('#pt-follow-email')!;
+    input.value = 'me@example.com';
+    input.dispatchEvent(new Event('input'));
+    panel()!.querySelector<HTMLButtonElement>('.pt-follow-mail-row button')!.click();
+    await flush();
+    expect(panel()!.textContent).toContain('Check your inbox');
+    press();
+    await flush();
+    press();
+    await flush();
+    expect(panel()!.textContent).toContain('Check your inbox');
+  });
   it('a change that does not reach the server marks the link: /alerts/ sends the whole list next time', async () => {
     const backend: FollowBackend = { signup: async () => 'ok', manage: async () => { throw new Error('offline'); } };
     const { follow } = setup('', { init: { follows: [], seen: {}, link: { token: 'a.b', email: 'r•••@example.com', cadence: 'day' } }, backend });

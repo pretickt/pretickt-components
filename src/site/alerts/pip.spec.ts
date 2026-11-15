@@ -39,6 +39,48 @@ describe('the floating window (part 3: Document Picture-in-Picture)', () => {
     expect(chips[1]!.classList.contains('pt-pip-new')).toBe(true);
     f.stop();
   });
+  it('the rows are the companies followed now: a follow made on the page shows at the next draw', async () => {
+    const pipDoc = document.implementation.createHTMLDocument('pip');
+    const pipWin = { document: pipDoc, addEventListener: () => {}, close: () => {} } as unknown as Window;
+    const win = { documentPictureInPicture: { requestWindow: async () => pipWin }, location: { origin: 'https://x' } } as unknown as Window;
+    let follows = ['NVDA'];
+    const f = await openFloating(win, { follows: () => follows, file: FILE, load: async () => null, everyMs: 0 });
+    expect(pipDoc.querySelectorAll('.pt-pip-row')).toHaveLength(1);
+    follows = ['NVDA', 'KO'];
+    f.redraw();
+    expect([...pipDoc.querySelectorAll('.pt-pip-name')].map((e) => e.textContent)).toEqual(['Nvidia', 'Coca-Cola']);
+    f.stop();
+  });
+  describe('the polling', () => {
+    afterEach(() => vi.useRealTimers());
+    const open = async (closed: boolean, now: string) => {
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'], now: new Date(now) });
+      const pipDoc = document.implementation.createHTMLDocument('pip');
+      const pipWin = { document: pipDoc, addEventListener: () => {}, close: () => {} } as unknown as Window;
+      const win = { documentPictureInPicture: { requestWindow: async () => pipWin }, location: { origin: 'https://x' } } as unknown as Window;
+      let loads = 0;
+      const f = await openFloating(win, { follows: ['NVDA'], file: FILE, load: async () => { loads++; return { ...day({}), session: '2026-11-16', closed }; }, everyMs: 1000 });
+      return { f, loads: () => loads };
+    };
+    it('during the session: every turn', async () => {
+      const { f, loads } = await open(false, '2026-11-16T15:30:00Z');   // Monday 10:30 ET
+      vi.advanceTimersByTime(3000);
+      await Promise.resolve();
+      expect(loads()).toBe(4);
+      f.stop();
+    });
+    it('not once the day has closed, nor on a weekend', async () => {
+      const a = await open(true, '2026-11-16T21:30:00Z');   // Monday 16:30 ET, the session closed
+      vi.advanceTimersByTime(3000);
+      expect(a.loads()).toBe(1);
+      a.f.stop();
+      vi.useRealTimers();
+      const b = await open(false, '2026-11-15T15:30:00Z');   // Sunday
+      vi.advanceTimersByTime(3000);
+      expect(b.loads()).toBe(1);
+      b.f.stop();
+    });
+  });
   it("the window opens at once (the click's permission is short); the night file comes after", async () => {
     const order: string[] = [];
     const pipDoc = document.implementation.createHTMLDocument('pip');

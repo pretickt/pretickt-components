@@ -1,4 +1,4 @@
-import { type ApplicationRef, type ComponentRef, createComponent, createEnvironmentInjector, type EnvironmentInjector } from '@angular/core';
+import { type ApplicationRef, type ComponentRef, createComponent, createEnvironmentInjector, type EnvironmentInjector, signal } from '@angular/core';
 import { PtFollow, type FollowPress } from '@pretickt/components/follow';
 import { panelPosition } from '../cards';
 import type { PageModel } from '../model';
@@ -22,19 +22,34 @@ export function startFollow(doc: Document, appRef: ApplicationRef, root: Environ
   // server each change; elsewhere following stays in the browser
   const backend = given ?? (page.alerts ? followBackend(page.api) : null);
   const follow = root.get(PtFollow), win = doc.defaultView;
+  let floating: { redraw(): void } | null = null;
   const providers = [
-    ...(backend && (page.turnstile || given) ? [{ provide: PT_FOLLOW_EMAIL, useValue: { backend, check: page.turnstile ? turnstileCheck(page.turnstile) : null } }] : []),
+    ...(backend && (page.turnstile || given) ? [{ provide: PT_FOLLOW_EMAIL, useValue: { backend, check: page.turnstile ? turnstileCheck(page.turnstile) : null, sent: signal(false) } }] : []),
     // the floating window (part 3): the followed companies with today's delayed prices, where the browser can open one
     ...(win && canFloat(win) ? [{ provide: PT_FOLLOW_FLOAT, useValue: { open: async () => {
-      await openFloating(win, { follows: follow.follows(), file: () => fetchFollowFile(), load: async () => (await liveSource(page.live)?.load()) ?? null, everyMs: BARS_EVERY_MS }).catch(() => undefined);
+      floating = await openFloating(win, { follows: () => follow.follows(), file: () => fetchFollowFile(), load: async () => (await liveSource(page.live)?.load()) ?? null, everyMs: BARS_EVERY_MS }).catch(() => null);
     } } }] : []),
   ];
   const env = providers.length ? createEnvironmentInjector(providers, root) : root;
-  if (backend) follow.listenChanges((c) => {
-    const l = follow.link();
+  follow.listenChanges((c) => {
+    floating?.redraw();
+    const l = backend && follow.link();
     const dirty = () => { const now = follow.link(); if (now) follow.setLink({ ...now, dirty: true }); };   // /alerts/ sends the whole list next time
-    if (l) backend.manage(l.token, { op: 'follow', ticker: c.ticker, on: c.on }).then((st) => { if (st === null) follow.setLink(null); }, dirty);
+    if (backend && l) backend.manage(l.token, { op: 'follow', ticker: c.ticker, on: c.on }).then((st) => { if (st === null) follow.setLink(null); }, dirty);
   });
+  // a linked browser asks about its link when a panel first opens (once a page): an unsubscribe or a new rhythm chosen elsewhere shows
+  let asked = false;
+  const ask = () => {
+    const l = follow.link();
+    if (!backend || asked || !l) return;
+    asked = true;
+    backend.manage(l.token, { op: 'list' }).then((st) => {
+      const now = follow.link();
+      if (!now || now.token !== l.token) return;
+      if (!st || !st.manage || st.status === 'unsubscribed') follow.setLink(null);
+      else follow.setLink({ ...now, token: st.manage, email: st.email, cadence: st.cadence ?? now.cadence });
+    }, () => undefined);
+  };
   let open: { ref: ComponentRef<PtFollowPanel>; host: HTMLElement; ticker: string; back: HTMLElement | null } | null = null;
 
   const close = (focusBack: boolean) => {
@@ -68,6 +83,7 @@ export function startFollow(doc: Document, appRef: ApplicationRef, root: Environ
     if (pos.maxHeight != null) host.style.maxHeight = `${pos.maxHeight}px`;
     open = { ref, host, ticker: p.ticker, back };
     host.querySelector<HTMLElement>('.pt-follow-switch')?.focus();
+    ask();
   };
 
   follow.listen(show);

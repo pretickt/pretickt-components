@@ -37,6 +37,8 @@ export async function fetchFollowFile(get: (u: string) => Promise<Response> = (u
         <button type="button" class="pt-abtn" [attr.aria-pressed]="l.cadence === 'day'" (click)="cadence('day')">Daily</button>
         <button type="button" class="pt-abtn" [attr.aria-pressed]="l.cadence === 'week'" (click)="cadence('week')">Weekly</button> ·
         <button type="button" class="pt-abtn" (click)="stop()">Stop the emails</button></p>
+      @if (extra().length) {<p class="pt-following-mail">This browser also followed {{ extraNames() }}.
+        <button type="button" class="pt-abtn pt-following-add" (click)="addExtra()">Add to these emails</button></p>}
     }
     @if (float && follow.follows().length) {<p><button type="button" class="pt-abtn pt-follow-float" (click)="float.open()">Open a floating window</button></p>}
     @if (!follow.ready() || file() === undefined) {<p class="pt-following-none">Reading what this browser follows…</p>}
@@ -81,6 +83,10 @@ export class PtFollowing {
     afterNextRender(() => { void this.sync(); });
   }
 
+  /** The companies this browser followed besides an email link's when it arrived: they reach those emails only on the reader's press. */
+  protected readonly extra = signal<string[]>([]);
+  protected readonly extraNames = computed(() => this.extra().map((t) => plainName(this.file()?.companies[t]?.name ?? t)).join(', '));
+
   /** A confirmation link waits for the reader's press (a link scanner opening the page confirms nothing). */
   protected readonly confirmable = signal(false);
 
@@ -108,19 +114,31 @@ export class PtFollowing {
   }
 
   /**
-   * The server's state. A link this browser did not hold yet (`own` false): the server's follows first and this browser's others after them,
-   * sent back once. A link it holds: the server's list wins (an unfollow made elsewhere stays), unless a change of this browser's did not
-   * reach the server (`dirty`): then this browser's list goes back.
+   * The server's state. A link this browser did not hold yet (`own` false: an email's link, perhaps forwarded): the browser takes its
+   * companies, and offers its others — they reach those emails only when the reader adds them. A link it holds: the server's list wins (an
+   * unfollow made elsewhere stays), unless a change of this browser's did not reach the server (`dirty`): then this browser's list goes back.
    */
   private async adopt(st: ManageState, own: boolean): Promise<void> {
     if (!st.manage || st.status === 'unsubscribed') { this.follow.setLink(null); return; }
     const was = this.follow.link(), server = st.follows ?? [], mine = this.follow.follows();
     const held = own && !!was && was.email === st.email;
-    const list = !held ? [...server, ...mine.filter((t) => !server.includes(t))] : was!.dirty ? [...mine] : server;
+    const list = held && was!.dirty ? [...mine] : server;
+    this.extra.set(held ? [] : mine.filter((t) => !server.includes(t)));
     this.follow.setLink({ token: st.manage, email: st.email, cadence: st.cadence ?? 'day' });
     this.follow.replaceFollows(list);
     const same = list.length === server.length && list.every((t) => server.includes(t));
     if (!same && this.email) await this.email.backend.manage(st.manage, { op: 'follows', tickers: list }).catch(() => undefined);
+  }
+
+  protected async addExtra(): Promise<void> {
+    const l = this.follow.link(), now = this.follow.follows();
+    if (!l || !this.email) return;
+    const list = [...now, ...this.extra().filter((t) => !now.includes(t))];
+    this.extra.set([]);
+    this.follow.replaceFollows(list);
+    const st = await this.email.backend.manage(l.token, { op: 'follows', tickers: list }).catch(() => undefined);
+    if (st === null) this.follow.setLink(null);
+    else if (st === undefined) { const cur = this.follow.link(); if (cur) this.follow.setLink({ ...cur, dirty: true }); }   // goes back next time
   }
 
   private whenReady(): Promise<void> {

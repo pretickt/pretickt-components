@@ -30,4 +30,8 @@ stories.push(
     providers: [...follows({ follows: ['AAPL'], seen: {}, link: { token: 'm.n', email: 'r•••@example.com', cadence: 'week' } }), ...mail] }),
   story(PtFollowing, { name: '/alerts/: linked to an email', group: GROUP, providers: [...follows({ follows: ['AAPL', 'MSFT', 'INTC'], seen: {},
     link: { token: 'm.n', email: 'r•••@example.com', cadence: 'day' } }), { provide: PT_FOLLOW_FILE, useValue: async () => FILE }, ...mail] }),
+  // an email's link opened on a browser that followed other companies: they are offered, not sent
+  story(PtFollowing, { name: "/alerts/: an email's link, this browser's others offered", group: GROUP, providers: [...follows({ follows: ['NVDA', 'AAPL'], seen: {} }),
+    { provide: PT_FOLLOW_FILE, useValue: async () => ({ ...FILE, companies: { ...FILE.companies, NVDA: { name: 'NVIDIA Corporation', alerts: followDemo('NVDA') } } }) },
+    { provide: PT_FOLLOW_EMAIL, useValue: { backend: SERVER, check: null } }, { provide: PT_FOLLOW_SEARCH, useValue: '?t=a.b' }] }),
 );
