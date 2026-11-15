@@ -40,6 +40,7 @@ const CARD = 'pt-company-card';
             @else {<div ptSlot [c]="it.c" [p]="it.props" [a]="it.alert ?? null"></div>}
           }
         }
+        @if (s.foot && s.more) {<p class="pt-section-foot"><a [href]="s.more.href">{{ s.more.label }} →</a></p>}
       </section>
     }`,
 })
