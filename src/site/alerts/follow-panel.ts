@@ -71,7 +71,7 @@ export class PtFollowRows {
         }
       </div>
     }
-    <p class="pt-follow-foot pt-meta">@if (follow.link(); as l) {Your follows also go to {{ l.email }}.} @else {Followed companies stay in this browser.} <a href="/alerts/">All your alerts</a></p>
+    <p class="pt-follow-foot pt-meta">@if (follow.link(); as l) {Your follows also go to {{ l.email }}.} @else {Followed companies stay in this browser.}{{ ' ' }}<a href="/alerts/">All your alerts</a></p>
     @if (float) {<button type="button" class="pt-abtn pt-follow-float" (click)="float.open()">Floating window</button>}`,
 })
 export class PtFollowPanel {
