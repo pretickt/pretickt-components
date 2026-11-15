@@ -49,8 +49,9 @@ export function startFollow(doc: Document, appRef: ApplicationRef, root: Environ
       if (!l.dirty) {
         const st = await backend.manage(l.token, { op: 'list' });
         if (!st || !st.manage || st.status === 'unsubscribed') { follow.setLink(null); return; }
-        const server = st.follows ?? [];
-        list = [...server.filter((t) => !d.removed.includes(t)), ...d.added.filter((t) => !server.includes(t))].slice(-FOLLOW_LIMIT);
+        // the server's companies (it sorts them) in this browser's order, then the ones only the server has, then the new ones
+        const server = st.follows ?? [], keep = (t: string) => server.includes(t) && !d.removed.includes(t);
+        list = [...new Set([...list.filter(keep), ...server.filter(keep), ...d.added])].slice(-FOLLOW_LIMIT);
       }
       if ((await backend.manage(l.token, { op: 'follows', tickers: list })) === null) { follow.setLink(null); return; }
       follow.replaceFollows(list);

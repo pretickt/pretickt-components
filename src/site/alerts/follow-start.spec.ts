@@ -134,7 +134,7 @@ describe("the bell's panel on the page (follow-start)", () => {
   });
   it("many followed at once on a linked browser: the change goes onto the server's list (another device's changes stay), which this browser then takes", async () => {
     const ops: unknown[] = [];
-    let server = ['NVDA', 'AMD'];   // another device unfollowed TSLA and followed AMD
+    let server = ['AMD', 'NVDA'];   // another device unfollowed TSLA and followed AMD (the server sorts its list)
     const state = () => ({ email: 'r•••@example.com', status: 'active' as const, weekly: false, digest: false, rules: [], follows: [...server], cadence: 'day' as const, manage: 'a.b' });
     const backend: FollowBackend = { signup: async () => 'ok', manage: async (t, op) => { ops.push([t, op]); if (op.op === 'follows') server = op.tickers; return state(); } };
     const { follow } = setup('', { init: { follows: ['NVDA', 'TSLA'], seen: {}, link: { token: 'a.b', email: 'r•••@example.com', cadence: 'day' } }, backend });
