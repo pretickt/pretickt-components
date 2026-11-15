@@ -14,7 +14,9 @@ const ROOM = 16;
 
 /** Scrolls `el` to `to` in `ms` after `delay` ms; false when stopped on the way. */
 export type Animate = (el: HTMLElement, to: number, ms: number, o: { delay: number; stopped: () => boolean }) => Promise<boolean>;
-export interface GlideOptions { animate?: Animate; reduced?: boolean }
+/** `part`: how much of the way to its end the row goes (1, all; the home's tabs ½ — Romeo, 2026-11-15: «nella home l'animazione non deve
+ * arrivare alla fine, ma dare l'idea di scroll. basta circa metà»). */
+export interface GlideOptions { animate?: Animate; reduced?: boolean; part?: number }
 
 const ease = (x: number) => (x < 0.5 ? 2 * x * x : 1 - (-2 * x + 2) ** 2 / 2);
 const slide: Animate = (el, to, ms, { delay, stopped }) => new Promise((done) => {
@@ -51,7 +53,8 @@ export async function glide(row: HTMLElement, o: GlideOptions = {}): Promise<voi
   for (const e of events) row.addEventListener(e, halt, { passive: true });
   const animate = o.animate ?? slide, stopped = () => stop;
   try {
-    if (!(await animate(row, over, Math.min(MAX, Math.max(MIN, (over / SPEED) * 1000)), { delay: 0, stopped })) || stop) return;
+    const to = Math.round(over * (o.part ?? 1));
+    if (!(await animate(row, to, Math.min(MAX, Math.max(MIN, (to / SPEED) * 1000)), { delay: 0, stopped })) || stop) return;
     await animate(row, rest, BACK, { delay: PAUSE, stopped });
   } finally {
     for (const e of events) row.removeEventListener(e, halt);
@@ -73,7 +76,8 @@ function inView(el: Element, on: () => void): void {
 export function attachGlide(doc: Document, o: AttachGlideOptions = {}): void {
   const observe = o.observe ?? inView;
   for (const row of doc.querySelectorAll<HTMLElement>(ROWS)) {
-    if (row.matches('.pt-subnav')) { void glide(row, o); continue; }
+    // the home's tabs are the site's lists, a long row: half way shows it scrolls
+    if (row.matches('.pt-subnav')) { void glide(row, doc.location?.pathname === '/' ? { ...o, part: 0.5 } : o); continue; }
     let done = false;
     observe(row, () => { if (!done) { done = true; void glide(row, o); } });
   }

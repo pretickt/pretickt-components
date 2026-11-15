@@ -54,6 +54,26 @@ describe('glide: a row wider than the phone shows once, slowly, that it scrolls 
   });
 });
 
+describe('the home\'s tabs', () => {
+  it('go about half their way, enough to show they scroll, then back (Romeo, 2026-11-15: «nella home l\'animazione non deve arrivare alla fine… basta circa metà»)', async () => {
+    const r = row(SUBNAV.replace(' aria-current="page"', ''), 2480, 328), { legs, animate } = recorder();
+    await glide(r, { animate, part: 0.5 });
+    expect(legs.map(([to]) => to)).toEqual([1076, 0]);
+  });
+  it('attachGlide sends the home\'s tabs half way, a company\'s all the way', async () => {
+    for (const [path, to] of [['/', 286], ['/stocks/nvda/', 572]] as const) {
+      history.replaceState(null, '', path);
+      document.body.innerHTML = SUBNAV;
+      const nav = document.querySelector<HTMLElement>('.pt-subnav')!;
+      Object.defineProperty(nav, 'scrollWidth', { value: 900 }); Object.defineProperty(nav, 'clientWidth', { value: 328 });
+      const { legs, animate } = recorder();
+      attachGlide(document, { animate, observe: () => undefined });
+      await new Promise((r) => setTimeout(r, 0));
+      expect(legs[0]![0]).toBe(to);
+    }
+  });
+});
+
 describe('attachGlide', () => {
   it('the tabs glide when the page opens, each section head when it comes into view, each once', async () => {
     document.body.innerHTML = SUBNAV + HEAD;
