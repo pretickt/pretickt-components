@@ -52,7 +52,7 @@ export class PtFollowRows {
   imports: [PtFollowRows],
   template: `
     @let many = tickers();
-    <div class="pt-follow-head">
+    <div class="pt-follow-head" [class.pt-follow-head-many]="!!many">
       <p class="pt-follow-title"><b>Alerts for {{ name() }}</b><span class="pt-meta">{{ many ? ' · ' + many.length + ' companies' : ' · last 5 sessions' }}</span></p>
       <button type="button" class="pt-abtn pt-follow-switch" [attr.aria-pressed]="followed()" (click)="flip()">{{ (followed() ? 'Alerts on' : 'Get alerts') + (many ? ' for all ' + many.length : '') }}</button>
     </div>

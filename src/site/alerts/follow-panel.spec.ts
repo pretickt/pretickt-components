@@ -89,6 +89,7 @@ describe('the bell\'s panel (follow, 2026-11-14)', () => {
     const { f, el, follow } = mount([], { follows: ['NVDA'], seen: {} }, backend, { name: 'Mega caps', tickers: ['AAPL', 'MSFT', 'KO'] });
     expect(el.querySelector('.pt-follow-title')!.textContent).toBe('Alerts for Mega caps · 3 companies');
     expect(el.querySelector('pt-follow-rows')).toBeNull();
+    expect(el.querySelector('.pt-follow-head')!.classList).toContain('pt-follow-head-many');   // its longer switch on a line of its own (seen at 390)
     expect(el.querySelector('.pt-follow-mail')!.textContent).toContain('Only the symbols go with your email, never amounts or dates.');
     const sw = el.querySelector<HTMLButtonElement>('.pt-follow-switch')!;
     expect([sw.textContent!.trim(), sw.getAttribute('aria-pressed')]).toEqual(['Get alerts for all 3', 'false']);

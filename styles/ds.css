@@ -513,6 +513,8 @@
   .pt-follow-panel { @apply fixed z-50 w-80 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-control border border-border bg-surface-raised p-3 shadow-lg; }
   .pt-follow-head { @apply mb-2 flex items-center justify-between gap-2; }
   .pt-follow-title { @apply m-0 text-sm; }
+  .pt-follow-head-many { @apply flex-col items-start; }   /* a group's: «Get alerts for all 60» on a line of its own */
+  .pt-follow-switch { @apply whitespace-nowrap; }
   .pt-follow-switch[aria-pressed='true'] { @apply text-primary; }
   .pt-follow-list { @apply m-0 grid list-none gap-2 p-0; }
   .pt-follow-row { @apply grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-0.5 text-sm; }
