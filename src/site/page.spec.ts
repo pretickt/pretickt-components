@@ -47,14 +47,17 @@ describe('PtPage', () => {
   });
   it('a section with `foot` links its full page under the preview too; without it, only at the top (Romeo, 2026-11-15: «aggiungi link anche sotto»)', async () => {
     const el = await page({ buildId: 'b', api: '', sections: [
-      { id: 'fin', title: 'Financials', more: { href: '/x/', label: 'Revenue, quarter by quarter' }, foot: true, items: [{ c: 'pt-financials', props: { ticker: 'NVDA' } }] },
+      { id: 'fin', title: 'Financials', more: { href: '/x/', label: 'Revenue, quarter by quarter', short: 'By quarter' }, foot: true, items: [{ c: 'pt-financials', props: { ticker: 'NVDA' } }] },
       { id: 'top', title: 'Lists', more: { href: '/y/', label: 'See all' }, items: [] },
     ] });
     const foot = el.querySelector('#fin > p.pt-section-foot > a')!;
     expect([foot.getAttribute('href'), foot.textContent]).toEqual(['/x/', 'Revenue, quarter by quarter →']);
     // after the placement, the last thing in the section
     expect(el.querySelector('#fin')!.lastElementChild!.classList).toContain('pt-section-foot');
-    expect(el.querySelector('#fin a.pt-section-more')).not.toBeNull();
+    // the top one carries its short text for a phone (styles: shown in place of the label below 40rem); the one under, the label alone
+    const top = el.querySelector('#fin a.pt-section-more')!;
+    expect([top.getAttribute('data-short'), top.textContent, foot.getAttribute('data-short')]).toEqual(['By quarter', 'Revenue, quarter by quarter →', null]);
+    expect(el.querySelector('#top a.pt-section-more')!.hasAttribute('data-short')).toBe(false);
     expect(el.querySelector('#top .pt-section-foot')).toBeNull();
   });
   it('a strip section lays its placements side by side, to scroll sideways, the row named for the keyboard (Romeo, 2026-11-01)', async () => {

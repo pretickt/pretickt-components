@@ -7,9 +7,10 @@ export interface PagePlacement { c: string; props: Record<string, unknown>; off?
 /**
  * A section: its title (none on the company card's), the link to its full page, its placements; `strip`: side by side in one row
  * that scrolls sideways (the heat maps' sectors); `foot`: the link again under the placements, where a reader who has read the
- * preview arrives (the company hub; Romeo, 2026-11-15: «lascia il link in alto a destra accanto al titolo e aggiungi link anche sotto»).
+ * preview arrives (the company hub; Romeo, 2026-11-15: «lascia il link in alto a destra accanto al titolo e aggiungi link anche sotto»);
+ * `more.short`: the link's text in the section head on a phone, where the head is one line that scrolls sideways (same day).
  */
-export interface PageSection { id: string; title?: string; more?: { href: string; label: string }; foot?: boolean; strip?: boolean; items: PagePlacement[] }
+export interface PageSection { id: string; title?: string; more?: { href: string; label: string; short?: string }; foot?: boolean; strip?: boolean; items: PagePlacement[] }
 /**
  * What the generator gives a page app: its sections, the build, the API origin ('' = same origin), on a company's pages that company,
  * and the address of the intraday file (none: no live prices).

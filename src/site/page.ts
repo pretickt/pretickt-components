@@ -24,7 +24,7 @@ const CARD = 'pt-company-card';
         @if (s.more; as more) {
           <div class="pt-section-head">
             @if (s.title) {<h2 class="pt-section-title">{{ s.title }}</h2>}
-            <a class="pt-section-more" [href]="more.href" [attr.aria-label]="s.title ? more.label + ': ' + s.title : null">{{ more.label }} →</a>
+            <a class="pt-section-more" [href]="more.href" [attr.aria-label]="s.title ? more.label + ': ' + s.title : null" [attr.data-short]="more.short ?? null">{{ more.label }} →</a>
           </div>
         } @else if (s.title) {<h2 class="pt-section-title">{{ s.title }}</h2>}
         @if (s.strip) {
@@ -58,6 +58,8 @@ export class PtPage {
       attachHeader(doc, { buildId: this.model.buildId });
       attachCompanyBar(doc); // company pages: the company in the header once its card has scrolled away
       attachShare(doc); // each placement's "Share": the placement as an image, and the link back
+      // on a phone, the rows that scroll sideways (the company tabs, the section heads) show it once, slowly (a chunk of its own)
+      if (doc.querySelector('.pt-subnav, .pt-section-head')) void import('./glide').then((m) => m.attachGlide(doc));
       // a page with alerts: its bells, and an email link's landing (one small chunk; the editor and the rest load when needed)
       if (this.model.alerts) void import('./alerts/start').then((m) => m.startAlerts(doc, appRef, env, this.model));
       // the bells (FOLLOW_ENABLED): a press opens its company's panel (a chunk of its own)
