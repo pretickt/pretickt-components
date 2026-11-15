@@ -1,5 +1,5 @@
 import { type ApplicationRef, type ComponentRef, createComponent, createEnvironmentInjector, type EnvironmentInjector, signal } from '@angular/core';
-import { PtFollow, type FollowPress } from '@pretickt/components/follow';
+import { FOLLOW_LIMIT, PtFollow, type FollowPress, type ManyChange } from '@pretickt/components/follow';
 import { panelPosition } from '../cards';
 import type { PageModel } from '../model';
 import { BARS_EVERY_MS } from '@pretickt/components/context';
@@ -32,15 +32,33 @@ export function startFollow(doc: Document, appRef: ApplicationRef, root: Environ
   ];
   const env = providers.length ? createEnvironmentInjector(providers, root) : root;
   // a linked browser tells the server each change; one that does not reach it marks the link (/alerts/ sends the whole list next time)
-  const tell = (op: Parameters<FollowBackend['manage']>[1]) => {
+  const dirty = () => { const now = follow.link(); if (now) follow.setLink({ ...now, dirty: true }); };
+  follow.listenChanges((c) => {
     floating?.redraw();
     const l = backend && follow.link();
-    const dirty = () => { const now = follow.link(); if (now) follow.setLink({ ...now, dirty: true }); };
-    if (backend && l) backend.manage(l.token, op).then((st) => { if (st === null) follow.setLink(null); }, dirty);
-  };
-  follow.listenChanges((c) => tell({ op: 'follow', ticker: c.ticker, on: c.on }));
-  // many at once (a portfolio's companies): the whole list in one request
-  follow.listenLists((list) => tell({ op: 'follows', tickers: [...list] }));
+    if (backend && l) backend.manage(l.token, { op: 'follow', ticker: c.ticker, on: c.on }).then((st) => { if (st === null) follow.setLink(null); }, dirty);
+  });
+  // many at once (a portfolio's companies): the change goes onto the server's list, which wins (another device's changes stay), in one
+  // request, and this browser takes that list; a marked link sends this browser's whole list instead (as /alerts/ does)
+  follow.listenLists(async (d: ManyChange) => {
+    floating?.redraw();
+    const l = backend && follow.link();
+    if (!backend || !l) return;
+    try {
+      let list = [...follow.follows()];
+      if (!l.dirty) {
+        const st = await backend.manage(l.token, { op: 'list' });
+        if (!st || !st.manage || st.status === 'unsubscribed') { follow.setLink(null); return; }
+        const server = st.follows ?? [];
+        list = [...server.filter((t) => !d.removed.includes(t)), ...d.added.filter((t) => !server.includes(t))].slice(-FOLLOW_LIMIT);
+      }
+      if ((await backend.manage(l.token, { op: 'follows', tickers: list })) === null) { follow.setLink(null); return; }
+      follow.replaceFollows(list);
+      const now = follow.link();
+      if (now?.dirty) { const { dirty: _, ...clean } = now; follow.setLink(clean); }
+      floating?.redraw();
+    } catch { dirty(); }
+  });
   // a linked browser asks about its link when a panel first opens (once a page): an unsubscribe or a new rhythm chosen elsewhere shows
   let asked = false;
   const ask = () => {

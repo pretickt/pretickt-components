@@ -132,19 +132,38 @@ describe("the bell's panel on the page (follow-start)", () => {
     expect(panel()!.getAttribute('aria-label')).toBe('Alerts for Mega caps');
     expect(panel()!.querySelector('.pt-follow-title')!.textContent).toBe('Alerts for Mega caps · 2 companies');
   });
-  it('many followed at once on a linked browser: one request with the whole list; one that fails marks the link', async () => {
+  it("many followed at once on a linked browser: the change goes onto the server's list (another device's changes stay), which this browser then takes", async () => {
     const ops: unknown[] = [];
-    let up = true;
-    const backend: FollowBackend = { signup: async () => 'ok', manage: async (t, op) => { ops.push([t, op]); if (!up) throw new Error('offline'); return {} as never; } };
+    let server = ['NVDA', 'AMD'];   // another device unfollowed TSLA and followed AMD
+    const state = () => ({ email: 'r•••@example.com', status: 'active' as const, weekly: false, digest: false, rules: [], follows: [...server], cadence: 'day' as const, manage: 'a.b' });
+    const backend: FollowBackend = { signup: async () => 'ok', manage: async (t, op) => { ops.push([t, op]); if (op.op === 'follows') server = op.tickers; return state(); } };
+    const { follow } = setup('', { init: { follows: ['NVDA', 'TSLA'], seen: {}, link: { token: 'a.b', email: 'r•••@example.com', cadence: 'day' } }, backend });
+    await flush();
+    follow.setMany(['AAPL', 'MSFT'], true);
+    await flush();
+    expect(ops).toEqual([['a.b', { op: 'list' }], ['a.b', { op: 'follows', tickers: ['NVDA', 'AMD', 'AAPL', 'MSFT'] }]]);
+    expect(follow.follows()).toEqual(['NVDA', 'AMD', 'AAPL', 'MSFT']);
+    ops.length = 0;
+    follow.setMany(['AAPL', 'MSFT'], false);
+    await flush();
+    expect(server).toEqual(['NVDA', 'AMD']);
+    expect(follow.follows()).toEqual(['NVDA', 'AMD']);
+  });
+  it('many at once that does not reach the server marks the link; a marked link sends this browser\'s whole list, then is clean', async () => {
+    const ops: unknown[] = [];
+    let up = false;
+    const backend: FollowBackend = { signup: async () => 'ok', manage: async (t, op) => { ops.push([t, op]); if (!up) throw new Error('offline'); return { email: 'r•••@example.com', status: 'active', weekly: false, digest: false, rules: [], follows: [], cadence: 'day', manage: 'a.b' }; } };
     const { follow } = setup('', { init: { follows: ['NVDA'], seen: {}, link: { token: 'a.b', email: 'r•••@example.com', cadence: 'day' } }, backend });
     await flush();
-    follow.setMany(['AAPL', 'MSFT', 'KO'], true);
-    await flush();
-    expect(ops).toEqual([['a.b', { op: 'follows', tickers: ['NVDA', 'AAPL', 'MSFT', 'KO'] }]]);
-    up = false;
-    follow.setMany(['KO'], false);
+    follow.setMany(['KO'], true);
     await flush();
     expect(follow.link()?.dirty).toBe(true);
+    up = true;
+    ops.length = 0;
+    follow.setMany(['PEP'], true);
+    await flush();
+    expect(ops).toEqual([['a.b', { op: 'follows', tickers: ['NVDA', 'KO', 'PEP'] }]]);
+    expect(follow.link()?.dirty).toBeUndefined();
   });
   it('a change that does not reach the server marks the link: /alerts/ sends the whole list next time', async () => {
     const backend: FollowBackend = { signup: async () => 'ok', manage: async () => { throw new Error('offline'); } };

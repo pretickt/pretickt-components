@@ -109,6 +109,11 @@ describe('the bell\'s panel (follow, 2026-11-14)', () => {
     expect(follow.follows()).toEqual(['NVDA', 'AAPL', 'MSFT', 'KO']);
     expect(sent).toEqual([['r@example.com', ['NVDA', 'AAPL', 'MSFT', 'KO']]]);
   });
+  it('a group of one company says so (the review, 2026-11-15)', () => {
+    const { el } = mount([], { follows: [], seen: {} }, undefined, { name: 'One stock', tickers: ['AAPL'] });
+    expect(el.querySelector('.pt-follow-title')!.textContent).toBe('Alerts for One stock · 1 company');
+    expect(el.querySelector('.pt-follow-switch')!.textContent!.trim()).toBe('Get alerts');
+  });
   it('a browser linked to an email says so, with how often', () => {
     const backend: FollowBackend = { signup: async () => 'ok', manage: async () => null };
     const { el } = mount([], { follows: ['NVDA'], seen: {}, link: { token: 'a.b', email: 'r•••@example.com', cadence: 'week' } }, backend);

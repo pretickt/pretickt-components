@@ -133,14 +133,14 @@ describe('PtFollow (the companies this browser follows, and the alerts it has se
     expect(data.follows).toEqual(['NVDA', 'AAPL']);
     expect(heard).toEqual(['AAPL:true']);
   });
-  it("many at once (a portfolio's companies): the missing ones join in order, heard once as the whole list; again, nothing; off, they go", () => {
+  it("many at once (a portfolio's companies): the missing ones join in order, heard once with what came and went; again, nothing; off, they go", () => {
     const { store } = memory({ follows: ['NVDA'], seen: {} });
     const { f, follow } = mount([{ provide: PT_FOLLOW, useValue: store }, { provide: PT_FOLLOW_ON, useValue: true }]);
     f.detectChanges();
     TestBed.tick();
-    const heard: string[] = [], lists: string[][] = [];
+    const heard: string[] = [], lists: { added: readonly string[]; removed: readonly string[] }[] = [];
     follow.listenChanges((c) => heard.push(`${c.ticker}:${c.on}`));
-    follow.listenLists((l) => lists.push([...l]));
+    follow.listenLists((d) => lists.push(d));
     const all = follow.followingAll(() => ['AAPL', 'NVDA']);
     expect(all()).toBe(false);
     follow.setMany(['AAPL', 'NVDA', 'MSFT'], true);
@@ -149,14 +149,22 @@ describe('PtFollow (the companies this browser follows, and the alerts it has se
     follow.setMany(['AAPL', 'MSFT'], true);
     follow.setMany(['AAPL', 'NVDA'], false);
     expect(follow.follows()).toEqual(['MSFT']);
-    expect(lists).toEqual([['NVDA', 'AAPL', 'MSFT'], ['MSFT']]);
-    expect(heard).toEqual([]);   // one list, not a request a company
+    expect(lists).toEqual([{ added: ['AAPL', 'MSFT'], removed: [] }, { added: [], removed: ['NVDA', 'AAPL'] }]);
+    expect(heard).toEqual([]);   // one change, not a request a company
     expect(follow.followingAll(() => [])()).toBe(false);
-    store.write({ follows: Array.from({ length: 199 }, (_, i) => `T${i}`), seen: {} });
-    follow.setMany(['NEW', 'TWO'], true);
+  });
+  it('many at once at the limit (200): the companies outside the group make room, never one of the group already followed (the review, 2026-11-15)', () => {
+    const { store } = memory({ follows: ['AAPL', ...Array.from({ length: 199 }, (_, i) => `T${i}`)], seen: {} });
+    const { f, follow } = mount([{ provide: PT_FOLLOW, useValue: store }, { provide: PT_FOLLOW_ON, useValue: true }]);
+    f.detectChanges();
+    TestBed.tick();
+    const lists: { added: readonly string[]; removed: readonly string[] }[] = [];
+    follow.listenLists((d) => lists.push(d));
+    follow.setMany(['AAPL', 'NEW'], true);
     expect(follow.follows()).toHaveLength(200);
-    expect(follow.follows()[0]).toBe('T1');
-    expect(follow.follows().slice(-2)).toEqual(['NEW', 'TWO']);
+    expect(follow.followingAll(() => ['AAPL', 'NEW'])()).toBe(true);
+    expect([follow.follows()[0], follow.follows().at(-1)]).toEqual(['AAPL', 'NEW']);   // the followed stay where they were
+    expect(lists).toEqual([{ added: ['NEW'], removed: ['T0'] }]);
   });
   it('many at once before the store arrives waits for it', async () => {
     let data: FollowState = { follows: ['NVDA'], seen: {} };

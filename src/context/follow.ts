@@ -3,6 +3,10 @@ import type { FollowAlert } from '../typologies';
 import { manyFollowed, replaced, seenUpTo, toggled, unseenCount, type FollowLink, type FollowState } from './follow-state';
 import { PT_FOLLOW, PT_FOLLOW_ON } from './follow-tokens';
 
+export { FOLLOW_LIMIT } from './follow-state';
+/** Many followed or unfollowed at once: the companies that came and the ones that went. */
+export interface ManyChange { added: readonly string[]; removed: readonly string[] }
+
 /** A bell's press: the company, its alerts and where the bell is, for the page's panel; `at` counts the presses (the same bell twice is two presses). */
 export interface FollowPress {
   ticker: string; name: string; alerts: readonly FollowAlert[];
@@ -28,7 +32,7 @@ export class PtFollow {
   private presses = 0;
   private listener: ((p: FollowPress) => void) | null = null;
   private changes: ((c: { ticker: string; on: boolean }) => void) | null = null;
-  private lists: ((list: readonly string[]) => void) | null = null;
+  private lists: ((d: ManyChange) => void) | null = null;
   private readonly later: (() => void)[] = [];
   readonly ready = computed(() => this.state() !== null);
   readonly follows = computed<readonly string[]>(() => this.state()?.follows ?? []);
@@ -90,15 +94,20 @@ export class PtFollow {
     return computed(() => { const k = t(), f = this.state()?.follows ?? []; return k.length > 0 && k.every((x) => f.includes(x)); });
   }
 
-  /** Many at once (a portfolio's companies): heard once, as the whole list, so the server gets one request and not one a company. */
+  /**
+   * Many at once (a portfolio's companies): heard once, with the companies that came and the ones that went (at the limit too), so the page can
+   * put that change on the server's list in one request instead of one a company.
+   */
   setMany(tickers: readonly string[], on: boolean): void {
     if (this.waits(() => this.setMany(tickers, on))) return;
     const r = this.change((s) => manyFollowed(s, tickers, on));
-    if (r && r[0] !== r[1]) this.lists?.(r[1].follows);
+    if (!r || r[0] === r[1]) return;
+    const [a, b] = r;
+    this.lists?.({ added: b.follows.filter((t) => !a.follows.includes(t)), removed: a.follows.filter((t) => !b.follows.includes(t)) });
   }
 
-  /** The page hears each change of many at once, as the list it left. */
-  listenLists(fn: (list: readonly string[]) => void): void { this.lists = fn; }
+  /** The page hears each change of many at once. */
+  listenLists(fn: (d: ManyChange) => void): void { this.lists = fn; }
 
   /** The email link the server gave (null: none, after unsubscribing). */
   setLink(l: FollowLink | null): void { if (!this.waits(() => this.setLink(l))) this.change((s) => { const { link: _, ...rest } = s; return l ? { ...rest, link: l } : rest; }); }

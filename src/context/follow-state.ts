@@ -20,10 +20,18 @@ export function toggled(s: FollowState, t: string): FollowState {
   return { ...s, follows };
 }
 
-/** Many at once (a portfolio's companies): on, the missing ones join at the end in order, the oldest going past the limit; off, they go. */
+/**
+ * Many at once (a portfolio's companies): on, the missing ones join at the end in the group's order and, at the limit, the oldest companies
+ * outside the group make room (never one of the group already followed); off, they go.
+ */
 export function manyFollowed(s: FollowState, tickers: readonly string[], on: boolean): FollowState {
-  const follows = on ? [...s.follows, ...tickers.filter((t, i) => !s.follows.includes(t) && tickers.indexOf(t) === i)].slice(-FOLLOW_LIMIT)
-    : s.follows.filter((t) => !tickers.includes(t));
+  const group = new Set(tickers);
+  let follows = s.follows.filter((t) => !group.has(t));
+  if (on) {
+    const joined = [...s.follows, ...[...group].filter((t) => !s.follows.includes(t))];
+    let over = joined.length - FOLLOW_LIMIT;
+    follows = joined.filter((t) => { if (over > 0 && !group.has(t)) { over--; return false; } return true; }).slice(-FOLLOW_LIMIT);
+  }
   return follows.length === s.follows.length && follows.every((t, i) => t === s.follows[i]) ? s : { ...s, follows };
 }
 
