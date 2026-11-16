@@ -54,6 +54,9 @@ const TEMPLATE_RULES: [RegExp, string][] = [
   [/(?:\[|bind-)(?:attr\.)?(?:inner|outer)HTML\b/i, 'never write HTML: Angular escapes text, links go through href()'],
   [/<\s*(script|style|iframe|object|embed|link|base|meta|form)\b/i, 'no such element in a component (and no <style>: design-system classes)'],
   [/\bid\s*=\s*["']?(?:ng-state|ng-event-dispatch-contract)\b/i, 'the page owns this id (Angular reads its state and event contract by it)'],
+  // Angular's event replay calls preventDefault on a click whose handler sits on an <a>, before its island hydrates: the link would not
+  // navigate (the calendar's chips, review 2026-11-16). Listen on the host and filter by the link instead.
+  [/<a\b[^>]*\(click\)/i, '(click) on a link: before hydration the click is prevented and the link does not navigate — listen on the host'],
 ];
 const FORBIDDEN_META = new Map([
   ['templateUrl', 'templateUrl — the template is inline: the whole component is this file'],

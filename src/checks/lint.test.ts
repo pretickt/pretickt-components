@@ -73,6 +73,11 @@ describe('lintComponent (quality feedback for authors and the generator; the san
       { head: "import { Component, DomSanitizer, inject, input } from '@angular/core';\nimport { Pt } from '@pretickt/components/context';" }), 'pt-thing');
     expect(out).toEqual(expect.arrayContaining([expect.stringMatching(/innerHTML/), expect.stringMatching(/outerHTML/), expect.stringMatching(/DomSanitizer/)]));
   });
+  it('no (click) on a link: before its island hydrates, Angular\'s event replay prevents the click on an <a> with a handler (the link would not navigate)', () => {
+    const out = lintComponent(file(OK.replace('<p class="pt-lede">', '<a class="x" href="/stocks/nvda/" (click)="go($event)">NVDA</a><p class="pt-lede">')), 'pt-thing');
+    expect(out).toEqual([expect.stringMatching(/\(click\) on a link/)]);
+    expect(lintComponent(file(OK.replace('<p class="pt-lede">', '<button type="button" (click)="go($event)">x</button><p class="pt-lede">')), 'pt-thing')).toEqual([]);
+  });
   it('a script element in the template is refused', () => {
     expect(lintComponent(file(OK.replace('<p class="pt-lede">', '<script>x</script><p class="pt-lede">')), 'pt-thing')).toEqual([expect.stringMatching(/<script/)]);
   });

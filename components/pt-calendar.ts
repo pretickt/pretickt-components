@@ -293,7 +293,8 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
 @Component({
   selector: 'pt-calendar',
   imports: [PtLogo, PtMention, PtMore, PtSay],
-  host: { '(pt-ctx-ask)': 'ask($event)' },
+  // a chip's click is counted on the host: a (click) on the link itself would be prevented before the island hydrates (event replay)
+  host: { '(pt-ctx-ask)': 'ask($event)', '(click)': 'counted($event)' },
   template: `
     @if (data() === null) {<p class="pt-na">Data not available</p>}
     @else if (data()) {
@@ -326,7 +327,7 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
               }
               @for (e of c.items.slice(0, CAP); track e.kind + e.ticker) {
                 @let row = rowOf(e);
-                <a class="pt-cal-ev" [href]="stockHref(e.ticker)" [class.pt-cal-ev-unconf]="row?.unconfirmed" [attr.data-card]="e.ticker" [attr.data-k]="row?.key ?? null" [attr.data-tip]="chipTip(e)" (click)="counted($event)">
+                <a class="pt-cal-ev" [href]="stockHref(e.ticker)" [class.pt-cal-ev-unconf]="row?.unconfirmed" [attr.data-card]="e.ticker" [attr.data-k]="row?.key ?? null" [attr.data-tip]="chipTip(e)">
                   <span class="pt-cal-who"><pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="14" />{{ e.ticker }}@if (row?.unconfirmed) {<span class="pt-sr"> (date not confirmed)</span>}</span>
                   <span [class]="chipCue(row)">{{ row?.cue ?? '' }}</span>
                 </a>
@@ -382,7 +383,7 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
               }
               @for (e of oc.items; track e.kind + e.ticker) {
                 @let row = rowOf(e);
-                <a class="pt-cal-ev" [href]="stockHref(e.ticker)" [class.pt-cal-ev-unconf]="row?.unconfirmed" [attr.data-card]="e.ticker" [attr.data-k]="row?.key ?? null" [attr.data-tip]="chipTip(e)" (click)="counted($event)">
+                <a class="pt-cal-ev" [href]="stockHref(e.ticker)" [class.pt-cal-ev-unconf]="row?.unconfirmed" [attr.data-card]="e.ticker" [attr.data-k]="row?.key ?? null" [attr.data-tip]="chipTip(e)">
                   <span class="pt-cal-who"><pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="14" />{{ e.ticker }}@if (row?.unconfirmed) {<span class="pt-sr"> (date not confirmed)</span>}</span>
                   <span [class]="chipCue(row)">{{ row?.cue ?? '' }}</span>
                 </a>
@@ -562,7 +563,7 @@ export class PtCalendar {
   });
   /** A company chip leads to its page (Romeo, 2026-11-16): following it is an interaction the page counts. */
   protected counted(e: Event) {
-    (e.currentTarget as Element).dispatchEvent(new CustomEvent('pt-interact', { bubbles: true, detail: { action: 'open' } }));
+    (e.target as Element).closest?.('a.pt-cal-ev')?.dispatchEvent(new CustomEvent('pt-interact', { bubbles: true, detail: { action: 'open' } }));
   }
   /**
    * The click's ask (pt-ctx-ask) from a company link in the calendar — a chip, a row's sentence or its page link, the list by day: the

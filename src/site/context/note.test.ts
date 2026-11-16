@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ClickNote } from '../../context/click';
-import { companyPageOf, dropNote, landingNote, NOTE_KEY, NOTE_TTL_MS, writeNote, type NoteStore } from './note';
+import { companyPageOf, dropNote, landingNote, NOTE_KEY, NOTE_TTL_MS, sweepNote, writeNote, type NoteStore } from './note';
 
 const memory = (): NoteStore & { data: Map<string, string> } => {
   const data = new Map<string, string>();
@@ -16,7 +16,7 @@ const note: ClickNote = {
   v: 1, to: 'NVDA', land: '/stocks/nvda/', at: Date.UTC(2026, 10, 16, 20, 40), from: { path: '/', title: 'pretickt' },
   kind: 'news', d: { title: 'Nvidia beats', url: 'https://example.com/a', site: 'example.com', publishedAt: '2026-11-16T14:00:00Z' },
 };
-const here = { path: '/stocks/nvda/', subject: 'NVDA', search: '' };
+const here = { path: '/stocks/nvda/', subject: 'NVDA', search: '', referrer: '/' as string | null };
 
 describe('companyPageOf', () => {
   it('reads the company page of a link: the hub and its sub-pages, a hash dropped, the ticker upper-cased', () => {
@@ -47,6 +47,10 @@ describe('the note', () => {
     ['an unknown kind', {}, 1000, { kind: 'nope' } as unknown as Partial<ClickNote>],
     ['another version', {}, 1000, { v: 2 } as unknown as Partial<ClickNote>],
     ['malformed JSON', {}, 1000, '{bad json'],
+    // the box says where the reader came from: only when they did come from there (review 2026-11-16: a later arrival by search,
+    // from Google or from a link that answered nothing must not show "From the earnings calendar")
+    ['an arrival from outside the site (no same-site referrer)', { referrer: null }, 1000, {}],
+    ['an arrival from another page of the site', { referrer: '/stocks/' }, 1000, {}],
   ];
   for (const [what, place, after, change] of cases) {
     it(`nothing for ${what}`, () => {
@@ -62,6 +66,19 @@ describe('the note', () => {
     expect(() => writeNote(throwing, note)).not.toThrow();
     expect(() => dropNote(throwing)).not.toThrow();
     expect(() => writeNote(null, note)).not.toThrow();
+  });
+
+  it('sweepNote deletes a note that is too old or unreadable, and keeps a valid one (the note is gone after 30 minutes, not only ignored)', () => {
+    const mem = memory();
+    writeNote(mem, note);
+    sweepNote(mem, note.at + 1000);
+    expect(mem.data.has(NOTE_KEY)).toBe(true);
+    sweepNote(mem, note.at + NOTE_TTL_MS + 1);
+    expect(mem.data.has(NOTE_KEY)).toBe(false);
+    mem.data.set(NOTE_KEY, '{bad json');
+    sweepNote(mem, note.at);
+    expect(mem.data.has(NOTE_KEY)).toBe(false);
+    expect(() => sweepNote(throwing, note.at)).not.toThrow();
   });
 
   it('dropNote removes it', () => {

@@ -95,7 +95,7 @@ describe('pt-click-box: what the reader clicked, at the top of the company page'
       document.body.innerHTML = '<main><pt-page></pt-page></main>';
       return { appRef: TestBed.inject(ApplicationRef), env: TestBed.inject(EnvironmentInjector) };
     }
-    const here = { path: '/stocks/nvda/', subject: 'NVDA', search: '' };
+    const here = { path: '/stocks/nvda/', subject: 'NVDA', search: '', referrer: '/earnings-calendar/' };
     const actions: string[] = [];
     const count = (e: Event) => actions.push((e as CustomEvent<{ action: string }>).detail.action);
     beforeEach(() => { actions.length = 0; document.addEventListener('pt-interact', count); });
