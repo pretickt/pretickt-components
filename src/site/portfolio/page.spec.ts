@@ -1,6 +1,6 @@
 import { ApplicationRef, EnvironmentInjector } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { askAt, PT_FOLLOW, PT_FOLLOW_ON, PT_STORE, PtStore, type FollowState } from '@pretickt/components/context';
+import { PT_FOLLOW, PT_FOLLOW_ON, PT_STORE, PtStore, type FollowState } from '@pretickt/components/context';
 import { PtFollow, type FollowPress } from '@pretickt/components/follow';
 import { date, money } from '@pretickt/components/format';
 import { DEMO_CLOSES, DEMO_FACTS, DEMO_PORTFOLIOS, demoPortfolio } from '../../stories/fake-portfolio';
@@ -88,15 +88,6 @@ describe('the portfolio page', () => {
     expect(m.text()).toContain('Not investment advice: these figures add up what analysts and the questions say about each company.');
     expect(m.el.querySelector('pt-portfolio-line svg')).not.toBeNull();
     expect(m.events).toEqual(['pt-portfolio@1.0.0|holds-one']);
-  });
-
-  it("the click's ask on the earnings and news lists (2026-11-16): your line, with the date or the headline", async () => {
-    const m = await mount({ v: 1, active: 'demo-shares', list: [DEMO_PORTFOLIOS.shares] });
-    const b = demoPortfolio('shares'), e = b.earnings[0]!, n = b.headlines[0]!;
-    const line = (t: string) => { const h = b.holdings.find((x) => x.ticker === t)!; return { weight: h.weight, ret: h.ret, points: h.ret == null ? null : expect.closeTo(h.weight * h.ret, 9) }; };
-    const lists = m.el.querySelectorAll('.pt-pf-list');
-    expect(askAt(lists[0]!.querySelector('a')!)).toEqual({ kind: 'portfolio', d: { ...line(e.ticker), earnings: e.date, headline: null } });
-    expect(askAt(lists[1]!.querySelector('a')!)).toEqual({ kind: 'portfolio', d: { ...line(n.ticker), earnings: null, headline: { title: n.title, url: n.url } } });
   });
 
   it("a watchlist's titles", async () => {

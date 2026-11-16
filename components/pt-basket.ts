@@ -289,16 +289,12 @@ export class PtBasket {
    */
   protected ask(e: Event) {
     const t = /^\/stocks\/([^/#]+)\//.exec((e.target as Element).getAttribute?.('href') ?? '')?.[1]?.toUpperCase(), b = this.data();
-    if (!t || !b) return;
-    // the figures of the section the reader clicked in: the movers' (delayed) row, else the holding, else a target's contributor
-    const v = this.section() === 'moves' ? this.view() : null, m = [...(v?.up ?? []), ...(v?.down ?? [])].find((x) => x.ticker === t);
-    const h = b.holdings.find((x) => x.ticker === t), c = b.target?.top.find((x) => x.ticker === t);
-    const weight = m?.weight ?? h?.weight ?? c?.weight;
-    if (weight == null) return;
-    const ret = m?.ret ?? h?.ret ?? null, points = m?.points ?? (ret == null ? null : weight * ret);
-    if (this.pf()) { answer(e, { kind: 'portfolio', d: { weight, ret, points, earnings: null, headline: null } }); return; }
-    const s = this.sec();
-    answer(e, { kind: 'holding', d: { basket: s ? { name: s.name, href: '' } : { name: this.ticker() ?? '', href: this.etf(this.ticker() ?? '') }, whole: s ? 'sector' : 'fund', weight, ret, points } });
+    const v = this.section() === 'moves' ? this.view() : null, s = this.sec();
+    const m = [...(v?.up ?? []), ...(v?.down ?? []), ...(b?.holdings ?? [])].find((x) => x.ticker === t) ?? b?.target?.top.find((x) => x.ticker === t);
+    if (!m) return;
+    const ret = 'ret' in m ? m.ret ?? null : null, d = { weight: m.weight, ret, points: ret == null ? null : m.weight * ret };
+    answer(e, this.pf() ? { kind: 'portfolio', d: { ...d, earnings: null, headline: null } } : { kind: 'holding',
+      d: { basket: s ? { name: s.name, href: '' } : { name: this.ticker() ?? '', href: this.etf(this.ticker() ?? '') }, whole: s ? 'sector' : 'fund', ...d } });
   }
   protected versus = (own: number, spy: number | null) => (spy == null || this.ticker() === 'SPY' ? pct(own) : `${pct(own)} (SPY ${pct(spy)})`);
 }
