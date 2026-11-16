@@ -58,6 +58,8 @@ export class PtPage {
       attachHeader(doc, { buildId: this.model.buildId });
       attachCompanyBar(doc); // company pages: the company in the header once its card has scrolled away
       attachShare(doc); // each placement's "Share": the placement as an image, and the link back
+      // a company link leaves what its origin showed, for the company page's box (a small chunk right away: main is at its budget)
+      void import('./context/leave').then((m) => m.attachLeave(doc, this.model.subject));
       // on a phone, the rows that scroll sideways (the company tabs, the section heads) show it once, slowly (a chunk of its own)
       if (doc.querySelector('.pt-subnav, .pt-section-head')) void import('./glide').then((m) => m.attachGlide(doc));
       // a page with alerts: its bells, and an email link's landing (one small chunk; the editor and the rest load when needed)

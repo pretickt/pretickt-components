@@ -16,9 +16,9 @@ const COMPANY_PAGE = /^\/stocks\/([a-z0-9.\-]+)\/(?:([a-z0-9\-]+)\/)?(?:#.*)?$/i
 
 /** The company page a link leads to (`/stocks/<t>/` or one of its pages), or null. */
 export function companyPageOf(href: string): { ticker: string; path: string } | null {
-  const m = COMPANY_PAGE.exec(href);
-  if (!m) return null;
-  return { ticker: m[1].toUpperCase(), path: `/stocks/${m[1]}/${m[2] ? `${m[2]}/` : ''}` };
+  const [, t, sub] = COMPANY_PAGE.exec(href) ?? [];
+  if (!t) return null;
+  return { ticker: t.toUpperCase(), path: `/stocks/${t}/${sub ? `${sub}/` : ''}` };
 }
 
 export function writeNote(store: NoteStore | null, note: ClickNote): void {
