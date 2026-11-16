@@ -1,6 +1,6 @@
 /** pt-click-box on made-up notes: what the reader clicked, at the top of the company page; `compact` is the hover card's block. */
 import { PtClickBox } from '../site/context/box';
-import { CTX_DIVIDEND, CTX_EARNINGS_AHEAD, CTX_FEED, CTX_FEED_SUB, CTX_NEWS, CTX_EARNINGS_OUT, CTX_HEAT_MAP, CTX_MOVER, CTX_MOVER_PLAIN, CTX_NEWS_MAP, CTX_SOCIAL_MAP } from '../site/context/mock';
+import { CTX_DIVIDEND, CTX_EARNINGS_AHEAD, CTX_FEED, CTX_FEED_SUB, CTX_LIST, CTX_LIST_OWN, CTX_NEWS, CTX_PEERS, CTX_EARNINGS_OUT, CTX_HEAT_MAP, CTX_MOVER, CTX_MOVER_PLAIN, CTX_NEWS_MAP, CTX_SOCIAL_MAP } from '../site/context/mock';
 import { story } from './story';
 
 const GROUP = 'Click context · The box on the company page (made-up data)';
@@ -18,4 +18,7 @@ export const stories = [
   story(PtClickBox, { name: 'Feed · a big move, from a sector page', inputs: { note: CTX_FEED }, group: GROUP }),
   story(PtClickBox, { name: 'Feed · an earnings card that led to the earnings page', inputs: { note: CTX_FEED_SUB }, group: GROUP }),
   story(PtClickBox, { name: 'News · a story on a fund page', inputs: { note: CTX_NEWS }, group: GROUP }),
+  story(PtClickBox, { name: 'Market list · #3 of the biggest losers, from the home', inputs: { note: CTX_LIST }, group: GROUP }),
+  story(PtClickBox, { name: 'Market list · from the list\'s own page', inputs: { note: CTX_LIST_OWN }, group: GROUP }),
+  story(PtClickBox, { name: 'Peers · AMD, a peer of Nvidia', inputs: { note: CTX_PEERS }, group: GROUP }),
 ];

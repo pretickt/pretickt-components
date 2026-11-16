@@ -4,6 +4,8 @@ import { dayMonth } from '../../ds/format';
 import { PtCtxCalendar } from './calendar';
 import { PtCtxMap, PtCtxMover, PtCtxTalk } from './moves';
 import { PtCtxFeed, PtCtxNews } from './stories';
+import { PtCtxList, PtCtxPeers } from './lists';
+import { possessive } from '../../typologies/basket-words';
 
 const ISLAND = 'pt-click-box@1.0.0';
 
@@ -18,14 +20,19 @@ const ORIGIN: Partial<Record<ClickNote['kind'], string>> = {
   news: 'the news',
 };
 /** The origin's name: the kind's, or what its snapshot says (the news or the social map). */
-const originOf = (note: ClickNote): string =>
-  note.kind === 'talk-map' ? `the ${note.d.lens} map` : ORIGIN[note.kind] ?? 'the page you were on';
+const originOf = (note: ClickNote): string => {
+  if (note.kind === 'talk-map') return `the ${note.d.lens} map`;
+  if (note.kind === 'list' && note.d.title) return `${note.d.title.charAt(0).toLowerCase()}${note.d.title.slice(1)}`;
+  return ORIGIN[note.kind] ?? 'the page you were on';
+};
 
 /**
  * Where the click came from, as the kicker says it: the origin, then the page when it adds something ("on the home page", its title);
  * a page titled after the origin itself says it once ("From the earnings calendar November 2026").
  */
 export function kicker(note: ClickNote): string {
+  // a company's peers are on that company's page: the page's title would only say it again
+  if (note.kind === 'peers') return `From ${possessive(note.d.of.name)} peers`;
   const origin = originOf(note), title = note.from.title.trim();
   if (note.from.path === '/') return `From ${origin} on the home page`;
   if (!title) return `From ${origin}`;
@@ -36,7 +43,7 @@ export function kicker(note: ClickNote): string {
 /** The body written for each kind (one `@case` per kind). */
 @Component({
   selector: 'pt-ctx-body',
-  imports: [PtCtxCalendar, PtCtxFeed, PtCtxMap, PtCtxMover, PtCtxNews, PtCtxTalk],
+  imports: [PtCtxCalendar, PtCtxFeed, PtCtxList, PtCtxMap, PtCtxMover, PtCtxNews, PtCtxPeers, PtCtxTalk],
   host: { class: 'pt-ctx-body' },
   template: `
     @let n = note();
@@ -48,6 +55,8 @@ export function kicker(note: ClickNote): string {
       @case ('talk-map') {<pt-ctx-talk [d]="n.d" [to]="n.to" />}
       @case ('feed') {<pt-ctx-feed [d]="n.d" [land]="n.land" />}
       @case ('news') {<pt-ctx-news [d]="n.d" [to]="n.to" [land]="n.land" />}
+      @case ('list') {<pt-ctx-list [d]="n.d" [from]="n.from.path" />}
+      @case ('peers') {<pt-ctx-peers [d]="n.d" [from]="n.from.path" />}
     }`,
 })
 export class PtCtxBody {

@@ -1,7 +1,7 @@
-import { pct, tone, usd } from '../src/ds/format';
+import { pct, plainName, tone, usd } from '../src/ds/format';
 import { screenDemo } from '../src/typologies';
 import { PtScreen } from './pt-screen';
-import { basics, column, press, render, withData } from './_spec';
+import { askOf, basics, column, press, render, withData } from './_spec';
 
 describe('pt-screen', () => {
   basics(PtScreen, { list: 'biggest_losers', limit: 10 });
@@ -160,5 +160,42 @@ describe('pt-screen: "Show 20 more"', () => {
     const asked: unknown[] = [];
     await render(PtScreen, { list: 'largest', sector: 'Energy', limit: 5 }, async (t, p) => { asked.push(p); return withData({})(t, p); });
     expect(asked).toEqual([{ scope: { list: 'largest', sector: 'Energy' }, limit: 5 }]);
+  });
+});
+
+describe('pt-screen: the click\'s ask (2026-11-16)', () => {
+  /** The list as the page places it: a section with its title and, off its own page, its "See all". */
+  const placed = (el: HTMLElement, id: string, title: string, more: string | null) => {
+    const s = document.createElement('section');
+    s.id = id;
+    s.innerHTML = `<div class="pt-section-head"><h2 class="pt-section-title">${title}</h2>${more ? `<a class="pt-section-more" href="${more}">See all →</a>` : ''}</div>`;
+    s.append(el);
+    document.body.append(s);
+  };
+  const cell = (label: string, v: number | null) => ({ label, text: pct(v), tone: `pt-t-${tone(v)}` });
+  afterEach(() => { document.body.innerHTML = ''; });
+
+  it('a list row: the list as the page titles it and its full page, the row\'s rank among the rows shown, its columns as printed', async () => {
+    const data = screenDemo({ scope: { list: 'biggest_losers' }, limit: 10 });
+    const r = await render(PtScreen, { list: 'biggest_losers', limit: 10, link: 'why-moving' }, withData({ 'screen@1': data }));
+    placed(r.el, 'biggest-losers', 'Biggest stock losers today', '/markets/biggest-losers/');
+    const third = data.rows[2]!;
+    expect(askOf(r.el.querySelectorAll('a.pt-scr-co')[2]!)).toEqual({ kind: 'list', d: { title: 'Biggest stock losers today', href: '/markets/biggest-losers/',
+      rank: 3, of: data.rows.length, cols: [cell('Today', third.chg1d), cell('Off 52w high', third.offHigh)] } });
+  });
+  it('on the list\'s own page (no "See all"): the section\'s anchor', async () => {
+    const data = screenDemo({ scope: { list: 'biggest_losers' }, limit: 10 });
+    const r = await render(PtScreen, { list: 'biggest_losers', limit: 10 }, withData({ 'screen@1': data }));
+    placed(r.el, 'list', 'Biggest stock losers today', null);
+    expect(askOf(r.el.querySelector('a.pt-scr-co'))).toMatchObject({ kind: 'list', d: { href: '#list', rank: 1 } });
+  });
+  it('peers: the company they are peers of, its section, the row\'s columns', async () => {
+    const data = screenDemo({ scope: { peersOf: 'NVDA' }, limit: 5 });
+    const r = await render(PtScreen, { peersOf: 'NVDA', limit: 5 }, withData({ 'screen@1': data }));
+    placed(r.el, 'peers', 'Peers', null);
+    const self = data.rows.find((x) => x.self)!, i = data.rows.findIndex((x) => !x.self), peer = data.rows[i]!;
+    const link = [...r.el.querySelectorAll('a.pt-scr-co')].find((a) => a.getAttribute('href') === `/stocks/${peer.ticker.toLowerCase()}/`)!;
+    expect(askOf(link)).toEqual({ kind: 'peers', d: { of: { ticker: self.ticker, name: plainName(self.name) }, href: '#peers',
+      cols: [cell('Today', peer.chg1d), cell('Off 52w high', peer.offHigh), cell('Target upside', peer.ptUpside)] } });
   });
 });

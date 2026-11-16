@@ -71,3 +71,17 @@ export const CTX_NEWS: ClickNote = {
   ...base, from: { path: '/etfs/smh/', title: 'SMH: VanEck Semiconductor ETF' }, kind: 'news',
   d: { title: 'Nvidia supplier warns on demand', url: 'https://example.com/a', site: 'Reuters', publishedAt: '2026-11-16T13:00:00Z' },
 };
+
+const LOSER_COLS = [{ label: 'Today', text: '-5.1%', tone: 'pt-t-neg' }, { label: 'Off 52w high', text: '-22.0%', tone: 'pt-t-neg' }];
+export const CTX_LIST: ClickNote = {
+  ...base, land: '/stocks/nvda/why-moving/', from: home, kind: 'list',
+  d: { title: 'Biggest stock losers today', href: '/markets/biggest-losers/', rank: 3, of: 20, cols: LOSER_COLS },
+};
+export const CTX_LIST_OWN: ClickNote = {
+  ...CTX_LIST, from: { path: '/markets/biggest-losers/', title: 'Biggest stock losers today' }, d: { ...(CTX_LIST.d as Extract<ClickNote, { kind: 'list' }>['d']), href: '#list' },
+};
+export const CTX_PEERS: ClickNote = {
+  ...base, to: 'AMD', land: '/stocks/amd/', from: { path: '/stocks/nvda/', title: 'Nvidia (NVDA) stock: price, targets and why it moves' }, kind: 'peers',
+  d: { of: { ticker: 'NVDA', name: 'Nvidia' }, href: '#peers',
+    cols: [{ label: 'Today', text: '-3.0%', tone: 'pt-t-neg' }, { label: 'Off 52w high', text: '-12.4%', tone: 'pt-t-neg' }, { label: 'Target upside', text: '+18.0%', tone: 'pt-t-pos' }] },
+};

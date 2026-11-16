@@ -1,14 +1,15 @@
 /**
  * Which companies are on this list today (biggest movers, 52-week extremes, undervalued, insider buying, upgrades and downgrades,
  * golden and death crosses, low P/E, Piotroski 8–9, unusual volume, peers)?
- * @version 2.6.1
+ * @version 2.7.0
  * @evidence DataForSEO: "biggest stock losers today", "52 week low stocks", "undervalued stocks" (launch/data/08c-serp-undervalued-stocks.json)
+ * @evidence Romeo, 2026-11-16: «in base a "da dove arrivi" ti mostro un riquadro in alto» — a row answers the click's ask with its rank and columns, the list as the page titles it
  * @evidence stockanalysis.com / finviz market-mover tables; beta: peers table on the company page
  * @evidence DataForSEO round 16 (2026-11-02): "upgrades and downgrades" 3,600/month (KD 9), "golden cross stocks" 1,000 (KD 12), "death cross
  *   stocks" 720, "low pe stocks" 720 (KD 7), Piotroski 640 (KD 6), "unusual volume stocks" 320 (KD 5) — launch/data/16-summary.json
  */
 import { Component, computed, inject, input, linkedSignal } from '@angular/core';
-import { Pt } from '@pretickt/components/context';
+import { answer, type CtxCol, Pt } from '@pretickt/components/context';
 import { MORE_STEP, PtLogo, PtMore, PtSortTh, useSort } from '@pretickt/components/ds';
 import { date, href, money, num, pct, plainName, stockHref, tone, usd } from '@pretickt/components/format';
 import { SCREEN_MAX, type ScreenList, type ScreenRow, type Sector } from '@pretickt/components/typologies';
@@ -46,6 +47,7 @@ type Row = { r: ScreenRow; rank: number; chg: Cell; extra: Cell[]; spark: Return
 @Component({
   selector: 'pt-screen',
   imports: [PtLogo, PtMore, PtSortTh],
+  host: { '(pt-ctx-ask)': 'ask($event)' },
   template: `
     @let s = screen.value();
     @if (s === null) {<p class="pt-na">Data not available</p>}
@@ -122,6 +124,24 @@ export class PtScreen {
   /** null: the company's page (the default, and a value it does not know). */
   protected readonly page = computed(() => { const l = this.link(); return l && l !== 'hub' && LINK_SR[l] ? { slug: l, sr: LINK_SR[l] } : null; });
   protected rowHref(ticker: string) { const p = this.page(); return p ? href(`/stocks/${ticker.toLowerCase()}/${p.slug}/`) : stockHref(ticker); }
+  /**
+   * The click's ask on a row (pt-ctx-ask): its rank among the rows shown and its columns as printed; the list as the page titles it
+   * (its section's heading) and its full page (the section's "See all", or the section itself on the list's own page); peers: whose.
+   */
+  protected ask(e: Event) {
+    const link = e.target as Element, href = link.getAttribute?.('href');
+    const rows = this.rows(), x = rows.find((y) => this.rowHref(y.r.ticker) === href);
+    if (!x) return;
+    const cols: CtxCol[] = [{ label: 'Today', ...x.chg }, ...x.extra.map((c, j) => ({ label: this.extra()[j]!.label, ...c }))];
+    const section = link.closest?.('section'), more = section?.querySelector('.pt-section-more')?.getAttribute('href');
+    const where = more ?? (section?.id ? `#${section.id}` : '');
+    const self = rows.find((y) => y.r.self)?.r;
+    if (this.kind() === 'peers') {
+      if (self) answer(e, { kind: 'peers', d: { of: { ticker: self.ticker, name: plainName(self.name) }, href: where, cols } });
+      return;
+    }
+    answer(e, { kind: 'list', d: { title: section?.querySelector('.pt-section-title')?.textContent?.trim() ?? '', href: where, rank: x.rank, of: rows.length, cols } });
+  }
   protected readonly plainName = plainName;
   protected readonly money = money;
   protected readonly num = num;
