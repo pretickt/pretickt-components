@@ -6,6 +6,7 @@ import { PtCtxMap, PtCtxMover, PtCtxTalk } from './moves';
 import { PtCtxFeed, PtCtxNews } from './stories';
 import { PtCtxList, PtCtxPeers } from './lists';
 import { PtCtxHolding, PtCtxPortfolio } from './baskets';
+import { PtCtxFollowing, PtCtxHolder, PtCtxMention } from './words';
 import { possessive } from '../../typologies/basket-words';
 
 const ISLAND = 'pt-click-box@1.0.0';
@@ -37,6 +38,10 @@ export function kicker(note: ClickNote): string {
   // a fund's or a sector's page is titled after it; the portfolio is the reader's own
   if (note.kind === 'holding') return `From ${note.d.basket.name}`;
   if (note.kind === 'portfolio') return 'From your portfolio';
+  if (note.kind === 'holder') return `From ${possessive(note.d.of.name)} value checks`;
+  if (note.kind === 'following') return 'From the companies you follow';
+  // a sentence's origin is its page
+  if (note.kind === 'mention') return note.from.path === '/' ? 'From the home page' : note.from.title.trim() ? `From ${note.from.title.trim()}` : 'From the page you were on';
   const origin = originOf(note), title = note.from.title.trim();
   if (note.from.path === '/') return `From ${origin} on the home page`;
   if (!title) return `From ${origin}`;
@@ -47,7 +52,8 @@ export function kicker(note: ClickNote): string {
 /** The body written for each kind (one `@case` per kind). */
 @Component({
   selector: 'pt-ctx-body',
-  imports: [PtCtxCalendar, PtCtxFeed, PtCtxHolding, PtCtxList, PtCtxMap, PtCtxMover, PtCtxNews, PtCtxPeers, PtCtxPortfolio, PtCtxTalk],
+  imports: [PtCtxCalendar, PtCtxFeed, PtCtxFollowing, PtCtxHolder, PtCtxHolding, PtCtxList, PtCtxMap, PtCtxMention, PtCtxMover, PtCtxNews, PtCtxPeers,
+    PtCtxPortfolio, PtCtxTalk],
   host: { class: 'pt-ctx-body' },
   template: `
     @let n = note();
@@ -63,6 +69,9 @@ export function kicker(note: ClickNote): string {
       @case ('peers') {<pt-ctx-peers [d]="n.d" [from]="n.from.path" />}
       @case ('holding') {<pt-ctx-holding [d]="n.d" [from]="n.from.path" />}
       @case ('portfolio') {<pt-ctx-portfolio [d]="n.d" />}
+      @case ('holder') {<pt-ctx-holder [d]="n.d" [from]="n.from.path" />}
+      @case ('mention') {<pt-ctx-mention [d]="n.d" [to]="n.to" />}
+      @case ('following') {<pt-ctx-following [d]="n.d" />}
     }`,
 })
 export class PtCtxBody {

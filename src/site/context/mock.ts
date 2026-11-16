@@ -100,3 +100,14 @@ export const CTX_PORTFOLIO_EARNINGS: ClickNote = { ...CTX_PORTFOLIO, d: { weight
 export const CTX_PORTFOLIO_NEWS: ClickNote = {
   ...CTX_PORTFOLIO, d: { weight: null, ret: null, points: null, earnings: null, headline: { title: 'Nvidia supplier warns on demand', url: 'https://example.com/a' } },
 };
+
+export const CTX_HOLDER: ClickNote = {
+  ...base, to: 'BLK', land: '/stocks/blk/', from: { path: '/stocks/nvda/value/', title: 'Is Nvidia a good stock to buy?' }, kind: 'holder',
+  d: { of: { ticker: 'NVDA', name: 'Nvidia' }, question: 'biggest holders', label: '7.8% +0.1', href: '#value-owners-biggest-holders' },
+};
+export const CTX_MENTION: ClickNote = {
+  ...base, to: 'AMD', land: '/stocks/amd/', from: { path: '/stocks/nvda/why-moving/', title: 'Why Nvidia moved today' }, kind: 'mention',
+  d: { said: say`${NVDA} fell 5.1% as ${mention('AMD', 'Advanced Micro Devices, Inc.', '/logos/amd.a8e17428.webp')} gained 2.0% on the same report.` },
+};
+export const CTX_FOLLOWING: ClickNote = { ...base, from: { path: '/alerts/', title: 'Your alerts' }, kind: 'following', d: { name: 'Nvidia', alerts: 2 } };
+export const CTX_FOLLOWING_NONE: ClickNote = { ...CTX_FOLLOWING, d: { name: 'Nvidia', alerts: 0 } };

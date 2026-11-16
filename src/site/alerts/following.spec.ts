@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { PT_FOLLOW, PT_FOLLOW_ON, type FollowState, type FollowStore } from '@pretickt/components/context';
+import { askAt, PT_FOLLOW, PT_FOLLOW_ON, type FollowState, type FollowStore } from '@pretickt/components/context';
 import { PtFollow } from '@pretickt/components/follow';
 import type { FollowAlert, FollowFile } from '@pretickt/components/typologies';
 import { FOLLOW_FILE_URL, fetchFollowFile, PT_FOLLOW_FILE, PT_FOLLOW_SEARCH, PtFollowing } from './following';
@@ -39,6 +39,11 @@ describe('/alerts/: what this browser follows (follow, 2026-11-14)', () => {
     f.detectChanges();
     expect(follow.follows()).toEqual(['KO', 'AAPL']);
     expect(el.querySelectorAll('.pt-following-co')).toHaveLength(2);
+  });
+  it('the click\'s ask on a followed company (2026-11-16): its name and its alerts of the last 5 sessions as the list shows them', async () => {
+    const { el } = await mount({ follows: ['KO', 'NVDA'], seen: {} }, async () => FILE);
+    const nvda = el.querySelector('a[href="/stocks/nvda/"]')!;
+    expect(askAt(nvda)).toEqual({ kind: 'following', d: { name: 'Nvidia', alerts: FILE.companies['NVDA']!.alerts.length } });
   });
   it('nothing followed: the sentence', async () => {
     const { el } = await mount({ follows: [], seen: {} }, async () => FILE);

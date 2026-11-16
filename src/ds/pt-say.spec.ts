@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { mention, saidText, say } from './format';
 import { PtMention, PtSay } from './index';
+import { askAt } from '../context/click';
 
 const nvda = mention('NVDA', 'NVIDIA Corporation', '/logos/nvda-1.png'), meta = mention('META', 'Meta Platforms, Inc.'), odd = mention('XYZ', 'Xylo Zen Corp.', 'https://evil.example/x.png');
 
@@ -39,5 +40,17 @@ describe('PtSay and PtMention: a sentence with the companies it names', () => {
     const f = TestBed.createComponent(Section);
     f.detectChanges();
     expect((f.nativeElement as HTMLElement).querySelector('a.pt-mention')!.getAttribute('href')).toBe('/stocks/nvda/#people-ask');
+  });
+});
+
+describe('PtMention: the click\'s ask (2026-11-16)', () => {
+  it('a company named in a sentence answers `mention` with the sentence; a mention outside a sentence answers nothing', () => {
+    const f = TestBed.createComponent(Host);
+    f.detectChanges();
+    const host = f.componentInstance;
+    expect(askAt((f.nativeElement as HTMLElement).querySelector('a.pt-mention')!)).toEqual({ kind: 'mention', d: { said: host.parts } });
+    const g = TestBed.createComponent(Section);
+    g.detectChanges();
+    expect(askAt((g.nativeElement as HTMLElement).querySelector('a.pt-mention')!)).toBeNull();
   });
 });

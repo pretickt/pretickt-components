@@ -3,7 +3,7 @@ import { valueDemo } from '../src/typologies/value-demo';
 import { faqId } from '../src/ds/format';
 import { iconPath } from '../src/ds/pt-icon';
 import { arcPath, at, barGeom, checkGroups, companyRows, list, NOT_ADVICE, onArc, priceSentence, PtValue, QS_TRACK, QUESTIONS, quarterGeom, valueAnswer } from './pt-value';
-import { render, withData } from './_spec';
+import { askOf, render, withData } from './_spec';
 
 /** value@1's demo: three made-up companies (a strong business at a high price, a weakening one at a low price, a fragile one). */
 const NVDA = valueDemo({ ticker: 'NVDA' }), NKE = valueDemo({ ticker: 'NKE' }), INTC = valueDemo({ ticker: 'INTC' });
@@ -270,5 +270,14 @@ describe('pt-value: on its own page and on the company page', () => {
     const g = quarterGeom([Q('Q1', 'FY26', 0.04), Q('Q2', 'FY26', 0.05), Q('Q3', 'FY26', 1.5), Q('Q4', 'FY26', 0.03)], 'the estimate');
     expect(g.bars[2]!.h / g.bars[1]!.h).toBeCloseTo(3, 1);
     expect(JSON.parse(g.bars[2]!.tip)).toEqual({ 'Q3 FY26': '+150.0% vs the estimate' });
+  });
+});
+
+describe('pt-value: the click\'s ask (2026-11-16)', () => {
+  it('a listed company in a companies card (holders, customers, competitors): the card, the row\'s value as printed, the card\'s anchor', async () => {
+    const { el } = await render(PtValue, { ticker: 'NVDA' });
+    const link = el.querySelector('a.dv-co-t[href="/stocks/blk/"]')!;
+    const card = NVDA.sections.flatMap((s) => s.cards).find((c) => c.viz.kind === 'companies' && c.viz.rows.some((r) => r.ticker === 'BLK'))!;
+    expect(askOf(link)).toEqual({ kind: 'holder', d: { of: { ticker: 'NVDA', name: 'Nvidia' }, question: card.title, label: '7.8% +0.1', href: `#${link.closest('.dv-card')!.id}` } });
   });
 });

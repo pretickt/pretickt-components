@@ -1,6 +1,6 @@
 /** pt-click-box on made-up notes: what the reader clicked, at the top of the company page; `compact` is the hover card's block. */
 import { PtClickBox } from '../site/context/box';
-import { CTX_DIVIDEND, CTX_EARNINGS_AHEAD, CTX_FEED, CTX_FEED_SUB, CTX_HOLDING, CTX_HOLDING_SECTOR, CTX_LIST, CTX_LIST_OWN, CTX_NEWS, CTX_PEERS, CTX_PORTFOLIO, CTX_PORTFOLIO_EARNINGS, CTX_PORTFOLIO_NEWS, CTX_EARNINGS_OUT, CTX_HEAT_MAP, CTX_MOVER, CTX_MOVER_PLAIN, CTX_NEWS_MAP, CTX_SOCIAL_MAP } from '../site/context/mock';
+import { CTX_DIVIDEND, CTX_EARNINGS_AHEAD, CTX_FEED, CTX_FEED_SUB, CTX_FOLLOWING, CTX_FOLLOWING_NONE, CTX_HOLDER, CTX_HOLDING, CTX_HOLDING_SECTOR, CTX_LIST, CTX_LIST_OWN, CTX_MENTION, CTX_NEWS, CTX_PEERS, CTX_PORTFOLIO, CTX_PORTFOLIO_EARNINGS, CTX_PORTFOLIO_NEWS, CTX_EARNINGS_OUT, CTX_HEAT_MAP, CTX_MOVER, CTX_MOVER_PLAIN, CTX_NEWS_MAP, CTX_SOCIAL_MAP } from '../site/context/mock';
 import { story } from './story';
 
 const GROUP = 'Click context · The box on the company page (made-up data)';
@@ -26,4 +26,8 @@ export const stories = [
   story(PtClickBox, { name: 'Your portfolio · a line', inputs: { note: CTX_PORTFOLIO }, group: GROUP }),
   story(PtClickBox, { name: 'Your portfolio · earnings ahead', inputs: { note: CTX_PORTFOLIO_EARNINGS }, group: GROUP }),
   story(PtClickBox, { name: 'Your portfolio · a headline', inputs: { note: CTX_PORTFOLIO_NEWS }, group: GROUP }),
+  story(PtClickBox, { name: 'Value card · BLK among Nvidia\'s biggest holders', inputs: { note: CTX_HOLDER }, group: GROUP }),
+  story(PtClickBox, { name: 'A sentence · AMD named in why Nvidia moved', inputs: { note: CTX_MENTION }, group: GROUP }),
+  story(PtClickBox, { name: 'Followed · two alerts', inputs: { note: CTX_FOLLOWING }, group: GROUP }),
+  story(PtClickBox, { name: 'Followed · no alerts', inputs: { note: CTX_FOLLOWING_NONE }, group: GROUP }),
 ];

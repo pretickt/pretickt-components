@@ -1,4 +1,5 @@
 import { afterNextRender, Component, computed, inject, InjectionToken, signal } from '@angular/core';
+import { answer } from '@pretickt/components/context';
 import { PtFollow } from '@pretickt/components/follow';
 import { plainName } from '@pretickt/components/format';
 import type { FollowFile } from '@pretickt/components/typologies';
@@ -29,7 +30,7 @@ export async function fetchFollowFile(get: (u: string) => Promise<Response> = (u
   selector: 'pt-following',
   imports: [PtFollowRows],
   // the site's hover cards listen on the document and ask the API for the ticker they show: here a hover stays inside (as on /portfolio/)
-  host: { '(pointerover)': '$event.stopPropagation()', '(pointerout)': '$event.stopPropagation()' },
+  host: { '(pointerover)': '$event.stopPropagation()', '(pointerout)': '$event.stopPropagation()', '(pt-ctx-ask)': 'ask($event)' },
   template: `
     @if (email && confirmable()) {<p><button type="button" class="pt-abtn pt-following-confirm" (click)="confirm()">Confirm and get these companies by email</button></p>}
     @if (email && follow.link(); as l) {
@@ -71,6 +72,12 @@ export class PtFollowing {
     const f = this.file();
     return this.follow.follows().map((t) => ({ t, name: plainName(f?.companies[t]?.name ?? t), alerts: f?.companies[t]?.alerts ?? [] }));
   });
+
+  /** The click's ask on a followed company (2026-11-16): its name and its alerts of the last 5 sessions, as the list shows them. */
+  protected ask(e: Event) {
+    const href = (e.target as Element).getAttribute?.('href'), r = this.rows().find((x) => `/stocks/${x.t.toLowerCase()}/` === href);
+    if (r) answer(e, { kind: 'following', d: { name: r.name, alerts: r.alerts.length } });
+  }
 
   /** The email (part 2), where the email alerts are on. */
   protected readonly email = inject(PT_FOLLOW_EMAIL, { optional: true });

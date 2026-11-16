@@ -24,7 +24,8 @@
  * placement's own Share under the columns (which keeps its word) — below everything the cards line up by, so nothing moves; the
  * image is the card alone, framed with the page's question, and the link its own address on the value page
  * (`#value-demand-sales-growth`), where the card is outlined.
- * @version 1.1.1
+ * @version 1.2.0
+ * @evidence Romeo, 2026-11-16: «in base a "da dove arrivi" ti mostro un riquadro in alto» — a listed company in a card answers the click's ask with the card and its value
  * @evidence Romeo 2026-10-27: "questa azienda è di valore? con 6 sezioni verticali e, dentro ogni sezione, delle card schematiche e visuali"
  * @evidence Romeo 2026-10-31: "per ptvalue, singola pagina ma presente anche nella Company page"
  * @evidence Holder names cut at phone width, "Vangu…" (the 40-company check, 2026-11-01)
@@ -35,7 +36,7 @@
  * @evidence DataForSEO 2026-10-28 (round 13): "is {company} a good stock to buy" ≈64,000 searches a month on ~100 companies, AI Overview on 90%; the facts' own words ("pe ratio", "revenue growth", "gross margin"…) 153,000 on 25 companies
  */
 import { Component, computed, inject, input } from '@angular/core';
-import { Pt } from '@pretickt/components/context';
+import { answer, Pt } from '@pretickt/components/context';
 import { PtIcon, PtLogo } from '@pretickt/components/ds';
 import { date, faqId, num, pct, plainName, stockHref, tip } from '@pretickt/components/format';
 import type { CheckKey, Value, ValueCard, ValueCompany, ValueKey, ValueQuarter, ValueSection, ValueTone } from '@pretickt/components/typologies';
@@ -163,6 +164,7 @@ export const arcPath = (a: number, b: number, r = 30) => { const p = onArc(a, r)
 @Component({
   selector: 'pt-value',
   imports: [PtIcon, PtLogo],
+  host: { '(pt-ctx-ask)': 'ask($event)' },
   template: `
     @let v = value();
     @if (v === null) {<p class="pt-na">Data not available</p>}
@@ -299,6 +301,15 @@ export class PtValue {
   protected readonly QUESTIONS = QUESTIONS;
   protected readonly date = date;
   protected readonly cardTip = (c: ValueCard) => tip({ [c.big]: c.line, Why: c.why, 'pretickt analysis': c.via ?? null, Source: c.source });
+  /** The click's ask on a listed company in a card (holders, customers, competitors): the card, the row's value as printed, its anchor. */
+  protected ask(e: Event) {
+    const link = e.target as Element, id = link.closest?.('.dv-card')?.id, v = this.res.value();
+    const t = /^\/stocks\/([^/#]+)\//.exec(link.getAttribute?.('href') ?? '')?.[1]?.toUpperCase();
+    for (const s of v?.sections ?? []) for (const c of s.cards) {
+      const r = c.viz.kind === 'companies' && this.cardId(s.key, c) === id ? c.viz.rows.find((x) => x.ticker === t) : undefined;
+      if (r && v) { answer(e, { kind: 'holder', d: { of: { ticker: v.ticker, name: plainName(v.name) }, question: c.title, label: r.label, href: `#${id}` } }); return; }
+    }
+  }
   protected companies(c: ValueCard) { return c.viz.kind === 'companies' ? companyRows(c.viz.rows, c.viz.bars) : []; }
   protected bars(c: ValueCard) { return c.viz.kind === 'bars' ? barGeom(c.viz.values) : { base: 0, bars: [] }; }
   protected quarters(c: ValueCard) { return c.viz.kind === 'quarters' ? quarterGeom(c.viz.quarters, c.viz.vs) : quarterGeom([], ''); }
