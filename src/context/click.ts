@@ -9,12 +9,14 @@ import type { Said, Tone } from '../ds/format';
 export const CTX_ASK = 'pt-ctx-ask';
 export interface CtxAsk { data: ClickData | null }
 
+/** The calendar's last-eight bars as it drew them (pt-calendar's `miniBars`): the box draws them without the calendar's code. */
+export interface CtxBars { w: number; bars: { x: number; y: number; h: number; tone: Tone }[] }
 /** A column of a list row as the list printed it. */
 export interface CtxCol { label: string; text: string; tone?: string }
 
 export interface CalendarCtx {
   title: string; ticker: string; logo: string | null; out: boolean; cue: string; cueTone: Tone | 'est'; when: string; hint: string;
-  moves: number[]; said: Said; facts: string; page: { href: string; label: string } | null;
+  bars: CtxBars | null; said: Said; facts: string; page: { href: string; label: string } | null;
 }
 export interface MoverCtx {
   asOf: string; kind: 'rally' | 'drawdown'; move: number; since: string; days: number; week: number; month: number; quarter: number;

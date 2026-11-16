@@ -37,13 +37,19 @@ if (!existsSync(registryFile) || readFileSync(registryFile, 'utf8') !== registry
 // The site app: the official compiler (Angular CLI), browser + server bundles.
 execFileSync('npx', ['ng', 'build', '--stats-json'], { stdio: 'inherit' });
 
-interface Output { bytes: number; entryPoint?: string; inputs: Record<string, unknown> }
+interface Output { bytes: number; entryPoint?: string; inputs: Record<string, unknown>; imports?: { path: string; kind: string }[] }
 const stats = JSON.parse(readFileSync('dist/site/browser-stats.json', 'utf8')) as { outputs: Record<string, Output> };
 const outputs = Object.entries(stats.outputs).filter(([k]) => k.endsWith('.js'));
 const main = outputs.find(([, o]) => o.entryPoint === 'src/site/main.ts');
 if (!main) throw new Error('no main bundle in the build stats');
 const big = overBudget('main', main[1].bytes);
 if (big) throw new Error(big);
+// The platform's pages load main alone (one <script>, no modulepreload): a chunk main imports statically is a second download after
+// it, outside the budget. The chunk optimizer moved Angular out of main (187 KB) for a lazy chunk that imported none of the
+// component context (`@pretickt/components/context`) — the click box, 2026-11-16.
+const first = (main[1].imports ?? []).filter((i) => i.kind === 'import-statement').map((i) => ({ path: i.path, bytes: stats.outputs[i.path]?.bytes ?? 0 }));
+const second = first.filter((c) => c.bytes > 2048);
+if (second.length) throw new Error(`main imports ${second.map((c) => `${c.path} (${c.bytes} bytes)`).join(', ')} before it runs: a second script on every page`);
 const chunks = entries.map((e) => {
   const own = outputs.find(([, o]) => o.entryPoint === `components/${e.tag}.ts`);
   if (!own) throw new Error(`${e.tag}: no lazy chunk of its own (every component is a @defer block of the registry)`);

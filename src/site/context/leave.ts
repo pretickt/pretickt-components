@@ -26,11 +26,7 @@ const panelOf = (el: Element): { data: ClickData | null } | null => {
   return null;
 };
 
-const localStore = (doc: Document): NoteStore | null => {
-  try { return doc.defaultView?.localStorage ?? null; } catch { return null; }
-};
-
-export function attachLeave(doc: Document, subject: string | undefined, store: NoteStore | null = localStore(doc)): void {
+export function attachLeave(doc: Document, subject: string | undefined, store: NoteStore | null): void {
   const own = subject?.toUpperCase();
   const leave = (e: MouseEvent) => {
     if (e.type === 'auxclick' && e.button !== 1) return;

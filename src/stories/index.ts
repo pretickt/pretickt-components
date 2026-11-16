@@ -15,6 +15,7 @@ import { stories as value } from '../../components/pt-value.stories';
 import { stories as peopleAsk } from '../../components/drafts/people-ask.stories';
 import { stories as outlook } from '../../components/drafts/outlook.stories';
 import { stories as alertEvent } from './alert-event.stories';
+import { stories as clickContext } from './click-context.stories';
 import { stories as pages } from './pages.stories';
 import { stories as financials } from '../../components/pt-financials.stories';
 import { stories as stats } from '../../components/pt-stats.stories';
@@ -32,5 +33,5 @@ import type { StoryConfiguration } from './story';
 
 export const STORIES: StoryConfiguration[] = [
   ...companyHeader, ...basket, ...companyCard, ...answer, ...daily, ...quality, ...whyToday, ...priceTarget, ...priceEvents, ...metric, ...financials, ...stats, ...insiders, ...news,
-  ...screen, ...calendar, ...movers, ...logoMap, ...feed, ...value, ...alertEditor, ...alertManage, ...follow, ...portfolio, ...peopleAsk, ...outlook, ...alertEvent, ...drafts, ...pages,
+  ...screen, ...calendar, ...movers, ...logoMap, ...feed, ...value, ...alertEditor, ...alertManage, ...follow, ...portfolio, ...peopleAsk, ...outlook, ...alertEvent, ...clickContext, ...drafts, ...pages,
 ];

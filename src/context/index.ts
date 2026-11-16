@@ -5,7 +5,7 @@
 export { Pt, PT_SLOT, PT_STORE, type PtPayload, type PtParams, type PtResource } from './pt';
 export { PT_PICKS, PtPicks, type PickStore } from './picks';
 export {
-  answer, CTX_ASK, type CalendarCtx, type ClickData, type ClickKind, type ClickNote, type CtxAsk, type CtxCol, type CtxKinds, type FeedCtx,
+  answer, CTX_ASK, type CalendarCtx, type ClickData, type ClickKind, type ClickNote, type CtxAsk, type CtxBars, type CtxCol, type CtxKinds, type FeedCtx,
   type FollowingCtx, type HolderCtx, type HoldingCtx, type ListCtx, type MapCtx, type MentionCtx, type MoverCtx, type NewsCtx, type PeersCtx,
   type PortfolioCtx, type TalkCtx,
 } from './click';

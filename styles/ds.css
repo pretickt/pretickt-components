@@ -502,6 +502,20 @@
     padding: .25rem 0; border-top: 1px solid var(--color-border); }
   .pt-alev-l a { color: var(--color-primary); font-weight: 600; text-decoration: none; white-space: nowrap; }
   .pt-alev-l a:hover { text-decoration: underline; }
+  /* what the reader clicked to land here, above the company page (pt-click-box, 2026-11-16): the alert box's look, a lighter frame */
+  .pt-ctx { display: grid; gap: .35rem; margin: 0 0 1rem; padding: .55rem .8rem .7rem; border: 1px solid color-mix(in oklab, var(--color-primary) 30%, var(--color-border));
+    border-radius: var(--radius-control); background: color-mix(in oklab, var(--color-primary) 4%, var(--color-surface-raised)); }
+  .pt-ctx-head { display: flex; flex-wrap: wrap; align-items: center; gap: .1rem .6rem; margin: 0; }
+  .pt-ctx-k { font-size: .64rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--color-primary); text-decoration: none; }
+  .pt-ctx-k:hover { text-decoration: underline; }
+  .pt-ctx-at { font-size: .72rem; color: var(--color-ink-soft); }
+  .pt-ctx-x { @apply ml-auto inline-grid size-7 shrink-0 place-items-center rounded-md text-lg leading-none text-ink-soft hover:bg-surface hover:text-ink; }
+  .pt-ctx-body { display: grid; gap: .4rem; }
+  .pt-ctx-body .pt-cal-pop-row { padding: 0; }
+  .pt-ctx-more { display: grid; gap: .3rem; font-size: .84rem; }
+  .pt-ctx-more p { margin: 0; }
+  /* a phone: the head row and the next step, the company's header stays on the first screen */
+  @media (width < 40rem) { .pt-ctx .pt-ctx-more > :not(.pt-cal-row-link, .pt-ctx-go) { display: none; } }
   .pt-share-icon { @apply inline-grid size-5 place-items-center rounded-md text-ink-soft hover:bg-surface hover:text-primary; }   /* a part's: the icon alone */
   /* a company's bell (follow, 2026-11-14): at the end of its name row, a fixed box so the count never moves the row */
   .pt-follow-bell { @apply relative ml-auto inline-grid size-8 shrink-0 place-items-center rounded-md text-ink-soft hover:bg-surface hover:text-primary; }
