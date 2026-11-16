@@ -1,7 +1,7 @@
 import { ApplicationRef } from '@angular/core';
 import { feedUnknownVariant, type Feed, type FeedItem } from '../src/typologies';
 import { feedCards, pill, PtFeed, sparkGeom } from './pt-feed';
-import { basics, demo, render, withData } from './_spec';
+import { askOf, basics, demo, render, withData } from './_spec';
 
 const ASOF = '2026-10-16';
 const item = (date: string, o: Partial<FeedItem> = {}): FeedItem => ({
@@ -88,6 +88,15 @@ describe('pt-feed', () => {
   basics(PtFeed, { sector: 'Technology' });
   basics(PtFeed, {});
 
+  it('the click\'s ask on a card (2026-11-16): the card as the reader saw it, with its own target', async () => {
+    const two = [item('2026-10-14', { ticker: 'NVDA', name: 'Nvidia', label: 'Earnings', sub: 'beat', text: 'Nvidia beat.', href: '/stocks/nvda/earnings/', group: 'fundamental' }),
+      item('2026-10-15', { ticker: 'NVDA', name: 'Nvidia', impact: -0.051, href: '/stocks/nvda/earnings/' })];
+    const r = await view(feed(two), {});
+    const cards = r.el.querySelectorAll('a.pt-feed-card');
+    expect(askOf(cards[0]!)).toEqual({ kind: 'feed', d: { label: 'Earnings', sub: 'beat', day: 'Oct 14', text: 'Nvidia beat.',
+      pill: { text: '+3.2%', cls: 'pt-feed-pill pt-feed-pill-pos' }, href: '/stocks/nvda/earnings/', group: 'fundamental' } });
+    expect(askOf(cards[1]!)).toMatchObject({ kind: 'feed', d: { label: 'Big move', day: 'Oct 15', pill: { text: '-5.1%' } } });
+  });
   it('asks for the company, the sector or the market', async () => {
     const asked: unknown[] = [];
     const spy = (inputs: Record<string, unknown>) => render(PtFeed, inputs, async (t, p) => { asked.push(p); return demo()(t, p); });

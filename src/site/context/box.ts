@@ -3,6 +3,7 @@ import { type ClickNote, CTX_ASK, type CtxAsk } from '@pretickt/components/conte
 import { dayMonth } from '../../ds/format';
 import { PtCtxCalendar } from './calendar';
 import { PtCtxMap, PtCtxMover, PtCtxTalk } from './moves';
+import { PtCtxFeed, PtCtxNews } from './stories';
 
 const ISLAND = 'pt-click-box@1.0.0';
 
@@ -13,7 +14,8 @@ export function seenAt(at: number): string {
 }
 
 const ORIGIN: Partial<Record<ClickNote['kind'], string>> = {
-  earnings: 'the earnings calendar', dividend: 'the dividend calendar', mover: 'ongoing moves', 'heat-map': 'the heat map',
+  earnings: 'the earnings calendar', dividend: 'the dividend calendar', mover: 'ongoing moves', 'heat-map': 'the heat map', feed: 'the feed',
+  news: 'the news',
 };
 /** The origin's name: the kind's, or what its snapshot says (the news or the social map). */
 const originOf = (note: ClickNote): string =>
@@ -34,7 +36,7 @@ export function kicker(note: ClickNote): string {
 /** The body written for each kind (one `@case` per kind). */
 @Component({
   selector: 'pt-ctx-body',
-  imports: [PtCtxCalendar, PtCtxMap, PtCtxMover, PtCtxTalk],
+  imports: [PtCtxCalendar, PtCtxFeed, PtCtxMap, PtCtxMover, PtCtxNews, PtCtxTalk],
   host: { class: 'pt-ctx-body' },
   template: `
     @let n = note();
@@ -44,6 +46,8 @@ export function kicker(note: ClickNote): string {
       @case ('mover') {<pt-ctx-mover [d]="n.d" [to]="n.to" />}
       @case ('heat-map') {<pt-ctx-map [d]="n.d" [to]="n.to" />}
       @case ('talk-map') {<pt-ctx-talk [d]="n.d" [to]="n.to" />}
+      @case ('feed') {<pt-ctx-feed [d]="n.d" [land]="n.land" />}
+      @case ('news') {<pt-ctx-news [d]="n.d" [to]="n.to" [land]="n.land" />}
     }`,
 })
 export class PtCtxBody {

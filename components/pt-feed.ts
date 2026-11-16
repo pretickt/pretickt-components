@@ -1,13 +1,14 @@
 /**
  * What happened around this stock — or a sector, or the market — lately, what is coming, and how much did the price move with each?
- * @version 1.0.0
+ * @version 1.1.0
+ * @evidence Romeo, 2026-11-16: «in base a "da dove arrivi" ti mostro un riquadro in alto» — a card answers the click's ask with what it showed
  * @evidence Romeo, 2026-10-18: "un componente timeline che mostra per piccole card eventi sia tecnici che fondamentali che news
  *   rilevanti, nel passato e nel futuro, ferma oggi, con la percentuale di prezzo impattata … una tooltip su desktop mostra la versione
  *   testuale utile per seo … chiamiamolo proprio feed. vale per le company e per la home e per i settori"
  * @evidence Romeo, 2026-10-18: "per ogni card voglio una componente visuale che chiarisce meglio" (each card's price chart around its event)
  */
 import { afterRenderEffect, Component, computed, type ElementRef, inject, input, viewChild } from '@angular/core';
-import { Pt } from '@pretickt/components/context';
+import { answer, Pt } from '@pretickt/components/context';
 import { PtIcon, PtLogo } from '@pretickt/components/ds';
 import { date, dayMonth, href, level, pct, tip } from '@pretickt/components/format';
 import { FEED_DAYS, FEED_GROUPS, type FeedItem, type Sector } from '@pretickt/components/typologies';
@@ -94,6 +95,7 @@ export function feedCards(items: readonly FeedItem[], asOf: string, own: boolean
 @Component({
   selector: 'pt-feed',
   imports: [PtIcon, PtLogo],
+  host: { '(pt-ctx-ask)': 'ask($event)' },
   template: `
     @let d = feed.value();
     @if (d === null) {<p class="pt-na">Data not available</p>}
@@ -112,7 +114,7 @@ export function feedCards(items: readonly FeedItem[], asOf: string, own: boolean
             @for (c of v.cards; track c.key; let i = $index) {
               @if (i === v.todayAt) {<li class="pt-feed-today" #today>Today <time [attr.datetime]="d.asOf">{{ dayMonth(d.asOf) }}</time></li>}
               <li class="pt-feed-item" [class.pt-feed-future]="c.future">
-                <a [class]="'pt-feed-card pt-feed-' + c.group" [attr.href]="c.href" [attr.data-tip]="c.tip">
+                <a [class]="'pt-feed-card pt-feed-' + c.group" [attr.href]="c.href" [attr.data-tip]="c.tip" [attr.data-k]="c.key">
                   <span class="pt-feed-face" aria-hidden="true">
                     <span class="pt-feed-top">
                       <span class="pt-feed-glyph"><svg [ptIcon]="c.glyph"></svg></span>
@@ -187,6 +189,12 @@ export class PtFeed {
     const s = this.strip()?.nativeElement;
     s?.scrollBy?.({ left: dir * s.clientWidth * 0.8 });
     (e.currentTarget as HTMLElement).dispatchEvent(new CustomEvent('pt-interact', { bubbles: true, detail: { action: 'scroll' } }));
+  }
+
+  /** The click's ask on a card (pt-ctx-ask): the card as the reader saw it, and where it leads. */
+  protected ask(e: Event) {
+    const key = (e.target as Element).closest?.('[data-k]')?.getAttribute('data-k'), c = this.view().cards.find((x) => x.key === key);
+    if (c) answer(e, { kind: 'feed', d: { label: c.label, sub: c.sub ?? '', day: c.day, text: c.text, pill: c.pill ? { text: c.pill.text, cls: c.pill.cls } : null, href: c.href, group: c.group } });
   }
 
   protected readonly DAYS = FEED_DAYS;

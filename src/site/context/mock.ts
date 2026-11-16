@@ -57,3 +57,17 @@ export const CTX_HEAT_MAP: ClickNote = {
 
 export const CTX_NEWS_MAP: ClickNote = { ...base, from: home, kind: 'talk-map', d: { lens: 'news', count: '46, 5× its usual day', label: 'Stories' } };
 export const CTX_SOCIAL_MAP: ClickNote = { ...base, from: home, kind: 'talk-map', d: { lens: 'social', count: '120', label: 'Posts' } };
+
+export const CTX_FEED: ClickNote = {
+  ...base, from: { path: '/sectors/technology/', title: 'Technology stocks' }, kind: 'feed',
+  d: { label: 'Big move', sub: '3× usual', day: 'Nov 13', text: 'Nvidia fell 5.1% on Nov 13, three times its usual day.', pill: { text: '-5.1%', cls: 'pt-feed-pill pt-feed-pill-neg' },
+    href: '/stocks/nvda/#price', group: 'technical' },
+};
+export const CTX_FEED_SUB: ClickNote = {
+  ...CTX_FEED, land: '/stocks/nvda/earnings/', from: home,
+  d: { label: 'Earnings', sub: 'beat', day: 'Nov 18', text: 'Nvidia beat the EPS estimate by 6%.', pill: null, href: '/stocks/nvda/earnings/', group: 'fundamental' },
+};
+export const CTX_NEWS: ClickNote = {
+  ...base, from: { path: '/etfs/smh/', title: 'SMH: VanEck Semiconductor ETF' }, kind: 'news',
+  d: { title: 'Nvidia supplier warns on demand', url: 'https://example.com/a', site: 'Reuters', publishedAt: '2026-11-16T13:00:00Z' },
+};

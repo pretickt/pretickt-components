@@ -1,6 +1,6 @@
 import { PtNews } from './pt-news';
 import { describe, expect, it } from 'vitest';
-import { basics, render, withData } from './_spec';
+import { askOf, basics, render, withData } from './_spec';
 
 describe('pt-news', () => {
   basics(PtNews, { ticker: 'NVDA', limit: 5 });
@@ -31,6 +31,8 @@ describe('pt-news', () => {
     const fund = await render(PtNews, { ticker: 'SMH' }, withData({ 'news@1': { asOf: '2026-10-02', items: [{ ...item, ticker: 'NVDA', name: 'NVIDIA Corporation', logo: null }] } }));
     expect(fund.text()).toContain('Nvidia · Reuters');
     expect(fund.el.querySelector('.pt-meta a')!.getAttribute('href')).toBe('/stocks/nvda/');
+    // the click's ask on the story's company (2026-11-16): the story the reader was reading
+    expect(askOf(fund.el.querySelector('.pt-meta a'))).toEqual({ kind: 'news', d: { title: 'T', url: 'https://x/a', site: 'Reuters', publishedAt: '2026-10-02T13:00:00Z' } });
     const co = await render(PtNews, { ticker: 'NVDA' }, withData({ 'news@1': { asOf: '2026-10-02', items: [item] } }));
     expect(co.el.querySelector('.pt-meta a')).toBeNull();
   });

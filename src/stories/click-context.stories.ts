@@ -1,6 +1,6 @@
 /** pt-click-box on made-up notes: what the reader clicked, at the top of the company page; `compact` is the hover card's block. */
 import { PtClickBox } from '../site/context/box';
-import { CTX_DIVIDEND, CTX_EARNINGS_AHEAD, CTX_EARNINGS_OUT, CTX_HEAT_MAP, CTX_MOVER, CTX_MOVER_PLAIN, CTX_NEWS_MAP, CTX_SOCIAL_MAP } from '../site/context/mock';
+import { CTX_DIVIDEND, CTX_EARNINGS_AHEAD, CTX_FEED, CTX_FEED_SUB, CTX_NEWS, CTX_EARNINGS_OUT, CTX_HEAT_MAP, CTX_MOVER, CTX_MOVER_PLAIN, CTX_NEWS_MAP, CTX_SOCIAL_MAP } from '../site/context/mock';
 import { story } from './story';
 
 const GROUP = 'Click context · The box on the company page (made-up data)';
@@ -15,4 +15,7 @@ export const stories = [
   story(PtClickBox, { name: 'Heat map · NVDA 2nd of 12 in Technology', inputs: { note: CTX_HEAT_MAP }, group: GROUP }),
   story(PtClickBox, { name: 'News map · NVDA, 46 stories', inputs: { note: CTX_NEWS_MAP }, group: GROUP }),
   story(PtClickBox, { name: 'Social map · NVDA, 120 posts', inputs: { note: CTX_SOCIAL_MAP }, group: GROUP }),
+  story(PtClickBox, { name: 'Feed · a big move, from a sector page', inputs: { note: CTX_FEED }, group: GROUP }),
+  story(PtClickBox, { name: 'Feed · an earnings card that led to the earnings page', inputs: { note: CTX_FEED_SUB }, group: GROUP }),
+  story(PtClickBox, { name: 'News · a story on a fund page', inputs: { note: CTX_NEWS }, group: GROUP }),
 ];
