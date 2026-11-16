@@ -1,7 +1,7 @@
 import type { ComponentFixture } from '@angular/core/testing';
 import { TestBed } from '@angular/core/testing';
 import type { Provider, Type } from '@angular/core';
-import { Pt, PT_LIVE, PT_STORE, PtStore, validateParams, type LiveBars, type LiveDay, type LiveSource } from '../src/context';
+import { askAt, type ClickData, Pt, PT_LIVE, PT_STORE, PtStore, validateParams, type LiveBars, type LiveDay, type LiveSource } from '../src/context';
 import { demoFor, getTypology } from '../src/typologies';
 
 /** Every call answered with the typology's demo; `variant` adds the catalogue entries a newer API may send. */
@@ -68,3 +68,9 @@ export function basics<C>(component: Type<C>, inputs: Record<string, unknown>) {
     expect(r.html()).toContain('pt-na');
   });
 }
+
+/** The click's ask on a company link (pt-ctx-ask, as the page runtime sends it): what its origin answers, or null. */
+export const askOf = (link: Element | null): ClickData | null => {
+  if (!link) throw new Error('no link to ask');
+  return askAt(link);
+};

@@ -1,6 +1,6 @@
 /** pt-click-box on made-up notes: what the reader clicked, at the top of the company page; `compact` is the hover card's block. */
 import { PtClickBox } from '../site/context/box';
-import { CTX_DIVIDEND, CTX_EARNINGS_AHEAD, CTX_EARNINGS_OUT } from '../site/context/mock';
+import { CTX_DIVIDEND, CTX_EARNINGS_AHEAD, CTX_EARNINGS_OUT, CTX_HEAT_MAP, CTX_MOVER, CTX_MOVER_PLAIN, CTX_NEWS_MAP, CTX_SOCIAL_MAP } from '../site/context/mock';
 import { story } from './story';
 
 const GROUP = 'Click context · The box on the company page (made-up data)';
@@ -10,4 +10,9 @@ export const stories = [
   story(PtClickBox, { name: 'Earnings · NVDA after its report (from the home)', inputs: { note: CTX_EARNINGS_OUT }, group: GROUP }),
   story(PtClickBox, { name: 'Dividend calendar · KO', inputs: { note: CTX_DIVIDEND }, group: GROUP }),
   story(PtClickBox, { name: 'Compact (the hover card) · NVDA before its report', inputs: { note: CTX_EARNINGS_AHEAD, compact: true }, group: GROUP }),
+  story(PtClickBox, { name: 'Ongoing moves · NVDA in a drawdown, today\'s line, its industry too', inputs: { note: CTX_MOVER }, group: GROUP }),
+  story(PtClickBox, { name: 'Ongoing moves · a rally, no line, no industry', inputs: { note: CTX_MOVER_PLAIN }, group: GROUP }),
+  story(PtClickBox, { name: 'Heat map · NVDA 2nd of 12 in Technology', inputs: { note: CTX_HEAT_MAP }, group: GROUP }),
+  story(PtClickBox, { name: 'News map · NVDA, 46 stories', inputs: { note: CTX_NEWS_MAP }, group: GROUP }),
+  story(PtClickBox, { name: 'Social map · NVDA, 120 posts', inputs: { note: CTX_SOCIAL_MAP }, group: GROUP }),
 ];

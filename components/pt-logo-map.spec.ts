@@ -1,7 +1,7 @@
 import type { Screen, ScreenRow } from '../src/typologies';
 import { saidText } from '../src/ds/format';
 import { buildMap, mapSentence, megaCaps, PtLogoMap, sectorLabel, squarify, stepOf } from './pt-logo-map';
-import { basics, render, withData } from './_spec';
+import { askOf, basics, render, withData } from './_spec';
 
 const row = (ticker: string, sector: string, marketCap: number, chg1d: number | null, logo: string | null = null): ScreenRow => ({
   ticker, name: `${ticker} Inc.`, sector, logo, close: 100, chg1d, offHigh: -0.1, pe: 20, ptUpside: 0.1, marketCap, insiderNet: 0, volumeRatio: 1,
@@ -81,6 +81,14 @@ describe('pt-logo-map', () => {
     expect(r.text()).toContain('Each tile is a company, sized by its market value and colored by the day’s move, grouped by sector.');
     expect(r.el.querySelector('.pt-lede')!.textContent).toMatch(/^As of Oct 23, 2026: /);
   });
+  it('the click\'s ask (2026-11-16): a tile says its move, value and place in its sector on that map; the sentence\'s companies are tiles too', async () => {
+    const r = await view({ asOf: '2026-10-23', rows });
+    const at = (svg: string, t: string) => askOf(r.el.querySelector(`svg.pt-lm-${svg} a[href="/stocks/${t}/"]`));
+    const tech = (0.031 * 4e12 - 0.004 * 2e12) / 6e12;
+    expect(at('wide', 'bbb')).toEqual({ kind: 'heat-map', d: { asOf: '2026-10-23', lens: 'market', move: -0.004, cap: 2e12, sector: 'Technology', rank: 2, of: 2, sectorMove: expect.closeTo(tech, 6) } });
+    expect(at('narrow', 'aaa')).toMatchObject({ kind: 'heat-map', d: { rank: 1, of: 2 } });
+    expect(askOf(r.el.querySelector('.pt-lede a[href="/stocks/ccc/"]'))).toMatchObject({ kind: 'heat-map', d: { sector: 'Financial Services', rank: 2, of: 2 } });
+  });
   it('asks for the largest companies, of one sector when it is given', async () => {
     const all = await render(PtLogoMap, {});
     expect(Object.keys(all.record)).toEqual(['screen@1|{"limit":100,"scope":{"list":"largest"}}']);
@@ -127,6 +135,8 @@ describe('pt-logo-map', () => {
     expect(r.el.querySelector('.pt-lede')!.textContent).toBe('On Oct 23, 2026, the companies most in the news were AAA, with 46 stories (5× its usual day), BBB, 30, and CCC, 12.');
     expect(r.text()).toContain('size = news stories that day · as of Oct 23, 2026');
     expect(r.text()).toContain('Each tile is a company, sized by its news stories that day and colored by the day’s move, grouped by sector.');
+    // the click's ask (2026-11-16): the count as the tooltip says it
+    expect(askOf(wide.querySelector('a[href="/stocks/aaa/"]'))).toEqual({ kind: 'talk-map', d: { lens: 'news', count: '46, 5× its usual day', label: 'Stories' } });
   });
   it('social: tiles sized by the day\'s posts on Reddit and X, said so in the sentence, the details and the legend (Romeo, 2026-11-01)', async () => {
     const att = { asOf: '2026-10-23', lens: 'social', rows: [

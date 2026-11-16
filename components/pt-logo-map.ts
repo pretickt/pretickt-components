@@ -11,14 +11,15 @@
  * `lens` "news": the 40 companies with the most news stories on the session's day (attention@1), each tile as large as its stories
  * and coloured by the day's move; the sentence names the most covered and how that compares with its usual day. "social": the same
  * with the day's posts on Reddit and X.
- * @version 0.6.2
+ * @version 0.7.0
  * @evidence Romeo 2026-10-25: home components "con i loghi delle aziende" for the overview — H3 · The market at a glance, ★ sector map (brainstorming/mappa-componenti.html)
  * @evidence DataForSEO 2026-10-28 (round 13): the "stock market heat map" family ≈33,400 searches a month, keyword difficulty 25–30, AI Overview on 2%, no dominant site (apps, guides, brokers); "largest companies by market cap" 22,200 (launch/RESEARCH.md §9)
  * @evidence Romeo 2026-11-01: "mettiamo alla fine della home la heat map del mercato delle mega caps", and a page of the heat maps
+ * @evidence Romeo, 2026-11-16: «in base a "da dove arrivi" ti mostro un riquadro in alto» — a company's link answers the click's ask: a tile (or a company the sentence names) says its move and its place in its sector on that map
  * @evidence AI answers (ChatGPT, Claude, Gemini, Perplexity, AI Mode, 2026-10-28) to "where can I see a stock market heat map today" list TradingView, Finviz, Investing.com, Barchart, MarketBeat, each with one line on how the map reads (launch/AI-SEARCH.md)
  */
 import { Component, computed, inject, input } from '@angular/core';
-import { Pt } from '@pretickt/components/context';
+import { answer, Pt } from '@pretickt/components/context';
 import { PtSay } from '@pretickt/components/ds';
 import { andSaid, date, mention, pct, plainName, say, stockHref, tip, usd, type Said } from '@pretickt/components/format';
 import type { AttentionRow, ScreenRow } from '@pretickt/components/typologies';
@@ -185,6 +186,7 @@ const CARD = { w: 360, h: 270, n: 20 } as const;
 @Component({
   selector: 'pt-logo-map',
   imports: [PtSay],
+  host: { '(pt-ctx-ask)': 'ask($event)' },
   template: `
     @let s = data.value();
     @if (s === null) {<p class="pt-na">Data not available</p>}
@@ -284,4 +286,24 @@ export class PtLogoMap {
       : tip({ [t.ticker]: plainName(t.name), Today: t.move === null ? null : pct(t.move), 'Market value': usd(t.cap, { compact: true }) });
   };
   protected readonly logoSize = (t: Tile, m: { big: number }) => Math.round(Math.min(t.w, t.h, m.big * 1.6) * 0.42);
+
+  /**
+   * The click's ask on a company (pt-ctx-ask): on the price maps its move, market value and place among its sector's tiles that day on
+   * the map the reader saw (the wide one for the sentence); on a news or social map its count as the tooltip says it.
+   */
+  protected ask(e: Event) {
+    const link = e.target as Element, href = link.getAttribute?.('href'), l = this.lens();
+    const key = link.closest?.('svg')?.getAttribute('class')?.match(/pt-lm-(wide|narrow|card)\b/)?.[1];
+    const m = this.maps().find((x) => x.key === key) ?? this.maps()[0]!;
+    const t = m.tiles.find((x) => stockHref(x.ticker) === href);
+    if (!t) return;
+    if (isTalk(l)) {
+      const r = this.byTicker().get(t.ticker);
+      if (r) answer(e, { kind: 'talk-map', d: { lens: l, count: countOf(r), label: TALK[l].key } });
+      return;
+    }
+    const mates = m.tiles.filter((x) => x.sector === t.sector).sort((a, b) => (b.move ?? -Infinity) - (a.move ?? -Infinity));
+    answer(e, { kind: 'heat-map', d: { asOf: this.data.value()?.asOf ?? null, lens: l, move: t.move, cap: t.cap, sector: t.sector,
+      rank: mates.indexOf(t) + 1, of: mates.length, sectorMove: m.blocks.find((b) => b.sector === t.sector)?.move ?? null } });
+  }
 }

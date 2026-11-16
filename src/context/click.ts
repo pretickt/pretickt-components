@@ -19,7 +19,7 @@ export interface CalendarCtx {
   bars: CtxBars | null; said: Said; facts: string; page: { href: string; label: string } | null;
 }
 export interface MoverCtx {
-  asOf: string; kind: 'rally' | 'drawdown'; move: number; since: string; days: number; week: number; month: number; quarter: number;
+  asOf: string; kind: 'rally' | 'drawdown'; move: number; since: string; days: number; week: number; month: number | null; quarter: number | null;
   today: { r: number; label: string } | null; industry: { median: number; peers: { ticker: string; move: number }[] } | null;
 }
 export interface MapCtx { asOf: string | null; lens: 'market' | 'mega'; move: number | null; cap: number; sector: string; rank: number; of: number; sectorMove: number | null }

@@ -1,12 +1,13 @@
 /**
  * Which companies are in a move that is still running, and which way did they go this week — the largest first?
- * @version 1.1.0
+ * @version 1.2.0
  * @evidence beta: the home's "Ongoing moves" chart (pretickt-frontend/src/app/home/ongoing-swings-page.*, ongoing-swings.logic.ts)
  * @evidence Romeo, 2026-10-17: "i market mover per cap come in beta … con una leggenda per le sfumature verde e rosso. nella home"
  * @evidence Romeo, 2026-11-06: "metti anche una linea verticale stretta che rappresenta il movimento live delayed"
+ * @evidence Romeo, 2026-11-16: «in base a "da dove arrivi" ti mostro un riquadro in alto» — a company's link answers the click's ask with its row
  */
 import { Component, computed, inject, input, linkedSignal } from '@angular/core';
-import { Pt, PtLive, type LiveDay } from '@pretickt/components/context';
+import { answer, Pt, PtLive, type LiveDay } from '@pretickt/components/context';
 import { PtToggles } from '@pretickt/components/ds';
 import { date, pct, plainName, stockHref, tip } from '@pretickt/components/format';
 import { type MarketTrend, type MoveSort, type OngoingMoveRow } from '@pretickt/components/typologies';
@@ -111,6 +112,7 @@ const MARKET_HINTS: Record<MarketTrend, string> = { bullish: 'higher highs and h
 @Component({
   selector: 'pt-movers',
   imports: [PtToggles],
+  host: { '(pt-ctx-ask)': 'ask($event)' },
   template: `
     @let d = moves.value();
     @if (d === null) {<p class="pt-na">Data not available</p>}
@@ -187,4 +189,15 @@ export class PtMovers {
   protected readonly marketTip = (m: MarketTrend) => tip({ 'The market (SPY)': `${m}: ${MARKET_HINTS[m]}` });
 
   protected pick(s: MoveSort) { this.picked.set(s); this.moves.retry(); }
+
+  /** The click's ask on a company (pt-ctx-ask): its row as the chart has it, and today's line in the legend's words when it is drawn. */
+  protected ask(e: Event) {
+    const href = (e.target as Element).getAttribute?.('href'), d = this.moves.value();
+    const r = d?.rows.find((x) => stockHref(x.ticker) === href);
+    if (!d || !r || r.week == null) return;
+    const day = this.day(), now = this.g()?.bars.find((b) => b.ticker === r.ticker)?.today ? day?.q[r.ticker]?.r ?? null : null;
+    answer(e, { kind: 'mover', d: { asOf: d.asOf, kind: r.kind, move: r.move, since: r.since, days: r.days, week: r.week, month: r.month, quarter: r.quarter,
+      today: now == null || !day ? null : { r: now, label: day.closed ? `close ${date(day.session)}, preliminary` : `${day.time}, ${day.delayMin}-min delayed` },
+      industry: r.industry ? { median: r.industry.median, peers: r.industry.peers.map((p) => ({ ticker: p.ticker, move: p.move })) } : null } });
+  }
 }

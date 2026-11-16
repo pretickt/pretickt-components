@@ -1,7 +1,7 @@
 import { ongoingMovesDemo, type OngoingMoveRow, type OngoingMoves } from '../src/typologies';
 import { buildMovers, capShort, pctShort, PtMovers } from './pt-movers';
 import type { LiveDay } from '../src/context';
-import { basics, liveDay, press, render, settle, withData } from './_spec';
+import { askOf, basics, liveDay, press, render, settle, withData } from './_spec';
 
 const row = (ticker: string, week: number | null, o: Partial<OngoingMoveRow> = {}): OngoingMoveRow => ({
   ticker, name: `${ticker} Inc.`, logo: null, marketCap: 1e11, kind: (week ?? 0) < 0 ? 'drawdown' : 'rally', since: '2026-09-01', days: 29,
@@ -114,6 +114,15 @@ describe('pt-movers', () => {
       expect(r.el.querySelector('a[href="/stocks/nvda/"] .pt-mv-d')).toBeTruthy();
       const keys = [...r.el.querySelectorAll('.pt-mv-legend .pt-mv-key')].map((k) => k.textContent!.trim());
       expect(keys[0]).toBe('Today · 11:30 AM ET, 15-min delayed');
+    });
+    it('the click\'s ask on a company (2026-11-16): its row as the chart has it, today\'s line with the legend\'s words when it is drawn', async () => {
+      const r = await live(open);
+      const nvda = row('NVDA', -0.066);
+      expect(askOf(r.el.querySelector('a[href="/stocks/nvda/"]'))).toEqual({ kind: 'mover', d: {
+        asOf: '2026-10-16', kind: 'drawdown', move: nvda.move, since: '2026-09-01', days: 29, week: -0.066, month: nvda.month, quarter: nvda.quarter,
+        today: { r: -0.0217, label: '11:30 AM ET, 15-min delayed' }, industry: null } });
+      const aapl = askOf(r.el.querySelector('a[href="/stocks/aapl/"]'));
+      expect(aapl?.kind === 'mover' && aapl.d.today).toBeNull();
     });
     it('after the close the key says the number is preliminary', async () => {
       const r = await live({ ...open, closed: true });

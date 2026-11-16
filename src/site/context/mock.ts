@@ -37,3 +37,23 @@ export const CTX_DIVIDEND: ClickNote = {
     facts: '', page: { href: '/stocks/ko/dividend/', label: 'Coca-Cola dividend history' },
   },
 };
+
+const home = { path: '/', title: 'pretickt' };
+
+export const CTX_MOVER: ClickNote = {
+  ...base, from: home, kind: 'mover',
+  d: {
+    asOf: '2026-11-13', kind: 'drawdown', move: -0.142, since: '2026-11-03', days: 10, week: -0.091, month: -0.12, quarter: -0.04,
+    today: { r: -0.052, label: '11:30 AM ET, 15-min delayed' },
+    industry: { median: -0.038, peers: [{ ticker: 'AMD', move: -0.06 }, { ticker: 'AVGO', move: -0.041 }] },
+  },
+};
+export const CTX_MOVER_PLAIN: ClickNote = { ...CTX_MOVER, d: { ...(CTX_MOVER.d as Extract<ClickNote, { kind: 'mover' }>['d']), kind: 'rally', move: 0.21, today: null, industry: null } };
+
+export const CTX_HEAT_MAP: ClickNote = {
+  ...base, from: { path: '/market-map/', title: 'Stock market heat map today' }, kind: 'heat-map',
+  d: { asOf: '2026-11-13', lens: 'market', move: -0.031, cap: 4.3e12, sector: 'Technology', rank: 2, of: 12, sectorMove: -0.012 },
+};
+
+export const CTX_NEWS_MAP: ClickNote = { ...base, from: home, kind: 'talk-map', d: { lens: 'news', count: '46, 5× its usual day', label: 'Stories' } };
+export const CTX_SOCIAL_MAP: ClickNote = { ...base, from: home, kind: 'talk-map', d: { lens: 'social', count: '120', label: 'Posts' } };

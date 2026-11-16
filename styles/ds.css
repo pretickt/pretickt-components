@@ -514,6 +514,10 @@
   .pt-ctx-body .pt-cal-pop-row { padding: 0; }
   .pt-ctx-more { display: grid; gap: .3rem; font-size: .84rem; }
   .pt-ctx-more p { margin: 0; }
+  .pt-ctx-lead { margin: 0; font-size: .95rem; font-weight: 600; color: var(--color-ink); }
+  .pt-ctx-go { font-size: .75rem; font-weight: 600; }
+  .pt-ctx-go a { color: var(--color-primary); text-decoration: none; }
+  .pt-ctx-go a:hover { text-decoration: underline; }
   /* a phone: the head row and the next step, the company's header stays on the first screen */
   @media (width < 40rem) { .pt-ctx .pt-ctx-more > :not(.pt-cal-row-link, .pt-ctx-go) { display: none; } }
   .pt-share-icon { @apply inline-grid size-5 place-items-center rounded-md text-ink-soft hover:bg-surface hover:text-primary; }   /* a part's: the icon alone */

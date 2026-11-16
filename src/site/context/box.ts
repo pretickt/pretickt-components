@@ -2,6 +2,7 @@ import { type ApplicationRef, Component, computed, createComponent, type Environ
 import { type ClickNote, CTX_ASK, type CtxAsk } from '@pretickt/components/context';
 import { dayMonth } from '../../ds/format';
 import { PtCtxCalendar } from './calendar';
+import { PtCtxMap, PtCtxMover, PtCtxTalk } from './moves';
 
 const ISLAND = 'pt-click-box@1.0.0';
 
@@ -11,14 +12,19 @@ export function seenAt(at: number): string {
   return `${dayMonth(`${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`)}, ${h}:${m} ${d.getHours() < 12 ? 'AM' : 'PM'}`;
 }
 
-const ORIGIN: Partial<Record<ClickNote['kind'], string>> = { earnings: 'the earnings calendar', dividend: 'the dividend calendar' };
+const ORIGIN: Partial<Record<ClickNote['kind'], string>> = {
+  earnings: 'the earnings calendar', dividend: 'the dividend calendar', mover: 'ongoing moves', 'heat-map': 'the heat map',
+};
+/** The origin's name: the kind's, or what its snapshot says (the news or the social map). */
+const originOf = (note: ClickNote): string =>
+  note.kind === 'talk-map' ? `the ${note.d.lens} map` : ORIGIN[note.kind] ?? 'the page you were on';
 
 /**
  * Where the click came from, as the kicker says it: the origin, then the page when it adds something ("on the home page", its title);
  * a page titled after the origin itself says it once ("From the earnings calendar November 2026").
  */
 export function kicker(note: ClickNote): string {
-  const origin = ORIGIN[note.kind] ?? 'the page you were on', title = note.from.title.trim();
+  const origin = originOf(note), title = note.from.title.trim();
   if (note.from.path === '/') return `From ${origin} on the home page`;
   if (!title) return `From ${origin}`;
   if (title.toLowerCase().startsWith(origin.replace(/^the /, ''))) return `From the ${title.charAt(0).toLowerCase()}${title.slice(1)}`;
@@ -28,13 +34,16 @@ export function kicker(note: ClickNote): string {
 /** The body written for each kind (one `@case` per kind). */
 @Component({
   selector: 'pt-ctx-body',
-  imports: [PtCtxCalendar],
+  imports: [PtCtxCalendar, PtCtxMap, PtCtxMover, PtCtxTalk],
   host: { class: 'pt-ctx-body' },
   template: `
     @let n = note();
     @switch (n.kind) {
       @case ('earnings') {<pt-ctx-calendar [d]="n.d" [land]="n.land" />}
       @case ('dividend') {<pt-ctx-calendar [d]="n.d" [land]="n.land" />}
+      @case ('mover') {<pt-ctx-mover [d]="n.d" [to]="n.to" />}
+      @case ('heat-map') {<pt-ctx-map [d]="n.d" [to]="n.to" />}
+      @case ('talk-map') {<pt-ctx-talk [d]="n.d" [to]="n.to" />}
     }`,
 })
 export class PtCtxBody {
