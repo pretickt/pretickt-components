@@ -15,16 +15,17 @@
  * week (Romeo, 2026-11-11, on the earnings-today page: "le aziende di oggi per prime, non la settimana per dimensione").
  * The grid marks the reader's day, the session after the latest close: the data is the last close's and the page is read the day after
  * (Romeo, 2026-11-11: "perché evidenzia il 10 novembre se oggi è 11?"); on a day view, the day.
- * @version 3.3.1
+ * @version 3.4.0
  * @evidence DataForSEO: "earnings calendar" ~153k searches/month, SERP without AI overview (reports/Funzioni pretickt da tenere e aggiungere.md)
  * @evidence DataForSEO: "dividend calendar" in launch/data/08c-serp-dividend-calendar.json
  * @evidence DataForSEO round 14 (2026-10-31, launch/data/14-summary.json): beyond the date, "who is expected to beat earnings this week?" (AI 574), "is it better to buy before or after earnings?" (357), "fed rate decision" 40,500, "important earnings this week" 590
+ * @evidence Romeo, 2026-11-16: «se mi metto sopra mostra la solita card, con qualche stat sul earning visuale. se clicco manda alla company page» — a company chip is a link; the calendar answers the click's ask with the row
  * @evidence beta: events-calendar month grid (pretickt-frontend/src/app/home/events-calendar.ts); stockanalysis.com earnings calendar
  */
 import { afterRenderEffect, Component, computed, type ElementRef, inject, input, linkedSignal, signal, viewChild } from '@angular/core';
-import { Pt } from '@pretickt/components/context';
+import { answer, type CalendarCtx, Pt } from '@pretickt/components/context';
 import { MORE_STEP, PtLogo, PtMention, PtMore, PtSay } from '@pretickt/components/ds';
-import { amount, date, dayMonth, href, level, mention, money, named, num, pct, plainName, say, tip, tone, usd, type Said, type Tone }
+import { amount, date, dayMonth, href, level, mention, money, named, num, pct, plainName, say, stockHref, tip, tone, usd, type Said, type Tone }
   from '@pretickt/components/format';
 import { CALENDAR_MONTHS, cmp, type EventItem } from '@pretickt/components/typologies';
 
@@ -292,6 +293,7 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
 @Component({
   selector: 'pt-calendar',
   imports: [PtLogo, PtMention, PtMore, PtSay],
+  host: { '(pt-ctx-ask)': 'ask($event)' },
   template: `
     @if (data() === null) {<p class="pt-na">Data not available</p>}
     @else if (data()) {
@@ -324,10 +326,10 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
               }
               @for (e of c.items.slice(0, CAP); track e.kind + e.ticker) {
                 @let row = rowOf(e);
-                <button type="button" class="pt-cal-ev" [class.pt-cal-ev-unconf]="row?.unconfirmed" [attr.data-card]="e.ticker" [attr.data-tip]="chipTip(e)" (click)="openEvent(e, $event)">
+                <a class="pt-cal-ev" [href]="stockHref(e.ticker)" [class.pt-cal-ev-unconf]="row?.unconfirmed" [attr.data-card]="e.ticker" [attr.data-k]="row?.key ?? null" [attr.data-tip]="chipTip(e)" (click)="counted($event)">
                   <span class="pt-cal-who"><pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="14" />{{ e.ticker }}@if (row?.unconfirmed) {<span class="pt-sr"> (date not confirmed)</span>}</span>
                   <span [class]="chipCue(row)">{{ row?.cue ?? '' }}</span>
-                </button>
+                </a>
               }
               @if (c.items.length > CAP) {<button type="button" class="pt-cal-more" (click)="more(c.date, $event)">+{{ c.items.length - CAP }}<span class="pt-cal-more-word"> more</span></button>}
             </div>
@@ -339,7 +341,7 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
             [attr.aria-label]="(openRow()?.title ?? 'Events') + ' on ' + date(oc.date)" tabindex="-1" (keydown.escape)="close()">
             <div class="pt-cal-pop-head"><span>{{ DOW[(weekdayOf(oc.date) + 6) % 7] }}</span> <b>{{ oc.day }}</b><button type="button" class="pt-cal-pop-x" aria-label="Close" (click)="close()">×</button></div>
             @if (openRow(); as open) {
-              <!-- the event's summary card (its row, its sentence and news), the company's usual card under it (the page fills the slot) -->
+              <!-- a market date's summary card (its row, its sentence and news); a company chip is a link to its page -->
               @for (r of [open]; track r.key) {
                 <div class="pt-cal-sum">
                 <div class="pt-cal-pop-row">
@@ -371,7 +373,6 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
                 }
                 </div>
                 </div>
-                @if (r.ticker) {<div class="pt-cal-pop-card" [attr.data-card-slot]="r.ticker"></div>}
               }
             } @else {
               @for (e of oc.macro; track $index) {
@@ -381,10 +382,10 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
               }
               @for (e of oc.items; track e.kind + e.ticker) {
                 @let row = rowOf(e);
-                <button type="button" class="pt-cal-ev" [class.pt-cal-ev-unconf]="row?.unconfirmed" [attr.data-card]="e.ticker" [attr.data-tip]="chipTip(e)" (click)="openEvent(e, $event)">
+                <a class="pt-cal-ev" [href]="stockHref(e.ticker)" [class.pt-cal-ev-unconf]="row?.unconfirmed" [attr.data-card]="e.ticker" [attr.data-k]="row?.key ?? null" [attr.data-tip]="chipTip(e)" (click)="counted($event)">
                   <span class="pt-cal-who"><pt-logo [ticker]="e.ticker" [src]="e.logo" [size]="14" />{{ e.ticker }}@if (row?.unconfirmed) {<span class="pt-sr"> (date not confirmed)</span>}</span>
                   <span [class]="chipCue(row)">{{ row?.cue ?? '' }}</span>
-                </button>
+                </a>
               }
             }
           </div>
@@ -399,7 +400,7 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
               @if (i === dayCount() && i) {<li class="pt-cal-rows-sep">The rest of the week</li>}
               @if (i === firstOut()) {<li class="pt-cal-rows-sep">{{ kind() === 'dividend' ? 'Already ex-dividend' : 'Already reported' }}</li>}
               <li>
-                <details class="pt-cal-row" [class.pt-cal-row-unconf]="row.unconfirmed" (toggle)="opened($event)">
+                <details class="pt-cal-row" [class.pt-cal-row-unconf]="row.unconfirmed" [attr.data-k]="row.key" (toggle)="opened($event)">
                   <summary>
                     @if (row.label) {<span class="pt-cal-row-label">{{ row.label }}</span><span class="pt-cal-row-who"><b>{{ row.title }}</b></span>}
                     @else {
@@ -440,7 +441,7 @@ type MonthScope = { scope: { by: 'universe'; month: string } };
           <h3 class="pt-cal-list-title">Every date in {{ cal().label }}, by day</h3>
           <ol class="pt-cal-list">
             @for (c of listed(); track c.date) {
-              <li><span class="pt-cal-list-day">{{ date(c.date) }}</span>@for (e of entries(c); track $index; let i = $index) {<ng-container>{{ i ? ', ' : ' ' }}</ng-container>@if (e.kind === 'macro') {<strong>{{ listName(e) }}</strong>} @else {<a ptMention [ticker]="e.ticker" [name]="e.name" [logo]="e.logo"></a>{{ tag(e) ? ' ' + tag(e) : '' }}}}</li>
+              <li><span class="pt-cal-list-day">{{ date(c.date) }}</span>@for (e of entries(c); track $index; let i = $index) {<ng-container>{{ i ? ', ' : ' ' }}</ng-container>@if (e.kind === 'macro') {<strong>{{ listName(e) }}</strong>} @else {<a ptMention [ticker]="e.ticker" [name]="e.name" [logo]="e.logo" [attr.data-k]="rowKey(e)"></a>{{ tag(e) ? ' ' + tag(e) : '' }}}}</li>
             }
           </ol>
         } @else {<p class="pt-lede">No {{ kind() === 'dividend' ? 'ex-dividend dates' : 'earnings reports' }} scheduled for {{ cal().label }} in the tracked universe yet.</p>}
@@ -480,6 +481,8 @@ export class PtCalendar {
   protected readonly LEGEND = LEGEND;
   protected readonly listName = listName;
   protected readonly href = href;
+  protected readonly stockHref = stockHref;
+  protected readonly rowKey = rowKey;
   protected readonly dayMonth = dayMonth;
 
   /**
@@ -557,6 +560,22 @@ export class PtCalendar {
     const what = this.kind() === 'dividend' ? 'The largest ex-dividend dates' : 'Important earnings and economic data';
     return this.isWeek() ? `${what}, week of ${dayMonth(this.shownWeek())}` : `${what} in ${this.cal().label}`;
   });
+  /** A company chip leads to its page (Romeo, 2026-11-16): following it is an interaction the page counts. */
+  protected counted(e: Event) {
+    (e.currentTarget as Element).dispatchEvent(new CustomEvent('pt-interact', { bubbles: true, detail: { action: 'open' } }));
+  }
+  /**
+   * The click's ask (pt-ctx-ask) from a company link in the calendar — a chip, a row's sentence or its page link, the list by day: the
+   * row the reader saw (its key on the link or around it), for the box on the company's page and the hover card's block.
+   */
+  protected ask(e: Event) {
+    const link = e.target as Element, key = link.closest?.('[data-k]')?.getAttribute('data-k');
+    const r = key ? this.rowsByKey().get(key) : null;
+    if (!r?.ticker || !link.getAttribute('href')?.startsWith(stockHref(r.ticker))) return;
+    const d: CalendarCtx = { title: r.title, ticker: r.ticker, logo: r.logo, out: r.out, cue: r.cue, cueTone: r.cueTone, when: r.when, hint: r.hint,
+      bars: r.bars, said: r.said, facts: r.facts, page: r.page };
+    answer(e, this.kind() === 'dividend' ? { kind: 'dividend', d } : { kind: 'earnings', d });
+  }
   /** Opening a row is an interaction the page counts. */
   protected opened(e: Event) {
     const d = e.target as HTMLDetailsElement;
@@ -568,8 +587,8 @@ export class PtCalendar {
   protected go(m: string) { this.close(); this.pickedMonth.set(m); this.monthEvents.retry(); }
   protected goWeek(delta: number) { this.close(); this.pickedWeek.set(addDays(this.shownWeek(), 7 * delta)); this.weekEvents.retry(); }
 
-  // "+N more": the whole day over its cell (as Google Calendar), outside the grid so nothing clips it; a chip: its event in the same
-  // box, as its row opens, with the company's card under it. ×, Escape or a click outside close it
+  // "+N more": the whole day over its cell (as Google Calendar), outside the grid so nothing clips it; a market date's chip: its event
+  // in the same box, as its row opens (a company's chip is a link to its page). ×, Escape or a click outside close it
   private readonly openDay = signal<string | null>(null);
   private readonly openKey = signal<string | null>(null);
   protected readonly openRow = computed(() => { const k = this.openKey(); return k ? this.rowsByKey().get(k) ?? null : null; });
@@ -597,7 +616,7 @@ export class PtCalendar {
     this.openKey.set(null);
     this.openDay.set(d);
   }
-  /** A chip opens its event over its cell; inside a day's box, in the same box. Opening it is an interaction the page counts. */
+  /** A market date's chip opens its event over its cell; inside a day's box, in the same box. Opening it is an interaction the page counts. */
   protected openEvent(e: EventItem, ev: Event) {
     const t = ev.currentTarget as HTMLElement;
     if (!t.closest('.pt-cal-pop')) this.anchor(t);

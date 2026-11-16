@@ -51,3 +51,21 @@ export function answer(e: Event, data: ClickData): void {
   const detail = (e as CustomEvent<CtxAsk>).detail;
   if (detail) detail.data = data;
 }
+
+/** Asks the origin of a link (synchronous): its answer, or null. */
+export function askAt(link: Element): ClickData | null {
+  const e = new CustomEvent<CtxAsk>(CTX_ASK, { bubbles: true, detail: { data: null } });
+  link.dispatchEvent(e);
+  return e.detail.data;
+}
+
+const panels = new WeakMap<Element, ClickData | null>();
+/** The hover card opened over a link keeps that link's answer: a click inside the card leaves it (the card is outside the origin). */
+export function rememberPanel(panel: Element, data: ClickData | null): void {
+  panels.set(panel, data);
+}
+/** The answer kept by the hover card an element is in, or null outside a card. */
+export function rememberedAt(el: Element): { data: ClickData | null } | null {
+  for (let at: Element | null = el; at; at = at.parentElement) if (panels.has(at)) return { data: panels.get(at) ?? null };
+  return null;
+}

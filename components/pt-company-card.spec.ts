@@ -124,3 +124,16 @@ describe('pt-company-card: the bell (Romeo, 2026-11-14: «una campanella, con ba
     expect((await render(PtCompanyCard, { ticker: 'NVDA' }, withData({ 'company@1': fund }), on)).el.querySelector('.pt-follow-bell')).toBeNull();
   });
 });
+
+describe('pt-company-card: the logo and the name lead to the company page (Romeo, 2026-11-16: «se clicco sul logo del popup mi rimanda ancora sulla company page»)', () => {
+  for (const size of ['compact', 'wide'] as const) {
+    it(`${size}: one link around the logo and the name; the bell stays outside it`, async () => {
+      const r = await render(PtCompanyCard, { ticker: 'NVDA', size }, demo(), { providers: [{ provide: PT_FOLLOW_ON, useValue: true }] });
+      const a = r.el.querySelector('.pt-card-id a.pt-card-go')!;
+      expect(a.getAttribute('href')).toBe('/stocks/nvda/');
+      expect(a.querySelector('.pt-logo')).not.toBeNull();
+      expect(a.querySelector('.pt-card-name')!.textContent).toBe('Nvidia');
+      expect(a.querySelector('.pt-follow-bell')).toBeNull();
+    });
+  }
+});

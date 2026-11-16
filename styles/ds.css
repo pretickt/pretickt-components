@@ -611,6 +611,9 @@
   .pt-card-wide :is(.pt-card-tags, .pt-card-more, .pt-card-all, .pt-card-foot) { @apply sm:col-span-2; }
   .pt-card-id { @apply flex min-w-0 items-center gap-3; }
   .pt-card-who { @apply min-w-0; }
+  /* the logo and the name lead to the company page (2026-11-16): the row's look, the name underlined on hover */
+  .pt-card-go { @apply flex min-w-0 items-center gap-3 text-inherit no-underline; }
+  .pt-card-go:hover .pt-card-name { @apply underline underline-offset-2; }
   .pt-card-name { @apply truncate text-base font-semibold text-ink; }
   .pt-card-price { @apply flex flex-wrap items-center gap-x-3 gap-y-0.5; }
   .pt-card-close { @apply font-mono text-xl font-semibold text-ink; }
@@ -699,6 +702,13 @@
   }
   /* the floating panel the islands runtime opens over a company link */
   .pt-hovercard { @apply fixed z-50 overflow-auto rounded-control shadow-lg; }
+  /* over a calendar chip, the earnings (dividend) block under the card, as the landing's box draws it: one panel */
+  .pt-hovercard > pt-click-box { @apply block w-[340px] max-w-full rounded-b-control border border-t-0 border-border bg-surface-raised px-3 py-2.5 text-sm; }
+  .pt-hovercard:has(> pt-click-box) .pt-card { @apply rounded-b-none; }
+  /* the card above already names the company; a hover shows the figures, the landing's box the sentence */
+  .pt-hovercard > pt-click-box .pt-cal-pop-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'when cue' 'hint bars'; }
+  .pt-hovercard > pt-click-box :is(.pt-cal-pop-row .pt-logo, .pt-cal-row-who, .pt-cal-row-say) { display: none; }
+  .pt-hovercard > pt-click-box .pt-cal-row-when { @apply overflow-visible whitespace-normal; }
   .pt-hovercard-loading { @apply w-[340px] rounded-control border border-border bg-surface-raised p-3 text-sm text-ink-soft; }
 
   /* sortable table headers */

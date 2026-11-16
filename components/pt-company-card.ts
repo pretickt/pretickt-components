@@ -1,15 +1,16 @@
 /**
  * How does this company look at a glance: price over the last 60 sessions (today's, 15 minutes late, while the market is open),
  * 52-week range, analysts, and its key numbers?
- * @version 1.3.0
+ * @version 1.4.0
  * @evidence beta: the company page header and the hover mini-card (CompanyHoverCard), asked back by Romeo on 2026-10-06
  * @evidence Romeo, 2026-11-14: «oggi azienda nella tooltip card e nella Company page ha una campanella, con badge per gli allarmi recenti come in un'app mobile per l'icona»
+ * @evidence Romeo, 2026-11-16: «se mi metto sopra mostra la solita card, con qualche stat sul earning visuale. se clicco manda alla company page» — the logo and the name lead to the company page
  */
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { Pt, PtLive } from '@pretickt/components/context';
 import { PtFollow } from '@pretickt/components/follow';
 import { PtBadge, PtIcon, PtLogo } from '@pretickt/components/ds';
-import { date, money, pct, plainName, tone, usd } from '@pretickt/components/format';
+import { date, money, pct, plainName, stockHref, tone, usd } from '@pretickt/components/format';
 import { METRIC_KEYS, type MetricKey } from '@pretickt/components/typologies';
 
 /** The tags before "Show all": fundamentals, then technicals. */
@@ -28,12 +29,14 @@ const SPARK_W = 120, SPARK_H = 32;
     @else if (ready().settled) {
       <section [class]="'pt-card pt-card-' + size()">
         <div class="pt-card-id">
-          <pt-logo [ticker]="ticker()" [src]="co.value()?.logo ?? null" [size]="size() === 'wide' ? 40 : 32" />
-          <div class="pt-card-who">
-            @let title = co.value()?.name ? plainName(co.value()!.name) : ticker();
-            <div class="pt-card-name">{{ title }}</div>
-            <div class="pt-meta">{{ subLine(title) }}</div>
-          </div>
+          @let title = co.value()?.name ? plainName(co.value()!.name) : ticker();
+          <a class="pt-card-go" [href]="stockHref(ticker())">
+            <pt-logo [ticker]="ticker()" [src]="co.value()?.logo ?? null" [size]="size() === 'wide' ? 40 : 32" />
+            <div class="pt-card-who">
+              <div class="pt-card-name">{{ title }}</div>
+              <div class="pt-meta">{{ subLine(title) }}</div>
+            </div>
+          </a>
             @if (follow.on && !co.value()?.kind) {
               <button type="button" class="pt-follow-bell" [attr.aria-pressed]="followed()" [attr.aria-label]="bellLabel(title)" (click)="bell($event, title)">
                 <svg ptIcon="bell"></svg><span class="pt-follow-n" aria-hidden="true" [hidden]="!fresh()">{{ fresh() > 9 ? '9+' : fresh() }}</span>
@@ -113,6 +116,7 @@ export class PtCompanyCard {
   protected readonly SPARK_H = SPARK_H;
   protected readonly money = money;
   protected readonly plainName = plainName;
+  protected readonly stockHref = stockHref;
   /** Under the name, the ticker (not when the name is the ticker in other letters: "AMD", or no profile) and the market value. */
   protected subLine = (title: string) => [title.toUpperCase() === this.ticker().toUpperCase() ? '' : this.ticker(),
     this.mcap() != null ? usd(this.mcap(), { compact: true }) : ''].filter(Boolean).join(' · ');

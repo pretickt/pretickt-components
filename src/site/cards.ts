@@ -1,5 +1,5 @@
 import { type ApplicationRef, type ComponentRef, createComponent, createEnvironmentInjector, effect, type EnvironmentInjector, type Type } from '@angular/core';
-import { Pt } from '@pretickt/components/context';
+import { askAt, type ClickData, Pt, rememberPanel } from '@pretickt/components/context';
 
 const GAP = 8;
 
@@ -8,7 +8,7 @@ const GAP = 8;
  * `<summary>`, so it holds no link).
  */
 export const CARD_TARGET = 'a[href], [data-card]';
-/** A ticker as the platform stores it (what `data-card` and `data-card-slot` must hold). */
+/** A ticker as the platform stores it (what `data-card` must hold). */
 const TICKER = /^[A-Z][A-Z0-9]{0,5}(\.[A-Z])?$/;
 
 /**
@@ -24,8 +24,8 @@ export function companyOf(el: Element | null): string | null {
 
 /**
  * Where the panel goes: under the link when it fits, above it when that fits, else beside it (right, then left) centred on it, else
- * on the side with more room with a height that scrolls. Never over the link it previews, which stays clickable (a calendar chip
- * opens its box); the whole card (after "Show all" too) stays reachable.
+ * on the side with more room with a height that scrolls. Never over the link it previews, which stays clickable; the whole card (after
+ * "Show all" too) stays reachable.
  */
 export function panelPosition(r: { left: number; right: number; top: number; bottom: number }, w: number, h: number, vw: number, vh: number) {
   const x = Math.max(GAP, Math.min(r.left, vw - w - GAP));
@@ -65,7 +65,11 @@ export interface CardOptions {
   closeMs?: number;
   /** After a card fails to load (typically the API's rate limit), cards pause this long and links show their text tooltips. */
   pauseMs?: number;
+  /** The click box's chunk: a calendar chip's card shows its earnings (dividend) block under it, the same as the landing's box. */
+  loadBox?: () => Promise<typeof import('./context/box')>;
 }
+/** The kinds whose card shows what the link said, under the card (Romeo, 2026-11-16: «la solita card, con qualche stat sul earning visuale»). */
+const UNDER_CARD = new Set<ClickData['kind']>(['earnings', 'dividend']);
 export interface Cards { active(): boolean }
 
 /**
@@ -73,12 +77,15 @@ export interface Cards { active(): boolean }
  * sempre la card"; not the header's search or the sub-navigation) opens the company card, compact, in a floating panel
  * outside the page markup: after a moment (a passing pointer opens nothing), with the link's tooltip rows as its footer. The panel
  * stays while the pointer is on the link or on it, closes a moment after leaving or on Escape; one at a time. The card is mounted in
- * the page's own app (its calls share the page's answers); a card whose data cannot load is not shown and cards pause.
+ * the page's own app (its calls share the page's answers); a card whose data cannot load is not shown and cards pause. The card asks
+ * the link what its origin showed (`pt-ctx-ask`): a calendar chip's earnings block goes under the card, in place of its tooltip rows,
+ * and a click inside the card (its logo, its name) leaves that answer, as the link would have.
  */
 export function attachCards(doc: Document, appRef: ApplicationRef, o: CardOptions): Cards {
   const win = doc.defaultView;
   if (!o.hover || !win) return { active: () => false };
   let link: Element | null = null, panel: HTMLElement | null = null, ref: ComponentRef<CardComponent> | null = null, env: EnvironmentInjector | null = null;
+  let box: ComponentRef<unknown> | null = null;
   let openTimer = 0, closeTimer = 0, pausedUntil = 0;
   const paused = () => win.performance.now() < pausedUntil;
 
@@ -92,10 +99,10 @@ export function attachCards(doc: Document, appRef: ApplicationRef, o: CardOption
   /** Removes the open panel; a card about to open (the next link) is left alone. */
   const teardown = () => {
     win.clearTimeout(closeTimer);
-    if (ref) { appRef.detachView(ref.hostView); ref.destroy(); }
+    for (const r of [ref, box]) if (r) { appRef.detachView(r.hostView); r.destroy(); }
     env?.destroy();
     panel?.remove();
-    ref = null; env = null; panel = null; link = null;
+    ref = null; box = null; env = null; panel = null; link = null;
   };
   /** Escape, a new card: nothing stays open or about to open. */
   const close = () => { win.clearTimeout(openTimer); teardown(); };
@@ -117,6 +124,9 @@ export function attachCards(doc: Document, appRef: ApplicationRef, o: CardOption
     doc.body.append(p);
     place(p, a, win!);
     panel = p;
+    const said = askAt(a), under = said && UNDER_CARD.has(said.kind) ? said : null;
+    rememberPanel(p, said);
+    const boxed = under && o.loadBox ? o.loadBox().catch(() => null) : null;
     try {
       const Card = await o.load();
       if (panel !== p) return; // closed, or another card opened meanwhile
@@ -126,7 +136,7 @@ export function attachCards(doc: Document, appRef: ApplicationRef, o: CardOption
       const card = createComponent(Card, { environmentInjector: mine, hostElement: host });
       card.setInput('ticker', ticker);
       card.setInput('size', 'compact');
-      card.setInput('extra', rowsOf(a.getAttribute('data-tip')));
+      card.setInput('extra', under ? null : rowsOf(a.getAttribute('data-tip')));
       appRef.attachView(card.hostView);
       ref = card;
       card.changeDetectorRef.detectChanges(); // its calls start
@@ -141,6 +151,18 @@ export function attachCards(doc: Document, appRef: ApplicationRef, o: CardOption
       if (!shown) throw new Error('card data');
       p.replaceChildren(host);
       card.changeDetectorRef.detectChanges();
+      const m = boxed && (await boxed);
+      if (panel !== p) return;
+      if (m && under) {
+        const bhost = doc.createElement('pt-click-box');
+        const b = createComponent(m.PtClickBox, { environmentInjector: mine, hostElement: bhost });
+        b.setInput('note', { ...under, v: 1, to: ticker, land: '', at: 0, from: { path: '', title: '' } });
+        b.setInput('compact', true);
+        appRef.attachView(b.hostView);
+        box = b;
+        p.append(bhost);
+        b.changeDetectorRef.detectChanges();
+      }
       place(p, a, win!);
       p.addEventListener('click', () => win!.setTimeout(() => { if (panel === p) place(p, a, win!); }, 0)); // "Show all" changes its height
       p.dispatchEvent(new CustomEvent('pt-interact', { bubbles: true, detail: { action: 'hover' } }));
@@ -164,60 +186,7 @@ export function attachCards(doc: Document, appRef: ApplicationRef, o: CardOption
     if (a === link) closeSoon();
   });
   doc.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
-  // a click on the symbol does what it does (a link opens the page, a calendar chip its box): the preview goes
+  // a click on the symbol does what it does (a link opens the page): the preview goes
   doc.addEventListener('click', (e) => { if (link && linkOf(e.target) === link) close(); });
   return { active: () => !paused() };
-}
-
-const SLOT = '[data-card-slot]';
-
-/**
- * The company card where a component leaves room for it: an element `data-card-slot="<TICKER>"` (pt-calendar's box for an event,
- * opened on a click) gets the compact card mounted inside, on any device — a click, not a hover. Slots already on the page and slots
- * added later are filled; when a slot leaves the page (the box closes) or names another company, its card is destroyed. The card is
- * mounted in the page's own app (its calls share the page's answers), named in the beacon by `id`.
- */
-export function attachCardSlots(doc: Document, appRef: ApplicationRef, o: { load: () => Promise<Type<CardComponent>>; id: string }) {
-  const mounted = new Map<Element, { ticker: string; ref?: ComponentRef<CardComponent>; env?: EnvironmentInjector }>();
-  const drop = (slot: Element) => {
-    const m = mounted.get(slot);
-    if (!m) return;
-    mounted.delete(slot);
-    if (m.ref) { appRef.detachView(m.ref.hostView); m.ref.destroy(); m.ref.location.nativeElement.remove(); }
-    m.env?.destroy();
-  };
-  async function fill(slot: Element) {
-    const ticker = slot.getAttribute('data-card-slot') ?? '';
-    if (mounted.get(slot)?.ticker === ticker) return;
-    drop(slot);
-    if (!TICKER.test(ticker)) return;
-    const m: { ticker: string; ref?: ComponentRef<CardComponent>; env?: EnvironmentInjector } = { ticker };
-    mounted.set(slot, m);
-    const Card = await o.load();
-    if (mounted.get(slot) !== m || !slot.isConnected) return; // gone, or another company, while the card loaded
-    const host = doc.createElement('div');
-    host.setAttribute('data-island', o.id);
-    m.env = createEnvironmentInjector([Pt], appRef.injector);
-    m.ref = createComponent(Card, { environmentInjector: m.env, hostElement: host });
-    m.ref.setInput('ticker', ticker);
-    m.ref.setInput('size', 'compact');
-    m.ref.setInput('extra', null);
-    appRef.attachView(m.ref.hostView);
-    slot.append(host);
-    m.ref.changeDetectorRef.detectChanges(); // its calls start
-  }
-  const scan = (root: ParentNode) => {
-    if (root instanceof Element && root.matches(SLOT)) void fill(root);
-    for (const s of root.querySelectorAll(SLOT)) void fill(s);
-  };
-  const watch = new MutationObserver((records) => {
-    for (const [slot] of mounted) if (!slot.isConnected) drop(slot);
-    for (const r of records) {
-      if (r.type === 'attributes') void fill(r.target as Element);
-      else for (const n of r.addedNodes) if (n instanceof Element) scan(n);
-    }
-  });
-  watch.observe(doc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-card-slot'] });
-  scan(doc.body);
-  return { stop: () => { watch.disconnect(); for (const [slot] of [...mounted]) drop(slot); } };
 }

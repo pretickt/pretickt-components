@@ -1,7 +1,7 @@
 import { afterNextRender, ApplicationRef, Component, EnvironmentInjector, inject, PLATFORM_ID, TransferState } from '@angular/core';
 import { isPlatformServer } from '@angular/common';
 import { sendBeacon, startBeacon } from './beacon';
-import { attachCards, attachCardSlots, CARD_TARGET, companyOf } from './cards';
+import { attachCards, CARD_TARGET, companyOf } from './cards';
 import { attachCompanyBar } from './cobar';
 import { attachHeader } from './header';
 import { PAGE_KEY, PT_PAGE } from './model';
@@ -13,7 +13,7 @@ const CARD = 'pt-company-card';
 
 /**
  * The page app (one per page): the generator's sections — heading, "see all" link, placements. In the browser, once rendered:
- * the beacon, the tooltips, and the company card on hover over company links and where a component leaves room for it.
+ * the beacon, the tooltips, the company card on hover over company links, and the click's context (what a company link showed).
  */
 @Component({
   selector: 'pt-page',
@@ -75,8 +75,8 @@ export class PtPage {
         id: `${CARD}@${card.version}`,
         hover: !!doc.defaultView?.matchMedia?.('(hover: hover) and (pointer: fine)').matches,
         load,
+        loadBox: () => import('./context/box'), // a calendar chip's earnings block under its card
       }) : { active: () => false };
-      if (card) attachCardSlots(doc, appRef, { id: `${CARD}@${card.version}`, load }); // where a component leaves room for the card (a calendar's event)
       // where a card opens on hover, a company link shows it instead of its text tooltip (the keyboard still gets the tooltip)
       const root = doc.querySelector<HTMLElement>('pt-page');
       if (root) attachTips(root, (t) => cards.active() && companyOf(t.closest(CARD_TARGET)) !== null);

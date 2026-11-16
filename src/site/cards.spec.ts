@@ -4,7 +4,9 @@ import { PT_STORE } from '@pretickt/components/context';
 import { PtCompanyCard } from '../../components/pt-company-card';
 import { needPath } from '../api';
 import { demoFor } from '../typologies';
-import { attachCards, attachCardSlots, CARD_TARGET, companyOf, panelPosition } from './cards';
+import { answer, CTX_ASK, rememberedAt } from '../context/click';
+import { attachCards, CARD_TARGET, companyOf, panelPosition } from './cards';
+import { CTX_EARNINGS_AHEAD } from './context/mock';
 import { browserStore } from './store.browser';
 import { attachTips } from './tips';
 
@@ -20,9 +22,11 @@ function page(o: { hover?: boolean; fetchImpl?: typeof api; sent?: string[] } = 
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({ providers: [{ provide: PT_STORE, useValue: browserStore({ buildId: 'b1', api: '', sections: [] }, {}, o.fetchImpl ?? api) }] });
   document.body.innerHTML = `<p><a id="aapl" href="/stocks/aapl/" data-tip='{"Earnings":"Oct 28, 2026","EPS est.":null}'>AAPL</a>` +
-    `<a id="nvda" href="/stocks/nvda/">NVDA</a><a id="other" href="/earnings-calendar/">calendar</a></p>`;
+    `<a id="nvda" href="/stocks/nvda/">NVDA</a><a id="other" href="/earnings-calendar/">calendar</a></p>` +
+    `<div id="cal"><a id="calchip" href="/stocks/nvda/" data-card="NVDA" data-tip='{"Earnings":"Nov 18"}'>NVDA</a></div>`;
+  document.getElementById('cal')!.addEventListener(CTX_ASK, (e) => answer(e, CTX_EARNINGS_AHEAD as never));
   document.addEventListener('pt-interact', (e) => o.sent?.push(`${(e.target as Element).getAttribute('data-island')}|${(e as CustomEvent<{ action: string }>).detail.action}`));
-  return attachCards(document, TestBed.inject(ApplicationRef), { id: ID, load: async () => PtCompanyCard, hover: o.hover ?? true, openMs: 20, closeMs: 20, pauseMs: 5000 });
+  return attachCards(document, TestBed.inject(ApplicationRef), { id: ID, load: async () => PtCompanyCard, hover: o.hover ?? true, openMs: 20, closeMs: 20, pauseMs: 5000, loadBox: () => import('./context/box') });
 }
 const over = (id: string) => document.getElementById(id)!.dispatchEvent(new Event('pointerover', { bubbles: true }));
 const out = (id: string, to: Element | null = document.body) => document.getElementById(id)!.dispatchEvent(Object.assign(new Event('pointerout', { bubbles: true }), { relatedTarget: to }));
@@ -159,24 +163,24 @@ describe('company cards on hover', () => {
   });
 });
 
-describe('company cards in a slot', () => {
-  it('a slot a component leaves (data-card-slot) gets the compact card on any device, a click away; when the slot goes, so does the card', async () => {
-    TestBed.resetTestingModule();
-    TestBed.configureTestingModule({ providers: [{ provide: PT_STORE, useValue: browserStore({ buildId: 'b1', api: '', sections: [] }, {}, api) }] });
-    const appRef = TestBed.inject(ApplicationRef);
-    document.body.innerHTML = '<div id="pop"><p>Microsoft reports Wed</p><div id="slot" data-card-slot="MSFT"></div><div id="bad" data-card-slot="javascript:x"></div></div>';
-    const slots = attachCardSlots(document, appRef, { id: ID, load: async () => PtCompanyCard });
-    const slot = document.getElementById('slot')!;
-    await vi.waitFor(() => expect(slot.querySelector('.pt-card-compact')).toBeTruthy());
-    expect(slot.querySelector('[data-island]')!.getAttribute('data-island')).toBe(ID);
-    expect(document.getElementById('bad')!.childElementCount).toBe(0);
-    const views = appRef.viewCount;
-    document.getElementById('pop')!.remove();
-    await vi.waitFor(() => expect(appRef.viewCount).toBe(views - 1));
-    // a slot added later (a box opened on a click) is filled too
-    document.body.insertAdjacentHTML('beforeend', '<div><div id="later" data-card-slot="AAPL"></div></div>');
-    await vi.waitFor(() => expect(document.getElementById('later')!.querySelector('.pt-card-compact')).toBeTruthy());
-    slots.stop();
+describe('company cards with what the link said (the click context, 2026-11-16)', () => {
+  it('over a calendar chip: the card, then the earnings block (no tooltip rows); a click inside the card leaves the chip\'s note', async () => {
+    page();
+    over('calchip');
+    await vi.waitFor(() => expect(panel()?.querySelector('pt-click-box .pt-cal-row-cue')).toBeTruthy());
+    const p = panel()!;
+    expect(p.querySelector('pt-click-box')!.textContent).toContain('±7.0%');
+    expect(p.querySelector('.pt-card-compact')!.compareDocumentPosition(p.querySelector('pt-click-box')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(p.querySelector('.pt-card-foot')).toBeNull();
+    expect(p.querySelector('pt-click-box .pt-ctx-k')).toBeNull(); // the body alone
+    expect(rememberedAt(p.querySelector('a.pt-card-go')!)?.data?.kind).toBe('earnings');
+  });
+  it('over a link no origin answers: the card alone, and a click inside it leaves nothing', async () => {
+    page();
+    over('aapl');
+    await vi.waitFor(() => expect(panel()?.querySelector('.pt-card-compact')).toBeTruthy());
+    expect(panel()!.querySelector('pt-click-box')).toBeNull();
+    expect(rememberedAt(panel()!.querySelector('a.pt-card-go')!)).toEqual({ data: null });
   });
 });
 

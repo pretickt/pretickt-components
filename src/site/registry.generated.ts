@@ -27,8 +27,8 @@ import { PtWhyToday } from '../../components/pt-why-today';
 export const REGISTRY: Record<string, { version: string; sample: Record<string, unknown> }> = {
   'pt-answer': { version: '1.10.2', sample: {} },
   'pt-basket': { version: '1.2.1', sample: {} },
-  'pt-calendar': { version: '3.3.1', sample: { month: '2026-09' } },
-  'pt-company-card': { version: '1.3.0', sample: { ticker: 'NVDA' } },
+  'pt-calendar': { version: '3.4.0', sample: { month: '2026-09' } },
+  'pt-company-card': { version: '1.4.0', sample: { ticker: 'NVDA' } },
   'pt-company-header': { version: '1.3.1', sample: {} },
   'pt-daily': { version: '1.1.0', sample: { ticker: 'NVDA' } },
   'pt-feed': { version: '1.0.0', sample: {} },

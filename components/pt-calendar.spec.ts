@@ -1,5 +1,6 @@
 import { eventsDemo, type EventItem } from '../src/typologies';
 import { buildMonth, PtCalendar, shiftMonth } from './pt-calendar';
+import { CTX_ASK, type CtxAsk } from '../src/context/click';
 import { basics, demo, render, settle, withData } from './_spec';
 
 const events = eventsDemo({ scope: { by: 'universe', month: '2026-10' }, kinds: ['earnings', 'macro'] });
@@ -168,7 +169,7 @@ describe('pt-calendar', () => {
     first.logo = `/logos/${first.ticker.toLowerCase()}`;
     // October's own days (its grid starts in September, where the same ticker may report too)
     const { el } = await render(PtCalendar, { month: '2026-10' }, withData({ 'events@1': { ...ev, items: ev.items.filter((e) => e.date.startsWith('2026-10')) } }));
-    const chip = [...el.querySelectorAll('.pt-cal-grid button.pt-cal-ev')].find((b) => b.textContent!.includes(first.ticker))!;
+    const chip = [...el.querySelectorAll('.pt-cal-grid a.pt-cal-ev')].find((b) => b.textContent!.includes(first.ticker))!;
     expect(chip.getAttribute('data-tip')).toContain(first.ticker);
     expect(chip.querySelector('img.pt-logo')!.getAttribute('src')).toBe(first.logo);
     expect(el.querySelector('.pt-cal-list li img.pt-logo')).not.toBeNull();
@@ -412,7 +413,7 @@ describe('pt-calendar rows: what to expect from each event', () => {
   });
 });
 
-describe('pt-calendar grid: the hint in the chip, a click opens the event', () => {
+describe('pt-calendar grid: the hint in the chip, a company chip leads to its page', () => {
   const chipOf = (el: HTMLElement, key: string) => [...el.querySelectorAll<HTMLElement>('.pt-cal-grid .pt-cal-ev, .pt-cal-grid .pt-cal-macro')]
     .find((b) => b.textContent!.includes(key))!;
   const cueOf = (b: Element) => b.querySelector('.pt-cal-cue')?.textContent!.trim() ?? null;
@@ -431,33 +432,42 @@ describe('pt-calendar grid: the hint in the chip, a click opens the event', () =
     expect(chipOf(el, 'MSFT').getAttribute('data-card')).toBe('MSFT');
     expect(chipOf(el, 'Fed').hasAttribute('data-card')).toBe(false);
   });
-  it('clicking a chip opens its event as its row opens, with the company\'s card under it (the page fills the slot); × and Escape close it', async () => {
+  it('a company chip is a link to its page (Romeo, 2026-11-16: «se clicco manda alla company page»): a click counts, opens no box', async () => {
     const r = await render(PtCalendar, { month: '2026-10' }, withData({ 'events@1': OCT27 }));
-    document.body.append(r.el);
     const chip = chipOf(r.el, 'MSFT');
+    expect(chip.tagName).toBe('A');
+    expect(chip.getAttribute('href')).toBe('/stocks/msft/');
+    expect(chip.getAttribute('data-card')).toBe('MSFT');
+    expect(chip.getAttribute('data-k')).toBe('earnings:MSFT:2026-10-28');
+    const seen: string[] = [];
+    r.el.addEventListener('pt-interact', (e) => seen.push((e as CustomEvent<{ action: string }>).detail.action));
+    chip.addEventListener('click', (e) => e.preventDefault()); // no navigation in the test
     await click(r, chip);
-    const pop = r.el.querySelector('.pt-cal-pop')!;
-    expect(pop.getAttribute('role')).toBe('dialog');
-    expect(pop.querySelector('.pt-cal-row-cue')!.textContent!.trim()).toBe('±4.7%');
-    expect(pop.querySelector('.pt-cal-row-hint')!.textContent!.trim()).toBe('Beat 7 of 8 · rose after 5 of 8');
-    expect(pop.querySelector('.pt-cal-row-say')!.textContent!.replace(/\s+/g, ' ').trim()).toMatch(/^Microsoft MSFT reports Wed, Oct 28 \(confirmed\)/);
-    expect(pop.querySelectorAll('.pt-news-item')).toHaveLength(2);
-    expect(pop.querySelector('a.pt-cal-row-page')!.getAttribute('href')).toBe('/stocks/msft/earnings/');
-    // the earnings summary card first (its row, with the bars), the company's usual card under it
-    const sum = pop.querySelector('.pt-cal-sum')!;
-    expect(sum.querySelectorAll('svg.pt-cal-row-bars rect')).toHaveLength(8);
-    expect(sum.querySelector('.pt-cal-hist')).toBeNull();
-    expect(pop.querySelector('[data-card-slot]')!.getAttribute('data-card-slot')).toBe('MSFT');
-    expect(sum.compareDocumentPosition(pop.querySelector('[data-card-slot]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(document.activeElement).toBe(pop);
-    await click(r, pop.querySelector('button.pt-cal-pop-x'));
+    expect(seen).toEqual(['open']);
     expect(r.el.querySelector('.pt-cal-pop')).toBeNull();
-    expect(document.activeElement).toBe(chip);
-    await click(r, chip);
-    r.el.querySelector('.pt-cal-pop')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    await settle(r.f);
-    expect(r.el.querySelector('.pt-cal-pop')).toBeNull();
-    r.el.remove();
+    expect(r.el.querySelector('[data-card-slot]')).toBeNull();
+  });
+  it('the ask of a company link (pt-ctx-ask): the row the reader saw, from the chip, the row\'s sentence and the list by day', async () => {
+    const r = await render(PtCalendar, { month: '2026-10' }, withData({ 'events@1': OCT27 }));
+    const ask = (el: Element) => { const e = new CustomEvent<CtxAsk>(CTX_ASK, { bubbles: true, detail: { data: null } }); el.dispatchEvent(e); return e.detail.data; };
+    const row = [...r.el.querySelectorAll<HTMLElement>('.pt-cal-row')].find((x) => x.textContent!.includes('Microsoft'))!;
+    const listed = [...r.el.querySelectorAll('.pt-cal-list a')].find((a) => a.getAttribute('href') === '/stocks/msft/')!;
+    for (const link of [chipOf(r.el, 'MSFT'), row.querySelector('.pt-cal-row-say a')!, row.querySelector('a.pt-cal-row-page')!, listed]) {
+      const got = ask(link);
+      expect(got?.kind).toBe('earnings');
+      const d = got!.kind === 'earnings' ? got!.d : null;
+      expect(d).toMatchObject({ ticker: 'MSFT', title: 'Microsoft', cue: '±4.7%', hint: 'Beat 7 of 8 · rose after 5 of 8', page: { href: '/stocks/msft/earnings/' } });
+      expect(d!.when).toBe(row.querySelector('.pt-cal-row-when')!.textContent!.trim());
+      expect(d!.bars!.bars).toHaveLength(8);
+    }
+    expect(ask(chipOf(r.el, 'Fed'))).toBeNull(); // a market date names no company
+  });
+  it('on the dividend calendar the ask answers `dividend`', async () => {
+    const div = { date: '2026-10-15', ticker: 'KO', name: 'Coca-Cola', logo: null, mcap: 3e11, kind: 'dividend' as const, meta: { amount: 0.51, payDate: '2026-12-01' } };
+    const r = await render(PtCalendar, { month: '2026-10', kind: 'dividend' }, withData({ 'events@1': { asOf: '2026-10-02', items: [div] } }));
+    const e = new CustomEvent<CtxAsk>(CTX_ASK, { bubbles: true, detail: { data: null } });
+    chipOf(r.el, 'KO').dispatchEvent(e);
+    expect(e.detail.data).toMatchObject({ kind: 'dividend', d: { ticker: 'KO', cue: '$0.51', hint: 'Payable Dec 1' } });
   });
   it('the grey cells show the days of the months around it (events@1.3), their chips open too; rows and list stay the month\'s', async () => {
     // Romeo, 2026-11-02, on November: "non vedo i passati di ottobre nelle celle grigie"
@@ -468,8 +478,7 @@ describe('pt-calendar grid: the hint in the chip, a click opens the event', () =
     expect(r.el.querySelector('.pt-cal-rows')!.textContent).toContain('NEW reports Wed, Nov 4');
     expect(r.el.querySelector('.pt-cal-rows')!.textContent).not.toContain('OLD');
     expect(r.el.querySelector('.pt-cal-list')!.textContent).not.toContain('OLD');
-    await click(r, old);
-    expect(r.el.querySelector('.pt-cal-pop .pt-cal-row-say')!.textContent!.replace(/\s+/g, ' ')).toMatch(/^OLD reported Thu, Oct 29/);
+    expect(old.getAttribute('href')).toBe('/stocks/old/');
   });
   it('a market date opens too, with no company card; a holiday stays a label', async () => {
     const closed = { date: '2026-10-12', kind: 'macro' as const, meta: { label: 'Closed', event: 'Columbus Day', impact: null } };
@@ -480,13 +489,12 @@ describe('pt-calendar grid: the hint in the chip, a click opens the event', () =
     expect(pop.querySelector('[data-card-slot]')).toBeNull();
     expect(chipOf(r.el, 'Closed').tagName).toBe('DIV');
   });
-  it('in a day\'s "+N more", a chip opens its event in the same box', async () => {
+  it('in a day\'s "+N more", a company chip is a link to its page too', async () => {
     const r = await render(PtCalendar, { month: '2026-10' }, withData({ 'events@1': { asOf: '2026-10-02', items: many } }));
     await click(r, r.el.querySelector('button.pt-cal-more'));
     const inDay = [...r.el.querySelectorAll<HTMLElement>('.pt-cal-pop .pt-cal-ev')].find((b) => b.textContent!.includes('T5'))!;
-    await click(r, inDay);
-    expect(r.el.querySelectorAll('.pt-cal-pop')).toHaveLength(1);
-    expect(r.el.querySelector('.pt-cal-pop .pt-cal-row-say')!.textContent!.replace(/\s+/g, ' ')).toContain('Co 5 T5 ');
-    expect(r.el.querySelector('.pt-cal-pop [data-card-slot]')!.getAttribute('data-card-slot')).toBe('T5');
+    expect(inDay.tagName).toBe('A');
+    expect(inDay.getAttribute('href')).toBe('/stocks/t5/');
+    expect(inDay.getAttribute('data-k')).toBe('earnings:T5:2026-10-15');
   });
 });
