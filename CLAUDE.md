@@ -132,9 +132,18 @@ platform change (schema here + resolver in the private platform + a public-data 
   [src] [size] />` (`src` = a payload's `logo`; none → initials, no request). **Every link to `/stocks/<t>/` opens the company card
   on hover** (the page does it, desktop only): link companies with `stockHref` / `ptCompany`, nothing else to do; a `data-tip` on
   such a link becomes the card's footer instead of a text tooltip. A symbol that cannot be a link (inside a `<summary>`, which is one
-  control: pt-calendar's rows) opens the card with `[attr.data-card]="ticker"`. Where the card belongs inside a box the component opens
-  (pt-calendar's event, on a click, on any device), leave an empty `<div [attr.data-card-slot]="ticker"></div>`: the page mounts the
-  compact card in it and removes it with the box.
+  control: pt-calendar's rows) opens the card with `[attr.data-card]="ticker"`. The card's logo and name are a link to the company
+  page (pt-company-card 1.4.0).
+- **The click's context (2026-11-16, `src/site/context/`)**: a click (Cmd-click, middle-click) on a company link leaves a note of what
+  its origin showed, for a box at the top of the company page (`pt-click-box`, a lazy chunk; one note in this browser's
+  `localStorage` `pt-click`, 30 minutes, the exact page clicked, never with `?alert=`; privacy page: "What this browser remembers").
+  The runtime dispatches `pt-ctx-ask` (synchronous) on the link; **a component that links a company answers it** on its host —
+  `host: { '(pt-ctx-ask)': 'ask($event)' }` and `answer(e, { kind, d })` from `@pretickt/components/context` — with a snapshot of
+  the row the reader saw (`CtxKinds` in `src/context/click.ts`: only figures it showed, as it printed them). The outer origin answers
+  last and wins (`PtMention` answers `mention` with its sentence when PtSay passes `said`; the calendar's or the map's answer overwrites
+  it). A new kind = a snapshot type, its answer, a body in `src/site/context/` with its `@case` in `PtCtxBody`, mocks and stories.
+  The hover card asks the link when it opens: over a calendar chip it shows the earnings (dividend) block under the card, and a click
+  inside the card leaves that note. Not a pick (no note): the header, the company tabs, the crumbs, the page's own company.
 - **Sortable tables**: `protected readonly sort = useSort(() => rows, { k: (row) => value, … })` and `<th ptSortTh
   [state]="sort.state('k')" (sort)="sort.toggle('k')">Label</th>` in the header, rows from `sort.sorted()` (numbers high first,
   dates newest first, text A→Z without case, then reverse, then the original order; missing values last). The server renders the
@@ -348,7 +357,7 @@ largest companies with their logos and upside then) · `pt-answer` (the page's q
 price-target | peers | financials | insiders | earnings-date | dividend | stock-split | history | basket with `ticker`, sector with `sector`, list with `list` and optional `sector`, earnings | dividends with `month`,
 earnings with `start` (that date's week), earnings-day with `start` (that day's reports by their time)) ·
 `pt-calendar` (month grid + macro dates + full list, previous/next month; `kind`
-earnings|dividend; `view: 'week'` + `start` = five sessions for the home page; `view: 'day'` + `start` = that week with the day marked and the day's rows first, every one; "+N more" opens the whole day) · `pt-why-today`
+earnings|dividend; `view: 'week'` + `start` = five sessions for the home page; `view: 'day'` + `start` = that week with the day marked and the day's rows first, every one; "+N more" opens the whole day; a company chip is a link to its page — hover: the card with the earnings block — a market date's chip opens its box) · `pt-why-today`
 (answer-first sentence + market/sector/stock bars + news spike) · `pt-screen` (ranked table with list-specific column and sparklines;
 `list` or `peersOf`, optional `sector`; grows by 20 up to every company) · `pt-financials` (quarterly revenue/FCF bars + margins table) · `pt-news` (headlines with AI sentiment dots,
 nofollow links; `ticker`, or `sector` for its 10 largest companies' stories) · `pt-daily` (a company's card of the day: what changed since the session before in a sentence and a short body worded by an AI model, the platform's dated facts it rests on under it, a changed one with what it was; an older card says `Latest:` with its date; without a card the day's facts alone) · `pt-stats` (the history page: a stock's last five years in four rows — tiles of how much it moves, its years against the S&P 500 as bars and ticks with the values as text, its falls and rises beyond its own threshold coloured on the price with twin cards, a square per closed month for it and SPY; every figure in the text too; on phones only the main swing labels) · `pt-insiders` (buy/sell totals + Form 4 table) · `pt-movers` (beta's "Ongoing moves" tornado for the home: this
