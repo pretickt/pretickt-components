@@ -1,7 +1,8 @@
 /**
  * What does the whole fund, or the whole sector, say: why it moved and who moved it, what it holds, what analysts say of its companies, how they read on the business.
  * Every figure says how much of the fund or the sector it rests on, and a fund we cover under 80% shows none of them. Facts only, never a yes or a no.
- * @version 1.2.1
+ * @version 1.3.0
+ * @evidence Romeo, 2026-11-16: «in base a "da dove arrivi" ti mostro un riquadro in alto» — a company's link answers the click's ask with its weight, move and points
  * @evidence Romeo, 2026-11-05: «voglio creare una pagina con price target preso dalle aziende del paniere e mediato, consensus preso dalle aziende e sommato, is good to buy mediato»
  * @evidence DataForSEO round 17 (US, per month, over 87 ETFs): `{etf} holdings` 123k, market-level "why is it down" 265k, `{etf} price target` 3,550, `is {etf} a good investment` (launch/data/17-summary.json)
  * @evidence design: pretickt/docs/superpowers/specs/2026-11-05-etf-basket-pages-design.md
@@ -9,7 +10,7 @@
  * @evidence Romeo, 2026-11-08: «da fare la sezione portafogli con aziende incollate e possibilità di crearne altri per monitoraggio» (1.2: `payload`, a reader's portfolio or watchlist computed on the page, never fetched)
  */
 import { Component, computed, inject, input, linkedSignal } from '@angular/core';
-import { Pt, PtLive } from '@pretickt/components/context';
+import { answer, Pt, PtLive } from '@pretickt/components/context';
 import { PtCompany, PtLogo } from '@pretickt/components/ds';
 import { date, href, level, money, num, pct, plainName, stockHref, tone, usd } from '@pretickt/components/format';
 import { BASKET_MIN_COVERAGE, BASKET_MOVER_MIN, BASKET_MOVERS, BASKET_SHOWN, basketLead, basketMoved, OTHER_BASIS, oneMover, type Basket, type BasketMover, type PortfolioBasket, type PortfolioHolding, type Sector, type SectorBasket } from '@pretickt/components/typologies';
@@ -48,6 +49,7 @@ export function liveMoves(b: AnyBasket, q: Record<string, { r: number }>, news: 
 @Component({
   selector: 'pt-basket',
   imports: [PtCompany, PtLogo],
+  host: { '(pt-ctx-ask)': 'ask($event)' },
   template: `
     @let b = data();
     @if (b === null) {<p class="pt-na">Data not available</p>}
@@ -281,5 +283,22 @@ export class PtBasket {
   protected etf = (t: string) => `/etfs/${t.toLowerCase()}/`;
   protected points = (p: number) => `${p < 0 ? '-' : '+'}${Math.abs(p * 100).toFixed(2)}`;
   protected pointsAbs = (p: number) => Math.abs(p * 100).toFixed(1);
+  /**
+   * The click's ask on a company (pt-ctx-ask): its weight, move and points as the basket shows them (the movers at the delayed prices,
+   * else its holding's figures) — of the fund or the sector, or your line of your portfolio. A fund line (its own page) answers nothing.
+   */
+  protected ask(e: Event) {
+    const t = /^\/stocks\/([^/#]+)\//.exec((e.target as Element).getAttribute?.('href') ?? '')?.[1]?.toUpperCase(), b = this.data();
+    if (!t || !b) return;
+    // the figures of the section the reader clicked in: the movers' (delayed) row, else the holding, else a target's contributor
+    const v = this.section() === 'moves' ? this.view() : null, m = [...(v?.up ?? []), ...(v?.down ?? [])].find((x) => x.ticker === t);
+    const h = b.holdings.find((x) => x.ticker === t), c = b.target?.top.find((x) => x.ticker === t);
+    const weight = m?.weight ?? h?.weight ?? c?.weight;
+    if (weight == null) return;
+    const ret = m?.ret ?? h?.ret ?? null, points = m?.points ?? (ret == null ? null : weight * ret);
+    if (this.pf()) { answer(e, { kind: 'portfolio', d: { weight, ret, points, earnings: null, headline: null } }); return; }
+    const s = this.sec();
+    answer(e, { kind: 'holding', d: { basket: s ? { name: s.name, href: '' } : { name: this.ticker() ?? '', href: this.etf(this.ticker() ?? '') }, whole: s ? 'sector' : 'fund', weight, ret, points } });
+  }
   protected versus = (own: number, spy: number | null) => (spy == null || this.ticker() === 'SPY' ? pct(own) : `${pct(own)} (SPY ${pct(spy)})`);
 }

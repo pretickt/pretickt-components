@@ -85,3 +85,18 @@ export const CTX_PEERS: ClickNote = {
   d: { of: { ticker: 'NVDA', name: 'Nvidia' }, href: '#peers',
     cols: [{ label: 'Today', text: '-3.0%', tone: 'pt-t-neg' }, { label: 'Off 52w high', text: '-12.4%', tone: 'pt-t-neg' }, { label: 'Target upside', text: '+18.0%', tone: 'pt-t-pos' }] },
 };
+
+export const CTX_HOLDING: ClickNote = {
+  ...base, land: '/stocks/nvda/why-moving/', from: { path: '/etfs/xlk/', title: 'XLK: Technology Select Sector SPDR Fund' }, kind: 'holding',
+  d: { basket: { name: 'XLK', href: '/etfs/xlk/' }, whole: 'fund', weight: 0.142, ret: -0.031, points: -0.0044 },
+};
+export const CTX_HOLDING_SECTOR: ClickNote = {
+  ...CTX_HOLDING, from: { path: '/sectors/technology/', title: 'Technology stocks' },
+  d: { basket: { name: 'Technology', href: '' }, whole: 'sector', weight: 0.081, ret: null, points: null },
+};
+const PF = { path: '/portfolio/', title: 'Your portfolio' };
+export const CTX_PORTFOLIO: ClickNote = { ...base, from: PF, kind: 'portfolio', d: { weight: 0.08, ret: -0.031, points: -0.0025, earnings: null, headline: null } };
+export const CTX_PORTFOLIO_EARNINGS: ClickNote = { ...CTX_PORTFOLIO, d: { weight: 0.08, ret: null, points: null, earnings: '2026-11-18', headline: null } };
+export const CTX_PORTFOLIO_NEWS: ClickNote = {
+  ...CTX_PORTFOLIO, d: { weight: null, ret: null, points: null, earnings: null, headline: { title: 'Nvidia supplier warns on demand', url: 'https://example.com/a' } },
+};

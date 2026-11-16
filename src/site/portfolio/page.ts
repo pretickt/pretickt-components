@@ -1,6 +1,6 @@
 import { afterNextRender, Component, computed, effect, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { date, dayMonth, href, level, money, num, pct, plainName, stockHref, tone } from '@pretickt/components/format';
-import { Pt } from '@pretickt/components/context';
+import { answer, Pt } from '@pretickt/components/context';
 import { PtIcon } from '@pretickt/components/ds';
 import { PtFollow } from '@pretickt/components/follow';
 import type { ClosesFile, FactsFile } from '@pretickt/components/typologies';
@@ -35,7 +35,7 @@ const holds = (n: number) => (n === 0 ? 'holds-none' : n === 1 ? 'holds-one' : n
   // pt-basket's context (a placement gets it from its slot): with a payload it asks nothing; the logos' cut-outs, shared with the preview of a paste
   providers: [Pt, PortfolioLogos],
   // the site's hover cards listen on the document and ask the API for the ticker they show: here a hover stays inside, so no request names a holding
-  host: { 'data-beacon': BEACON, '(pointerover)': '$event.stopPropagation()', '(pointerout)': '$event.stopPropagation()' },
+  host: { 'data-beacon': BEACON, '(pointerover)': '$event.stopPropagation()', '(pointerout)': '$event.stopPropagation()', '(pt-ctx-ask)': 'ask($event)' },
   template: `
     @let f = facts();
     @if (f === undefined) {<p class="pt-note pt-busy">Loading the companies…</p>}
@@ -69,11 +69,11 @@ const holds = (n: number) => (n === 0 ? 'holds-none' : n === 1 ? 'holds-one' : n
           <div class="pt-pf-linebox" #lineBox>@if (line(); as l) {<pt-portfolio-line [line]="l" />} @else if (failed().has('1y')) {<p class="pt-note">The year is not available right now.</p>} @else {<p class="pt-note pt-busy">Loading the year…</p>}</div>
           @if (b.earnings.length) {
             <h2 class="pt-pf-h">Earnings ahead</h2>
-            <ul class="pt-pf-list">@for (e of b.earnings; track e.ticker) {<li><a [href]="stock(e.ticker)">{{ plainName(e.name) }}</a> <span class="pt-meta">{{ dayMonth(e.date) }}</span></li>}</ul>
+            <ul class="pt-pf-list">@for (e of b.earnings; track e.ticker) {<li [attr.data-k]="'earnings:' + e.ticker"><a [href]="stock(e.ticker)">{{ plainName(e.name) }}</a> <span class="pt-meta">{{ dayMonth(e.date) }}</span></li>}</ul>
           }
           @if (b.headlines.length) {
             <h2 class="pt-pf-h">{{ b.kind === 'watchlist' ? 'News of these companies' : 'News of the largest holdings' }}</h2>
-            <ul class="pt-pf-list">@for (n of b.headlines; track n.ticker) {<li><a [href]="stock(n.ticker)">{{ plainName(n.name) }}</a> · <a class="pt-meta" [href]="href(n.url)" target="_blank" rel="nofollow noopener noreferrer">{{ n.title }}</a></li>}</ul>
+            <ul class="pt-pf-list">@for (n of b.headlines; track n.ticker) {<li [attr.data-k]="'news:' + n.ticker"><a [href]="stock(n.ticker)">{{ plainName(n.name) }}</a> · <a class="pt-meta" [href]="href(n.url)" target="_blank" rel="nofollow noopener noreferrer">{{ n.title }}</a></li>}</ul>
           }
         }
       </div>
@@ -161,6 +161,18 @@ export class PtPortfolioPage {
   protected readonly date = date;
   protected readonly dayMonth = dayMonth;
   protected readonly href = href;
+  /**
+   * The click's ask on a company of the earnings or news list (pt-ctx-ask; the basket's own sections answer theirs): your line's weight
+   * and move, with the date it reports or the headline beside it. Nothing leaves this browser: the note stays in it too.
+   */
+  protected ask(e: Event) {
+    const [list, t] = ((e.target as Element).closest?.('.pt-pf-list [data-k]')?.getAttribute('data-k') ?? '').split(':');
+    const b = this.basket(), h = b?.holdings.find((x) => x.ticker === t);
+    if (!b || !t) return;
+    const weight = h?.weight ?? null, ret = h?.ret ?? null, points = weight == null || ret == null ? null : weight * ret;
+    const ev = list === 'earnings' ? b.earnings.find((x) => x.ticker === t) : undefined, n = list === 'news' ? b.headlines.find((x) => x.ticker === t) : undefined;
+    if (ev || n) answer(e, { kind: 'portfolio', d: { weight, ret, points, earnings: ev?.date ?? null, headline: n ? { title: n.title, url: n.url } : null } });
+  }
   protected readonly level = level;
   protected readonly money = money;
   protected readonly num = num;

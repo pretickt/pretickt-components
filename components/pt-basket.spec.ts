@@ -3,7 +3,7 @@ import { demoFor, type Basket, type SectorBasket } from '../src/typologies';
 import { liveMoves, PtBasket } from './pt-basket';
 import { date, pct } from '../src/ds/format';
 import { demoPortfolio } from '../src/stories/fake-portfolio';
-import { basics, liveDay, press, render, settle, withData } from './_spec';
+import { askOf, basics, liveDay, press, render, settle, withData } from './_spec';
 
 const demo = (t: string) => demoFor({ t: 'basket@1', params: { ticker: t } }) as Basket;
 const mover = (ticker: string, name: string, weight: number, ret: number, headline = true): Basket['moves']['up'][number] => ({ ticker, name, logo: null, weight, ret, points: weight * ret, headline: headline ? { title: `${name} headline`, url: `https://example.com/${ticker}` } : null });
@@ -214,6 +214,10 @@ describe('pt-basket, for a sector', () => {
 
   for (const s of ['moves', 'holdings', 'analysts', 'questions', 'faq']) basics(PtBasket, { sector: 'Technology', section: s });
 
+  it('the click\'s ask (2026-11-16): the company\'s weight, move and points of the sector', async () => {
+    expect(askOf((await sec('moves')).el.querySelector('a.pt-bk-co[href="/stocks/nvda/why-moving/"]'))).toEqual({ kind: 'holding',
+      d: { basket: { name: 'Technology', href: '' }, whole: 'sector', weight: 0.2, ret: 0.02, points: expect.closeTo(0.004, 9) } });
+  });
   it('the moves sentence names the sector; the note says its companies\' points add up to its move', async () => {
     const t = (await sec('moves')).text();
     expect(t).toContain('Technology rose 1.2%. Nvidia added 0.40 points.');
@@ -298,6 +302,14 @@ it("a split on the session is no move of the sector: a company whose delayed pri
 describe('pt-basket, on a portfolio computed on the page (Part B)', () => {
   const pfb = (s: string, b = demoPortfolio('shares'), o?: Parameters<typeof render>[3]) => render(PtBasket, { payload: b, section: s }, withData({}), o);
 
+  it('the click\'s ask (2026-11-16): your line\'s weight, move and points; a fund line (its own page) answers nothing', async () => {
+    const b = demoPortfolio('shares'), r = await pfb('holdings', b);
+    const h = b.holdings.find((x) => x.ticker && !x.fund && x.ret != null)!;
+    expect(askOf(r.el.querySelector(`a[href="/stocks/${h.ticker!.toLowerCase()}/"]`))).toEqual({ kind: 'portfolio',
+      d: { weight: h.weight, ret: h.ret, points: expect.closeTo(h.weight * h.ret!, 9), earnings: null, headline: null } });
+    const fund = r.el.querySelector('a[href^="/etfs/"]');
+    if (fund) expect(askOf(fund)).toBeNull();
+  });
   it('a portfolio payload: no call, its sections, its words', async () => {
     const h = await pfb('holdings');
     expect(h.calls()).toBe(0);
@@ -357,5 +369,22 @@ describe('pt-basket, on a portfolio computed on the page (Part B)', () => {
     const nvda = b.holdings.find((h) => h.ticker === 'NVDA')!;
     expect(r.text()).toContain(`Long term rose ${pct(nvda.weight * 0.05, 1).replace('+', '')}.`);
     expect(r.text()).toContain('15-min delayed');
+  });
+});
+
+describe('pt-basket: the click\'s ask (2026-11-16)', () => {
+  it('a fund: a company\'s weight, move and points of the fund, from the movers, the holdings and the targets\' contributors', async () => {
+    const want = { kind: 'holding', d: { basket: { name: 'SMH', href: '/etfs/smh/' }, whole: 'fund', weight: 0.205, ret: -0.037, points: expect.closeTo(0.205 * -0.037, 9) } };
+    expect(askOf((await section('moves')).el.querySelector('a.pt-bk-co[href="/stocks/nvda/why-moving/"]'))).toEqual(want);
+    expect(askOf((await section('holdings')).el.querySelector('a[href="/stocks/nvda/"]'))).toEqual(want);
+    const top = (await section('analysts')).el.querySelector('.pt-bk-top a');
+    expect(askOf(top)).toMatchObject({ kind: 'holding', d: { basket: { name: 'SMH' } } });
+  });
+  it('a holding off the site (no link) answers nothing; a company the fund does not hold, nothing', async () => {
+    const r = await section('holdings');
+    const stray = document.createElement('a');
+    stray.setAttribute('href', '/stocks/zzzz/');
+    r.el.append(stray);
+    expect(askOf(stray)).toBeNull();
   });
 });

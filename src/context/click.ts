@@ -27,7 +27,7 @@ export interface TalkCtx { lens: 'news' | 'social'; count: string; label: string
 export interface FeedCtx { label: string; sub: string; day: string; text: string; pill: { text: string; cls: string } | null; href: string; group: string }
 export interface ListCtx { title: string; href: string; rank: number; of: number; cols: CtxCol[] }
 export interface PeersCtx { of: { ticker: string; name: string }; href: string; cols: CtxCol[] }
-export interface HoldingCtx { basket: { name: string; href: string }; weight: number; ret: number | null; points: number | null }
+export interface HoldingCtx { basket: { name: string; href: string }; whole: 'fund' | 'sector'; weight: number; ret: number | null; points: number | null }
 export interface PortfolioCtx {
   weight: number | null; ret: number | null; points: number | null; earnings: string | null; headline: { title: string; url: string } | null;
 }

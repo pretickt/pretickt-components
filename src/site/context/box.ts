@@ -5,6 +5,7 @@ import { PtCtxCalendar } from './calendar';
 import { PtCtxMap, PtCtxMover, PtCtxTalk } from './moves';
 import { PtCtxFeed, PtCtxNews } from './stories';
 import { PtCtxList, PtCtxPeers } from './lists';
+import { PtCtxHolding, PtCtxPortfolio } from './baskets';
 import { possessive } from '../../typologies/basket-words';
 
 const ISLAND = 'pt-click-box@1.0.0';
@@ -33,6 +34,9 @@ const originOf = (note: ClickNote): string => {
 export function kicker(note: ClickNote): string {
   // a company's peers are on that company's page: the page's title would only say it again
   if (note.kind === 'peers') return `From ${possessive(note.d.of.name)} peers`;
+  // a fund's or a sector's page is titled after it; the portfolio is the reader's own
+  if (note.kind === 'holding') return `From ${note.d.basket.name}`;
+  if (note.kind === 'portfolio') return 'From your portfolio';
   const origin = originOf(note), title = note.from.title.trim();
   if (note.from.path === '/') return `From ${origin} on the home page`;
   if (!title) return `From ${origin}`;
@@ -43,7 +47,7 @@ export function kicker(note: ClickNote): string {
 /** The body written for each kind (one `@case` per kind). */
 @Component({
   selector: 'pt-ctx-body',
-  imports: [PtCtxCalendar, PtCtxFeed, PtCtxList, PtCtxMap, PtCtxMover, PtCtxNews, PtCtxPeers, PtCtxTalk],
+  imports: [PtCtxCalendar, PtCtxFeed, PtCtxHolding, PtCtxList, PtCtxMap, PtCtxMover, PtCtxNews, PtCtxPeers, PtCtxPortfolio, PtCtxTalk],
   host: { class: 'pt-ctx-body' },
   template: `
     @let n = note();
@@ -57,6 +61,8 @@ export function kicker(note: ClickNote): string {
       @case ('news') {<pt-ctx-news [d]="n.d" [to]="n.to" [land]="n.land" />}
       @case ('list') {<pt-ctx-list [d]="n.d" [from]="n.from.path" />}
       @case ('peers') {<pt-ctx-peers [d]="n.d" [from]="n.from.path" />}
+      @case ('holding') {<pt-ctx-holding [d]="n.d" [from]="n.from.path" />}
+      @case ('portfolio') {<pt-ctx-portfolio [d]="n.d" />}
     }`,
 })
 export class PtCtxBody {
