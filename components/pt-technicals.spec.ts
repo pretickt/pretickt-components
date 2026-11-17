@@ -55,6 +55,29 @@ describe('pt-technicals', () => {
     expect(words).not.toContain('net');
   });
 
+  it('held: of the times with a month after them, at both horizons (review)', async () => {
+    const sup = (o: Partial<TechState>): Technicals => ({ ...demo, cards: demo.cards.map((c): TechCard => (c.key !== 'support' ? c : { ...c, state: 'near',
+      now: { level: 30, dist: -0.02, touches: 3 }, states: [{ ...c.states[0]!, key: 'near', ...o }] })) });
+    const st = sup({ total: 7, episodes: seven, held: 4, stock: [sum(7, 5, 0.06), sum(5, 3, 0.05)] });
+    const r = await render(PtTechnicals, { ticker: 'NVDA', card: 'support' }, withData({ 'technicals@1': st }));
+    expect(r.el.textContent!.replace(/\s+/g, ' ')).toContain('held 4 of 7 times');
+    await press(r.f, r.el, '3 months');
+    expect(r.el.textContent!.replace(/\s+/g, ' ')).toContain('held 4 of 7 times');
+  });
+
+  it('the only time is too recent: said once, never counted twice (review: CAT on Nov 16)', async () => {
+    const { words } = await view(withRsi({ total: 1, episodes: [{ ...ep('2026-09-25', 0), r: [null, null], m: [null, null] }], paths: null, stock: [sum(0, 0, 0), sum(0, 0, 0)] }));
+    expect(words).toContain('only 1 time');
+    expect(words).toContain('too recent');
+    expect(words).not.toContain('more time');
+  });
+
+  it('SPY: no "net" even where it has no count of its own (review)', async () => {
+    const spy = withRsi({ total: 0, episodes: [], paths: null, stock: [sum(0, 0, 0, null, null), sum(0, 0, 0, null, null)] }, { ticker: 'SPY', kind: 'etf', name: 'SPDR S&P 500 ETF Trust' });
+    const { words } = await view(spy);
+    expect(words).not.toContain('net');
+  });
+
   it('three months behind the toggle, without a new call', async () => {
     const st = withRsi({ total: 7, episodes: seven, stock: [sum(7, 5, 0.062), sum(7, 4, 0.11)] });
     const r = await render(PtTechnicals, { ticker: 'NVDA', card: 'rsi' }, withData({ 'technicals@1': st }));

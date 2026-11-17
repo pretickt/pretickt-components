@@ -15,7 +15,7 @@ export const TECH_STATES = {
 
 /** Five years of sessions; the levels read two years before each; a page needs a year; 1 and 3 months after; a new episode after 10 sessions out. */
 export const TECH = { WINDOW: 1260, WARMUP: 504, MIN_SESSIONS: 252, H: [21, 63] as const, GAP: 10, SR_EVERY: 5, NEAR: 0.05, BEYOND: 0.03,
-  KEEP: 20, PATHS: 12, STEP: 3, HUB: 300 } as const;
+  KEEP: 12, PATHS: 12, STEP: 3, HUB: 300 } as const;
 
 export interface TechSeries { dates: string[]; closes: number[]; highs: (number | null)[] }
 type A = (number | null)[];
@@ -109,8 +109,12 @@ export function computeTechnicals(s: TechSeries, o: { asOf: string; spy: Map<str
       held: kind ? eps.filter((e) => e.held === true).length : null, stock: [summarize(eps, 0, market), summarize(eps, 1, market)], all: null };
   };
   const line = (k: string, a: A, idx: number[], from = 0) => ({ k, v: idx.slice(from).map((i) => px(a[i])) });
+  // a mark on its chart's own date: a weekly chart's is the week's last session (review: 79% of the weekly marks were dropped)
+  const at = new Map(dates.map((d, i) => [d, i]));
+  const onChart = (t: string, idx: number[]) => { const i = at.get(t)!; let lo = 0, hi = idx.length - 1;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (idx[m]! < i) lo = m + 1; else hi = m; } return idx[lo]! >= i ? dates[idx[lo]!]! : null; };
   const marks = (states: StateOut[], idx: number[], from: number, keys?: string[]) => states.filter((st) => (keys ?? [st.key]).includes(st.key) && (st.paths || keys))
-    .flatMap((st) => st.episodes.filter((e) => e.t >= dates[idx[from]!]!).map((e) => ({ t: e.t, k: st.key })));
+    .flatMap((st) => st.episodes.filter((e) => e.t >= dates[idx[from]!]!).flatMap((e) => { const t = onChart(e.t, idx); return t ? [{ t, k: st.key }] : []; }));
   const cards: CardOut[] = [];
   const C = (i: number) => closes[i]!;
 
@@ -177,7 +181,7 @@ export function computeTechnicals(s: TechSeries, o: { asOf: string; spy: Map<str
   if (hNow != null) {
     const v = firstDefined(hist), st = hNow > 0 ? 'pos' : 'neg', flip = lastWhere(hT, (x) => x != null && (x > 0) !== (st === 'pos'));
     const states = [state('macd', 'pos', hist.map((x) => x != null && x > 0), v, st === 'pos'), state('macd', 'neg', hist.map((x) => x != null && x < 0), v, st === 'neg')];
-    cards.push({ key: 'macd', state: st, now: { hist: px(hNow), ago: flip >= 0 ? hT.length - 1 - flip - 1 : null },
+    cards.push({ key: 'macd', state: st, now: { hist: px(hNow), ago: flip >= 0 ? hT.length - 1 - flip : null },
       chart: { range: 'daily', from: 126, lines: [], levels: [], marks: marks(states, D, 126),
         pane: { k: 'macd', lines: [line('macd', mc.macd, D, 126), line('signal', mc.signal, D, 126)], bars: D.slice(126).map((i) => px(hist[i])), guides: [0] } }, states });
   }

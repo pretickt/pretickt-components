@@ -1067,7 +1067,8 @@
   .pt-tech-bar { @apply fill-pos; opacity: .7; }
   .pt-tech-bar-neg { @apply fill-neg; }
   .pt-tech-zero { @apply stroke-ink-soft; stroke-width: 1; }
-  .pt-tech-path { fill: none; @apply stroke-pos; stroke-width: 1; opacity: .45; }
+  .pt-tech-path { fill: none; @apply stroke-pos; stroke-width: 1.5; opacity: .45; pointer-events: stroke; cursor: pointer; }
+  .pt-tech-path:hover { opacity: 1; stroke-width: 2.5; }
   .pt-tech-path-neg { @apply stroke-neg; }
   .pt-tech-med { fill: none; @apply stroke-ink; stroke-width: 2.5; stroke-linejoin: round; }
   .pt-tech-pool { @apply stroke-primary; stroke-width: 3; }

@@ -128,7 +128,7 @@ export function afterChart(st: TechState, h: 0 | 1) {
               @if (after(s); as g) {
                 <svg class="pt-chart-svg pt-tech-svg" [attr.viewBox]="'0 0 ' + W + ' ' + AH" role="img" [attr.aria-label]="'Each time ' + episode(s) + ', ' + d.ticker + ' over the next ' + (h() ? 'three months' : 'month')">
                   <line class="pt-tech-zero" x1="0" [attr.x2]="g.x2" [attr.y1]="g.zero" [attr.y2]="g.zero" />
-                  @for (p of g.paths; track $index) {<path [class]="p.up ? 'pt-tech-path' : 'pt-tech-path pt-tech-path-neg'" [attr.d]="p.d" /><path class="pt-stats-hitline" [attr.d]="p.d" [attr.data-tip]="p.tip" />}
+                  @for (p of g.paths; track $index) {<path [class]="p.up ? 'pt-tech-path' : 'pt-tech-path pt-tech-path-neg'" [attr.d]="p.d" [attr.data-tip]="p.tip" />}
                   <path class="pt-tech-med" [attr.d]="g.med" />
                   @if (g.pool; as o) {<line class="pt-tech-pool" [attr.x1]="g.x2" [attr.x2]="W - M.r + 10" [attr.y1]="o.y" [attr.y2]="o.y" /><text class="pt-tech-lab" [attr.x]="W - M.r + 12" [attr.y]="o.y" dy="3">{{ o.label }}</text>}
                   @for (k of g.ticks; track k.x) {<text class="pt-axis" [attr.x]="k.x" [attr.y]="AH - 4" [attr.text-anchor]="k.anchor">{{ k.label }}</text>}
@@ -195,11 +195,13 @@ export class PtTechnicals {
       case 'ma200': return `${close}, ${side(n['dist'])} its 200-day moving average of ${money(n['ma'])}.`;
       case 'mas': return `${close}, ${side(n['d20'])} its 20-day, ${side(n['d50'])} its 50-day and ${side(n['d100'])} its 100-day moving average (${money(n['ma20'])}, ${money(n['ma50'])} and ${money(n['ma100'])}).`;
       case 'cross': {
-        const g = c.state === 'golden', since = n['ago'] != null ? ` The last ${g ? 'golden' : 'death'} cross was ${n['ago']} sessions before ${on}.` : ` It has been ${g ? 'above' : 'below'} it ${this.window()}.`;
+        const g = c.state === 'golden', name = g ? 'golden' : 'death', ago = n['ago'];
+        const since = ago == null ? ` It has been ${g ? 'above' : 'below'} it over the whole period shown.` : ago === 0 ? ` The ${name} cross came on ${on}.`
+          : ` The last ${name} cross was ${ago} ${ago === 1 ? 'session' : 'sessions'} before ${on}.`;
         return `${who}'s 50-day moving average (${money(n['ma50'])}) is ${g ? 'above' : 'below'} its 200-day (${money(n['ma200'])}) on ${on}.${since}`;
       }
       case 'bollinger': return `${close}, ${c.state === 'belowLower' ? 'below its lower Bollinger Band' : c.state === 'aboveUpper' ? 'above its upper Bollinger Band' : 'inside its Bollinger Bands'} (${money(n['lower'])} to ${money(n['upper'])}: the 20-day average ± 2 standard deviations).`;
-      case 'macd': return `${who}'s MACD histogram is ${c.state === 'pos' ? 'positive' : 'negative'} on ${on} (${n['hist']?.toFixed(2)}): the MACD line is ${c.state === 'pos' ? 'above' : 'below'} its signal line${n['ago'] != null ? `, for ${n['ago']} sessions` : ''}.`;
+      case 'macd': return `${who}'s MACD histogram is ${c.state === 'pos' ? 'positive' : 'negative'} on ${on} (${n['hist']?.toFixed(2)}): the MACD line is ${c.state === 'pos' ? 'above' : 'below'} its signal line${n['ago'] != null ? `, for ${n['ago']} ${n['ago'] === 1 ? 'session' : 'sessions'}` : ''}.`;
       case 'high': return `${close}, ${side(n['dist'])} its 52-week high of ${money(n['high'])}.`;
     }
   }
@@ -207,21 +209,25 @@ export class PtTechnicals {
   protected stockLine(s: TechState): string {
     const d = this.data.value()!, h = this.h(), m: TechSum = s.stock[h], later = h ? 'three months later' : 'a month later', what = this.episode(s);
     const recent = s.total - m.n, tail = recent > 0 ? ` (${recent} more ${recent === 1 ? 'time is' : 'times are'} too recent to count)` : '';
-    if (!s.total) return `${d.ticker}: ${what[0]!.toUpperCase()}${what.slice(1)} — not once ${this.window()}.`;
-    if (m.n < 3) return `${d.ticker} has done it only ${s.total} ${s.total === 1 ? 'time' : 'times'} ${this.window()}, when ${what}: ${dates(s.episodes.map((e) => date(e.t)))}.${tail}`;
+    if (!s.total) return `None ${this.window()}: ${d.ticker} never had a time when ${what}.`;
+    // the dates of every time, the too recent among them said once (review: «only 1 time … (1 more time is too recent)» on CAT)
+    const young = recent > 0 ? ` ${recent === s.total ? (s.total === 1 ? 'It is' : 'They are') : `${recent} of them ${recent === 1 ? 'is' : 'are'}`} too recent to count.` : '';
+    if (m.n < 3) return `${d.ticker} has done it only ${s.total} ${s.total === 1 ? 'time' : 'times'} ${this.window()}, when ${what}: ${dates(s.episodes.map((e) => date(e.t)))}.${young}`;
     const mkt = m.mkt != null ? `; the market ${pct(m.mkt)} over the same days, ${pct(m.net)} net` : '';
     return `The ${m.n} times ${what} ${this.window()}, ${d.ticker} was higher ${later} ${m.up} of ${m.n} times (median ${pct(m.med)}${mkt}).${tail}`;
   }
 
   protected heldLine(s: TechState): string | null {
     if (s.held == null || !s.total || s.stock[0].n < 3) return null;
-    return this.card() === 'support' ? `The support held ${s.held} of those times (no close more than 3% under it within a month).`
-      : `The resistance held ${s.held} of those times (no close more than 3% over it within a month).`;
+    // counted on the month after each time, at either horizon (review: «held X of those times» after the 3-month count)
+    const of = `${s.held} of ${s.stock[0].n} times`;
+    return this.card() === 'support' ? `The support held ${of} (no close more than 3% under it within a month).`
+      : `The resistance held ${of} (no close more than 3% over it within a month).`;
   }
 
   /** Every company's same count; no "net" on the market's own page (SPY against itself). */
   protected allLine(a: [TechSum, TechSum], s: TechState): string {
-    const m = a[this.h()], market = s.stock[this.h()].mkt != null || s.stock[this.h()].n === 0;
+    const m = a[this.h()], market = this.data.value()?.ticker !== 'SPY'; // SPY is the market: never «net» of itself (review)
     if (!m.n) return '';
     return `All companies on pretickt, same rule: higher ${this.h() ? 'three months' : 'a month'} later ${share(m.up, m.n)} of ${thousands(m.n)} times, median ${pct(m.med)}${m.net != null && market ? ` (${pct(m.net)} net of the market)` : ''}.`;
   }

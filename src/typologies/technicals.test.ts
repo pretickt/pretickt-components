@@ -77,6 +77,21 @@ describe('technicals@1: a stock\'s technical cards and what happened the other t
     expect(TechnicalsPayload.safeParse({ ...r.payload, ticker: 'NEW', name: 'New', kind: 'stock', cards: r.payload.cards }).success).toBe(true);
   });
 
+  it('a weekly chart marks every time on its week: each mark is a date of the chart (review: 79% were dropped)', () => {
+    const { s, spy } = demoSeries('NVDA');
+    const r = computeTechnicals(s, { asOf: s.dates.at(-1)!, spy })!;
+    const weekly = new Set(r.payload.weekly.t);
+    const marks = r.payload.cards.filter((c) => c.chart.range === 'weekly').flatMap((c) => c.chart.marks);
+    expect(marks.length).toBeGreaterThan(0);
+    for (const m of marks) expect(weekly.has(m.t), m.t).toBe(true);
+  });
+
+  it('MACD: the sessions it has been on its side, today included', () => {
+    const { s, spy } = demoSeries('NVDA');
+    const c = computeTechnicals(s, { asOf: s.dates.at(-1)!, spy })!.payload.cards.find((x) => x.key === 'macd')!;
+    expect(c.now['ago']).toBeGreaterThanOrEqual(1);
+  });
+
   it('under a year of closes: nothing', () => {
     const { s, spy } = demoSeries('NEW', 200);
     expect(computeTechnicals(s, { asOf: s.dates.at(-1)!, spy })).toBeNull();
