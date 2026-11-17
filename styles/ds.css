@@ -444,9 +444,12 @@
   }
   .pt-pf { display: grid; gap: .9rem; }
   /* /portfolio/'s bell (2026-11-15): one press opens the panel for every company of the portfolio shown */
-  .pt-abtn.pt-pf-bell { @apply inline-flex items-center gap-1.5 justify-self-start px-2.5 py-1 text-sm; }
-  .pt-abtn.pt-pf-bell svg { @apply size-4; }
-  .pt-abtn.pt-pf-bell[aria-pressed='true'] { @apply text-primary; }
+  /* more visible (Romeo, 2026-11-17: «il pulsante per avere gli alert deve essere più visibile»): the page's main button, filled and larger, the whole
+     width on a phone; once on, it turns quiet with the bell filled. Its hover is restated: .pt-abtn's own hover would put primary text on the primary fill */
+  .pt-abtn.pt-pf-bell { @apply inline-flex items-center justify-center gap-2 justify-self-start min-h-11 px-5 py-2 text-base font-semibold shadow-sm
+    border-transparent bg-primary text-primary-ink hover:border-transparent hover:bg-primary-hover hover:text-primary-ink max-sm:justify-self-stretch; }
+  .pt-abtn.pt-pf-bell svg { @apply size-5; }
+  .pt-abtn.pt-pf-bell[aria-pressed='true'] { @apply border-primary bg-surface-raised text-primary shadow-none hover:border-primary hover:bg-surface-raised hover:text-primary-hover; }
   .pt-abtn.pt-pf-bell[aria-pressed='true'] svg { fill: currentColor; }
   .pt-pf-sum { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: .6rem; margin: 0; }
   .pt-pf-sum div { display: grid; gap: .15rem; padding: .55rem .7rem; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-surface-raised); }
