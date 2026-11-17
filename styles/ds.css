@@ -451,6 +451,14 @@
   .pt-abtn.pt-pf-bell svg { @apply size-5; }
   .pt-abtn.pt-pf-bell[aria-pressed='true'] { @apply border-primary bg-surface-raised text-primary shadow-none hover:border-primary hover:bg-surface-raised hover:text-primary-hover; }
   .pt-abtn.pt-pf-bell[aria-pressed='true'] svg { fill: currentColor; }
+  /* the bell rings (Romeo, 2026-11-17: «aggiungi un'animazione della campanella»): a short swing from its top as the button shows, again every 6 s, and
+     once on hover (another name restarts it); still once the alerts are on, and for a reader who asked for less motion */
+  @keyframes pt-bell-ring { 0%, 100% { rotate: 0deg; } 10% { rotate: 16deg; } 22% { rotate: -14deg; } 34% { rotate: 10deg; } 46% { rotate: -7deg; } 58% { rotate: 4deg; } 70% { rotate: -2deg; } }
+  @keyframes pt-bell-ring-every { 0%, 15%, 100% { rotate: 0deg; } 1.5% { rotate: 16deg; } 3.3% { rotate: -14deg; } 5.1% { rotate: 10deg; } 6.9% { rotate: -7deg; } 8.7% { rotate: 4deg; } 10.5% { rotate: -2deg; } }
+  @media (prefers-reduced-motion: no-preference) {
+    .pt-abtn.pt-pf-bell[aria-pressed='false'] svg { transform-origin: 50% 8%; animation: pt-bell-ring-every 6s ease-in-out .6s infinite; }
+    .pt-abtn.pt-pf-bell[aria-pressed='false']:is(:hover, :focus-visible) svg { animation: pt-bell-ring .9s ease-in-out; }
+  }
   .pt-pf-sum { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: .6rem; margin: 0; }
   .pt-pf-sum div { display: grid; gap: .15rem; padding: .55rem .7rem; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-surface-raised); }
   .pt-pf-sum dt { font-size: .72rem; color: var(--color-ink-soft); }
