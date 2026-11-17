@@ -76,7 +76,7 @@ export type MetricPayload = z.infer<typeof MetricPayload>;
 export const METRIC_LABELS: Record<MetricKey, { label: string; unit: MetricItem['unit']; hint: string }> = {
   pe: { label: 'P/E', unit: 'x', hint: 'Price divided by trailing twelve-month earnings per share.' },
   pe_vs_sector: { label: 'P/E vs sector', unit: '%', hint: 'P/E relative to the median P/E of the same sector in the tracked universe.' },
-  pe_vs_own: { label: 'P/E vs own', unit: '%', hint: 'Current P/E versus the average of its last four quarter-end P/E ratios.' },
+  pe_vs_own: { label: 'P/E vs own', unit: '%', hint: 'Current P/E versus the median of its quarter-end P/E ratios over the last three years (at least eight).' },
   pt_upside: { label: 'Price target at', unit: '%', hint: 'Average of the latest target of each analyst firm in the last 12 months, versus the last close.' },
   consensus: { label: 'Consensus', unit: '', hint: 'Analyst rating consensus from the latest monthly snapshot of strong buy to strong sell counts.' },
   market_cap: { label: 'Market cap', unit: '$c', hint: 'Market capitalisation from the company profile.' },

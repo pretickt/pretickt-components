@@ -27,6 +27,12 @@ describe('the basket math, one implementation for the nightly and the page', () 
     expect(consensusOf({ strongBuy: 0, buy: 0, hold: 0, sell: 0, strongSell: 0 })).toBeNull();
   });
 
+  it('basketPe: a P/E under 1 is a per-share mistake, never a weight in the mean (BRK.B at 0.0x put SPY at 0.6x)', () => {
+    const lines = [line('AAA', 0.5, { pe: 20 }), line('BRK', 0.3, { pe: 0.013 }), line('BBB', 0.2, { pe: 30 })];
+    expect(basketPe(lines)).toEqual({ value: r(0.7 / (0.5 / 20 + 0.2 / 30), 2), share: 0.7 });
+    expect(basketPe([line('BRK', 1, { pe: 0.5 })])).toBeNull();
+  });
+
   it("valueMoves: the day's move is the sum of the points, from yesterday's values", () => {
     const m = valueMoves([
       { ticker: 'AAA', name: 'Aaa', logo: null, value: 300, ret: 0.1, headline: null },

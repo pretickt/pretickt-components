@@ -80,9 +80,14 @@ export function basketConsensus(lines: readonly BasketLine[]): BasketConsensus |
   const { sum, share } = sumConsensus(lines), read = consensusOf(sum);
   return read ? { buy: toShare((sum.strongBuy + sum.buy) / read.n), hold: toShare(sum.hold / read.n), sell: toShare((sum.sell + sum.strongSell) / read.n), n: read.n, label: read.label, share: toShare(share) } : null;
 }
-/** The weighted harmonic mean over positive P/E: a company with losses is left out of it and of its share. */
+/**
+ * Under this a P/E is a per-share mistake, not a price: a year's earnings worth more than the whole company (BRK.B's price over a Class A share's
+ * earnings read 0.0x, and in a harmonic mean its 1/P/E outweighed the rest: SPY 0.6x, financial services 0.1x, 2026-11-17).
+ */
+export const PE_FLOOR = 1;
+/** The weighted harmonic mean over positive P/E: a company with losses, or a P/E under PE_FLOOR, is left out of it and of its share. */
 export function basketPe(lines: readonly BasketLine[]): BasketPe | null {
-  const earning = lines.filter((l) => l.f.pe != null && l.f.pe > 0);
+  const earning = lines.filter((l) => l.f.pe! >= 1); // PE_FLOOR, written out: the portfolio page's bundle is at its budget (null >= 1 is false)
   const ew = earning.reduce((s, l) => s + l.weight, 0);
   return ew > 0 ? { value: round(ew / earning.reduce((s, l) => s + l.weight / l.f.pe!, 0), 2), share: toShare(ew) } : null;
 }
