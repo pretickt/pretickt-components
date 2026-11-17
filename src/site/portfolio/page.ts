@@ -36,7 +36,8 @@ export function readyMade(f: FactsFile): { top: Ready[]; sectors: Ready[] } {
   const all = Object.values(f.companies).sort((a, b) => (w.get(b.ticker) ?? 0) - (w.get(a.ticker) ?? 0))
     .filter((c) => !names.has(c.name) && names.add(c.name));
   const list = (id: string, name: string, cs: typeof all, d: string): Ready => ({ p: { ...watch(name, cs.map((c) => c.ticker)), id }, d });
-  const top: Ready[] = [{ p: examplePortfolio(f), d: '' }];
+  const mega = examplePortfolio(f);
+  const top: Ready[] = [{ p: mega, d: mega === FIVE ? 'five large companies' : `the ${mega.rows.length} companies worth $200 billion or more` }];
   if (w.size) top.push(list('sp20', 'S&P 500 top 20', all.filter((c) => w.has(c.ticker)).slice(0, 20), 'the 20 largest companies of the S&P 500'),
     list('tech20', 'Tech top 20', all.filter((c) => c.sector === 'Technology').slice(0, 20), 'the 20 largest technology companies'));
   const sectors = [...new Set(all.map((c) => c.sector!).filter(Boolean))].sort().map((s) => {
@@ -69,8 +70,8 @@ const holds = (n: number) => (n === 0 ? 'holds-none' : n === 1 ? 'holds-one' : n
         </div>
         <pt-portfolio-editor [stored]="stored()" [facts]="f" [saving]="saving()" [today]="today" [away]="!!pre()" (changed)="keep($event)" />
         @if (unread) {<p class="pt-note">What this browser had saved could not be read: it is kept aside, and the page starts empty.</p>}
-        @if (example()) {<p class="pt-note">An example: {{ current() === five ? 'five large companies' : 'the ' + current().rows.length + ' companies worth $200 billion or more' }}, weighted equally. Make your own with New portfolio or New watchlist.</p>}
-        @else if (pre(); as q) {<p class="pt-note">Ready-made: {{ q.d }}, weighted equally.</p>}
+        @if (pre(); as q) {<p class="pt-note">Ready-made: {{ q.d }}, weighted equally.</p>}
+        @else if (example()) {<p class="pt-note">An example: {{ ready()!.top[0]!.d }}, weighted equally. Make your own with New portfolio or New watchlist.</p>}
         @if (follow.on && group().length; as n) {
           <button type="button" class="pt-abtn pt-abtn-wide pt-pf-bell" [attr.aria-pressed]="groupOn()" (click)="bell($event)"><svg ptIcon="bell"></svg>{{ (groupOn() ? 'Alerts on for ' : 'Get alerts for ') + (n === 1 ? 'this company' : 'these ' + n + ' companies') }}</button>
         }
@@ -189,7 +190,6 @@ export class PtPortfolioPage {
     }
   }
 
-  protected readonly five = FIVE;
   protected readonly date = date;
   protected readonly dayMonth = dayMonth;
   protected readonly href = href;

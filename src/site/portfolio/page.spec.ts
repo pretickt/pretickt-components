@@ -85,6 +85,9 @@ describe('the ready-made lists (Romeo, 2026-11-17: «portafogli predefiniti: meg
     await m.settle();
     expect(m.text()).toContain('Ready-made: the 3 Consumer Defensive companies on pretickt, largest first, weighted equally.');
     expect(m.el.querySelector('.pt-pf-bell')!.textContent!.trim()).toBe('Get alerts for these 3 companies');
+    await m.press('Mega caps');
+    expect(m.text()).toContain('Ready-made: the 3 companies worth $200 billion or more, weighted equally.');
+    expect(m.text()).not.toContain('An example');
     await m.press('Chips to watch Watchlist');
     expect(m.text()).not.toContain('Ready-made:');
     expect(m.text()).toContain('Edit lines');
