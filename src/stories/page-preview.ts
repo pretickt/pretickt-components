@@ -43,6 +43,8 @@ export interface PreviewPage {
   alerts?: true;
   /** The alert an email opened (`?alert=`): its card on top (pt-alert-event). */
   alertEvent?: AlertEvent;
+  /** Structured data of the page's own (the blog's BlogPosting, its Blog), as PageDef `ld` carries it. */
+  ld?: Record<string, unknown>[];
 }
 
 export const BASE = 'https://www.pretickt.com';
@@ -149,7 +151,7 @@ export class PtPagePreview {
       itemListElement: p.crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.label, item: `${BASE}${c.href ?? p.path}` })) } : null;
     const site = p.site ? { '@context': 'https://schema.org', '@graph': [{ '@type': 'WebSite', name: 'pretickt', url: `${BASE}/` },
       { '@type': 'Organization', name: 'pretickt', url: `${BASE}/`, logo: `${BASE}/favicon.svg` }] } : null;
-    return [site, crumbs, faqLd(this.faq())].filter((x) => x !== null).map(json);
+    return [site, crumbs, ...(p.ld ?? []), faqLd(this.faq())].filter((x) => x !== null).map(json);
   });
   protected readonly trusted = (html: string): SafeHtml => this.san.bypassSecurityTrustHtml(html);
   protected readonly BELL = ICON_PATHS['bell'];

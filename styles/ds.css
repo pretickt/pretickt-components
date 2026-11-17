@@ -1424,6 +1424,74 @@
   .pt-bk-facts { display: grid; gap: .5rem 1rem; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); margin: .25rem 0 0; }
   .pt-bk-facts dt { font-size: .75rem; color: var(--color-ink-soft); }
   .pt-bk-facts dd { margin: 0; font-family: var(--font-mono, monospace); font-size: .875rem; color: var(--color-ink); }
+
+  /* the blog (pretickt-platform plant/src/generate/blog.ts, 2026-11-17): an article in a reading column with its sections beside it on
+     a laptop (above it on a phone), its tables scrolling sideways inside their frame, the components it talks about as the Share button
+     draws them; the index's cards. Static markup of the generator's, the same on every screen: nothing hidden on a phone. */
+  .pt-blog-layout { display: grid; gap: 1.5rem; margin-top: 1.25rem; }
+  @media (width >= 64rem) {
+    .pt-blog-layout { grid-template-columns: minmax(0, 44rem) minmax(0, 1fr); column-gap: 3rem; align-items: start; }
+    .pt-blog-layout > .pt-article { grid-column: 1; grid-row: 1; }
+    .pt-blog-layout > .pt-toc { grid-column: 2; grid-row: 1; position: sticky; top: 5rem; }
+  }
+  .pt-toc { padding: .75rem 1rem; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-surface-raised); font-size: .875rem; }
+  .pt-toc-title { margin: 0 0 .5rem; font-size: var(--text-2xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--color-ink-soft); }
+  .pt-toc ol { display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; }
+  .pt-toc a { color: var(--color-ink-soft); text-decoration: none; line-height: 1.4; }
+  .pt-toc a:hover { color: var(--color-primary); }
+  .pt-article { min-width: 0; font-size: 1.0625rem; line-height: 1.7; color: var(--color-ink); overflow-wrap: break-word; }
+  .pt-article > :first-child { margin-top: 0; }
+  .pt-article p { margin: 1.1em 0 0; }
+  .pt-article h2 { margin: 2.2em 0 0; font-size: 1.375rem; line-height: 1.3; font-weight: 650; letter-spacing: -.01em; scroll-margin-top: 6rem; }
+  .pt-article h3 { margin: 1.8em 0 0; font-size: 1.125rem; line-height: 1.35; font-weight: 600; scroll-margin-top: 6rem; }
+  .pt-article :is(h2, h3) + p { margin-top: .6em; }
+  .pt-article a { color: var(--color-primary); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  .pt-article a:hover { color: var(--color-primary-hover); }
+  .pt-article :is(ul, ol) { margin: 1em 0 0; padding-left: 1.4em; }
+  .pt-article ul { list-style: disc; }
+  .pt-article ol { list-style: decimal; }
+  .pt-article li + li { margin-top: .4em; }
+  .pt-article li::marker { color: var(--color-ink-soft); }
+  .pt-article strong { font-weight: 600; }
+  .pt-article blockquote { margin: 1.25em 0 0; padding: .75rem 1rem; border-left: 3px solid var(--color-brand); border-radius: 0 var(--radius-control) var(--radius-control) 0;
+    background: var(--color-surface-raised); font-size: 1rem; }
+  .pt-article blockquote p:first-child { margin-top: 0; }
+  .pt-article .pt-table-wrap { margin: 1.5em 0 0; }
+  .pt-article .pt-table { font-size: .9375rem; line-height: 1.45; }
+  .pt-article .pt-table th { vertical-align: bottom; }
+  .pt-article .pt-table td { vertical-align: top; min-width: 7rem; }
+  .pt-article .pt-table td.pt-num { min-width: 0; }
+  .pt-article .pt-table th.pt-num { text-align: right; }
+  .pt-article .pt-table tr:has(strong) td { background: var(--color-surface); }
+  .pt-article-fig { margin: 1.75em 0 0; }
+  /* the image at most its own size (a small card stays sharp), never wider than the column; a phone gets the phone's drawing (<picture>) */
+  .pt-article-fig > a { display: block; width: fit-content; max-width: 100%; overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--radius-control);
+    background: var(--color-surface-raised); transition: border-color .15s; }
+  .pt-article-fig > a:hover { border-color: var(--color-primary); }
+  .pt-article-fig picture { display: block; }
+  .pt-article-fig img { display: block; max-width: 100%; height: auto; }
+  .pt-article-fig figcaption { margin-top: .5rem; font-size: .8125rem; line-height: 1.5; color: var(--color-ink-soft); }
+  .pt-article-foot { margin-top: 2.5rem; padding-top: 1.25rem; border-top: 1px solid var(--color-border); font-size: .875rem; line-height: 1.6; color: var(--color-ink-soft); }
+  .pt-article-foot p:first-child { margin-top: 0; }
+  .pt-article-foot a { color: var(--color-ink-soft); }
+  .pt-article-share { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: 2rem; }
+  .pt-article-share > span { margin-right: .25rem; font-size: .875rem; font-weight: 600; color: var(--color-ink); }
+  .pt-blog-cards { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); margin: 1.5rem 0 0; padding: 0; list-style: none; }
+  .pt-blog-card { display: flex; height: 100%; flex-direction: column; overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--radius-control);
+    background: var(--color-surface-raised); color: var(--color-ink); text-decoration: none; transition: border-color .15s; }
+  .pt-blog-card:hover { border-color: var(--color-primary); }
+  .pt-blog-card img { display: block; width: 100%; height: auto; aspect-ratio: 1200 / 630; border-bottom: 1px solid var(--color-border); }
+  .pt-blog-card-body { display: grid; gap: .4rem; padding: .9rem 1rem 1rem; }
+  .pt-blog-kind { font-size: var(--text-2xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--color-ink-soft); }
+  .pt-blog-card h2 { margin: 0; font-size: 1.0625rem; line-height: 1.35; font-weight: 600; }
+  .pt-blog-card:hover h2 { color: var(--color-primary); }
+  .pt-blog-card p { margin: 0; font-size: .875rem; line-height: 1.55; color: var(--color-ink-soft); }
+  .pt-blog-card time { font-size: .75rem; color: var(--color-ink-soft); }
+  /* the other articles under one (and the home's section): a title per row with its kind */
+  .pt-blog-list { display: grid; gap: .6rem; margin: 0; padding: 0; list-style: none; }
+  .pt-blog-list a { font-size: .9375rem; font-weight: 600; color: var(--color-ink); text-decoration: none; }
+  .pt-blog-list a:hover { color: var(--color-primary); }
+  .pt-blog-list span { display: block; font-size: .75rem; color: var(--color-ink-soft); }
 }
 
 @keyframes pt-dash-flow { to { stroke-dashoffset: -7; } }
