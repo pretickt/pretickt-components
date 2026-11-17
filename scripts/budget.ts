@@ -9,7 +9,8 @@
 // page: 54,000 until 2026-11-15, +1,500 for /portfolio/'s example of the mega caps and its bell for all the companies shown (Romeo, 2026-11-15: «il portafoglio base fallo delle mega caps e non capisco dove dovrei abilitare le notifiche»); measured 55,152, before 53,850
 // page: 55,500 until 2026-11-16, +250 for /portfolio/'s «Earnings ahead» and «News» lists leaving the click's note; measured 55,749 (Romeo, 2026-11-16: «Ok ad alzare il budget della pagina portafoglio di 250 byte»)
 // page: 55,750 until 2026-11-17, +2,550 for /portfolio/'s ready-made lists (mega caps, S&P 500 top 20, tech top 20, the sectors) and their bells; measured 58,250 (Romeo, 2026-11-17: «aggiungi portafogli predefiniti … fallo senza fare domande e metti su www pubblica ti autorizzo»)
-export const BUDGET = { main: 245_900, component: 32_000, page: 58_300 } as const;
+// main: 245,900 until 2026-11-17, +1,100 for pt-technicals and technicals@1, the technicals page's cards (Romeo, 2026-11-17: «approvo il budget del codice comune a circa 247.000»)
+export const BUDGET = { main: 247_000, component: 32_000, page: 58_300 } as const;
 
 export function overBudget(kind: keyof typeof BUDGET, bytes: number): string | null {
   return bytes > BUDGET[kind] ? `${kind} bundle is ${bytes} bytes, over the ${BUDGET[kind]}-byte budget` : null;
