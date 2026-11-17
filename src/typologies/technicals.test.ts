@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { rsi, smaLast, supportResistance } from '../indicators';
 import { needKey } from '../api';
 import { getTypology } from './index';
-import { demoSeries, TECH_CARDS, TECH_STATES, technicalsDemo, TechnicalsPayload } from './technicals';
-import { computeTechnicals, episodesOf, outcome, summarize, TECH } from './technicals-math';
+import { demoSeries, technicalsDemo, TechnicalsPayload } from './technicals';
+import { computeTechnicals, episodesOf, outcome, summarize, TECH, TECH_CARDS, TECH_STATES } from './technicals-math';
 
 const T = true, F = false;
 const flat = (n: number, f: (i: number) => number) => {

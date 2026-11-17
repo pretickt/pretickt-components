@@ -2,8 +2,6 @@ import * as z from 'zod/mini';
 import { DEMO_ASOF, DEMO_COMPANIES, demoName, IsoDate, prng, round, sessionsBack, Ticker } from './common';
 import { computeTechnicals, TECH_CARDS, TECH_STATES, type TechSeries } from './technicals-math';
 
-export { TECH_CARDS, TECH_STATES };
-export type { TechCardKey } from './technicals-math';
 
 /**
  * A stock's or a fund's technicals (pt-technicals, the technicals page; spec pretickt/docs/superpowers/specs/2026-11-17-technicals-page-design.md),

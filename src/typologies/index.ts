@@ -95,6 +95,7 @@ export * from './attention';
 export * from './daily';
 export * from './stats';
 export * from './technicals';
+export * from './technicals-math';
 export * from './alerts';
 export * from './news';
 export * from './move-breakdown';
