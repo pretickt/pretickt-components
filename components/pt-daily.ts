@@ -1,6 +1,6 @@
 /**
  * What changed for this company since the session before — and, when the page carries it, what is close to the last close?
- * @version 1.1.0
+ * @version 1.2.0
  * @evidence Romeo, 2026-11-12: «per ogni azienda, mostriamo quel summary ogni giorno diverso con il confronto col giorno prima, fatto ogni notte alla chiusura»
  * @evidence Romeo, 2026-11-13: «le principali devono sempre avere scheda in company page (almeno con niente di rilevante)»
  * @evidence Romeo, 2026-11-14: «Sempre la più vicina e usa badge e grassetto per aiutare la lettura»
@@ -62,7 +62,7 @@ function ladder(closes: readonly number[], level: number, close: number): Pic | 
 }
 
 /** A fact's small picture from the platform's numbers; null when they cannot be drawn honestly (too few points, an empty range, nothing to split). */
-export function picture(v: DailyVisual): Pic | null {
+export function picture(v: DailyVisual, who = 'Stock'): Pic | null {
   switch (v.v) {
     case 'level': return ladder(v.closes, v.level, v.close);
     case 'ma200': return ladder(v.closes, v.ma200, v.close);
@@ -107,20 +107,23 @@ export function picture(v: DailyVisual): Pic | null {
       ] };
     }
     case 'split': {
-      // a waterfall from zero, one row a part — the market, the sector, the stock's own — each starting where the last ended, then the move itself
-      // from zero: mixed signs read as they are, and the bars sum to the move; each row labelled on the right
-      const parts = [['market', v.market], ['sector', v.sector], ['own', v.specific]] as const;
-      if (!ok(v.ret, v.market, v.sector, v.specific) || parts.every(([, p]) => Math.abs(p) < 1e-9)) return null;
-      const steps = [0, v.market, v.market + v.sector, v.market + v.sector + v.specific];
-      const lo = Math.min(...steps, v.ret), hi = Math.max(...steps, v.ret), span = hi - lo || 1;
-      const PW = 64, x = (u: number) => r1(X0 + ((u - lo) / span) * PW), zero = x(0);
-      const shapes: Shape[] = parts.map(([c, p], i) => {
-        const a = x(steps[i]!), b = x(steps[i + 1]!);
-        return { k: 'rect', c: c === 'own' ? (p > 0 ? 'pos' : p < 0 ? 'neg' : 'flat') : c, x: Math.min(a, b), y: 2 + i * 9, w: r1(Math.max(Math.abs(b - a), 0.6)), h: 6 };
+      // three real moves from one zero — the stock, the market (SPY), the average stock of its sector (the market plus the sector's part) — each
+      // named on the left and valued on the right, red fell and green rose: nothing to add up (www, AAPL on 2026-11-16: «-1.0%» over the parts
+      // -1.9 -1.1 +2.1 — Romeo, 2026-11-17: «vedo scritto Apple fell e poi nel grafico è salita?»). Tenths as the labels show them.
+      if (!ok(v.ret, v.market, v.sector)) return null;
+      const t10 = (u: number) => Math.round(u * 1000) / 1000;
+      const rows = [[who, t10(v.ret)], ['SPY', t10(v.market)], ['Sector avg', t10(v.market + v.sector)]] as const;
+      if (rows.every(([, u]) => u === 0)) return null;
+      const lo = Math.min(0, ...rows.map(([, u]) => u)), span = Math.max(0, ...rows.map(([, u]) => u)) - lo || 1;
+      const B0 = 30, BW = 48, x = (u: number) => r1(B0 + ((u - lo) / span) * BW), zero = x(0);
+      const shapes: Shape[] = [];
+      rows.forEach(([name, u], i) => {
+        const y = 3 + i * 12;
+        shapes.push({ k: 'rect', c: u > 0 ? 'pos' : u < 0 ? 'neg' : 'flat', x: Math.min(zero, x(u)), y, w: r1(Math.max(Math.abs(x(u) - zero), 0.6)), h: 8 });
+        shapes.push({ k: 'text', c: i === 0 ? 'sum' : 'label', x: X0, y: y + 6.5, t: name, a: 'start' });
+        shapes.push({ k: 'text', c: i === 0 ? 'sum' : 'label', x: X1, y: y + 6.5, t: pct(u), a: 'end' });
       });
-      shapes.push({ k: 'rect', c: 'total', x: Math.min(zero, x(v.ret)), y: 29, w: r1(Math.max(Math.abs(x(v.ret) - zero), 0.6)), h: 7 });
       shapes.push({ k: 'rule', c: 'zero', x1: zero, y1: 0, x2: zero, y2: 40 });
-      [v.market, v.sector, v.specific, v.ret].forEach((p, i) => shapes.push({ k: 'text', c: i === 3 ? 'sum' : 'label', x: X1, y: 7.5 + i * 9, t: pct(p), a: 'end' }));
       return { shapes };
     }
     case 'target': {
@@ -161,8 +164,8 @@ export const tipOf = (facts: readonly DailyFact[], at: number | undefined): stri
   const f = at == null ? undefined : facts[at];
   return f ? tip({ [f.chip?.label ?? 'Fact']: f.text }) : undefined;
 };
-const drawn = (v: DailyVisual | undefined, facts: readonly DailyFact[], at: number | undefined): (Pic & { tip: string | undefined }) | null => {
-  const p = v ? picture(v) : null;
+const drawn = (v: DailyVisual | undefined, facts: readonly DailyFact[], at: number | undefined, who?: string): (Pic & { tip: string | undefined }) | null => {
+  const p = v ? picture(v, who) : null;
   return p ? { ...p, tip: tipOf(facts, at) } : null;
 };
 
@@ -270,10 +273,10 @@ export class PtDaily {
   protected readonly date = date;
   protected readonly named = named;
   protected readonly segments = segments;
-  protected readonly cardPic = computed(() => { const c = this.daily.value()?.card; return c ? drawn(c.visual, c.facts, c.visualAt) : null; });
+  protected readonly cardPic = computed(() => { const c = this.daily.value()?.card; return c ? drawn(c.visual, c.facts, c.visualAt, this.ticker()) : null; });
   protected readonly watchPic = computed(() => {
     const w = this.daily.value()?.watch;
-    return w?.kind === 'half' ? drawn(w.visual, w.facts, w.visualAt) : w?.kind === 'fact' ? drawn(w.visual, [w.fact], 0) : null;
+    return w?.kind === 'half' ? drawn(w.visual, w.facts, w.visualAt, this.ticker()) : w?.kind === 'fact' ? drawn(w.visual, [w.fact], 0, this.ticker()) : null;
   });
   protected readonly withChips = withChips;
   protected readonly title = WATCH_TITLE;

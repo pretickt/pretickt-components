@@ -186,12 +186,14 @@ describe('pt-daily', () => {
       expect(of(picture({ v: 'date', date: '2026-11-19', sessions: 3 }), 'text').map((t) => t.t)).toContain('in 3 sessions');
       expect(of(picture({ v: 'date', date: '2026-11-19', sessions: 1 }), 'text').map((t) => t.t)).toContain('in 1 session');
     });
-    it('the move\'s split: widths as the parts\' sizes, the sum labelled as the move', () => {
-      const p = picture({ v: 'split', ret: -0.043, market: -0.004, sector: -0.008, specific: -0.031 })!;
-      const [m, sec, own] = of(p, 'rect');
-      expect(sec.w / m.w).toBeCloseTo(2, 1); expect(own.w / m.w).toBeCloseTo(7.75, 0);   // widths rounded to 0.1 of a 64-unit plot
-      expect(own.c).toBe('neg');
-      expect(of(p, 'text').map((t) => t.t)).toContain('-4.3%');
+    it('the move\'s split: three real moves from one zero — the stock, the market (SPY), the average stock of its sector — red fell, green rose', () => {
+      // www, AAPL on 2026-11-16: «-1.0%» over the parts -1.9 -1.1 +2.1 (Romeo, 2026-11-17: «vedo scritto Apple fell e poi nel grafico è salita?»)
+      const p = picture({ v: 'split', ret: -0.0098, market: -0.0191, sector: -0.0115, specific: 0.0208 }, 'AAPL')!;
+      const bars = of(p, 'rect'), zero = of(p, 'rule', 'zero')[0].x1;
+      expect(bars).toHaveLength(3);
+      for (const b of bars) { expect(b.x + b.w).toBeCloseTo(zero, 0); expect(b.c).toBe('neg'); }
+      expect(bars[0].w / bars[2].w).toBeCloseTo(10 / 31, 1);
+      expect(of(p, 'text').map((x) => x.t)).toEqual(['AAPL', '-1.0%', 'SPY', '-1.9%', 'Sector avg', '-3.1%']);
     });
     it('a target before and after on one scale; the ratings as two bars on one scale', () => {
       const t = picture({ v: 'target', before: 208.1, after: 212.4 })!;
@@ -260,18 +262,13 @@ describe('pt-daily 1.1: the final review\'s fixes', () => {
     expect(gap(200, 240)).toBeGreaterThan(0.6);
     expect(gap(240, 200)).toBeGreaterThan(0.6);
   });
-  it('the move\'s split is a waterfall from zero: each part starts where the last ended, the total ends at the move, each labelled', () => {
-    // PG's day: +1.1% = market -0.4% + sector +1.7% + its own -0.2%
-    const p = picture({ v: 'split', ret: 0.011, market: -0.004, sector: 0.017, specific: -0.002 })!;
-    const [m, s, own, total] = of(p, 'rect');
-    const zero = of(p, 'rule', 'zero')[0].x1;
-    expect(m.x + m.w).toBeCloseTo(zero, 0);                  // the market fell: its bar ends at zero
-    expect(s.x).toBeCloseTo(m.x, 0);                         // the sector starts where the market ended
-    expect(own.x).toBeCloseTo(s.x + s.w - own.w, 0);         // its own part falls back from the sector's end
-    expect(total.x).toBeCloseTo(zero, 0);
-    expect(total.x + total.w).toBeCloseTo(own.x, 0);         // the total ends where the own part ended: the move
-    expect(own.c).toBe('neg');
-    expect(total.c).toBe('total');
-    expect(of(p, 'text').map((t) => t.t)).toEqual(['-0.4%', '+1.7%', '-0.2%', '+1.1%']);
+  it('the move\'s split with mixed signs: each bar from zero, its own way', () => {
+    // PG's day: +1.1%, the market -0.4%, the average stock of its sector +1.3%
+    const p = picture({ v: 'split', ret: 0.011, market: -0.004, sector: 0.017, specific: -0.002 }, 'PG')!;
+    const [st, m, s] = of(p, 'rect'), zero = of(p, 'rule', 'zero')[0].x1;
+    expect(st.x).toBeCloseTo(zero, 0); expect(st.c).toBe('pos');
+    expect(m.x + m.w).toBeCloseTo(zero, 0); expect(m.c).toBe('neg');
+    expect(s.x).toBeCloseTo(zero, 0); expect(s.c).toBe('pos');
+    expect(of(p, 'text').map((x) => x.t)).toEqual(['PG', '+1.1%', 'SPY', '-0.4%', 'Sector avg', '+1.3%']);
   });
 });
