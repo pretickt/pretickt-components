@@ -126,6 +126,8 @@ platform change (schema here + resolver in the private platform + a public-data 
   amber everywhere. Tokens (colours, radius) are CSS variables: `--color-pos`, `--color-neg`, `--color-warn` (fills: dots, bars,
   lines), `--color-pos-ink`, `--color-neg-ink`, `--color-warn-ink` (**text** in a tone: ≥ 4.5:1), `--color-ink`, `--color-ink-soft`,
   `--color-surface`, `--color-primary`… HTML text is never under 11px (`text-2xs`); `text-3xs`/`text-4xs` are chart text in SVG units.
+- **The blog** (static markup of the platform's `plant/src/generate/blog.ts`, 2026-11-17): `pt-blog-layout`, `pt-toc`, `pt-article` (its `pt-article-fig`,
+  `pt-article-foot`, `pt-article-share`), `pt-blog-cards`/`pt-blog-card`, `pt-blog-list`; stories in `src/stories/blog.stories.ts` (mirror blog.ts by hand).
 - **Format** (deterministic, the same on server and browser — never `Intl`/`toLocale*`): `num(v,digits)`, `pct(fraction →
   "+12.3%")`, `level(fraction → "12.3%")`, `usd(v,{compact,signed,digits})`, `money(v,digits)`, `amount(cash)`, `compact`,
   `date(iso → "Sep 30, 2026")`, `month(ym → "Mar 26")`, `dayMonth(iso → "Oct 30")`, `tone(v, flatBand)`, `href(url)` (http(s) or a site path, else `#`),
