@@ -980,13 +980,13 @@
   .pt-why-lead { @apply text-lg font-semibold; }
   .pt-bd { @apply my-3 space-y-1.5; }
   .pt-bd-row { @apply grid grid-cols-[9rem_1fr_4.5rem] items-center gap-2 text-sm; }
-  .pt-bd-k { @apply truncate text-ink-soft; }
+  .pt-bd-k { @apply leading-tight text-ink-soft; }  /* wraps: «Average Communication Services stock» is the label, not a cut */
   .pt-bd-track { @apply relative h-3 rounded-full bg-surface; }
   .pt-bd-bar { @apply absolute top-0 h-3 min-w-0.5 rounded-full; }
-  /* the waterfall's zero (pt-why-today 2.4): the parts step from it, the total starts on it */
+  /* pt-why-today 2.4: the three moves drawn from one zero; the company's own row first and stronger */
   .pt-bd-zero { @apply absolute -top-1 -bottom-1 w-px bg-ink-soft/50; }
-  .pt-bd-total { @apply border-t border-border pt-1.5 font-medium; }
-  .pt-bd-total .pt-bd-k { @apply text-ink; }
+  .pt-bd-self { @apply font-medium; }
+  .pt-bd-self .pt-bd-k { @apply text-ink; }
   .pt-bd-pos { @apply bg-pos; }
   .pt-bd-neg { @apply bg-neg; }
   .pt-bd-flat, .pt-bd-na { @apply bg-ink-soft/40; }

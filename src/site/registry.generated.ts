@@ -44,7 +44,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
   'pt-screen': { version: '2.7.0', sample: {} },
   'pt-stats': { version: '1.0.1', sample: { ticker: 'NVDA' } },
   'pt-value': { version: '1.2.0', sample: { ticker: 'NVDA' } },
-  'pt-why-today': { version: '2.3.1', sample: { ticker: 'NVDA' } },
+  'pt-why-today': { version: '2.4.0', sample: { ticker: 'NVDA' } },
 };
 
 /**
