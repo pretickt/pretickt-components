@@ -25,6 +25,26 @@ export function examplePortfolio(f: FactsFile | null | undefined): StoredPortfol
   const mega = (f?.mega ?? []).filter((t) => f?.companies[t]);
   return mega.length ? watch('Mega caps', mega) : FIVE;
 }
+/**
+ * The ready-made lists (Romeo, 2026-11-17: «aggiungi portafogli predefiniti: mega caps, tech top 20, sp500 top 20, e dei settori con allarmi»): read-only
+ * watchlists computed from the facts, the largest first by their weight in SPY (the companies it does not hold after them), one line a company (GOOGL,
+ * not GOOG too). `d` is what the page says of the list. The bell follows its companies as they are tonight.
+ */
+export interface Ready { p: StoredPortfolio; d: string }
+export function readyMade(f: FactsFile): { top: Ready[]; sectors: Ready[] } {
+  const w = new Map(f.funds['SPY']?.weights), names = new Set<string>();
+  const all = Object.values(f.companies).sort((a, b) => (w.get(b.ticker) ?? 0) - (w.get(a.ticker) ?? 0))
+    .filter((c) => !names.has(c.name) && names.add(c.name));
+  const list = (id: string, name: string, cs: typeof all, d: string): Ready => ({ p: { ...watch(name, cs.map((c) => c.ticker)), id }, d });
+  const top: Ready[] = [{ p: examplePortfolio(f), d: '' }];
+  if (w.size) top.push(list('sp20', 'S&P 500 top 20', all.filter((c) => w.has(c.ticker)).slice(0, 20), 'the 20 largest companies of the S&P 500'),
+    list('tech20', 'Tech top 20', all.filter((c) => c.sector === 'Technology').slice(0, 20), 'the 20 largest technology companies'));
+  const sectors = [...new Set(all.map((c) => c.sector!).filter(Boolean))].sort().map((s) => {
+    const cs = all.filter((c) => c.sector === s);
+    return list(`sector:${s}`, s, cs, `the ${cs.length} ${s} companies on pretickt, largest first`);
+  });
+  return { top, sectors };
+}
 /** The reader's own date (a purchase date after it is refused): the local day, not the UTC one an evening in New York is already past. */
 export const localToday = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const holds = (n: number) => (n === 0 ? 'holds-none' : n === 1 ? 'holds-one' : n <= 3 ? 'holds-few' : 'holds-many');
@@ -42,9 +62,15 @@ const holds = (n: number) => (n === 0 ? 'holds-none' : n === 1 ? 'holds-one' : n
     @else if (f === null) {<p class="pt-na">Data not available</p>}
     @else {
       <div class="pt-pf">
-        <pt-portfolio-editor [stored]="stored()" [facts]="f" [saving]="saving()" [today]="today" (changed)="keep($event)" />
+        @let r = ready()!;
+        <div class="pt-pf-tabs pt-pf-ready"><span class="pt-meta">Ready-made</span>
+          @for (q of r.top; track q.p.id) {<button type="button" class="pt-pf-tab" [class.pt-pf-tab-on]="current() === q.p" [attr.aria-pressed]="current() === q.p" (click)="pick(q.p.id)">{{ q.p.name }}</button>}
+          @if (r.sectors.length) {<select class="pt-pf-input" [class.pt-pf-tab-on]="pre()?.p?.id?.startsWith('sector:')" aria-label="A sector" (change)="pick($any($event.target).value)"><option value="">Sectors</option>@for (q of r.sectors; track q.p.id) {<option [value]="q.p.id" [selected]="current() === q.p">{{ q.p.name }}</option>}</select>}
+        </div>
+        <pt-portfolio-editor [stored]="stored()" [facts]="f" [saving]="saving()" [today]="today" [away]="!!pre()" (changed)="keep($event)" />
         @if (unread) {<p class="pt-note">What this browser had saved could not be read: it is kept aside, and the page starts empty.</p>}
         @if (example()) {<p class="pt-note">An example: {{ current() === five ? 'five large companies' : 'the ' + current().rows.length + ' companies worth $200 billion or more' }}, weighted equally. Make your own with New portfolio or New watchlist.</p>}
+        @else if (pre(); as q) {<p class="pt-note">Ready-made: {{ q.d }}, weighted equally.</p>}
         @if (follow.on && group().length; as n) {
           <button type="button" class="pt-abtn pt-abtn-wide pt-pf-bell" [attr.aria-pressed]="groupOn()" (click)="bell($event)"><svg ptIcon="bell"></svg>{{ (groupOn() ? 'Alerts on for ' : 'Get alerts for ') + (n === 1 ? 'this company' : 'these ' + n + ' companies') }}</button>
         }
@@ -100,8 +126,12 @@ export class PtPortfolioPage {
   private readonly needLine = signal(false);
   private readonly lineBox = viewChild<ElementRef<HTMLElement>>('lineBox');
 
-  private readonly sample = computed(() => examplePortfolio(this.facts()));
-  protected readonly current = computed(() => { const s = this.stored(); return s.list.find((p) => p.id === s.active) ?? s.list[0] ?? this.sample(); });
+  protected readonly ready = computed(() => { const f = this.facts(); return f ? readyMade(f) : null; });
+  private readonly sample = computed(() => this.ready()?.top[0]!.p ?? FIVE);
+  /** The ready-made list chosen, until the reader picks one of their own. */
+  private readonly picked = signal<string | null>(null);
+  protected readonly pre = computed(() => { const r = this.ready(), id = this.picked(); return id && r ? [...r.top, ...r.sectors].find((q) => q.p.id === id) ?? null : null; });
+  protected readonly current = computed(() => { const s = this.stored(); return this.pre()?.p ?? s.list.find((p) => p.id === s.active) ?? s.list[0] ?? this.sample(); });
   protected readonly example = computed(() => this.current() === this.sample());
 
   /** The bells (FOLLOW_ENABLED): the companies of the portfolio shown that the site follows (a fund has no bell yet), one press for all. */
@@ -142,7 +172,9 @@ export class PtPortfolioPage {
     effect((clean) => { globalThis.addEventListener?.('storage', other); clean(() => globalThis.removeEventListener?.('storage', other)); });
   }
 
+  protected pick(id: string) { this.picked.set(id || null); }
   protected keep(next: Stored) {
+    this.picked.set(null);
     this.stored.set(next);
     if (this.saving() && !savePortfolios(this.storage, next)) this.saving.set(false);
   }

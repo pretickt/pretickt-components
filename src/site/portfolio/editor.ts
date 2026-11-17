@@ -110,6 +110,8 @@ export class PtPortfolioEditor {
   readonly stored = input.required<Stored>();
   readonly facts = input.required<FactsFile>();
   readonly saving = input(true);
+  /** A ready-made list is shown: no tab of the reader's is on, and their lines' tools wait. */
+  readonly away = input(false);
   /** The reader's date: a purchase date after it is refused. */
   readonly today = input.required<string>();
   readonly changed = output<Stored>();
@@ -132,7 +134,7 @@ export class PtPortfolioEditor {
   protected readonly amountIn = signal('');
   protected readonly dateIn = signal('');
 
-  protected readonly active = computed(() => { const s = this.stored(); return s.list.find((p) => p.id === s.active) ?? s.list[0] ?? null; });
+  protected readonly active = computed(() => { const s = this.stored(); return this.away() ? null : s.list.find((p) => p.id === s.active) ?? s.list[0] ?? null; });
   /** The site's companies and funds for the line added by hand: the same suggestions as the preview's. */
   protected readonly matches = computed(() => suggest(this.facts(), this.query()));
 
