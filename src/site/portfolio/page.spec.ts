@@ -3,9 +3,9 @@ import { TestBed } from '@angular/core/testing';
 import { askAt, PT_FOLLOW, PT_FOLLOW_ON, PT_STORE, PtStore, type FollowState } from '@pretickt/components/context';
 import { PtFollow, type FollowPress } from '@pretickt/components/follow';
 import { date, money } from '@pretickt/components/format';
-import { DEMO_CLOSES, DEMO_FACTS, DEMO_PORTFOLIOS, demoPortfolio } from '../../stories/fake-portfolio';
+import { DEMO_CLOSES, DEMO_FACTS, DEMO_FACTS_SPY, DEMO_PORTFOLIOS, demoPortfolio } from '../../stories/fake-portfolio';
 import { PT_PORTFOLIO_FILES, PT_PORTFOLIO_STORAGE } from './files';
-import { localToday, PtPortfolioPage } from './page';
+import { localToday, PtPortfolioPage, readyMade } from './page';
 import { mount as mountPage } from './start';
 import { PORTFOLIO_KEY, type Stored } from './store';
 
@@ -19,10 +19,10 @@ class Mem implements Storage {
   setItem(k: string, v: string) { this.m.set(k, v); }
 }
 
-async function mount(stored: Stored | string | null = null, o: { fail?: string[]; sheet?: string[]; mega?: string[]; follows?: string[] } = {}) {
+async function mount(stored: Stored | string | null = null, o: { fail?: string[]; sheet?: string[]; mega?: string[]; follows?: string[]; spy?: boolean } = {}) {
   const storage = new Mem(), asked: string[] = [], events: string[] = [], logos: string[][] = [];
   const sheet = o.sheet ? { ...DEMO_FACTS, sprite: { file: '/logos/sprite.1a2b3c4d.webp', px: 40, cols: 25, tickers: o.sheet } } : DEMO_FACTS;
-  const facts = o.mega ? { ...sheet, mega: o.mega } : sheet;
+  const facts = o.spy ? WITH_SPY : o.mega ? { ...sheet, mega: o.mega } : sheet;
   let follow: FollowState = { follows: o.follows ?? [], seen: {} };
   const followed: unknown[] = o.follows ? [{ provide: PT_FOLLOW_ON, useValue: true }, { provide: PT_FOLLOW, useValue: { read: () => follow, write: (s: FollowState) => { follow = s; } } }] : [];
   // a logo cut out of the sheet, as the browser gives it (here its ticker in base64, so a test can tell whose it is)
@@ -46,6 +46,56 @@ async function mount(stored: Stored | string | null = null, o: { fail?: string[]
   const sum = () => Object.fromEntries([...el.querySelectorAll('.pt-pf-sum div')].map((d) => [d.querySelector('dt')!.textContent!.trim(), d.querySelector('dd')!.textContent!.trim()]));
   return { el, storage, asked, events, logos, press, sum, settle, text: () => el.textContent!.replace(/\s+/g, ' '), h2: () => [...el.querySelectorAll('h2')].map((h) => h.textContent!.trim()) };
 }
+
+const WITH_SPY = DEMO_FACTS_SPY;
+
+describe('the ready-made lists (Romeo, 2026-11-17: «portafogli predefiniti: mega caps, tech top 20, sp500 top 20, e dei settori»)', () => {
+  it("the largest first by SPY's weight, one line a company; tech the Technology sector; a list a sector with its companies", () => {
+    const r = readyMade(WITH_SPY);
+    expect(r.top.map((q) => [q.p.id, q.p.name, q.p.rows.map((x) => x.t)])).toEqual([
+      ['example', 'Mega caps', ['NVDA', 'AAPL', 'MSFT']],
+      ['sp20', 'S&P 500 top 20', ['MSFT', 'NVDA', 'AAPL', 'AMZN', 'KO']],
+      ['tech20', 'Tech top 20', ['MSFT', 'NVDA', 'AAPL', 'KO', 'META', 'AVGO', 'AMD', 'BRK.B', 'JPM']],
+    ]);
+    expect(r.top.every((q) => q.p.kind === 'watchlist' && q.p.unit === 'equal')).toBe(true);
+    expect(r.sectors.map((q) => [q.p.id, q.p.rows.map((x) => x.t), q.d])).toEqual([
+      ['sector:Consumer Defensive', ['AMZN', 'INTC', 'NKE'], 'the 3 Consumer Defensive companies on pretickt, largest first'],
+      ['sector:Technology', ['MSFT', 'NVDA', 'AAPL', 'KO', 'META', 'AVGO', 'AMD', 'BRK.B', 'JPM'], 'the 9 Technology companies on pretickt, largest first'],
+    ]);
+    // no SPY in the facts: no top 20, the sectors still
+    expect(readyMade(DEMO_FACTS).top.map((q) => q.p.id)).toEqual(['example']);
+  });
+
+  it('the page offers them beside your own; one is shown until you pick yours, and its bell follows its companies', async () => {
+    const m = await mount({ v: 1, active: 'demo-watch', list: [DEMO_PORTFOLIOS.watchlist] }, { spy: true, follows: [] });
+    expect([...m.el.querySelectorAll('.pt-pf-ready button')].map((b) => b.textContent!.trim())).toEqual(['Mega caps', 'S&P 500 top 20', 'Tech top 20']);
+    expect([...m.el.querySelectorAll('.pt-pf-ready option')].map((o) => o.textContent!.trim())).toEqual(['Sectors', 'Consumer Defensive', 'Technology']);
+    expect(m.el.querySelector('.pt-pf-tab-on')!.textContent).toContain('Chips to watch');
+    await m.press('S&P 500 top 20');
+    expect(m.text()).toContain('Ready-made: the 20 largest companies of the S&P 500, weighted equally.');
+    expect([...m.el.querySelectorAll('.pt-pf-tab-on')].map((b) => b.textContent!.trim())).toEqual(['S&P 500 top 20']);
+    expect(m.text()).not.toContain('Edit lines'); // your list's tools wait: they would act on a list not shown
+    const presses: FollowPress[] = [];
+    TestBed.inject(PtFollow).listen((p) => presses.push(p));
+    m.el.querySelector<HTMLButtonElement>('.pt-pf-bell')!.click();
+    expect(presses.map(({ ticker, name, tickers }) => ({ ticker, name, tickers }))).toEqual([{ ticker: 'group:sp20', name: 'S&P 500 top 20', tickers: ['MSFT', 'NVDA', 'AAPL', 'AMZN', 'KO'] }]);
+    const sel = m.el.querySelector<HTMLSelectElement>('.pt-pf-ready select')!;
+    sel.value = 'sector:Consumer Defensive';
+    sel.dispatchEvent(new Event('change'));
+    await m.settle();
+    expect(m.text()).toContain('Ready-made: the 3 Consumer Defensive companies on pretickt, largest first, weighted equally.');
+    expect(m.el.querySelector('.pt-pf-bell')!.textContent!.trim()).toBe('Get alerts for these 3 companies');
+    await m.press('Mega caps');
+    expect(m.text()).toContain('Ready-made: the 3 companies worth $200 billion or more, weighted equally.');
+    expect(m.text()).not.toContain('An example');
+    await m.press('Chips to watch Watchlist');
+    expect(m.text()).not.toContain('Ready-made:');
+    expect(m.text()).toContain('Edit lines');
+    // nothing saved: the mega caps are the example, their button on
+    const none = await mount(null, { spy: true });
+    expect(none.el.querySelector('.pt-pf-ready .pt-pf-tab-on')!.textContent!.trim()).toBe('Mega caps');
+  });
+});
 
 describe('the portfolio page', () => {
   it('shows the example when nothing is saved', async () => {

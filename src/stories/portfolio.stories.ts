@@ -10,17 +10,17 @@ import { PtPortfolioEditor } from '../site/portfolio/editor';
 import { PT_PORTFOLIO_FILES, PT_PORTFOLIO_STORAGE } from '../site/portfolio/files';
 import { PtPortfolioPage } from '../site/portfolio/page';
 import { PORTFOLIO_KEY, type Stored } from '../site/portfolio/store';
-import { DEMO_CLOSES, DEMO_FACTS, DEMO_PORTFOLIOS } from './fake-portfolio';
+import { DEMO_CLOSES, DEMO_FACTS, DEMO_FACTS_SPY, DEMO_PORTFOLIOS } from './fake-portfolio';
 import { story } from './story';
 
 const GROUP = 'Portfolio page';
 const TODAY = '2026-10-01';
 /** The page on the made-up files, its storage in memory (a story never touches the reader's own). */
-function page(stored: Stored | null, saving = true, mega?: string[]): Provider[] {
+function page(stored: Stored | null, saving = true, mega?: string[], facts = DEMO_FACTS): Provider[] {
   const m = new Map<string, string>(stored ? [[PORTFOLIO_KEY, JSON.stringify(stored)]] : []);
   const storage = { get length() { return m.size; }, clear: () => m.clear(), getItem: (k: string) => m.get(k) ?? null, key: (i: number) => [...m.keys()][i] ?? null,
     removeItem: (k: string) => void m.delete(k), setItem: (k: string, v: string) => { if (!saving) throw new Error('private window'); m.set(k, v); } } as Storage;
-  return [{ provide: PT_PORTFOLIO_FILES, useValue: { facts: async () => (mega ? { ...DEMO_FACTS, mega } : DEMO_FACTS), closes: async (k: string) => DEMO_CLOSES.get(k) ?? null } }, { provide: PT_PORTFOLIO_STORAGE, useValue: () => storage }];
+  return [{ provide: PT_PORTFOLIO_FILES, useValue: { facts: async () => (mega ? { ...facts, mega } : facts), closes: async (k: string) => DEMO_CLOSES.get(k) ?? null } }, { provide: PT_PORTFOLIO_STORAGE, useValue: () => storage }];
 }
 
 export const stories = [
@@ -28,6 +28,9 @@ export const stories = [
   // Romeo, 2026-11-15: «il portafoglio base fallo delle mega caps e non capisco dove dovrei abilitare le notifiche» (the bells on: its bell under the note)
   story(PtPortfolioPage, { name: 'The page · nothing saved: the mega caps, and the bell for all of them', group: GROUP,
     providers: [...page(null, true, ['NVDA', 'AAPL', 'MSFT', 'AMZN', 'META', 'AVGO', 'BRK.B', 'JPM']), { provide: PT_FOLLOW_ON, useValue: true }, { provide: PT_FOLLOW, useValue: { read: () => ({ follows: [], seen: {} }), write: () => undefined } }, PtFollow] }),
+  // Romeo, 2026-11-17: «aggiungi portafogli predefiniti: mega caps, tech top 20, sp500 top 20, e dei settori con allarmi che arrivano sulle aziende come per la campanella»
+  story(PtPortfolioPage, { name: 'The page · the ready-made lists beside your own, the bells on', group: GROUP,
+    providers: [...page({ v: 1, active: 'demo-watch', list: [DEMO_PORTFOLIOS.watchlist] }, true, undefined, DEMO_FACTS_SPY), { provide: PT_FOLLOW_ON, useValue: true }, { provide: PT_FOLLOW, useValue: { read: () => ({ follows: [], seen: {} }), write: () => undefined } }, PtFollow] }),
   story(PtPortfolioPage, { name: 'The page · a portfolio in shares, with purchase dates and a fund', group: GROUP, providers: page({ v: 1, active: 'demo-shares', list: [DEMO_PORTFOLIOS.shares, DEMO_PORTFOLIOS.watchlist] }) }),
   story(PtPortfolioPage, { name: 'The page · a watchlist', group: GROUP, providers: page({ v: 1, active: 'demo-watch', list: [DEMO_PORTFOLIOS.shares, DEMO_PORTFOLIOS.watchlist] }) }),
   story(PtPortfolioPage, { name: 'The page · a portfolio we cover under 80%', group: GROUP, providers: page({ v: 1, active: 'demo-low', list: [DEMO_PORTFOLIOS.low] }) }),

@@ -25,6 +25,12 @@ export const DEMO_FACTS: FactsFile = {
   funds: { DEMO: { name: 'Demo Large-Cap ETF', logo: null, close: 512.4, ret: 0.004, coverage: 0.93, weights: companies.slice(0, 8).map((c, i): [string, number] => [c.ticker, round([0.2, 0.17, 0.15, 0.12, 0.1, 0.08, 0.06, 0.05][i]!, 4)]) } },
 };
 
+/** The facts with SPY's weights on the demo companies (the ready-made lists' order) and a second share class of Apple (same name, smaller weight). */
+export const DEMO_FACTS_SPY: FactsFile = { ...DEMO_FACTS, mega: ['NVDA', 'AAPL', 'MSFT'],
+  companies: { ...DEMO_FACTS.companies, AAPLX: { ...DEMO_FACTS.companies['AAPL']!, ticker: 'AAPLX' } },
+  funds: { ...DEMO_FACTS.funds, SPY: { name: 'Demo S&P 500 ETF', logo: null, close: 600, ret: 0, coverage: 0.9,
+    weights: [['MSFT', 0.07], ['AAPL', 0.06], ['AAPLX', 0.03], ['NVDA', 0.065], ['AMZN', 0.04], ['KO', 0.01]] } } };
+
 /** A year of weekday sessions before DEMO_ASOF, each company's close walking back from tonight's. */
 function oneYear(): ClosesFile {
   const dates: string[] = [];
