@@ -121,8 +121,11 @@ platform change (schema here + resolver in the private platform + a public-data 
 - **Classes first** (global `ds.css`, Tailwind 4): `pt-head` (title row with controls), `pt-lede`, `pt-note`, `pt-meta` (small
   secondary text), `pt-answer` (a page's answer sentence), `pt-prose` (static text: paragraphs and lists), `pt-na` (the not-available box — only for that), `pt-busy` (loading), `pt-table-wrap/pt-table/pt-num`,
   `pt-badges/pt-badge`, `pt-t-pos/neg/flat/na` (signed text), `pt-dot-pos/neg/flat/na`, `pt-news/pt-news-item`, `pt-spark`,
-  `pt-chart/pt-chart-svg/pt-line/pt-grid/pt-axis`, `pt-legend/pt-key`. Tones are always `pos/neg/flat/na`. Tokens (colours,
-  radius) are CSS variables: `--color-pos`, `--color-neg`, `--color-ink`, `--color-ink-soft`, `--color-surface`, `--color-primary`…
+  `pt-chart/pt-chart-svg/pt-line/pt-grid/pt-axis`, `pt-legend/pt-key`, `pt-btn` + `pt-btn-primary` (the action that starts
+  something) / `pt-btn-quiet` / `pt-btn-danger`, `pt-btn-sm` (inside a chart or a row). Tones are always `pos/neg/flat/na`; flat is
+  amber everywhere. Tokens (colours, radius) are CSS variables: `--color-pos`, `--color-neg`, `--color-warn` (fills: dots, bars,
+  lines), `--color-pos-ink`, `--color-neg-ink`, `--color-warn-ink` (**text** in a tone: ≥ 4.5:1), `--color-ink`, `--color-ink-soft`,
+  `--color-surface`, `--color-primary`… HTML text is never under 11px (`text-2xs`); `text-3xs`/`text-4xs` are chart text in SVG units.
 - **Format** (deterministic, the same on server and browser — never `Intl`/`toLocale*`): `num(v,digits)`, `pct(fraction →
   "+12.3%")`, `level(fraction → "12.3%")`, `usd(v,{compact,signed,digits})`, `money(v,digits)`, `amount(cash)`, `compact`,
   `date(iso → "Sep 30, 2026")`, `month(ym → "Mar 26")`, `dayMonth(iso → "Oct 30")`, `tone(v, flatBand)`, `href(url)` (http(s) or a site path, else `#`),
