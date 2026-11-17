@@ -1,6 +1,6 @@
 import * as z from 'zod/mini';
 import { DEMO_ASOF, DEMO_COMPANIES, demoName, IsoDate, prng, round, sessionsBack, Ticker } from './common';
-import { computeTechnicals, TECH_CARDS, TECH_STATES, type TechSeries } from './technicals-math';
+import { computeTechnicals, TECH_CARDS, type TechSeries } from './technicals-math';
 
 
 /**
