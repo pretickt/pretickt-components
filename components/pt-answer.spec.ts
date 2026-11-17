@@ -55,6 +55,11 @@ describe('pt-answer', () => {
     expect(await text({ topic: 'technicals', ticker: 'NVDA' }, { 'price-series@1': [{ ticker: 'NVDA', points }], 'metric@1': card })).toBe(
       'Nvidia NVDA closed at $120.00 on Oct 16, 2026, 16.8% above its 200-day moving average of $102.70 and 8.7% above its 50-day moving average of ' +
       '$110.40. It is 8.6% below its 52-week high of $131.25; its 52-week low is $98.50.');
+    // the technicals page's figures beside them (2026-11-17): the RSI and how far the nearest support and resistance are, as the badges
+    const m = (key: string, value: number): MetricItem => ({ key, label: key, value, text: null, unit: '%', delta: null, tone: 'flat', range: null, icon: null, hint: '', asOf: ASOF });
+    expect(await text({ topic: 'technicals', ticker: 'NVDA' }, { 'price-series@1': [{ ticker: 'NVDA', points }], 'metric@1': [...card, m('rsi14', 23.4), m('support', -0.028), m('resistance', 0.163)] })).toBe(
+      'Nvidia NVDA closed at $120.00 on Oct 16, 2026, 16.8% above its 200-day moving average of $102.70 and 8.7% above its 50-day moving average of ' +
+      '$110.40. It is 8.6% below its 52-week high of $131.25; its 52-week low is $98.50. Its 14-day RSI is 23; its nearest support is 2.8% below the price and its nearest resistance 16.3% above.');
     // a young listing: the 50-day average and its range so far
     expect(await text({ topic: 'technicals', ticker: 'NVDA' }, { 'price-series@1': [{ ticker: 'NVDA', points: points.slice(-60) }], 'metric@1': [] })).toBe(
       'Nvidia NVDA closed at $120.00 on Oct 16, 2026, 8.7% above its 50-day moving average of $110.40. It is 0.8% below its high since ' +

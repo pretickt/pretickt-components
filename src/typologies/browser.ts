@@ -13,6 +13,8 @@ export type * from './common';
 export type * from './company';
 export type * from './daily';
 export type * from './stats';
+export type * from './technicals';
+export type { TechCardKey } from './technicals-math';
 export type * from './events';
 export type * from './feed';
 export type * from './follow';

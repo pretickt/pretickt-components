@@ -3,7 +3,7 @@
  * price target, its peers, its latest quarter, its insiders, its next earnings date; who leads a market list; a calendar month, week or day at a glance.
  * Company topics name the company as people search it, with its ticker ("Nvidia NVDA"): the sentence an answer engine quotes stands on its own.
  * Each company a sentence names is a link with its logo (PtSay, PtMention): on the site its card opens on hover, the page's own company too.
- * @version 1.10.2
+ * @version 1.11.0
  * @evidence DataForSEO round 18 (2026-11-14): "nvidia stock price history" 2,900/month, "will nvidia stock go up" 1,900, "<company> all time high": `history`, the history page's answer
  * @evidence design of the fund pages, 2026-11-05: `topic: 'basket'`, the page's first sentence about a fund
  * @evidence design of the sector pages, 2026-11-07: `topic: 'sector'`, the sector's companies, what they are worth and what the targets on them average
@@ -164,7 +164,7 @@ export class PtAnswer {
   // the year's daily bars of the hub's price chart (pt-price-events asks the same): the averages and the range come from them
   protected readonly bars = this.pt.priceSeries(() => { const t = this.of('technicals'); return t ? { tickers: [t], range: '1y', interval: '1d', rebase: false } : null; });
   /** the 52-week range the company card shows beside the answer: traded highs and lows (the series' bars are adjusted for dividends) */
-  protected readonly range52 = this.pt.metric(() => { const t = this.of('technicals'); return t ? { ticker: t, metrics: ['range_52w'] } : null; });
+  protected readonly range52 = this.pt.metric(() => { const t = this.of('technicals'); return t ? { ticker: t, metrics: ['range_52w', 'rsi14', 'support', 'resistance'] } : null; });
   protected readonly leaders = this.pt.screen(() => {
     if (this.topic() !== 'list') return null;
     const s = this.sector();
@@ -293,7 +293,12 @@ export class PtAnswer {
     const mas = ma200 === null ? fifty : `${versus(c / ma200 - 1)} its 200-day moving average of ${money(ma200)} and ${fifty}`;
     const range = pts.length >= 252 ? `its 52-week high of ${money(hi)}; its 52-week low is ${money(lo)}`
       : `its high since ${date(year[0]!.t)} of ${money(hi)}; its low since then is ${money(lo)}`;
-    return say`${n} closed at ${money(c)} on ${date(last.t)}, ${mas}. It is ${versus(c / hi - 1)} ${range}.`;
+    // the technicals page's figures, as the badges read them (2026-11-17): the RSI and how far the nearest levels are
+    const v = (k: string) => card?.find((m) => m.key === k)?.value ?? null, rsi = v('rsi14'), sup = v('support'), res = v('resistance');
+    const away = (x: number) => `${pct(Math.abs(x)).replace('+', '')}`;
+    const levels = [sup != null ? `its nearest support is ${away(sup)} below the price` : null, res != null ? `its nearest resistance ${away(res)} above` : null].filter(Boolean).join(' and ');
+    const tech = rsi == null ? (levels ? ` ${levels.charAt(0).toUpperCase()}${levels.slice(1)}.` : '') : ` Its 14-day RSI is ${Math.round(rsi)}${levels ? `; ${levels}` : ''}.`;
+    return say`${n} closed at ${money(c)} on ${date(last.t)}, ${mas}. It is ${versus(c / hi - 1)} ${range}.${tech}`;
   }
 
   private peerAnswer(): Said | null {

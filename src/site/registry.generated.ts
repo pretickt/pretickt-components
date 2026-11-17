@@ -20,12 +20,13 @@ import { PtPriceTarget } from '../../components/pt-price-target';
 import { PtQuality } from '../../components/pt-quality';
 import { PtScreen } from '../../components/pt-screen';
 import { PtStats } from '../../components/pt-stats';
+import { PtTechnicals } from '../../components/pt-technicals';
 import { PtValue } from '../../components/pt-value';
 import { PtWhyToday } from '../../components/pt-why-today';
 
 /** Every component: its version, and props it can render with (the build renders each once before any page, see warmUp). */
 export const REGISTRY: Record<string, { version: string; sample: Record<string, unknown> }> = {
-  'pt-answer': { version: '1.10.2', sample: {} },
+  'pt-answer': { version: '1.11.0', sample: {} },
   'pt-basket': { version: '1.3.0', sample: {} },
   'pt-calendar': { version: '3.4.0', sample: { month: '2026-09' } },
   'pt-company-card': { version: '1.4.0', sample: { ticker: 'NVDA' } },
@@ -43,6 +44,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
   'pt-quality': { version: '0.3.1', sample: { ticker: 'NVDA' } },
   'pt-screen': { version: '2.7.0', sample: {} },
   'pt-stats': { version: '1.0.1', sample: { ticker: 'NVDA' } },
+  'pt-technicals': { version: '1.0.0', sample: { ticker: 'NVDA' } },
   'pt-value': { version: '1.2.0', sample: { ticker: 'NVDA' } },
   'pt-why-today': { version: '2.4.0', sample: { ticker: 'NVDA' } },
 };
@@ -53,7 +55,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
  */
 @Component({
   selector: 'div[ptSlot]',
-  imports: [PtAnswer, PtBasket, PtCalendar, PtCompanyCard, PtCompanyHeader, PtDaily, PtFeed, PtFinancials, PtInsiders, PtLogoMap, PtMetric, PtMovers, PtNews, PtPriceEvents, PtPriceTarget, PtQuality, PtScreen, PtStats, PtValue, PtWhyToday],
+  imports: [PtAnswer, PtBasket, PtCalendar, PtCompanyCard, PtCompanyHeader, PtDaily, PtFeed, PtFinancials, PtInsiders, PtLogoMap, PtMetric, PtMovers, PtNews, PtPriceEvents, PtPriceTarget, PtQuality, PtScreen, PtStats, PtTechnicals, PtValue, PtWhyToday],
   providers: [Pt, { provide: PT_SLOT, useFactory: () => { const injector = inject(Injector); return () => injector.get(PtSlot).id(); } }],
   host: { class: 'pt-island', '[attr.data-island]': 'id()', '[class.pt-island-error]': 'pt.failed()' },
   template: `
@@ -76,6 +78,7 @@ export const REGISTRY: Record<string, { version: string; sample: Record<string, 
       @case ('pt-quality') { @defer (hydrate on viewport) {<pt-quality [ticker]="$any(p()).ticker" />} }
       @case ('pt-screen') { @defer (hydrate on viewport) {<pt-screen [list]="$any(p()).list" [peersOf]="$any(p()).peersOf" [limit]="$any(p()).limit ?? 25" [sector]="$any(p()).sector" [link]="$any(p()).link ?? 'hub'" />} }
       @case ('pt-stats') { @defer (hydrate on viewport) {<pt-stats [ticker]="$any(p()).ticker" />} }
+      @case ('pt-technicals') { @defer (hydrate on viewport) {<pt-technicals [ticker]="$any(p()).ticker" [card]="$any(p()).card ?? 'rsi'" />} }
       @case ('pt-value') { @defer (hydrate on viewport) {<pt-value [ticker]="$any(p()).ticker" [compact]="$any(p()).compact ?? false" />} }
       @case ('pt-why-today') { @defer (hydrate on viewport) {<pt-why-today [ticker]="$any(p()).ticker" [window]="$any(p()).window ?? '1d'" />} }
     }
