@@ -16,13 +16,41 @@ describe('pt-why-today', () => {
     expect(out).toContain('The market (SPY) fell 1.2%');
     // the sector page's «Technology −1.7%» weighs companies by value; this is the average company's move, and says so (www, 2026-11-15)
     expect(out).toContain('the average Technology stock fell 2.0%');
-    expect((await html(base())).match(/class="pt-bd-row"/g)).toHaveLength(3);
+    expect((await html(base())).match(/class="pt-bd-row/g)).toHaveLength(4); // the three parts and the total
   });
   it('the sector\'s row says it is the sector beside the market: «Technology stocks fell 2.0%» above and «Technology sector -0.8%» below read as two figures for one thing (www, 2026-11-15)', async () => {
     const out = await text(base());
     expect(out).toContain('Technology vs market');
     expect(out).not.toContain('Technology sector');
     expect(await text(base({ sectorName: null as never }))).toContain('Sector vs market');
+  });
+  // www, AAPL on 2026-11-16: «Apple fell 1.0%», bars −1.9 −1.1 +2.1 (= −0.9) and «Most of the move is specific to Apple» beside a green bar
+  // (Romeo, 2026-11-17: «perché in questa immagine vedo scritto Apple fell e poi nel grafico è salita?»)
+  const AAPL = base({ ret: -0.00979594128048955, marketRet: -0.01911528825377462, sectorRet: -0.03059991169943731, market: -0.01911528825377462,
+    sector: -0.01148462344566269, specific: 0.02080397041894776, driver: 'stock' });
+  const rows = async (m: MoveBreakdown) => [...(await render(PtWhyToday, { ticker: 'NVDA' }, withData({ 'move-breakdown@1': m }))).el.querySelectorAll('.pt-bd-row')]
+    .map((r) => ({ k: r.querySelector('.pt-bd-k')!.textContent!.trim(), v: r.querySelector('.pt-bd-v')!.textContent!.trim(), bar: r.querySelector('.pt-bd-bar')!.getAttribute('style') }));
+  it('ends on the total, and the parts as shown add up to it and to the sentence above (rounded through the running sums)', async () => {
+    const r = await rows(AAPL);
+    expect(r.map((x) => [x.k, x.v])).toEqual([['Market (SPY)', '-1.9%'], ['Technology vs market', '-1.2%'], ['NVDA specific', '+2.1%'], ['NVDA total', '-1.0%']]);
+    const out = await text(AAPL);
+    expect(out).toContain('The market (SPY) fell 1.9%; the average Technology stock fell 3.1%.');
+    expect(out).toMatch(/fell 1\.0% on/);
+  });
+  it('draws a waterfall: each part starts where the one before ended, the total from zero', async () => {
+    // from -3.1% to 0: market 0 → -1.9, sector -1.9 → -3.1, specific -3.1 → -1.0, total 0 → -1.0
+    const r = await rows(AAPL);
+    expect(r.map((x) => x.bar)).toEqual(['left: 38.7097%; width: 61.2903%;', 'left: 0%; width: 38.7097%;', 'left: 0%; width: 67.7419%;',
+      'left: 67.7419%; width: 32.2581%;']);
+  });
+  it('never calls «most of the move» a part that went the other way', async () => {
+    const out = await text(AAPL);
+    expect(out).not.toContain('Most of the move');
+    expect(out).toContain('did better than the average Technology stock: without its own +2.1% it would have fallen 3.1%.');
+    const up = await text(base({ ret: 0.01, marketRet: 0.019, sectorRet: 0.031, market: 0.019, sector: 0.012, specific: -0.021, driver: 'stock' }));
+    expect(up).toContain('did worse than the average Technology stock: without its own -2.1% it would have risen 3.1%.');
+    const market = await text(base({ ret: -0.004, marketRet: 0.02, sectorRet: 0.015, market: 0.02, sector: -0.005, specific: -0.019, driver: 'market' }));
+    expect(market).toContain('fell even though the market rose: its sector and its own move pulled it down.');
   });
   it('names the driver', async () => {
     expect(await text(base({ driver: 'stock' }))).toContain('Most of the move is specific to Nvidia NVDA');
@@ -77,7 +105,7 @@ describe('pt-why-today', () => {
       expect(out).toContain('Nvidia falls &lt;b&gt;');
       expect(said).toContain('On Sep 30, 2026 Nvidia NVDA fell 3.1%.');
       expect(out).toContain('Prices 15 minutes delayed.');
-      expect([...r.el.querySelectorAll('.pt-bd-v')].map((e) => e.textContent)).toEqual(['+0.4%', '-0.2%', '-6.2%']);
+      expect([...r.el.querySelectorAll('.pt-bd-v')].map((e) => e.textContent)).toEqual(['+0.4%', '-0.2%', '-6.2%', '-6.0%']);
       expect([...r.el.querySelectorAll('.pt-toggles button')].map((b) => b.textContent)).toEqual(['Today', '5D', '1M']);
     });
     it('says so when there is no company news since the close, and no results', async () => {
