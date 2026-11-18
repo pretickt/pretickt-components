@@ -1,6 +1,6 @@
 /**
  * What happened to this stock's price, and which earnings, dividends, splits and analyst moves happened along the way?
- * @version 2.4.0
+ * @version 2.4.1
  * @evidence design of the fund pages, 2026-11-05, section 7: a fund's chart marks market events, not analyst actions
  * @evidence design of the sector pages, 2026-11-07, section 6: with `sector`, what its companies are worth over the year (our own sum, not an index), its 5 largest companies' reports
  * @evidence design of the fund pages, 2026-11-05: on a fund's chart a report is one of its holdings', and its tooltip names the company
@@ -49,9 +49,16 @@ export function layout(points: PriceBar[], items: EventItem[], viewport: Viewpor
     used.set(d, n + 1);
     return { kind, date: d, items: list, cx: x(isoDay(d)), cy: y(closeAt(points, d)) - 12 - n * 12, future: d > last };
   });
+  // A split is rare and the point of the stock-split page: it is drawn last and lifted above any marker it would sit on (on 5Y a day is under a
+  // unit wide, so NVDA's dividend of Jun 11 2024 covered the 10-for-1 of Jun 10).
+  const placed = markers.filter((m) => m.kind !== 'split');
+  for (const s of markers.filter((m) => m.kind === 'split')) {
+    while (placed.some((o) => Math.hypot(o.cx - s.cx, o.cy - s.cy) < 12)) s.cy -= 12;
+    placed.push(s);
+  }
   return {
     path: linePath(points.map((p) => [x(isoDay(p.t)), y(p.c)])),
-    markers,
+    markers: placed,
     yTicks: [0, 1, 2, 3].map((i) => { const v = lo + ((hi - lo) * (i + 0.5)) / 4; return { v, y: Math.round(y(v) * 10) / 10 }; }),
     xTicks: monthTicks(d0, d1).map((t) => ({ label: t.label, x: Math.round(x(t.day) * 10) / 10 })),
   };

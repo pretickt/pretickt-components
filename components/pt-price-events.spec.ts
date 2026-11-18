@@ -103,6 +103,15 @@ describe('pt-price-events', () => {
     const g = layout(series[0]!.points, [e, twin]);
     expect(g!.markers[0]!.cy).not.toBe(g!.markers[1]!.cy);
   });
+  it('a split is never covered: drawn last and lifted clear of a marker a day away (NVDA, 10-for-1 on Jun 10 2024, dividend Jun 11)', () => {
+    const pts = series[0]!.points, d = pts.at(-40)!.t, next = pts.at(-39)!.t;
+    const split = { date: d, ticker: 'NVDA', name: 'NVIDIA', logo: null, mcap: null, kind: 'split', meta: { numerator: 10, denominator: 1 } } as EventItem;
+    const div = { date: next, ticker: 'NVDA', name: 'NVIDIA', logo: null, mcap: null, kind: 'dividend', meta: {} } as unknown as EventItem;
+    const g = layout(pts, [split, div])!; // a session apart: a few units at most, under one marker's width (12)
+    const s = g.markers.at(-1)!, o = g.markers[0]!;
+    expect(s.kind).toBe('split');
+    expect(Math.hypot(s.cx - o.cx, s.cy - o.cy)).toBeGreaterThanOrEqual(12);
+  });
   it('on a fund a report is a holding\'s: its tooltip names the company; on a company it does not', async () => {
     const series = [{ ticker: 'SMH', points: priceSeriesDemo({ tickers: ['SMH'], range: '1y', interval: '1d', rebase: false }).at(0)!.points }];
     const at = series[0]!.points.at(-10)!.t;
