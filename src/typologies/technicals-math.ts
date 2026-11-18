@@ -19,7 +19,10 @@ export const TECH = { WINDOW: 1260, WARMUP: 504, MIN_SESSIONS: 252, H: [21, 63] 
 
 export interface TechSeries { dates: string[]; closes: number[]; highs: (number | null)[] }
 type A = (number | null)[];
-type StateOut = Omit<TechState, 'all'> & { all: null };
+type StateOut = Omit<TechState, 'all' | 'allPath'> & { all: null };
+const q4 = (s: number[], q: number) => { const r = (s.length - 1) * q, a = Math.floor(r); return r4(s[a]! + (s[Math.min(a + 1, s.length - 1)]! - s[a]!) * (r - a)); };
+/** A pooled episode: its counts, and its path every 3rd session to 63 (the pooled median path, all companies' line on the page). */
+export type PoolEpisode = TechEpisode & { p: (number | null)[] };
 type CardOut = Omit<TechCard, 'states'> & { states: StateOut[] };
 
 const r4 = (v: number) => Math.round(v * 1e4) / 1e4;
@@ -53,6 +56,19 @@ export function outcome(s: TechSeries, spy: Map<string, number> | null, i: numbe
   return { r: [a[0], b[0]], m: [a[1], b[1]] };
 }
 
+/** Each step's median over the paths that reach it (null where none does). */
+export function medianPath(paths: readonly (readonly (number | null)[])[]): (number | null)[] {
+  const k = Math.max(0, ...paths.map((p) => p.length));
+  return Array.from({ length: k }, (_, i) => median(paths.map((p) => p[i]).filter((v): v is number => v != null)));
+}
+
+/** Each step's middle half (25th and 75th percentile) over the paths that reach it; null under four of them. */
+export function middleHalf(paths: readonly (readonly (number | null)[])[]): [(number | null)[], (number | null)[]] {
+  const k = Math.max(0, ...paths.map((p) => p.length)), at = (i: number) => paths.map((p) => p[i]).filter((v): v is number => v != null).sort((a, b) => a - b);
+  const q = Array.from({ length: k }, (_, i) => { const v = at(i); return v.length >= 4 ? [q4(v, 0.25), q4(v, 0.75)] as const : null; });
+  return [q.map((x) => x?.[0] ?? null), q.map((x) => x?.[1] ?? null)];
+}
+
 /** One horizon's counts: episodes with an outcome, how many ended higher, the median, the market's median, the median net of it. */
 export function summarize(eps: readonly Pick<TechEpisode, 'r' | 'm'>[], h: 0 | 1, market: boolean): TechSum {
   const done = eps.filter((e) => e.r[h] != null), both = done.filter((e) => e.m[h] != null);
@@ -72,13 +88,13 @@ function weekly(dates: string[], idx: number[]): number[] {
  */
 export function computeTechnicals(s: TechSeries, o: { asOf: string; spy: Map<string, number> | null; today?: { hi52?: number | null } }):
   { payload: { asOf: string; since: string; fullWindow: boolean; close: number; daily: { t: string[]; c: number[] }; weekly: { t: string[]; c: number[] }; cards: CardOut[] };
-    pool: Record<string, TechEpisode[]> } | null {
+    pool: Record<string, PoolEpisode[]> } | null {
   const { dates, closes } = s, L = closes.length;
   if (L < TECH.MIN_SESSIONS) return null;
   const market = o.spy != null, ws = Math.max(0, L - TECH.WINDOW), last = closes[L - 1]!;
   const all = Array.from({ length: L }, (_, i) => i);
   const D = all.slice(-252), W = weekly(dates, all.slice(ws));
-  const pool: Record<string, TechEpisode[]> = {};
+  const pool: Record<string, PoolEpisode[]> = {};
 
   // the series, over the whole history read (the windows' first values settle before the five years start)
   const rsiS = rsi(closes), ma = { 20: sma(closes, 20), 50: sma(closes, 50), 100: sma(closes, 100), 200: sma(closes, 200) };
@@ -104,8 +120,11 @@ export function computeTechnicals(s: TechSeries, o: { asOf: string; spy: Map<str
   /** A state's episodes and counts; `shown` adds the paths. */
   const state = (card: TechCardKey, key: string, inState: boolean[], valid: number, shown: boolean, level: A | null = null, kind: 'support' | 'resistance' | null = null): StateOut => {
     const idx = episodesOf(inState, Math.max(ws, valid + TECH.GAP)), eps = idx.map((i) => ep(i, level, kind));
-    pool[`${card}:${key}`] = eps;
-    return { key, total: eps.length, episodes: eps.slice(-TECH.KEEP), paths: shown ? idx.slice(-TECH.PATHS).map(path) : null,
+    const all = idx.map(path);
+    pool[`${card}:${key}`] = eps.map((e, j) => ({ ...e, p: all[j]! }));
+    // the chart's median and middle half over every time, as the sentence's (its faint lines are the last 12)
+    return { key, total: eps.length, episodes: eps.slice(-TECH.KEEP), paths: shown ? all.slice(-TECH.PATHS) : null,
+      ...(shown && all.length ? { medPath: medianPath(all), half: middleHalf(all) } : {}),
       held: kind ? eps.filter((e) => e.held === true).length : null, stock: [summarize(eps, 0, market), summarize(eps, 1, market)], all: null };
   };
   const line = (k: string, a: A, idx: number[], from = 0) => ({ k, v: idx.slice(from).map((i) => px(a[i])) });
@@ -128,15 +147,22 @@ export function computeTechnicals(s: TechSeries, o: { asOf: string; spy: Map<str
       chart: { range: 'daily', from: 0, lines: [], levels: [], marks: marks(states, D, 0), pane: { k: 'rsi', lines: [line('rsi', rsiS, D)], bars: null, guides: [30, 70] } }, states });
   }
 
-  // support and resistance: today's on the hub's two years; the past's point in time; near = within 5%, as the badge
-  const srT = supportResistance(closes.slice(-TECH.WARMUP));
+  // support and resistance: today's on the hub's two years; the past's point in time; near = within 5%, as the badge. The chart is those two
+  // years, week by week, with the closes the level is made of marked on it (Romeo, 2026-11-18: NVDA's resistance «sembra un supporto» — a
+  // level the price turned up at, then fell through: the marks of the past episodes, each on the level of its own day, did not say so)
+  const srT = supportResistance(closes.slice(-TECH.WARMUP), { turns: true }), srAt = Math.max(0, L - TECH.WARMUP);
+  const fromW = Math.max(0, W.findIndex((i) => i >= srAt));
   for (const kind of ['support', 'resistance'] as const) {
     const lv = kind === 'support' ? srT.supports[0] : srT.resistances[0], level = kind === 'support' ? sup : res;
     const near = all.map((i) => level[i] != null && (kind === 'support'
       ? C(i) >= level[i]! && C(i) / level[i]! - 1 <= TECH.NEAR : C(i) <= level[i]! && level[i]! / C(i) - 1 <= TECH.NEAR));
     const states = [state(kind, 'near', near, 0, true, level, kind)];
-    cards.push({ key: kind, state: !lv ? 'none' : lv.near ? 'near' : 'far', now: { level: lv ? px(lv.price) : null, dist: lv ? r4(lv.distPct / 100) : null, touches: lv?.touches ?? null },
-      chart: { range: 'daily', from: 0, lines: [], levels: lv ? [{ k: kind, v: px(lv.price)! }] : [], marks: marks(states, D, 0), pane: null }, states });
+    const turns = (lv?.turns ?? []).flatMap((p) => { const t = onChart(dates[srAt + p.i]!, W); return t ? [{ t, k: p.kind === 'low' ? 'turnUp' : 'turnDown', v: px(p.price)! }] : []; });
+    cards.push({ key: kind, state: !lv ? 'none' : lv.near ? 'near' : 'far',
+      now: { level: lv ? px(lv.price) : null, dist: lv ? r4(lv.distPct / 100) : null, touches: lv?.touches ?? null,
+        // what the level is made of: 1 the price turned up there (lows), -1 down (highs), 0 both; flipped 1 = the price is now on its other side
+        made: lv ? (lv.kind === 'floor' ? 1 : lv.kind === 'ceiling' ? -1 : 0) : null, flipped: lv ? (lv.flipped ? 1 : 0) : null },
+      chart: { range: 'weekly', from: fromW, lines: [], levels: lv ? [{ k: kind, v: px(lv.price)! }] : [], marks: turns, pane: null }, states });
   }
 
   // the 200-day average and the 50/200 cross

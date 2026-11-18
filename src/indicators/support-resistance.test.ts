@@ -44,11 +44,11 @@ describe('clusterLevels', () => {
   it('caps the cluster span so chain-merging cannot blur distinct levels', () => {
     const pivots = [{ price: 100 }, { price: 104 }, { price: 107 }];
     // Without a cap the running mean chains all three into one blurred level…
-    expect(clusterLevels(pivots, 0.05)).toEqual([
+    expect(clusterLevels(pivots, 0.05).map(({ members, ...l }) => l)).toEqual([
       { price: (100 + 104 + 107) / 3, touches: 3, highs: 0, lows: 0 },
     ]);
     // …with maxSpanPct the third point (span 7% > 5%) starts a new cluster.
-    expect(clusterLevels(pivots, 0.05, 0.05)).toEqual([
+    expect(clusterLevels(pivots, 0.05, 0.05).map(({ members, ...l }) => l)).toEqual([
       { price: 102, touches: 2, highs: 0, lows: 0 },
       { price: 107, touches: 1, highs: 0, lows: 0 },
     ]);
@@ -56,6 +56,13 @@ describe('clusterLevels', () => {
 });
 
 describe('supportResistance', () => {
+  it('names the swing closes a level is made of only when asked (the technicals page marks them)', () => {
+    const s = [100, 100, 105, 100, 95, 100, 105, 100, 103];
+    const o = { tolPct: 0.05, window: 2, maxEach: 5, minTouches: 1 };
+    expect(supportResistance(s, o).resistances[0]!.turns).toBeUndefined();
+    expect(supportResistance(s, { ...o, turns: true }).resistances[0]!.turns).toEqual([{ i: 2, price: 105, kind: 'high' }, { i: 6, price: 105, kind: 'high' }]);
+  });
+
   it('classifies levels vs the current price with distance + near', () => {
     // current = last close = 103; pivots → low 95, high 105
     const s = [100, 105, 100, 95, 100, 105, 100, 103];

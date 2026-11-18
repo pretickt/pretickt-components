@@ -3,7 +3,7 @@ import { rsi, smaLast, supportResistance } from '../indicators';
 import { needKey } from '../api';
 import { getTypology } from './index';
 import { demoSeries, technicalsDemo, TechnicalsPayload } from './technicals';
-import { computeTechnicals, episodesOf, outcome, summarize, TECH, TECH_CARDS, TECH_STATES } from './technicals-math';
+import { computeTechnicals, episodesOf, medianPath, outcome, summarize, TECH, TECH_CARDS, TECH_STATES } from './technicals-math';
 
 const T = true, F = false;
 const flat = (n: number, f: (i: number) => number) => {
@@ -95,5 +95,22 @@ describe('technicals@1: a stock\'s technical cards and what happened the other t
   it('under a year of closes: nothing', () => {
     const { s, spy } = demoSeries('NEW', 200);
     expect(computeTechnicals(s, { asOf: s.dates.at(-1)!, spy })).toBeNull();
+  });
+
+  it('the pool carries each episode\'s path, every 3rd session to 63, for all companies\' median line', () => {
+    const { s: x, spy } = demoSeries('NVDA');
+    const pool = computeTechnicals(x, { asOf: x.dates.at(-1)!, spy })!.pool;
+    const eps = Object.values(pool).flat();
+    expect(eps.length).toBeGreaterThan(0);
+    for (const e of eps) { expect(e.p).toHaveLength(22); expect(e.p[0]).toBe(0); if (e.r[0] != null) expect(e.p[7]).toBe(e.r[0]); }
+    expect(medianPath([[0, 0.1, 0.2], [0, -0.1, null], [0, 0.3, 0.4]])).toEqual([0, 0.1, 0.3]);
+  });
+
+  it('a shown state\'s median path ends on the sentence\'s median, over every time (not the last 12 drawn)', () => {
+    const d = technicalsDemo({ ticker: 'NVDA' });
+    const shown = d.cards.flatMap((c) => c.states).filter((s) => s.paths && s.stock[0].n >= 3);
+    expect(shown.length).toBeGreaterThan(0);
+    for (const s of shown) { expect(s.medPath![7], s.key).toBe(s.stock[0].med); expect(s.medPath![21], s.key).toBe(s.stock[1].med); }
+    expect(shown.some((s) => s.total > s.paths!.length)).toBe(true);
   });
 });

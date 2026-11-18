@@ -17,6 +17,8 @@ export interface SrLevel {
    * the close 0.5% above it.
    */
   flipped: boolean;
+  /** With `opts.turns`: the swing closes the level is made of (index into `closes`, the close, high or low), oldest first. */
+  turns?: { i: number; price: number; kind: 'high' | 'low' }[];
 }
 export interface SupportResistance {
   current: number | null;
@@ -48,17 +50,18 @@ export function swingPivots(closes: number[], window = 5): Pivot[] {
  * ascending scan, so without a cap dense pivot zones chain-merge into one blurred level
  * that can swallow a distinct shelf between two others (AMZN's ~230 zone).
  */
-export function clusterLevels(
-  pivots: { price: number; kind?: 'high' | 'low' }[],
+export function clusterLevels<P extends { price: number; kind?: 'high' | 'low' }>(
+  pivots: P[],
   tolPct: number,
   maxSpanPct = Infinity,
-): { price: number; touches: number; highs: number; lows: number }[] {
+): { price: number; touches: number; highs: number; lows: number; members: P[] }[] {
   const sorted = [...pivots].sort((a, b) => a.price - b.price);
   const levels: {
     price: number;
     touches: number;
     highs: number;
     lows: number;
+    members: P[];
   }[] = [];
   let cluster: typeof sorted = [];
   const flush = () => {
@@ -70,6 +73,7 @@ export function clusterLevels(
       // carried through, because WHAT a level is made of decides how it behaves
       highs: cluster.filter((c) => c.kind === 'high').length,
       lows: cluster.filter((c) => c.kind === 'low').length,
+      members: cluster,
     });
     cluster = [];
   };
@@ -106,6 +110,8 @@ export function supportResistance(
     maxEach?: number;
     mergeTolPct?: number;
     minTouches?: number;
+    /** Name each level's swing closes (`turns`): the technicals page marks them. */
+    turns?: boolean;
   } = {},
 ): SupportResistance {
   const tolPct = opts.tolPct ?? 0.05;
@@ -128,6 +134,7 @@ export function supportResistance(
     touches: number;
     highs: number;
     lows: number;
+    members: Pivot[];
   }): SrLevel => {
     const distPct = ((l.price - current) / current) * 100;
     const kind: SrLevel['kind'] =
@@ -143,6 +150,7 @@ export function supportResistance(
       flipped:
         (l.price < current && kind === 'ceiling') ||
         (l.price > current && kind === 'floor'),
+      ...(opts.turns ? { turns: [...l.members].sort((a, b) => a.i - b.i) } : {}),
     };
   };
   const resistances = levels

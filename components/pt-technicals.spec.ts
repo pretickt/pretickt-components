@@ -1,5 +1,5 @@
 import { TECH_CARDS, technicalsDemo, type TechCard, type Technicals, type TechCardKey, type TechState } from '../src/typologies';
-import { PtTechnicals } from './pt-technicals';
+import { afterChart, nowChart, PtTechnicals } from './pt-technicals';
 import { basics, press, render, withData } from './_spec';
 
 const demo = technicalsDemo({ ticker: 'NVDA' });
@@ -97,5 +97,48 @@ describe('pt-technicals', () => {
       const { words } = await view(demo, k);
       expect(words.toLowerCase(), k).not.toMatch(/buy signal|sell signal|bullish|bearish|strong buy/);
     }
+  });
+
+  // Romeo, 2026-11-18, on www
+  it('a resistance the price turned up at, now above it, says it used to be a support', async () => {
+    const res = (now: Record<string, number | null>): Technicals => ({ ...demo, cards: demo.cards.map((c): TechCard => (c.key !== 'resistance' ? c : { ...c, state: 'far', now })) });
+    const flipped = (await view(res({ level: 168.32, dist: 0.083, touches: 6, made: 1, flipped: 1 }), 'resistance')).words;
+    expect(flipped).toContain('It used to be a support: the price turned up there 6 times in the last two years, then fell through it');
+    const plain = (await view(res({ level: 168.32, dist: 0.083, touches: 6, made: -1, flipped: 0 }), 'resistance')).words;
+    expect(plain).toContain('the price turned down there 6 times');
+    expect(plain).not.toContain('used to be');
+  });
+
+  it('a level\'s chart marks the closes it is made of, on the level line, and says so', async () => {
+    const c = demo.cards.find((x) => x.key === 'resistance')!;
+    expect(c.chart.range).toBe('weekly');
+    expect(c.chart.marks.length).toBe(c.now['touches']);
+    const g = nowChart(demo, c)!;
+    expect(new Set(g.marks.map((m) => m.cy))).toEqual(new Set([g.levels[0]!.y]));
+    expect(g.marks.every((m) => m.cls === 'pt-tech-turn')).toBe(true);
+    expect((await view(demo, 'resistance')).words).toContain('The closes the price turned at');
+  });
+
+  it('Bollinger: the two bands as one shaded channel', () => {
+    const g = nowChart(demo, demo.cards.find((x) => x.key === 'bollinger')!)!;
+    expect(g.band).toMatch(/^M.*Z$/);
+    expect(g.lines.map((l) => l.cls)).toEqual(['pt-tech-bb', 'pt-tech-bb-mid', 'pt-tech-bb']);
+  });
+
+  it('MACD says what it usually means, as the RSI does', async () => {
+    expect((await view(demo, 'macd')).words).toMatch(/usually read as momentum turning (up|down)/);
+  });
+
+  it('the after chart: every company\'s median as a line over the whole horizon, the middle half as a band from four times', () => {
+    const st = (n: number, allPath: (number | null)[] | null): TechState => ({ ...demo.cards[0]!.states[0]!, medPath: undefined, half: undefined,
+      paths: Array.from({ length: n }, (_, j) => Array.from({ length: 22 }, (_, i) => (j - 1) * 0.004 * i)), allPath });
+    const g = afterChart(st(5, Array.from({ length: 22 }, (_, i) => 0.001 * i)), 0)!;
+    expect(g.all).toMatch(/^M[\d.]+,[\d.]+(L[\d.]+,[\d.]+){7}$/); // 8 points: 0 to 21 sessions every 3rd
+    expect(g.band).toMatch(/Z$/);
+    expect(g.ends).toHaveLength(2);
+    expect(g.grid.some((u) => u.zero)).toBe(true);
+    expect(afterChart(st(3, null), 0)!.band).toBeNull();
+    expect(afterChart(st(3, null), 0)!.all).toBeNull();
+    expect(afterChart({ ...st(5, null), total: 25 }, 0)!.some).toBe(5);
   });
 });

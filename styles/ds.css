@@ -1067,19 +1067,29 @@
   .pt-tech-bar { @apply fill-pos; opacity: .7; }
   .pt-tech-bar-neg { @apply fill-neg; }
   .pt-tech-zero { @apply stroke-ink-soft; stroke-width: 1; }
-  .pt-tech-path { fill: none; @apply stroke-pos; stroke-width: 1.5; opacity: .45; pointer-events: stroke; cursor: pointer; }
+  .pt-tech-path { fill: none; @apply stroke-pos; stroke-width: 1.2; opacity: .35; pointer-events: stroke; cursor: pointer; }
   .pt-tech-path:hover { opacity: 1; stroke-width: 2.5; }
   .pt-tech-path-neg { @apply stroke-neg; }
   .pt-tech-med { fill: none; @apply stroke-ink; stroke-width: 2.5; stroke-linejoin: round; }
-  .pt-tech-pool { @apply stroke-primary; stroke-width: 3; }
+  .pt-tech-all { fill: none; @apply stroke-primary; stroke-width: 2; stroke-linejoin: round; }
+  .pt-tech-iqr { fill: var(--color-ink); opacity: .11; }
+  .pt-tech-lab-all { @apply fill-primary; }
+  .pt-tech-turn { fill: var(--color-surface-raised); @apply stroke-ink; stroke-width: 1.8; cursor: pointer; }
+  .pt-tech-band { @apply fill-primary; opacity: .1; }
+  .pt-tech-bb { fill: none; @apply stroke-primary; stroke-width: 1; opacity: .7; }
+  .pt-tech-bb-mid { fill: none; stroke: var(--color-ink-soft); stroke-width: 1.2; stroke-dasharray: 4 3; }
   .pt-tech-key-price::before, .pt-tech-key-med::before { @apply bg-ink; height: 2px; width: .9rem; vertical-align: .2rem; }
   .pt-tech-key-l0::before { @apply bg-primary; height: 2px; width: .9rem; vertical-align: .2rem; }
   .pt-tech-key-l1::before { @apply bg-warn; height: 2px; width: .9rem; vertical-align: .2rem; }
   .pt-tech-key-l2::before, .pt-tech-key-level::before { @apply bg-ink-soft; height: 2px; width: .9rem; vertical-align: .2rem; }
   .pt-tech-key-mark::before { @apply rounded-full bg-pos; }
   .pt-tech-key-path::before { @apply bg-pos; height: 1px; width: .9rem; vertical-align: .2rem; opacity: .6; }
-  .pt-tech-key-pool::before { @apply bg-primary; height: 3px; width: .6rem; vertical-align: .2rem; }
-  @media (width < 40rem) { .pt-tech-svg .pt-axis, .pt-tech-svg .pt-tech-lab { font-size: 17px; } }
+  .pt-tech-key-pool::before { @apply bg-primary; height: 2px; width: .9rem; vertical-align: .2rem; }
+  .pt-tech-key-iqr::before { background: var(--color-ink); opacity: .14; height: .6rem; width: .9rem; vertical-align: -.05rem; }
+  .pt-tech-key-turn::before { @apply rounded-full border-2 border-ink; background: var(--color-surface-raised); }
+  .pt-tech-key-bb::before { @apply bg-primary; opacity: .35; height: .6rem; width: .9rem; vertical-align: -.05rem; }
+  .pt-tech-key-bbmid::before { @apply bg-ink-soft; height: 2px; width: .9rem; vertical-align: .2rem; }
+  @media (width < 40rem) { .pt-tech-svg .pt-axis, .pt-tech-svg .pt-tech-lab { font-size: 16px; } }
   .pt-stats { @apply grid gap-6; }
   .pt-stats-row { @apply grid min-w-0 gap-2.5; }
   .pt-stats-row + .pt-stats-row { @apply border-t border-border pt-5; }

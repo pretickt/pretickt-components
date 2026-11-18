@@ -1,6 +1,6 @@
 import * as z from 'zod/mini';
 import { DEMO_ASOF, DEMO_COMPANIES, demoName, IsoDate, prng, round, sessionsBack, Ticker } from './common';
-import { computeTechnicals, TECH_CARDS, type TechSeries } from './technicals-math';
+import { computeTechnicals, medianPath, TECH_CARDS, type TechSeries } from './technicals-math';
 
 
 /**
@@ -33,6 +33,11 @@ export const TechState = z.object({
   held: z.nullable(z.int()),
   stock: z.tuple([TechSum, TechSum]),
   all: z.nullable(z.tuple([TechSum, TechSum])),
+  /** The shown states: the median path and the middle half (25th, 75th percentile; null under four) over every time, as `paths` steps. */
+  medPath: z.optional(z.array(R)),
+  half: z.optional(z.tuple([z.array(R), z.array(R)])),
+  /** Every listed stock's median path, every 3rd session from 0 to 63 (all companies' line on the "after" chart); absent on older rows. */
+  allPath: z.optional(z.nullable(z.array(R))),
 });
 const Line = z.object({ k: z.string(), v: z.array(R) });
 export const TechCard = z.object({
@@ -45,7 +50,8 @@ export const TechCard = z.object({
     from: z.int(),
     lines: z.array(Line),
     levels: z.array(z.object({ k: z.string(), v: z.number() })),
-    marks: z.array(z.object({ t: IsoDate, k: z.string() })),
+    /** `v`: where the mark sits when not on the close (support/resistance: the close the price turned at). */
+    marks: z.array(z.object({ t: IsoDate, k: z.string(), v: z.optional(z.number()) })),
     pane: z.nullable(z.object({ k: z.enum(['rsi', 'macd']), lines: z.array(Line), bars: z.nullable(z.array(R)), guides: z.array(z.number()) })),
   }),
   states: z.array(TechState),
@@ -90,6 +96,8 @@ export function technicalsDemo(p: TechnicalsParams): Technicals {
     mkt: round(0.006 + h * 0.008, 4), net: round(0.002 + k.length / 2000, 4) });
   return {
     ticker: t, name, kind: t === 'SPY' ? 'etf' : 'stock', ...r!.payload,
-    cards: r!.payload.cards.map((c) => ({ ...c, states: c.states.map((st) => ({ ...st, all: [fake(st.key, 0), fake(st.key, 1)] as [TechSum, TechSum] })) })),
+    // the pooled path: this stock's own median path, flattened toward the invented pooled medians
+    cards: r!.payload.cards.map((c) => ({ ...c, states: c.states.map((st) => ({ ...st, all: [fake(st.key, 0), fake(st.key, 1)] as [TechSum, TechSum],
+      allPath: st.paths ? medianPath(st.paths).map((v, i) => (v == null ? null : round(v * 0.4 + (fake(st.key, 1).med! * i) / 21, 4))) : null })) })),
   };
 }
