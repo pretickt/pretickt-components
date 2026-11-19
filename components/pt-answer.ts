@@ -3,7 +3,7 @@
  * price target, its peers, its latest quarter, its insiders, its next earnings date; who leads a market list; a calendar month, week or day at a glance.
  * Company topics name the company as people search it, with its ticker ("Nvidia NVDA"): the sentence an answer engine quotes stands on its own.
  * Each company a sentence names is a link with its logo (PtSay, PtMention): on the site its card opens on hover, the page's own company too.
- * @version 1.11.0
+ * @version 1.11.1
  * @evidence DataForSEO round 18 (2026-11-14): "nvidia stock price history" 2,900/month, "will nvidia stock go up" 1,900, "<company> all time high": `history`, the history page's answer
  * @evidence design of the fund pages, 2026-11-05: `topic: 'basket'`, the page's first sentence about a fund
  * @evidence design of the sector pages, 2026-11-07: `topic: 'sector'`, the sector's companies, what they are worth and what the targets on them average
@@ -55,17 +55,27 @@ const SURPRISE = 0.02, REPORTS = 8, MIN_MOVES = 4;
 const beat = (actual: number, est: number) => (est === 0 ? actual : (actual - est) / Math.abs(est)) > SURPRISE;
 /** A company still pays while its last ex-dividend date is within this many days (a yearly payer included). */
 const PAYING_DAYS = 400;
+/** Two payments of one amount this many days apart are one payment the source dated twice (Bio-Techne, Aug 17 and Aug 24, 2026). */
+const REDATED_DAYS = 10;
 /**
- * A year of dividends: as many of the latest payments as the company makes in a year, by the usual gap between its ex-dividend dates
- * (4 for a quarterly payer), so a payment a day past a 365-day window is not lost (Apple on 2026-11-10: three of its four). With
- * fewer than three payments on record, or a rhythm that does not hold, those of the last 365 days.
+ * A year of dividends: those of the last 365 days, each payment of the year counted once. A payment just before the window still counts
+ * while the one that takes its place a year later has not gone ex-dividend and the company keeps its rhythm (Apple on 2026-11-10: three
+ * of its four, the fourth a day past the window; not Skyworks, silent since May), and the oldest in the window no longer counts once its
+ * own a year later has (an ex-date a few days earlier this year: five quarters for four). "Takes its place": within half the company's
+ * usual gap of the same day a year later, a month at most, so a yearly special a month after a regular payment is never taken for it
+ * (PACCAR). The count is never a guess at the company's rhythm: the median gap read three a year for Pfizer's quarters, 77 and 105 days
+ * apart (a yield of 4.6% for 6.1% on 2026-11-18).
  */
-function yearOf<T extends { date: string }>(past: readonly T[], asOf: string): T[] {
-  const within = past.filter((i) => i.date > plusDays(asOf, -365));
+function yearOf<T extends { date: string; meta: { amount: number } }>(all: readonly T[], asOf: string): T[] {
+  const past = all.filter((i, k) => k === 0 || i.meta.amount !== all[k - 1]!.meta.amount || ms(i.date) - ms(all[k - 1]!.date) > REDATED_DAYS * 86_400_000);
   const lastSix = past.slice(-6), gaps = lastSix.slice(1).map((i, k) => (ms(i.date) - ms(lastSix[k]!.date)) / 86_400_000).sort((a, b) => a - b);
-  if (gaps.length < 2) return within;
-  const per = Math.min(12, Math.max(1, Math.round(365 / gaps[Math.floor(gaps.length / 2)]!))), latest = past.slice(-per);
-  return latest.length === per && latest[0]!.date > plusDays(asOf, -PAYING_DAYS) ? latest : within;
+  const gap = (gaps[Math.floor(gaps.length / 2)] ?? 60) * 86_400_000, slack = Math.min(30 * 86_400_000, gap / 2);
+  const start = plusDays(asOf, -365), year = past.filter((i) => i.date > start);
+  const replaced = (i: T, by: readonly T[]) => by.some((j) => j !== i && Math.abs(ms(j.date) - ms(plusDays(i.date, 365))) <= slack);
+  while (year.length > 1 && replaced(year[0]!, year)) year.shift();
+  const before = past.filter((i) => i.date <= start).at(-1), last = past.at(-1);
+  if (before && last && ms(start) - ms(before.date) <= slack && ms(asOf) - ms(last.date) <= 1.5 * gap && !replaced(before, year)) year.unshift(before);
+  return year;
 }
 /** A split's figure: "10", "1.5". */
 const fig = (v: number) => String(Math.round(v * 1000) / 1000);

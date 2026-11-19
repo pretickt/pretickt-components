@@ -249,6 +249,21 @@ describe('pt-answer', () => {
     // a year is the company's usual number of payments: the one of a year ago, a day past a 365-day window, still counts (Apple, 2026-11-10)
     const edge = [d('2025-08-11', 0.26), d('2025-10-15', 0.26), d('2026-01-14', 0.26), d('2026-04-15', 0.27), d('2026-07-15', 0.27)];
     expect(await text({ topic: 'dividend', ticker: 'AAPL' }, answers(edge))).toContain('Over the last 12 months it paid $1.06 a share in 4 payments, a yield of 0.4%');
+    // a quarterly payer whose quarters are uneven (Pfizer: 77 and 105 days apart) still pays four a year (the median gap read three: 4.6% for 6.1%
+    // on 2026-11-18); Pfizer's ex-dates a month earlier, so the last is the one after a long gap, as it was that day
+    const pfe = ['2023-10-10', '2023-12-26', '2024-04-09', '2024-06-26', '2024-10-09', '2024-12-25', '2025-04-09', '2025-06-25', '2025-10-08', '2025-12-24', '2026-04-08', '2026-06-24', '2026-10-07']
+      .map((x) => d(x, 0.43));
+    expect(await text({ topic: 'dividend', ticker: 'AAPL' }, answers(pfe))).toContain('Over the last 12 months it paid $1.72 a share in 4 payments');
+    // a yearly special beside four regular payments: five a year, the special in the sum (PACCAR)
+    const pcar = [['2023-11-14', 0.27], ['2023-12-15', 3.2], ['2024-02-13', 0.27], ['2024-05-15', 0.3], ['2024-08-15', 0.3], ['2024-11-13', 0.3], ['2024-12-17', 1.4],
+      ['2025-02-12', 0.33], ['2025-05-14', 0.33], ['2025-08-14', 0.33], ['2025-11-12', 0.33], ['2025-12-19', 1.4], ['2026-02-11', 0.33], ['2026-05-13', 0.35], ['2026-08-12', 0.35]] as const;
+    expect(await text({ topic: 'dividend', ticker: 'AAPL' }, answers(pcar.map(([x, a]) => d(x, a))))).toContain('Over the last 12 months it paid $2.76 a share in 5 payments');
+    // one payment the source dated twice, a week apart, counts once (Bio-Techne, Aug 2026)
+    const twice = [d('2025-11-14', 0.26), d('2026-02-09', 0.26), d('2026-05-11', 0.27), d('2026-08-10', 0.27), d('2026-08-17', 0.27)];
+    expect(await text({ topic: 'dividend', ticker: 'AAPL' }, answers(twice))).toContain('Over the last 12 months it paid $1.06 a share in 4 payments');
+    // silent since spring: the payment a year back, just past the window, is not counted for one still to come (Skyworks, 2026-11-18)
+    const silent = [d('2025-02-14', 0.7), d('2025-05-15', 0.7), d('2025-08-14', 0.71), d('2025-10-16', 0.71), d('2026-01-15', 0.71), d('2026-04-16', 0.71)];
+    expect(await text({ topic: 'dividend', ticker: 'AAPL' }, answers(silent))).toContain('Over the last 12 months it paid $1.42 a share in 2 payments');
     // a payment that at least doubled reads by its amounts
     expect(await text({ topic: 'dividend', ticker: 'AAPL' }, answers([d('2025-08-11', 0.01), ...paid.slice(1)]))).toContain('at its latest payment, with ex-dividend date Aug 10, 2026 and payment on Aug 13, 2026, up from $0.01 a year earlier.');
     // stopped: the last one long ago
