@@ -102,11 +102,21 @@ describe('pt-technicals', () => {
   // Romeo, 2026-11-18, on www
   it('a resistance the price turned up at, now above it, says it used to be a support', async () => {
     const res = (now: Record<string, number | null>): Technicals => ({ ...demo, cards: demo.cards.map((c): TechCard => (c.key !== 'resistance' ? c : { ...c, state: 'far', now })) });
-    const flipped = (await view(res({ level: 168.32, dist: 0.083, touches: 6, made: 1, flipped: 1 }), 'resistance')).words;
+    const flipped = (await view(res({ level: 168.32, dist: 0.083, touches: 6, made: 1, flipped: 1, up: 6, down: 0 }), 'resistance')).words;
     expect(flipped).toContain('It used to be a support: the price turned up there 6 times in the last two years, then fell through it');
-    const plain = (await view(res({ level: 168.32, dist: 0.083, touches: 6, made: -1, flipped: 0 }), 'resistance')).words;
+    const plain = (await view(res({ level: 168.32, dist: 0.083, touches: 6, made: -1, flipped: 0, up: 0, down: 6 }), 'resistance')).words;
     expect(plain).toContain('the price turned down there 6 times');
     expect(plain).not.toContain('used to be');
+  });
+
+  // fact-check of the stock-charts article, 2026-11-25: MSFT's support read «turned up there 10 times» for 7 up and 3 down
+  it('a level made of both kinds of turns says how many each way; an older payload never claims a direction', async () => {
+    const sup = (now: Record<string, number | null>): Technicals => ({ ...demo, cards: demo.cards.map((c): TechCard => (c.key !== 'support' ? c : { ...c, state: 'near', now })) });
+    const both = (await view(sup({ level: 491.48, dist: -0.009, touches: 10, made: 1, flipped: 0, up: 7, down: 3 }), 'support')).words;
+    expect(both).toContain('the price turned there 10 times in the last two years (7 up, 3 down)');
+    const old = (await view(sup({ level: 491.48, dist: -0.009, touches: 10, made: 1, flipped: 0 }), 'support')).words;
+    expect(old).toContain('the price turned there 10 times in the last two years');
+    expect(old).not.toContain('turned up');
   });
 
   it('a level\'s chart marks the closes it is made of, on the level line, and says so', async () => {

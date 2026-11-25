@@ -3,7 +3,7 @@
  * support, resistance, the 200-day average, the 20/50/100-day averages, the 50/200 cross, Bollinger Bands, MACD, the distance from the
  * 52-week high): the searched question answered with today's numbers, a chart of now, then the stock's own past episodes a month (or three)
  * later beside the market and beside every company. Counts of the past, never a forecast.
- * @version 1.1.0
+ * @version 1.2.0
  * @evidence DataForSEO round 20 (US, 2026-11-17): «nvda rsi» 590, «nvda 200 day moving average» 480, «nvda technical analysis» 480, «nvda support and resistance» 390, «spy support and resistance» 480, «spy 200 day moving average» 590
  * @evidence Romeo, 2026-11-18, on www: NVDA's resistance «sembra un supporto»; all companies' median «la preferisco continua»; Bollinger «un grafico classico a bande»; MACD «deve dire cosa esprime di solito»; the after chart «più carino e che fa comprendere meglio»
  * @evidence Romeo, 2026-11-17: «una card per ogni aspetto tecnico, con insight statistici su cosa è successo in passato», «devono esserci i grafici e la pagina deve essere seo friendly»
@@ -244,7 +244,11 @@ export class PtTechnicals {
       case 'support': case 'resistance': {
         if (n['level'] == null) return `${close}, ${c.key === 'support' ? 'under' : 'over'} every level its price turned at in the last two years: no ${c.key} ${c.key === 'support' ? 'below' : 'above'} the price.`;
         // what the level is made of, said when it is the other side's (Romeo: NVDA's resistance «sembra un supporto» — it was one)
-        const turned = n['made'] === 1 ? 'turned up' : n['made'] === -1 ? 'turned down' : 'turned', times = `${n['touches']} times in the last two years`;
+        // the turns by direction when the payload has them (pt-technicals 1.2.0): «up» only when every turn was up, else the split in brackets;
+        // an older payload says «turned» (its `made` was only the majority, and the count held both kinds)
+        const up = n['up'], down = n['down'], split = up != null && down != null;
+        const turned = split && down === 0 ? 'turned up' : split && up === 0 ? 'turned down' : 'turned';
+        const times = `${n['touches']} times in the last two years${split && up! > 0 && down! > 0 ? ` (${up} up, ${down} down)` : ''}`;
         const flip = n['flipped'] === 1 ? (c.key === 'resistance'
           ? ` It used to be a support: the price ${turned} there ${times}, then fell through it, and a broken support is usually watched as a resistance.`
           : ` It used to be a resistance: the price ${turned} there ${times}, then rose through it, and a broken resistance is usually watched as a support.`) : '';

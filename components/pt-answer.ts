@@ -3,7 +3,7 @@
  * price target, its peers, its latest quarter, its insiders, its next earnings date; who leads a market list; a calendar month, week or day at a glance.
  * Company topics name the company as people search it, with its ticker ("Nvidia NVDA"): the sentence an answer engine quotes stands on its own.
  * Each company a sentence names is a link with its logo (PtSay, PtMention): on the site its card opens on hover, the page's own company too.
- * @version 1.11.1
+ * @version 1.11.2
  * @evidence DataForSEO round 18 (2026-11-14): "nvidia stock price history" 2,900/month, "will nvidia stock go up" 1,900, "<company> all time high": `history`, the history page's answer
  * @evidence design of the fund pages, 2026-11-05: `topic: 'basket'`, the page's first sentence about a fund
  * @evidence design of the sector pages, 2026-11-07: `topic: 'sector'`, the sector's companies, what they are worth and what the targets on them average
@@ -418,7 +418,10 @@ export class PtAnswer {
       const m = last.meta, parts: string[] = [];
       if (finite(m.epsActual)) parts.push(`EPS of ${money(m.epsActual)}${finite(m.epsEst) ? ` against ${money(m.epsEst)} expected` : ''}`);
       if (finite(m.revActual)) parts.push(`revenue of ${usd(m.revActual, { compact: true })}${finite(m.revEst) ? ` against ${usd(m.revEst, { compact: true })}` : ''}`);
-      const move = finite(m.move) ? `; the stock ${Math.abs(m.move) < 0.0005 ? 'was flat' : `${m.move > 0 ? 'rose' : 'fell'} ${level(Math.abs(m.move))}`} the next session` : '';
+      // the move is the session the report reached (plant reactionAt): that day's before the open (ADI's of Nov 24, 2026 read «the next
+      // session»), the next one's after the close, the larger of the two when the time is unknown
+      const reached = m.time === 'bmo' ? 'that session' : m.time === 'amc' ? 'the next session' : 'after the report';
+      const move = finite(m.move) ? `; the stock ${Math.abs(m.move) < 0.0005 ? 'was flat' : `${m.move > 0 ? 'rose' : 'fell'} ${level(Math.abs(m.move))}`} ${reached}` : '';
       if (parts.length) lastSaid = ` The last report, on ${date(last.date)}: ${and(parts)}${move}.`;
     }
     return say`${lead}${record}${lastSaid}`;

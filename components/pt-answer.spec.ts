@@ -223,6 +223,9 @@ describe('pt-answer', () => {
       'on average the session after. The last report, on Aug 27, 2026: EPS of $1.05 against $1.01 expected and revenue of $46.7B against $46B; ' +
       'the stock fell 0.8% the next session.');
     expect(await text({ topic: 'earnings-date', ticker: 'NVDA' }, answers([]))).toBe('No earnings report of Nvidia NVDA is on record yet.');
+    // a report before the open moved that session, not the next (ADI, Nov 24, 2026: «fell 17.4% the next session» — it fell that day)
+    const bmo = [...past.slice(0, 3), r('2026-08-27', { time: 'bmo', epsEst: 1.01, epsActual: 1.05, move: -0.174 })];
+    expect(await text({ topic: 'earnings-date', ticker: 'NVDA' }, answers(bmo))).toContain('; the stock fell 17.4% that session.');
     // the latest session's own report, its numbers not in yet: still the next one
     expect(await text({ topic: 'earnings-date', ticker: 'NVDA' }, answers([r(ASOF, { confirmed: true })]))).toBe(
       'Nvidia NVDA reports its next earnings on Friday, Oct 16, 2026, after the close, a date the company has confirmed.');

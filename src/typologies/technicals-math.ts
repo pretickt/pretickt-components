@@ -160,6 +160,9 @@ export function computeTechnicals(s: TechSeries, o: { asOf: string; spy: Map<str
     const turns = (lv?.turns ?? []).flatMap((p) => { const t = onChart(dates[srAt + p.i]!, W); return t ? [{ t, k: p.kind === 'low' ? 'turnUp' : 'turnDown', v: px(p.price)! }] : []; });
     cards.push({ key: kind, state: !lv ? 'none' : lv.near ? 'near' : 'far',
       now: { level: lv ? px(lv.price) : null, dist: lv ? r4(lv.distPct / 100) : null, touches: lv?.touches ?? null,
+        // the turns by direction: a level is made of lows (the price turned up) and highs (it turned down), often both — the count alone said
+        // «turned up there 10 times» for MSFT's support of 7 up and 3 down (fact-check of the stock-charts article, 2026-11-25)
+        up: lv?.turns ? lv.turns.filter((p) => p.kind === 'low').length : null, down: lv?.turns ? lv.turns.filter((p) => p.kind === 'high').length : null,
         // what the level is made of: 1 the price turned up there (lows), -1 down (highs), 0 both; flipped 1 = the price is now on its other side
         made: lv ? (lv.kind === 'floor' ? 1 : lv.kind === 'ceiling' ? -1 : 0) : null, flipped: lv ? (lv.flipped ? 1 : 0) : null },
       chart: { range: 'weekly', from: fromW, lines: [], levels: lv ? [{ k: kind, v: px(lv.price)! }] : [], marks: turns, pane: null }, states });

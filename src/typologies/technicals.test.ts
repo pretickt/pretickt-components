@@ -59,6 +59,17 @@ describe('technicals@1: a stock\'s technical cards and what happened the other t
     expect(card('ma200').now['ma']).toBeCloseTo(smaLast(s.closes, 200)!, 1);
   });
 
+  it('a level\'s turns by direction add up to its count (fact-check 2026-11-25: MSFT\'s 10 were 7 up and 3 down)', () => {
+    const { s, spy } = demoSeries('NVDA');
+    const r = computeTechnicals(s, { asOf: s.dates.at(-1)!, spy })!;
+    for (const k of ['support', 'resistance']) {
+      const n = r.payload.cards.find((c) => c.key === k)!.now;
+      if (n['level'] == null) continue;
+      expect(n['up']! + n['down']!, k).toBe(n['touches']);
+      expect(n['made'], k).toBe(n['up']! > n['down']! ? 1 : n['down']! > n['up']! ? -1 : 0);
+    }
+  });
+
   it('the past levels are point in time: changing every later close leaves the earlier states alone', () => {
     const { s, spy } = demoSeries('KO');
     const k = s.closes.length - 300;
